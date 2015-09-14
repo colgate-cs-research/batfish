@@ -117,6 +117,8 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
    private static final String F_IP_ROUTE_VRF = "ip route vrf / vrf - ip route";
 
    private static final String F_IPV6 = "ipv6 - other";
+   
+   private static final String F_IPV6_ACCESS_LIST = "ipv6 - access-list";
 
    private static final String F_OSPF_AREA_NSSA = "ospf - not-so-stubby areas";
 
@@ -707,6 +709,8 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
    private StandardCommunityList _currentStandardCommunityList;
 
    private String _currentVrf;
+   
+   private boolean _defaultInterfaceActive;
 
    private BgpPeerGroup _dummyPeerGroup;
 
@@ -727,6 +731,7 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
       _unimplementedFeatures = new TreeSet<String>();
       _w = warnings;
       _peerGroupStack = new ArrayList<BgpPeerGroup>();
+      _defaultInterfaceActive = true;
    }
 
    @Override
@@ -810,6 +815,7 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
             _currentInterfaces.add(newInterface);
             newInterface.setBandwidth(bandwidth);
             newInterface.setVrf(vrf);
+            newInterface.setActive(_defaultInterfaceActive);
          }
       }
       if (ctx.MULTIPOINT() != null) {
@@ -960,7 +966,7 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
       boolean ipV6 = (ctx.IPV6() != null);
 
       if (ipV6) {
-         todo(ctx, F_IPV6);
+         todo(ctx, F_IPV6_ACCESS_LIST);
       }
 
       String name = ctx.name.getText();
@@ -2425,7 +2431,8 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
    @Override
    public void exitShutdown_if_stanza(Shutdown_if_stanzaContext ctx) {
       for (Interface currentInterface : _currentInterfaces) {
-         currentInterface.setActive(false);
+         currentInterface.setActive(ctx.NO() != null);
+         currentInterface.setExplicitActive(true);
       }
    }
 
@@ -2551,6 +2558,19 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
       for (Interface currentInterface : _currentInterfaces) {
          currentInterface.setNativeVlan(vlan);
       }
+   }
+   
+   @Override
+   public void exitSystem_default_switchport_shutdown_stanza(
+         CiscoParser.System_default_switchport_shutdown_stanzaContext ctx) {
+      _defaultInterfaceActive = (ctx.NO() != null);
+      for (Interface existingInterface : 
+         this._configuration.getInterfaces().values()) {
+         if (!existingInterface.getExplicitActive()) {
+            existingInterface.setActive(_defaultInterfaceActive);
+         }
+      }
+      
    }
 
    @Override

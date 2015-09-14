@@ -259,6 +259,8 @@ stanza
    | rsvp_stanza
    | standard_access_list_stanza
    | switching_mode_stanza
+   | system_default_switchport_shutdown_stanza
+   | system_null_stanza
    | vrf_context_stanza
    | vrf_definition_stanza
 ;
@@ -266,6 +268,16 @@ stanza
 switching_mode_stanza
 :
    SWITCHING_MODE ~NEWLINE* NEWLINE
+;
+
+system_default_switchport_shutdown_stanza
+:
+	NO? SYSTEM DEFAULT SWITCHPORT SHUTDOWN NEWLINE
+;
+
+system_null_stanza
+:
+	NO? SYSTEM ~NEWLINE* NEWLINE
 ;
 
 vrf_context_stanza

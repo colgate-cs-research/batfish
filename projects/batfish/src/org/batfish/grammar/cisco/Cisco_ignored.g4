@@ -790,7 +790,6 @@ null_standalone_stanza_DEPRECATED_DO_NOT_ADD_ITEMS
       | SUBSCRIBE_TO_ALERT_GROUP
       | SWITCH
       | SYSOPT
-      | SYSTEM
       | TABLE_MAP
       | TAG_SWITCHING
       | TELNET

@@ -61,6 +61,8 @@ public class Interface implements Serializable {
    private Double _bandwidth;
 
    private String _description;
+   
+   private boolean _explicitActive;
 
    private String _incomingFilter;
 
@@ -95,6 +97,7 @@ public class Interface implements Serializable {
    public Interface(String name) {
       _name = name;
       _active = true;
+      _explicitActive = false;
       _nativeVlan = 1;
       _switchportMode = SwitchportMode.NONE;
       _allowedVlans = new ArrayList<SubRange>();
@@ -124,6 +127,10 @@ public class Interface implements Serializable {
 
    public String getDescription() {
       return _description;
+   }
+   
+   public boolean getExplicitActive() {
+      return _explicitActive;
    }
 
    public String getIncomingFilter() {
@@ -200,6 +207,10 @@ public class Interface implements Serializable {
 
    public void setDescription(String description) {
       _description = description;
+   }
+   
+   public void setExplicitActive(boolean explicitActive) {
+      _explicitActive = explicitActive;
    }
 
    public void setIncomingFilter(String accessListName) {
