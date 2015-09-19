@@ -181,6 +181,34 @@ redistribute_connected_ro_stanza
    )* NEWLINE
 ;
 
+redistribute_ospf_ro_stanza
+:
+   REDISTRIBUTE OSPF
+   (
+      (
+      	 procnum = DEC
+      )
+      |
+      (
+         METRIC metric = DEC
+      )
+      |
+      (
+         METRIC_TYPE type = DEC
+      )
+      |
+      (
+         ROUTE_MAP map = VARIABLE
+      )
+      | subnets = SUBNETS
+      |
+      (
+         TAG tag = DEC
+      )
+   )*
+   NEWLINE
+;
+
 redistribute_rip_ro_stanza
 :
    REDISTRIBUTE RIP ~NEWLINE* NEWLINE
@@ -220,6 +248,7 @@ ro_stanza
    | passive_interface_ro_stanza
    | redistribute_bgp_ro_stanza
    | redistribute_connected_ro_stanza
+   | redistribute_ospf_ro_stanza
    | redistribute_rip_ro_stanza
    | redistribute_static_ro_stanza
    | router_id_ro_stanza

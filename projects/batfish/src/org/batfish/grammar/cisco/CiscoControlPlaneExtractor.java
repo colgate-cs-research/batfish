@@ -2090,6 +2090,9 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
          int metric = toInteger(ctx.metric);
          r.setMetric(metric);
       }
+      else {
+         r.setMetric(OspfRedistributionPolicy.DEFAULT_REDISTRIBUTE_CONNECTED_METRIC);
+      }
       if (ctx.map != null) {
          String map = ctx.map.getText();
          r.setMap(map);
@@ -2121,6 +2124,9 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
             int metric = toInteger(ctx.metric);
             r.setMetric(metric);
          }
+         else {
+            r.setMetric(OspfRedistributionPolicy.DEFAULT_REDISTRIBUTE_BGP_METRIC);
+         }
          if (ctx.map != null) {
             String map = ctx.map.getText();
             r.setMap(map);
@@ -2133,6 +2139,40 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
          throw new BatfishException(
                "do not currently handle per-neighbor redistribution policies");
       }
+   }
+   
+   @Override
+   public void exitRedistribute_ospf_ro_stanza(
+         Redistribute_ospf_ro_stanzaContext ctx) {
+      OspfProcess proc = _currentOspfProcess;
+      RoutingProtocol sourceProtocol = RoutingProtocol.OSPF;
+      OspfRedistributionPolicy r = new OspfRedistributionPolicy(sourceProtocol);
+      proc.getRedistributionPolicies().put(sourceProtocol, r);
+      if (ctx.procnum != null) {
+         int procnum = toInteger(ctx.procnum);
+         r.setPid(procnum);
+      }
+      if (ctx.metric != null) {
+         int metric = toInteger(ctx.metric);
+         r.setMetric(metric);
+      }
+      if (ctx.map != null) {
+         String map = ctx.map.getText();
+         r.setMap(map);
+      }
+      if (ctx.type != null) {
+         int typeInt = toInteger(ctx.type);
+         OspfMetricType type = OspfMetricType.fromInteger(typeInt);
+         r.setOspfMetricType(type);
+      }
+      else {
+         r.setOspfMetricType(OspfRedistributionPolicy.DEFAULT_METRIC_TYPE);
+      }
+      if (ctx.tag != null) {
+         long tag = toLong(ctx.tag);
+         r.setTag(tag);
+      }
+      r.setSubnets(ctx.subnets != null);
    }
 
    @Override
@@ -2203,6 +2243,9 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
       if (ctx.metric != null) {
          int metric = toInteger(ctx.metric);
          r.setMetric(metric);
+      }
+      else {
+         r.setMetric(OspfRedistributionPolicy.DEFAULT_REDISTRIBUTE_STATIC_METRIC);
       }
       if (ctx.map != null) {
          String map = ctx.map.getText();

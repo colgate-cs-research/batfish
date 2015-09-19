@@ -1,8 +1,10 @@
 package org.batfish.representation.cisco;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +31,7 @@ public class CiscoConfiguration implements Serializable {
    protected IsisProcess _isisProcess;
 
    protected OspfProcess _ospfProcess;
+   protected final List<OspfProcess> _ospfProcesses;
 
    protected final Map<String, PrefixList> _prefixLists;
 
@@ -43,6 +46,7 @@ public class CiscoConfiguration implements Serializable {
    public CiscoConfiguration() {
       _asPathAccessLists = new HashMap<String, IpAsPathAccessList>();
       _bgpProcesses = new HashMap<String, BgpProcess>();
+      _ospfProcesses = new ArrayList<OspfProcess>();
       _expandedCommunityLists = new HashMap<String, ExpandedCommunityList>();
       _extendedAccessLists = new HashMap<String, ExtendedAccessList>();
       _interfaces = new HashMap<String, Interface>();
@@ -80,9 +84,13 @@ public class CiscoConfiguration implements Serializable {
    public IsisProcess getIsisProcess() {
       return _isisProcess;
    }
-
+   
    public final OspfProcess getOspfProcess() {
       return _ospfProcess;
+   }
+
+   public final List<OspfProcess> getOspfProcesses() {
+      return _ospfProcesses;
    }
 
    public final Map<String, PrefixList> getPrefixLists() {
@@ -114,7 +122,9 @@ public class CiscoConfiguration implements Serializable {
    }
 
    public final void setOspfProcess(OspfProcess proc) {
-      _ospfProcess = proc;
+      this._ospfProcesses.add(proc);
+      if (_ospfProcess != null) {
+         _ospfProcess = proc;
+      }
    }
-
 }
