@@ -2148,10 +2148,6 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
       RoutingProtocol sourceProtocol = RoutingProtocol.OSPF;
       OspfRedistributionPolicy r = new OspfRedistributionPolicy(sourceProtocol);
       proc.getRedistributionPolicies().put(sourceProtocol, r);
-      if (ctx.procnum != null) {
-         int procnum = toInteger(ctx.procnum);
-         r.setPid(procnum);
-      }
       if (ctx.metric != null) {
          int metric = toInteger(ctx.metric);
          r.setMetric(metric);
@@ -2173,6 +2169,9 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
          r.setTag(tag);
       }
       r.setSubnets(ctx.subnets != null);
+      int procNum = toInteger(ctx.procnum);
+      r.getSpecialAttributes().put(
+            BgpRedistributionPolicy.OSPF_PROCESS_NUMBER, procNum);
    }
 
    @Override
