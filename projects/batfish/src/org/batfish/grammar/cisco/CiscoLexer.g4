@@ -576,6 +576,11 @@ BRIDGE
    'bridge'
 ;
 
+BRIDGE_DOMAIN
+:
+   'bridge-domain'
+;
+
 BROADCAST
 :
    'broadcast'
@@ -629,6 +634,11 @@ CALL_HOME
 CALLER_ID
 :
    'caller-id'
+;
+
+CAPABILITY
+:
+   'capability'
 ;
 
 CARD
@@ -760,6 +770,17 @@ CLIENT_GROUP
 :
    'client-group'
 ;
+
+CLIENT_IDENTIFIER
+:
+   'client-identifier'
+;
+
+CLIENT_NAME
+:
+   'client-name'
+;
+
 
 CLNS
 :
@@ -999,6 +1020,11 @@ DEFAULT
 DEFAULT_ACTION
 :
    'default-action'
+;
+
+DEFAULT_COST
+:
+   'default-cost'
 ;
 
 DEFAULT_DOMAIN
@@ -1538,6 +1564,11 @@ EXTENDED
 
 ;
 
+EXTERNAL
+:
+   'external'
+;
+
 FABRIC
 :
    'fabric'
@@ -1581,6 +1612,11 @@ FAST_FLOOD
 FAST_REROUTE
 :
    'fast-reroute'
+;
+
+FDL
+:
+   'fdl'
 ;
 
 FEATURE
@@ -1820,6 +1856,11 @@ GT
    'gt'
 ;
 
+GUARD
+:
+   'guard'
+;
+
 H323
 :
    'h323'
@@ -1848,6 +1889,11 @@ HEARTBEAT_TIME
 HELLO
 :
    'hello'
+;
+
+HELLO_INTERVAL
+:
+   'hello-interval'
 ;
 
 HELLO_MULTIPLIER
@@ -2252,6 +2298,11 @@ KSHELL
    'kshell'
 ;
 
+L2
+:
+   'l2'
+;
+
 L2TP
 :
    'l2tp'
@@ -2377,6 +2428,11 @@ LIFETIME
    'lifetime'
 ;
 
+LINK
+:
+   'link'
+;
+
 LIMIT
 :
    'limit'
@@ -2475,6 +2531,11 @@ LOG_INPUT
 LOG_NEIGHBOR_CHANGES
 :
    'log-neighbor-changes'
+;
+
+LOG_UPDATE
+:
+   'log-update'
 ;
 
 LOGGING
@@ -3052,6 +3113,11 @@ NO_SUMMARY
    'no-summary'
 ;
 
+NO_REDISTRIBUTION
+:
+   'no-redistribution'
+;
+
 NODE
 :
    'node'
@@ -3570,6 +3636,11 @@ PSEUDOWIRE_CLASS
 PTP
 :
    'ptp'
+;
+
+PVC
+:
+   'pvc'
 ;
 
 QOS
@@ -4359,6 +4430,11 @@ STP
    'stp'
 ;
 
+STUB
+:
+   'stub'
+;
+
 SUBJECT_NAME
 :
    'subject-name'
@@ -4864,6 +4940,11 @@ VERSION
    'version'
 ;
 
+VFI
+:
+   'vfi'
+;
+
 VIOLATE_ACTION
 :
    'violate-action'
@@ -5313,6 +5394,11 @@ ESCAPE_C
       | '\u0003'
       | '#'
    )
+;
+
+EXCLAMATION
+:
+   '!'
 ;
 
 FLOAT

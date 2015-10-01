@@ -1936,7 +1936,10 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
    public void exitPassive_interface_ro_stanza(
          Passive_interface_ro_stanzaContext ctx) {
       boolean passive = ctx.NO() == null;
-      String iname = ctx.i.getText();
+      String iname = "";
+      for (Token part : ctx.i) {
+         iname += part.getText();
+      }
       OspfProcess proc = _currentOspfProcess;
       if (passive) {
          proc.getInterfaceBlacklist().add(iname);

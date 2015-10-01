@@ -19,9 +19,27 @@ area_nssa_ro_stanza
       | area_ip = IP_ADDRESS
    ) NSSA
    (
-      NO_SUMMARY
+      NO_REDISTRIBUTION
+      | NO_SUMMARY
       | DEFAULT_INFORMATION_ORIGINATE
+      | METRIC_TYPE DEC
    )* NEWLINE
+;
+
+area_ro_stanza
+:
+	AREA
+	(
+		area_int = DEC
+		| area_ip = IP_ADDRESS
+	)
+	(
+		DEFAULT_COST DEC
+		| NO_SUMMARY
+		| NOT_ADVERTISE
+		| RANGE IP_ADDRESS IP_ADDRESS
+		| STUB
+	)* NEWLINE
 ;
 
 default_information_ipv6_ro_stanza
@@ -108,6 +126,7 @@ null_standalone_ro_stanza
       )
       | AUTO_COST
       | BFD
+      | CAPABILITY
       | DISTRIBUTE_LIST
       | LOG_ADJACENCY_CHANGES
       | MAX_METRIC
@@ -127,7 +146,11 @@ passive_interface_default_ro_stanza
 
 passive_interface_ro_stanza
 :
-   NO? PASSIVE_INTERFACE i = VARIABLE NEWLINE
+   NO? PASSIVE_INTERFACE i += VARIABLE
+   (
+      i += COLON DEC
+   )?
+   NEWLINE
 ;
 
 redistribute_bgp_ro_stanza
@@ -240,6 +263,7 @@ redistribute_static_ro_stanza
 ro_stanza
 :
    area_nssa_ro_stanza
+   | area_ro_stanza
    | default_information_ro_stanza
    | maximum_paths_ro_stanza
    | network_ro_stanza

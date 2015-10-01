@@ -49,6 +49,11 @@ null_implst_stanza
    ) ~NEWLINE* NEWLINE
 ;
 
+null_mpls_stanza
+:
+	MPLS null_mplsl_stanza
+;
+
 null_mplsl_stanza
 :
    NO?

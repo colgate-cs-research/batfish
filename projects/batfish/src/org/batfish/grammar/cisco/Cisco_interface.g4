@@ -190,6 +190,7 @@ null_if_stanza
       NO? SWITCHPORT NEWLINE
    )
    | null_standalone_if_stanza
+   | pvc_stanza
 ;
 
 null_standalone_if_stanza
@@ -249,6 +250,7 @@ null_standalone_if_stanza
          IP
          (
             ACCOUNTING
+            | ADDRESS DHCP
             | ARP
             | BROADCAST_ADDRESS
             | CGMP
@@ -272,6 +274,7 @@ null_standalone_if_stanza
                OSPF
                (
                   AUTHENTICATION
+                  | HELLO_INTERVAL
                   | MESSAGE_DIGEST_KEY
                   | MTU_IGNORE
                   | NETWORK
@@ -316,6 +319,7 @@ null_standalone_if_stanza
       | LANE
       | LAPB
       | LACP
+      | LINK
       | LLDP
       | LOAD_BALANCING
       | LOAD_INTERVAL
@@ -418,6 +422,20 @@ preempt_hsrpc_stanza
 priority_hsprc_stanza
 :
    PRIORITY value = DEC NEWLINE
+;
+
+pvc_stanza
+:
+   PVC bundle = pvc_name NEWLINE pvc_stanza_tail
+;
+
+pvc_stanza_tail
+:
+	(
+		(
+			BRIDGE_DOMAIN
+		) ~NEWLINE NEWLINE
+	)*
 ;
 
 shutdown_if_stanza

@@ -545,6 +545,10 @@ redistribute_ospf_bgp_tail
       (
          METRIC metric = DEC
       )
+      |
+      (
+      	VRF vrf = VARIABLE (MATCH INTERNAL EXTERNAL DEC)
+      )
    )* NEWLINE
 ;
 

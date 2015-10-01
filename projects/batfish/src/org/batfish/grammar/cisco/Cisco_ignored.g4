@@ -42,7 +42,11 @@ null_block_stanza
          IP
          (
             (
-               ACCESS_LIST LOGGING
+               ACCESS_LIST
+               (
+               	  LOGGING
+                  | LOG_UPDATE
+               )
             )
             | ACCOUNTING_LIST
             | ACCOUNTING_THRESHOLD
@@ -83,9 +87,11 @@ null_block_stanza
       )
       | KEY
       | KRON
+      | L2 VFI
       | L2TP_CLASS
       | LINE
       | LOGGING
+      | LOGIN
       | MAC
       | MAC_LEARN
       | MANAGEMENT
@@ -98,6 +104,8 @@ null_block_stanza
       (
          MPLS
          (
+         	LABEL
+            | 
             (
                LDP ~NEWLINE
             )
@@ -195,6 +203,8 @@ null_block_substanza
          | CHANNELIZED
          | CLASS
          | CLIENT_GROUP
+         | CLIENT_IDENTIFIER
+         | CLIENT_NAME
          | CLOCK
          | COLLECT
          | COMMAND
@@ -243,6 +253,7 @@ null_block_substanza
          | FAILOVER
          | FAIR_QUEUE
          | FALLBACK_DN
+         | FDL
          | FILE_BROWSING
          | FILE_ENTRY
          | FILE_SIZE
@@ -264,6 +275,7 @@ null_block_substanza
          | HIGH_AVAILABILITY
          | HISTORY
          | HOMEDIR
+         | HOST
          | ICMP_ECHO
          | IDLE
          | IDLE_TIMEOUT
@@ -589,7 +601,6 @@ null_standalone_stanza_DEPRECATED_DO_NOT_ADD_ITEMS
       | HARDWARE
       | HASH
       | HISTORY
-      | HOST
       | HTTP
       | HW_MODULE
       | ICMP

@@ -199,6 +199,16 @@ protocol
    | VRRP
 ;
 
+pvc_name
+:
+   (
+      (
+         name_middle_parts += DEC FORWARD_SLASH
+      )*
+      | name_middle_parts += MODULE
+   ) range
+;
+
 range
 :
    (
