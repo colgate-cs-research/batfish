@@ -745,6 +745,14 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
          pushPeer(_currentPeerGroup);
       }
    }
+   
+   @Override
+   public void enterChannel_group_if_stanza(Channel_group_if_stanzaContext ctx) {
+      int group = toInteger(ctx.group);
+      for (Interface currentInterface : _currentInterfaces) {
+         currentInterface.setChannelGroup(group);
+      }
+   }
 
    @Override
    public void enterCisco_configuration(Cisco_configurationContext ctx) {

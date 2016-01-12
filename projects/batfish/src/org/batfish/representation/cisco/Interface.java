@@ -59,6 +59,8 @@ public class Interface implements Serializable {
    private ArrayList<SubRange> _allowedVlans;
 
    private Double _bandwidth;
+   
+   private Integer _channelGroup;
 
    private String _description;
    
@@ -97,6 +99,7 @@ public class Interface implements Serializable {
    public Interface(String name) {
       _name = name;
       _active = true;
+      _channelGroup = null;
       _explicitActive = false;
       _nativeVlan = 1;
       _switchportMode = SwitchportMode.NONE;
@@ -123,6 +126,10 @@ public class Interface implements Serializable {
 
    public Double getBandwidth() {
       return _bandwidth;
+   }
+   
+   public Integer getChannelGroup() {
+      return _channelGroup;
    }
 
    public String getDescription() {
@@ -203,6 +210,10 @@ public class Interface implements Serializable {
 
    public void setBandwidth(Double bandwidth) {
       _bandwidth = bandwidth;
+   }
+   
+   public void setChannelGroup(Integer channelGroup) {
+      _channelGroup = channelGroup;
    }
 
    public void setDescription(String description) {

@@ -6,6 +6,11 @@ options {
    tokenVocab = CiscoLexer;
 }
 
+channel_group_if_stanza
+:
+   CHANNEL_GROUP group = DEC NEWLINE
+;
+
 default_gw_if_stanza
 :
    DEFAULT_GW IP_ADDRESS NEWLINE
@@ -38,7 +43,8 @@ hsrpc_stanza
 
 if_stanza
 :
-   default_gw_if_stanza
+   channel_group_if_stanza
+   | default_gw_if_stanza
    | description_if_stanza
    | ip_access_group_if_stanza
    | ip_address_if_stanza
@@ -212,7 +218,6 @@ null_standalone_if_stanza
       | CARRIER_DELAY
       | CDP
       | CHANNEL
-      | CHANNEL_GROUP
       | CHANNEL_PROTOCOL
       | CLASS
       | CLNS
