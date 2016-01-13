@@ -8,7 +8,7 @@ options {
 
 channel_group_if_stanza
 :
-   CHANNEL_GROUP group = DEC NEWLINE
+   CHANNEL_GROUP group = DEC ~NEWLINE* NEWLINE 
 ;
 
 default_gw_if_stanza
