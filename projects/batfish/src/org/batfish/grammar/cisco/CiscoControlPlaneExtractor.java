@@ -2019,6 +2019,9 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
          int metric = toInteger(ctx.metric);
          r.setMetric(metric);
       }
+      else {
+         r.setMetric(OspfRedistributionPolicy.DEFAULT_REDISTRIBUTE_BGP_METRIC);
+      }
       if (ctx.map != null) {
          String map = ctx.map.getText();
          r.setMap(map);
@@ -2134,9 +2137,6 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
          if (ctx.metric != null) {
             int metric = toInteger(ctx.metric);
             r.setMetric(metric);
-         }
-         else {
-            r.setMetric(OspfRedistributionPolicy.DEFAULT_REDISTRIBUTE_BGP_METRIC);
          }
          if (ctx.map != null) {
             String map = ctx.map.getText();
