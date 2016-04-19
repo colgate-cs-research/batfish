@@ -1,13 +1,13 @@
 verify {
-   $assignedips.clear_ips;
-   $dualassignedips.clear_ips;
+   $assignedips:set<ip>;
+   $dualassignedips:set<ip>;
    foreach node {
       foreach interface {
          if (interface.has_ip) then {
-            $prev_num_ip_assignments := $assignedips.num_ips;
-            $assignedips.add_ip(interface.ip);
-            if ($assignedips.num_ips == $prev_num_ip_assignments) then {
-               $dualassignedips.add_ip(interface.ip);
+            $prev_num_ip_assignments := $assignedips.size;
+            $assignedips.add(interface.ip);
+            if ($assignedips.size == $prev_num_ip_assignments) then {
+               $dualassignedips.add(interface.ip);
             }
          }
       }
@@ -17,12 +17,15 @@ verify {
          if (interface.has_ip) then {
             assert {
                not {
-                  $dualassignedips.contains_ip(interface.ip)
+                  $dualassignedips.contains(interface.ip)
                }
             }
             onfailure {
-               $offendingIp:interface.ip,
-               $enabled:interface.enabled
+               printf("%s:%s is assigned multiply-assigned ip address: %s", node.name, interface.name, interface.ip);
+               if (not {interface.enabled}) then {
+                  printf(" (interface is disabled)");
+               }
+               printf("\n");
             }
          }
       }

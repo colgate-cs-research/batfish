@@ -9,19 +9,31 @@ package org.batfish.grammar.question;
 }
 
 tokens {
+   INT,
+   STRING,
    STRING_LITERAL
 }
 
 // Simple tokens
+
+ACCEPT
+:
+   'accept'
+;
+
+ACTION
+:
+   'action'
+;
 
 ACTIVE
 :
    'active'
 ;
 
-ADD_IP
+ADD
 :
-   'add_ip'
+   'add'
 ;
 
 ADMINISTRATIVE_COST
@@ -49,9 +61,14 @@ BGP_NEIGHBOR
    'bgp_neighbor'
 ;
 
-CLEAR_IPS
+CLAUSE
 :
-   'clear_ips'
+   'clause'
+;
+
+CLEAR
+:
+   'clear'
 ;
 
 CONFIGURED
@@ -59,9 +76,29 @@ CONFIGURED
    'configured'
 ;
 
-CONTAINS_IP
+CONTAINS
 :
-   'contains_ip'
+   'contains'
+;
+
+DEFAULTS
+:
+   'defaults'
+;
+
+DROP
+:
+   'drop'
+;
+
+DST_IP
+:
+   'dst_ip'
+;
+
+DST_PORT
+:
+   'dst_port'
 ;
 
 ELSE
@@ -74,9 +111,24 @@ ENABLED
    'enabled'
 ;
 
+FAILURE
+:
+   'failure'
+;
+
 FALSE
 :
    'false'
+;
+
+FINAL_NODE
+:
+   'final_node'
+;
+
+FLOW
+:
+   'flow'
 ;
 
 FOREACH
@@ -99,6 +151,11 @@ IF
    'if'
 ;
 
+INGRESS_NODE
+:
+   'ingress_node'
+;
+
 INPUT
 :
    'input'
@@ -112,6 +169,11 @@ INTERFACE
 IP
 :
    'ip'
+;
+
+IP_PROTOCOL
+:
+   'ip_protocol'
 ;
 
 ISIS
@@ -144,6 +206,36 @@ HAS_NEXT_HOP_IP
    'has_next_hop_ip'
 ;
 
+INGRESS_PATH
+:
+   'ingress-path'
+;
+
+L1_ACTIVE
+:
+   'l1_active'
+;
+
+L1_PASSIVE
+:
+   'l1_passive'
+;
+
+L2_ACTIVE
+:
+   'l2_active'
+;
+
+L2_PASSIVE
+:
+   'l2_passive'
+;
+
+LINE
+:
+   'line'
+;
+
 LOCAL_AS
 :
    'local_as'
@@ -152,6 +244,21 @@ LOCAL_AS
 LOCAL_IP
 :
    'local_ip'
+;
+
+LOCAL_PATH
+:
+   'local-path'
+;
+
+MATCH_PROTOCOL
+:
+   'match_protocol'
+;
+
+MATCH_ROUTE_FILTER
+:
+   'match_route_filter'
 ;
 
 MULTIPATH
@@ -184,11 +291,6 @@ NOT
    'not'
 ;
 
-NUM_IPS
-:
-   'num_ips'
-;
-
 ONFAILURE
 :
    'onfailure'
@@ -202,6 +304,11 @@ OR
 OSPF
 :
    'ospf'
+;
+
+OSPF_OUTBOUND_POLICY
+:
+   'ospf_outbound_policy'
 ;
 
 PASSIVE
@@ -224,6 +331,16 @@ PRINTF
    'printf'
 ;
 
+PROTOCOL
+:
+   'protocol'
+;
+
+REACHABILITY
+:
+   'reachability'
+;
+
 REMOTE_AS
 :
    'remote_as'
@@ -232,6 +349,31 @@ REMOTE_AS
 REMOTE_IP
 :
    'remote_ip'
+;
+
+ROUTE_FILTER
+:
+   'route_filter'
+;
+
+SET
+:
+   'set' -> pushMode(M_Set)
+;
+
+SIZE
+:
+   'size'
+;
+
+SRC_IP
+:
+   'src_ip'
+;
+
+SRC_PORT
+:
+   'src_port'
 ;
 
 STATIC
@@ -252,6 +394,11 @@ TESTRIG
 THEN
 :
    'then'
+;
+
+TRACEROUTE
+:
+   'traceroute'
 ;
 
 TRUE
@@ -301,13 +448,18 @@ DEC
    '0'
    |
    (
-      '-'? F_PositiveDecimalDigit F_DecimalDigit*
+      F_PositiveDecimalDigit F_DecimalDigit*
    )
 ;
 
 DOUBLE_EQUALS
 :
    '=='
+;
+
+DOUBLE_FORWARD_SLASH
+:
+   '//' -> channel ( HIDDEN ) , pushMode ( M_Comment )
 ;
 
 DOUBLE_PLUS
@@ -320,6 +472,11 @@ DOUBLE_QUOTE
    '"' -> channel ( HIDDEN ) , pushMode ( M_QuotedString )
 ;
 
+EQUALS
+:
+   '='
+;
+
 FORWARD_SLASH
 :
    '/'
@@ -328,6 +485,16 @@ FORWARD_SLASH
 GT
 :
    '>'
+;
+
+IP_ADDRESS
+:
+   F_DecByte '.' F_DecByte '.' F_DecByte '.' F_DecByte
+;
+
+IP_PREFIX
+:
+   F_DecByte '.' F_DecByte '.' F_DecByte '.' F_DecByte '/' F_DecimalDigit+
 ;
 
 MINUS
@@ -370,6 +537,11 @@ PRINTF_STRING
    '%s'
 ;
 
+REGEX
+:
+   'regex<' ~'>'* '>'
+;
+
 SEMICOLON
 :
    ';'
@@ -383,6 +555,19 @@ VARIABLE
 WS
 :
    F_WhitespaceChar+ -> channel ( HIDDEN )
+;
+
+fragment
+F_DecByte
+:
+   (
+      F_PositiveDecimalDigit F_DecimalDigit F_DecimalDigit
+   )
+   |
+   (
+      F_PositiveDecimalDigit F_DecimalDigit
+   )
+   | F_DecimalDigit
 ;
 
 fragment
@@ -424,6 +609,18 @@ F_WhitespaceChar
    [ \t\u000C]
 ;
 
+mode M_Comment;
+
+M_Comment_COMMENT
+:
+   F_NonNewlineChar+ -> channel ( HIDDEN )
+;
+
+M_Comment_NEWLINE
+:
+   F_NewlineChar+ -> channel ( HIDDEN ) , popMode
+;
+
 mode M_QuotedString;
 
 M_QuotedString_TEXT
@@ -434,4 +631,36 @@ M_QuotedString_TEXT
 M_QuotedString_DOUBLE_QUOTE
 :
    '"' -> channel ( HIDDEN ) , popMode
+;
+
+mode M_Set;
+
+M_Set_INT
+:
+   'int' -> type(INT)
+;
+
+M_Set_IP
+:
+   'ip' -> type(IP)
+;
+
+M_Set_OPEN_ANGLE_BRACKET
+:
+   '<' -> channel(HIDDEN)
+;
+
+M_Set_ROUTE_FILTER
+:
+   'route_filter' -> type(ROUTE_FILTER)
+;
+
+M_Set_STRING
+:
+   'string' -> type(STRING)
+;
+
+M_Set_CLOSE_ANGLE_BRACKET
+:
+   '>' -> channel(HIDDEN), popMode
 ;

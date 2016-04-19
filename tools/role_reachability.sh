@@ -127,7 +127,7 @@ batfish_find_role_reachability_packet_constraints() {
    batfish_date
    echo ": END: Find role-reachability packet constraints"
 }
-export -f batfish_find_multipath_inconsistent_packet_constraints
+export -f batfish_find_role_reachability_packet_constraints
 
 batfish_find_role_reachability_packet_constraints_helper() {
    batfish_expect_args 3 $# || return 1
@@ -203,12 +203,12 @@ batfish_generate_role_reachability_concretizer_queries_helper() {
    echo ": START: Generate role-reachability concretizer queries for transmitting role \"${TRANSMITTING_ROLE}\", master node \"${MASTER_NODE}\", slave node \"${SLAVE_NODE}\", receiving role \"${RECEIVING_ROLE}\"" 
    batfish -conc -concin $MASTER_QUERY_OUT -concinneg $SLAVE_QUERY_OUT -concunique -concout $MASTER_CONCRETIZER_QUERY_BASE_PATH || return 1
    batfish -conc -concinneg $MASTER_QUERY_OUT -concin $SLAVE_QUERY_OUT -concunique -concout $SLAVE_CONCRETIZER_QUERY_BASE_PATH || return 1
-   find $PWD -regextype posix-extended -regex "${MASTER_CONCRETIZER_QUERY_BASE_PATH}-[0-9]+.smt2" | \
+   $GNU_FIND $PWD -regextype posix-extended -regex "${MASTER_CONCRETIZER_QUERY_BASE_PATH}-[0-9]+.smt2" | \
       $BATFISH_NESTED_PARALLEL batfish_generate_concretizer_query_output {} $MASTER_NODE \;
    if [ "${PIPESTATUS[0]}" -ne 0 -o "${PIPESTATUS[1]}" -ne 0 ]; then
       return 1
    fi
-   find $PWD -regextype posix-extended -regex "${SLAVE_CONCRETIZER_QUERY_BASE_PATH}-[0-9]+.smt2" | \
+   $GNU_FIND $PWD -regextype posix-extended -regex "${SLAVE_CONCRETIZER_QUERY_BASE_PATH}-[0-9]+.smt2" | \
       $BATFISH_NESTED_PARALLEL batfish_generate_concretizer_query_output {} $SLAVE_NODE \;
    if [ "${PIPESTATUS[0]}" -ne 0 -o "${PIPESTATUS[1]}" -ne 0 ]; then
       return 1

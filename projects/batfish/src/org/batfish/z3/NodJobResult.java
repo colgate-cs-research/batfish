@@ -1,41 +1,44 @@
 package org.batfish.z3;
 
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
 
-public class NodJobResult {
+import org.batfish.job.BatfishJobResult;
+import org.batfish.common.BatfishLogger;
+import org.batfish.representation.Flow;
 
-   private Throwable _failureCause;
+public class NodJobResult extends BatfishJobResult<Set<Flow>> {
 
-   private Set<String> _flowLines;
+   /**
+    * Elapsed time in milliseconds
+    */
+   private Set<Flow> _flows;
 
-   private boolean _successful;
-
-   public NodJobResult() {
-      _successful = true;
-      _flowLines = new HashSet<String>();
+   public NodJobResult(long elapsedTime) {
+      super(elapsedTime);
+      _flows = Collections.<Flow> emptySet();
    }
 
-   public NodJobResult(Set<String> flowLines) {
-      _flowLines = flowLines;
-      _successful = true;
+   public NodJobResult(long elapsedTime, Set<Flow> flows) {
+      super(elapsedTime);
+      _flows = flows;
    }
 
-   public NodJobResult(Throwable failureCause) {
-      _failureCause = failureCause;
-      _successful = false;
+   public NodJobResult(long elapsedTime, Throwable failureCause) {
+      super(elapsedTime, failureCause);
    }
 
-   public Throwable getFailureCause() {
-      return _failureCause;
+   @Override
+   public void applyTo(Set<Flow> flows, BatfishLogger logger) {
+      flows.addAll(_flows);
    }
 
-   public Set<String> getFlowLines() {
-      return _flowLines;
+   @Override
+   public void explainFailure(BatfishLogger logger) {
    }
 
-   public boolean terminatedSuccessfully() {
-      return _successful;
+   public Set<Flow> getFlows() {
+      return _flows;
    }
 
 }

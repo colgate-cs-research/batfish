@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.batfish.main.BatfishException;
-import org.batfish.main.BatfishLogger;
+import org.batfish.common.BatfishException;
+import org.batfish.common.BatfishLogger;
 import org.batfish.main.Settings;
+import org.batfish.question.statement.Statement;
 import org.batfish.representation.Configuration;
 
 public class VerifyProgram {
@@ -37,8 +38,16 @@ public class VerifyProgram {
       return _environment.getAssertions();
    }
 
+   public int getFailedAssertions() {
+      return _environment.getFailedAssertions();
+   }
+
    public List<Statement> getStatements() {
       return _statements;
+   }
+
+   public int getTotalAssertions() {
+      return _environment.getTotalAssertions();
    }
 
    public boolean getUnsafe() {

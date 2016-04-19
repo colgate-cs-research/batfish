@@ -29,14 +29,27 @@
                                 <td> <input type="file" id="fileUploadEnvironment" /> </td>
                                 <td> <input type="button" id="btnUploadEnvironment" value="Upload environment" onclick="fnUploadEnvironment()" /> </td>
                             </tr>
+                            <tr>
+                                <td> Differential Environment: </td>
+                                <td> <input type="text" id="txtDiffEnvironmentName" value="delta" /> </td>
+                                <td> <input type="file" id="fileUploadDiffEnvironment" /> </td>
+                                <td> <input type="button" id="btnUploadDiffEnvironment" value="Upload environment" onclick="fnUploadDiffEnvironment()" /> </td>
+                            </tr>
                         </table>
 
                         <hr />
 
                         <table>
                             <tr>
-                                <td> <input type="button" id="btnWorkVendorSpecific" value="Generate control plane" style="width:200px" onclick="fnDoWork('vendorspecific')" /> </td>
-                                <td> <input type="button" id="btnWorkGenerateDataPlane" value="Generate data plane" style="width:200px" onclick="fnDoWork('generatedataplane')" /> </td>
+                                <td> <input type="button" id="btnWorkVendorSpecific" value="Generate common control plane" style="width:300px" onclick="fnDoWork('vendorspecific')" /> </td>
+                            </tr>
+                            <tr>
+                                <td> <input type="button" id="btnDumpControlPlane" value="Dump base control plane" style="width:300px" onclick="fnDoWork('generatefacts')" /> </td>
+                                <td> <input type="button" id="btnWorkGenerateDataPlane" value="Generate base data plane" style="width:300px" onclick="fnDoWork('generatedataplane')" /> </td>
+                            </tr>
+                            <tr>
+                                <td> <input type="button" id="btnDumpDiffControlPlane" value="Dump differential control plane" style="width:300px" onclick="fnDoWork('generatedifffacts')" /> </td>
+                                <td> <input type="button" id="btnWorkGenerateDiffDataPlane" value="Generate differential data plane" style="width:300px" onclick="fnDoWork('generatediffdataplane')" /> </td>
                             </tr>
                         </table>
                         <table>
@@ -46,7 +59,7 @@
                                 <td> <input type="button" id="btnLogGenerateFacts" value="View other errors" onclick="fnGetLog('generatefacts')" /> </td>
                             </tr>
                         </table>
-
+<!--
                         <hr />
 
                         <table>
@@ -56,7 +69,7 @@
                                 <td> <input type="button" id="btnWriteRoutes" value="Write computed routes to output environment" onclick="fnWriteRoutes()" /> </td>
                             </tr>
                         </table>
-
+-->
                         <hr />
 
                         <table>
@@ -67,12 +80,21 @@
                                 <td> <input type="button" id="btnUploadQuestion" value="Upload query" onclick="fnUploadQuestion()" /> </td>
                             </tr>
                             <tr>
+                                <td> <label><input type="checkbox" id="chkDataPlaneQuery">Data Plane Query</label> </td>
+                                <td> <label><input type="checkbox" id="chkDifferentialQuery">Differential Query</label> </td>
                                 <td> <input type="button" id="btnAnswerQuestion" value="Answer query" onclick="fnAnswerQuestion()" /> </td>
                             </tr>
                         </table>
 
                         <hr />
 
+                        <table>
+                           <tr>
+                              <td> <input type="button" value="View control plane query result" onclick="fnGetLog()" /> </td>
+                              <td> <input type="button" id="btnGetHistory" value="Get flow history" onclick="fnGetLog('gethistory')" /> </td>
+                              <td> <input type="button" id="btnGetDifferentialHistory" value="Get differential flow history" onclick="fnGetLog('getdiffhistory')" /> </td>
+                           </tr>
+                        </table>
                         <div class="divClassSection" id="workguid" style="display: none">
                         <b> [Work GUID. Auto-populated to the last work issued, but you can specify your own too.]</b>
                         <br />
@@ -86,10 +108,6 @@
 
                         </div>
 
-                        <br />
-                        <input type="button" value="View control plane query result" onclick="fnGetLog()" /> &nbsp &nbsp 
-                        <input type="button" id="btnGetObjectGetFlowTraces" value="Download data plane query result" onclick="fnGetObject('getflowtraces')" />
-                        <br />
                 </form>
 
                 <br />

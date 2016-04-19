@@ -406,6 +406,11 @@ AUTHENTICATION
    'authentication'
 ;
 
+AUTHENTICATION_KEY
+:
+   'authentication-key'
+;
+
 AUTHENTICATION_PORT
 :
    'authentication-port'
@@ -2833,6 +2838,11 @@ MONITOR
    'monitor'
 ;
 
+MONITORING
+:
+   'monitoring'
+;
+
 MOP
 :
    'mop'
@@ -3771,6 +3781,11 @@ REDISTRIBUTE
 REDUNDANCY
 :
    'redundancy'
+;
+
+REFERENCE_BANDWIDTH
+:
+   'reference-bandwidth'
 ;
 
 REFLECT

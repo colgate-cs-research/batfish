@@ -9,9 +9,21 @@ options {
 package org.batfish.grammar.question;
 }
 
-add_ip_statement
+@members {
+   private java.util.Map<String, VariableType> _typeBindings = new java.util.HashMap<String, VariableType>(); 
+   
+}
+
+action
 :
-   target = VARIABLE PERIOD ADD_IP OPEN_PAREN ip_expr CLOSE_PAREN SEMICOLON
+   ACCEPT
+   | DROP
+;
+
+action_constraint
+:
+   action
+   | VARIABLE
 ;
 
 and_expr
@@ -22,20 +34,15 @@ and_expr
    )* CLOSE_BRACE
 ;
 
-assertion
+assertion [String scope]
 :
    ASSERT OPEN_BRACE boolean_expr CLOSE_BRACE
    (
-      ONFAILURE OPEN_BRACE env_entries += assertion_failure_env_entry
+      ONFAILURE OPEN_BRACE
       (
-         COMMA env_entries += assertion_failure_env_entry
+         statements += statement [scope]
       )* CLOSE_BRACE
    )?
-;
-
-assertion_failure_env_entry
-:
-   VARIABLE COLON printable_expr
 ;
 
 assignment
@@ -91,16 +98,10 @@ bgp_neighbor_remote_ip_ip_expr
    REMOTE_IP
 ;
 
-bgp_neighbor_statement
-:
-   foreach_generated_route_statement
-   | statement
-;
-
 boolean_expr
 :
    and_expr
-   | contains_ip_expr
+   | set_contains_expr
    | eq_expr
    | gt_expr
    | if_expr
@@ -112,14 +113,24 @@ boolean_expr
    | true_expr
 ;
 
-clear_ips_statement
+default_binding
 :
-   caller = VARIABLE PERIOD CLEAR_IPS SEMICOLON
+   VARIABLE EQUALS
+   (
+      action
+      | integer_literal
+      | IP_ADDRESS
+      | IP_PREFIX
+      | ip_constraint_complex
+      | range
+      | REGEX
+      | STRING_LITERAL
+   ) SEMICOLON
 ;
 
-contains_ip_expr
+defaults
 :
-   caller = VARIABLE PERIOD CONTAINS_IP OPEN_PAREN ip_expr CLOSE_PAREN
+   DEFAULTS OPEN_BRACE default_binding+ CLOSE_BRACE
 ;
 
 eq_expr
@@ -127,40 +138,175 @@ eq_expr
    lhs = int_expr DOUBLE_EQUALS rhs = int_expr
 ;
 
+explicit_flow
+:
+   FLOW OPEN_PAREN
+   (
+      flow_constraint
+      (
+         COMMA flow_constraint
+      )*
+   )? CLOSE_PAREN
+;
+
+expr
+:
+   boolean_expr
+   | int_expr
+   | ip_expr
+   | prefix_expr
+   | route_filter_line_expr
+   | string_expr
+;
+
+failure_question
+:
+   FAILURE
+;
+
 false_expr
 :
    FALSE
 ;
 
+flow_constraint
+:
+   flow_constraint_ingress_node
+   | flow_constraint_ip_protocol
+   | flow_constraint_dst_ip
+   | flow_constraint_dst_port
+   | flow_constraint_src_ip
+   | flow_constraint_src_port
+;
+
+flow_constraint_ingress_node
+:
+   INGRESS_NODE EQUALS
+   (
+      ingress_node = STRING_LITERAL
+      | ingress_node = VARIABLE
+   )
+;
+
+flow_constraint_ip_protocol
+:
+   IP_PROTOCOL EQUALS
+   (
+      ip_protocol = DEC
+      | ip_protocol = VARIABLE
+   )
+;
+
+flow_constraint_dst_ip
+:
+   DST_IP EQUALS
+   (
+      dst_ip = IP_ADDRESS
+      | dst_ip = VARIABLE
+   )
+;
+
+flow_constraint_dst_port
+:
+   DST_PORT EQUALS
+   (
+      dst_port = DEC
+      | dst_port = VARIABLE
+   )
+;
+
+flow_constraint_src_ip
+:
+   SRC_IP EQUALS
+   (
+      src_ip = IP_ADDRESS
+      | src_ip = VARIABLE
+   )
+;
+
+flow_constraint_src_port
+:
+   SRC_PORT EQUALS
+   (
+      src_port = DEC
+      | src_port = VARIABLE
+   )
+;
+
 foreach_bgp_neighbor_statement
 :
-   FOREACH BGP_NEIGHBOR OPEN_BRACE bgp_neighbor_statement+ CLOSE_BRACE
+   FOREACH BGP_NEIGHBOR OPEN_BRACE statement ["bgp_neighbor"]+ CLOSE_BRACE
+;
+
+foreach_clause_statement
+:
+   FOREACH CLAUSE OPEN_BRACE statement ["clause"]+ CLOSE_BRACE
 ;
 
 foreach_generated_route_statement
 :
-   FOREACH GENERATED_ROUTE OPEN_BRACE generated_route_statement+ CLOSE_BRACE
+   FOREACH GENERATED_ROUTE OPEN_BRACE statement ["generated_route"]+
+   CLOSE_BRACE
 ;
 
 foreach_interface_statement
 :
-   FOREACH INTERFACE OPEN_BRACE interface_statement+ CLOSE_BRACE
+   FOREACH INTERFACE OPEN_BRACE statement ["interface"]+ CLOSE_BRACE
+;
+
+foreach_line_statement
+:
+   FOREACH LINE OPEN_BRACE statement ["route_filter_line"]+ CLOSE_BRACE
+;
+
+foreach_match_protocol_statement
+:
+   FOREACH MATCH_PROTOCOL OPEN_BRACE statement ["match_protocol"]+ CLOSE_BRACE
+;
+
+foreach_match_route_filter_statement
+:
+   FOREACH MATCH_ROUTE_FILTER OPEN_BRACE statement ["match_route_filter"]+
+   CLOSE_BRACE
 ;
 
 foreach_node_bgp_generated_route_statement
 :
-   FOREACH NODE PERIOD BGP PERIOD GENERATED_ROUTE OPEN_BRACE
-   generated_route_statement+ CLOSE_BRACE
+   FOREACH NODE PERIOD BGP PERIOD GENERATED_ROUTE OPEN_BRACE statement
+   ["generated_route"]+ CLOSE_BRACE
 ;
 
 foreach_node_statement
 :
-   FOREACH NODE OPEN_BRACE node_statement+ CLOSE_BRACE
+   FOREACH NODE OPEN_BRACE statement ["node"]+ CLOSE_BRACE
+;
+
+foreach_ospf_outbound_policy_statement
+:
+   FOREACH OSPF_OUTBOUND_POLICY OPEN_BRACE statement ["policy"]+ CLOSE_BRACE
+;
+
+foreach_protocol_statement
+:
+   FOREACH PROTOCOL OPEN_BRACE statement ["protocol"]+ CLOSE_BRACE
+;
+
+foreach_route_filter_statement
+:
+   FOREACH ROUTE_FILTER OPEN_BRACE statement ["route_filter"]+ CLOSE_BRACE
+;
+
+foreach_route_filter_in_set_statement
+:
+   FOREACH ROUTE_FILTER COLON set = VARIABLE
+   {_typeBindings.get($set.getText()) == VariableType.SET_ROUTE_FILTER}?
+
+   OPEN_BRACE statement ["route_filter"]+ CLOSE_BRACE
 ;
 
 foreach_static_route_statement
 :
-   FOREACH STATIC_ROUTE OPEN_BRACE static_route_statement+ CLOSE_BRACE
+   FOREACH STATIC_ROUTE OPEN_BRACE statement ["static_route"]+ CLOSE_BRACE
 ;
 
 generated_route_prefix_expr
@@ -171,11 +317,6 @@ generated_route_prefix_expr
 generated_route_prefix_prefix_expr
 :
    PREFIX
-;
-
-generated_route_statement
-:
-   statement
 ;
 
 gt_expr
@@ -189,18 +330,23 @@ if_expr
    consequent = boolean_expr CLOSE_BRACE
 ;
 
-if_statement
+if_statement [String scope]
 :
    IF OPEN_PAREN guard = boolean_expr CLOSE_PAREN THEN OPEN_BRACE
    (
-      true_statements += statement
+      true_statements += statement [scope]
    )* CLOSE_BRACE
    (
       ELSE OPEN_BRACE
       (
-         false_statements += statement
+         false_statements += statement [scope]
       )* CLOSE_BRACE
    )?
+;
+
+ingress_path_question
+:
+   INGRESS_PATH
 ;
 
 int_assignment
@@ -216,6 +362,11 @@ int_expr
    | subtrahend = int_expr MINUS minuend = int_expr
    | OPEN_PAREN parenthesized = int_expr CLOSE_PAREN
    | val_int_expr
+;
+
+integer_literal
+:
+   MINUS? DEC
 ;
 
 interface_boolean_expr
@@ -250,22 +401,34 @@ interface_ip_ip_expr
    IP
 ;
 
-interface_isis_active_boolean_expr
+interface_isis_l1_active_boolean_expr
 :
-   ACTIVE
+   L1_ACTIVE
 ;
 
-interface_isis_passive_boolean_expr
+interface_isis_l1_passive_boolean_expr
 :
-   PASSIVE
+   L1_PASSIVE
+;
+
+interface_isis_l2_active_boolean_expr
+:
+   L2_ACTIVE
+;
+
+interface_isis_l2_passive_boolean_expr
+:
+   L2_PASSIVE
 ;
 
 interface_isis_boolean_expr
 :
    ISIS PERIOD
    (
-      interface_isis_active_boolean_expr
-      | interface_isis_passive_boolean_expr
+      interface_isis_l1_active_boolean_expr
+      | interface_isis_l1_passive_boolean_expr
+      | interface_isis_l2_active_boolean_expr
+      | interface_isis_l2_passive_boolean_expr
    )
 ;
 
@@ -308,14 +471,30 @@ interface_prefix_prefix_expr
    PREFIX
 ;
 
-interface_statement
-:
-   statement
-;
-
 interface_string_expr
 :
    INTERFACE PERIOD interface_name_string_expr
+;
+
+ip_constraint
+:
+   ip_constraint_complex
+   | ip_constraint_simple
+   | VARIABLE
+;
+
+ip_constraint_complex
+:
+   OPEN_BRACE ip_constraint_simple
+   (
+      COMMA ip_constraint_simple
+   )* CLOSE_BRACE
+;
+
+ip_constraint_simple
+:
+   IP_ADDRESS
+   | IP_PREFIX
 ;
 
 ip_expr
@@ -330,9 +509,19 @@ literal_int_expr
    DEC
 ;
 
+local_path_question
+:
+   LOCAL_PATH
+;
+
+method [String scope]
+:
+   caller = VARIABLE PERIOD typed_method [scope, $caller.getText()] SEMICOLON
+;
+
 multipath_question
 :
-   MULTIPATH environment = string_literal_string_expr
+   MULTIPATH
 ;
 
 neq_expr
@@ -371,6 +560,13 @@ node_boolean_expr
    )
 ;
 
+node_constraint
+:
+   REGEX
+   | STRING_LITERAL
+   | VARIABLE
+;
+
 node_has_generated_route_boolean_expr
 :
    HAS_GENERATED_ROUTE
@@ -401,16 +597,6 @@ node_ospf_configured_boolean_expr
    CONFIGURED
 ;
 
-node_statement
-:
-   foreach_bgp_neighbor_statement
-   | foreach_generated_route_statement
-   | foreach_interface_statement
-   | foreach_node_bgp_generated_route_statement
-   | foreach_static_route_statement
-   | statement
-;
-
 node_static_boolean_expr
 :
    STATIC PERIOD node_static_configured_boolean_expr
@@ -431,11 +617,6 @@ not_expr
    NOT OPEN_BRACE boolean_expr CLOSE_BRACE
 ;
 
-num_ips_int_expr
-:
-   caller = VARIABLE PERIOD NUM_IPS
-;
-
 or_expr
 :
    OR OPEN_BRACE disjuncts += boolean_expr
@@ -451,20 +632,11 @@ prefix_expr
    | static_route_prefix_expr
 ;
 
-printable_expr
-:
-   boolean_expr
-   | int_expr
-   | ip_expr
-   | prefix_expr
-   | string_expr
-;
-
 printf_statement
 :
-   PRINTF OPEN_PAREN format_string = printable_expr
+   PRINTF OPEN_PAREN format_string = string_expr
    (
-      COMMA replacements += printable_expr
+      COMMA replacements += expr
    )* CLOSE_PAREN SEMICOLON
 ;
 
@@ -476,20 +648,282 @@ property_boolean_expr
    | static_route_boolean_expr
 ;
 
-question
+protocol_name_string_expr
 :
-   multipath_question
-   | verify_question
+   NAME
 ;
 
-statement
+protocol_string_expr
 :
-   add_ip_statement
-   | clear_ips_statement
-   | assertion
+   PROTOCOL PERIOD protocol_name_string_expr
+;
+
+question
+:
+   defaults?
+   (
+      failure_question
+      | ingress_path_question
+      | local_path_question
+      | multipath_question
+      | reachability_question
+      | traceroute_question
+      | verify_question
+   )
+;
+
+range
+:
+   range_list += subrange
+   (
+      COMMA range_list += subrange
+   )*
+;
+
+range_constraint
+:
+   (
+      OPEN_BRACE range CLOSE_BRACE
+   )
+   | subrange
+   | VARIABLE
+;
+
+reachability_constraint
+:
+   reachability_constraint_action
+   | reachability_constraint_dst_ip
+   | reachability_constraint_dst_port
+   | reachability_constraint_final_node
+   | reachability_constraint_ingress_node
+   | reachability_constraint_ip_protocol
+   | reachability_constraint_src_ip
+   | reachability_constraint_src_port
+;
+
+reachability_constraint_action
+:
+   ACTION EQUALS action_constraint
+;
+
+reachability_constraint_dst_ip
+:
+   DST_IP EQUALS ip_constraint
+;
+
+reachability_constraint_dst_port
+:
+   DST_PORT EQUALS range_constraint
+;
+
+reachability_constraint_final_node
+:
+   FINAL_NODE EQUALS node_constraint
+;
+
+reachability_constraint_ingress_node
+:
+   INGRESS_NODE EQUALS node_constraint
+;
+
+reachability_constraint_ip_protocol
+:
+   IP_PROTOCOL EQUALS range_constraint
+;
+
+reachability_constraint_src_ip
+:
+   SRC_IP EQUALS ip_constraint
+;
+
+reachability_constraint_src_port
+:
+   SRC_PORT EQUALS range_constraint
+;
+
+reachability_question
+:
+   REACHABILITY OPEN_BRACE reachability_constraint
+   (
+      COMMA reachability_constraint
+   )* CLOSE_BRACE
+;
+
+route_filter_expr
+:
+   route_filter_route_filter_expr
+;
+
+route_filter_line_expr
+:
+   route_filter_line_line_expr
+;
+
+route_filter_line_line_expr
+:
+   LINE
+;
+
+route_filter_name_string_expr
+:
+   NAME
+;
+
+route_filter_route_filter_expr
+:
+   ROUTE_FILTER
+;
+
+route_filter_string_expr
+:
+   ROUTE_FILTER PERIOD route_filter_name_string_expr
+;
+
+set_add_method [VariableType type, String caller]
+:
+   ADD OPEN_PAREN
+   (
+      {$type == VariableType.SET_IP}?
+
+      ip_expr
+      |
+      {$type == VariableType.SET_STRING}?
+
+      expr
+      |
+      {$type == VariableType.SET_ROUTE_FILTER}?
+
+      route_filter_expr
+   ) CLOSE_PAREN
+;
+
+set_contains_expr
+locals [VariableType type]
+:
+   caller = VARIABLE
+   { $type = _typeBindings.get($caller.getText()); }
+
+   PERIOD CONTAINS OPEN_PAREN
+   (
+      {$type == VariableType.SET_IP}?
+
+      ip_expr
+      |
+      {$type == VariableType.SET_STRING}?
+
+      expr
+      |
+      {$type == VariableType.SET_ROUTE_FILTER}?
+
+      route_filter_expr
+   ) CLOSE_PAREN
+;
+
+set_clear_method [VariableType type, String caller]
+:
+   CLEAR
+;
+
+set_declaration_statement
+locals [String typeStr, VariableType type, VariableType oldType]
+:
+   var = VARIABLE COLON
+   (
+      {$oldType = _typeBindings.get($var.getText());}
+
+      SET
+      {$typeStr = "set<";}
+
+      (
+         settype = IP
+         | settype = ROUTE_FILTER
+         | settype = STRING
+      )
+      {
+         $typeStr += $settype.getText() + ">";
+         $type = VariableType.fromString($typeStr);
+         _typeBindings.put($var.getText(), $type);
+      }
+
+   )
+   {
+      $oldType == null || $type == $oldType 
+      /* Same variable declared with two different types*/
+   }?
+
+   SEMICOLON
+;
+
+set_size_int_expr
+locals [VariableType type]
+:
+   caller = VARIABLE
+   {$type = _typeBindings.get($caller.getText());}
+
+   PERIOD SIZE
+;
+
+statement [String scope]
+:
+   assertion [scope]
    | assignment
-   | if_statement
+   |
+   {$scope.equals("node")}?
+
+   foreach_bgp_neighbor_statement
+   |
+   {$scope.equals("policy")}?
+
+   foreach_clause_statement
+   |
+   {$scope.equals("bgp_neighbor") || $scope.equals("node")}?
+
+   foreach_generated_route_statement
+   |
+   {$scope.equals("node")}?
+
+   foreach_interface_statement
+   |
+   {$scope.equals("route_filter")}?
+
+   foreach_line_statement
+   |
+   {$scope.equals("clause")}?
+
+   foreach_match_protocol_statement
+   |
+   {$scope.equals("clause")}?
+
+   foreach_match_route_filter_statement
+   |
+   {$scope.equals("node")}?
+
+   foreach_node_bgp_generated_route_statement
+   |
+   {$scope.equals("verify")}?
+
+   foreach_node_statement
+   |
+   {$scope.equals("node")}?
+
+   foreach_ospf_outbound_policy_statement
+   |
+   {$scope.equals("match_protocol")}?
+
+   foreach_protocol_statement
+   | foreach_route_filter_in_set_statement
+   |
+   {$scope.equals("match_route_filter")}?
+
+   foreach_route_filter_statement
+   |
+   {$scope.equals("node")}?
+
+   foreach_static_route_statement
+   | if_statement [scope]
+   | method [scope]
    | printf_statement
+   | set_declaration_statement
 ;
 
 static_route_administrative_cost_int_expr
@@ -546,11 +980,6 @@ static_route_prefix_prefix_expr
    PREFIX
 ;
 
-static_route_statement
-:
-   statement
-;
-
 static_route_string_expr
 :
    STATIC_ROUTE PERIOD static_route_next_hop_interface_string_expr
@@ -560,6 +989,8 @@ string_expr
 :
    interface_string_expr
    | node_string_expr
+   | protocol_string_expr
+   | route_filter_string_expr
    | static_route_string_expr
    | string_literal_string_expr
 ;
@@ -569,16 +1000,41 @@ string_literal_string_expr
    STRING_LITERAL
 ;
 
+subrange
+:
+   low = DEC
+   (
+      MINUS high = DEC
+   )?
+;
+
+traceroute_question
+:
+   TRACEROUTE OPEN_BRACE
+   (
+      explicit_flow SEMICOLON
+   )+ CLOSE_BRACE
+;
+
 true_expr
 :
    TRUE
+;
+
+typed_method [String scope, String caller]
+locals [VariableType type]
+:
+   {$type = _typeBindings.get($caller);}
+
+   set_add_method [$type, caller]
+   | set_clear_method [$type, caller]
 ;
 
 val_int_expr
 :
    bgp_neighbor_int_expr
    | literal_int_expr
-   | num_ips_int_expr
+   | set_size_int_expr
    | static_route_int_expr
    | var_int_expr
 ;
@@ -590,12 +1046,5 @@ var_int_expr
 
 verify_question
 :
-   VERIFY OPEN_BRACE verify_statement+ CLOSE_BRACE
+   VERIFY OPEN_BRACE statement ["verify"]+ CLOSE_BRACE
 ;
-
-verify_statement
-:
-   foreach_node_statement
-   | statement
-;
-

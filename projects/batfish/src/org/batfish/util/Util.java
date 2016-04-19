@@ -1,6 +1,11 @@
 package org.batfish.util;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.apache.commons.io.FileUtils;
+import org.batfish.common.BatfishException;
 import org.batfish.representation.Ip;
 
 public class Util {
@@ -40,6 +45,16 @@ public class Util {
       return s;
    }
 
+   public static String getIndentedString(String str, int indentLevel) {
+      String indent = getIndentString(indentLevel);
+      StringBuilder sb = new StringBuilder();
+      String[] lines = str.split("\n");
+      for (String line : lines) {
+         sb.append(indent + line + "\n");
+      }
+      return sb.toString();
+   }
+
    public static String getIndentString(int indentLevel) {
 
       String retString = "";
@@ -65,6 +80,15 @@ public class Util {
       int start = ctx.start.getStartIndex();
       int stop = ctx.stop.getStopIndex();
       return srcText.substring(start, stop);
+   }
+
+   public static String getTime(long millis) {
+      long cs = (millis / 10) % 100;
+      long s = (millis / 1000) % 60;
+      long m = (millis / (1000 * 60)) % 60;
+      long h = (millis / (1000 * 60 * 60)) % 24;
+      String time = String.format("%02d:%02d:%02d.%02d", h, m, s, cs);
+      return time;
    }
 
    public static int intWidth(int n) {
@@ -106,6 +130,18 @@ public class Util {
          wildcard |= (1 << i);
       }
       return wildcard;
+   }
+
+   public static String readFile(File file) {
+      String text = null;
+      try {
+         text = FileUtils.readFileToString(file);
+      }
+      catch (IOException e) {
+         throw new BatfishException("Failed to read file: " + file.toString(),
+               e);
+      }
+      return text;
    }
 
    /**
