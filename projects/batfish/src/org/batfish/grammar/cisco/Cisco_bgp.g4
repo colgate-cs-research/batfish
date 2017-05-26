@@ -435,6 +435,7 @@ null_bgp_tail
             | ROUTE_MAP
          )
       )
+      | NSR
       | PASSWORD
       | SEND_LABEL
       | SOFT_RECONFIGURATION

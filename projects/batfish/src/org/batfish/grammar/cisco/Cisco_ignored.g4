@@ -13,9 +13,11 @@ null_block_stanza
       AAA
       | ACCESS_GROUP
       | ARCHIVE
+      | AS_PATH_SET
       | ATM
       | BASH
       | BFD
+      | CALL_HOME
       | CEF
       | CHAT_SCRIPT
       | CLASS_MAP
@@ -93,6 +95,7 @@ null_block_stanza
       | KRON
       | L2 VFI
       | L2TP_CLASS
+      | L2VPN
       | LINE
       | LOGGING
       | LOGIN
@@ -128,18 +131,23 @@ null_block_stanza
       | REDUNDANCY
       | RMON
       | ROLE
+      | ROUTER HSRP
       | SAMPLER
+      | SAMPLER_MAP
       | SCCP
       | SDR
       | SFLOW
+      | SNMP_SERVER
       | SPANNING_TREE
       | STCAPP
       | SVCLC
+      | SWITCH
       | TACACS
       | TACACS_SERVER
       | TCP
       | TEMPLATE
       | TERMINAL
+      | TFTP
       | TRACE
       | TRACK
       | TRANSCEIVER
@@ -196,6 +204,7 @@ null_block_substanza
          | BANNER
          | BIND
          | BRIDGE
+         | BRIDGE_DOMAIN
          | CABLELENGTH
          | CACHE
          | CACHE_TIMEOUT
@@ -214,11 +223,14 @@ null_block_substanza
          | COMMAND
          | CONFORM_ACTION
          | CONGESTION_CONTROL
+         | CONTACT_EMAIL_ADDR
          | CONTEXT
+         | CONTRACT_ID
          | CPTONE
          | CREDENTIALS
          | CRL
          | CRYPTOGRAPHIC_ALGORITHM
+         | CUSTOMER_ID
          | DATABITS
          | DBL
          | DEFAULT_ACTION
@@ -241,6 +253,7 @@ null_block_substanza
          | ENCRYPTION
          | END_CLASS_MAP
          | END_POLICY_MAP
+         | END_SET
          | ENROLLMENT
          | ERSPAN_ID
          | ESCAPE_CHARACTER
@@ -293,6 +306,7 @@ null_block_substanza
             INTERFACE POLICY
          )
          | INTERVAL
+         | IOS_REGEX
          |
          (
             (
@@ -330,6 +344,8 @@ null_block_substanza
          | LOGGING
          | LOGIN
          | LPTS
+         | MAC_ADDRESS
+         | MAIL_SERVER
          | MAIN_CPU
          | MATCH
          | MAXIMUM
@@ -364,6 +380,7 @@ null_block_substanza
          | PEER_LINK
          | PERMIT
          | PERSISTENT
+         | PHONE_NUMBER
          | PICKUP
          | PINNING
          | POLICE
@@ -383,6 +400,7 @@ null_block_substanza
          | PROTOCOL
          | QUEUE_BUFFERS
          | QUEUE_LIMIT
+         | RANDOM
          | RANDOM_DETECT
          | RD
          | REAL
@@ -409,10 +427,12 @@ null_block_substanza
          | ROTARY
          | ROUTE
          | ROUTE_TARGET
+         | ROUTED
          | RULE
          | SCHEME
          | SECRET
          | SEND_LIFETIME
+         | SENDER
          | SEQUENCE
          | SERVER
          | SERVERFARM
@@ -430,6 +450,7 @@ null_block_substanza
          | SHUTDOWN
          | SINGLE_CONNECTION
          | SINGLE_ROUTER_MODE
+         | SLOT
          | SORT_BY
          | SOURCE
          | SPANNING_TREE
@@ -440,7 +461,9 @@ null_block_substanza
          | STICKY
          | STOPBITS
          | STP
+         | STREET_ADDRESS
          | SUBJECT_NAME
+         | SWITCH
          | SWITCHBACK
          | SWITCHPORT
          | SYNC

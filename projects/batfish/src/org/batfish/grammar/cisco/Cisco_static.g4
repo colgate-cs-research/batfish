@@ -38,7 +38,7 @@ s_stanza
 
 static_route_s_stanza
 :
-   IP_PREFIX IP_ADDRESS NEWLINE
+   IP_PREFIX (interface_name)? IP_ADDRESS NEWLINE
 ;
 
 vrf_s_stanza

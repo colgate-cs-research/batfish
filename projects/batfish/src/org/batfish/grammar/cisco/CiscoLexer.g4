@@ -336,6 +336,11 @@ AS_PATH
    'as-path' -> pushMode(M_AsPath)
 ;
 
+AS_PATH_SET
+:
+   'as-path-set'
+;
+
 AS_SET
 :
    'as-set'
@@ -912,6 +917,11 @@ CONTEXT
    'context'
 ;
 
+CONTRACT_ID
+:
+   'contract-id'
+;
+
 CONTROL_PLANE
 :
    'control-plane'
@@ -980,6 +990,11 @@ CTL_FILE
 CTS
 :
    'cts'
+;
+
+CUSTOMER_ID
+:
+   'customer-id'
 ;
 
 DAMPENING
@@ -2148,6 +2163,11 @@ INVALID_SPI_RECOVERY
    'invalid-spi-recovery'
 ;
 
+IOS_REGEX
+:
+   'ios-regex'
+;
+
 IP
 :
    'ip'
@@ -2316,6 +2336,16 @@ L2TP
 L2TP_CLASS
 :
    'l2tp-class'
+;
+
+L2TRANSPORT
+:
+   'l2transport'
+;
+
+L2VPN
+:
+   'l2vpn'
 ;
 
 LABEL
@@ -3398,6 +3428,11 @@ PERSISTENT
    'persistent'
 ;
 
+PHONE_NUMBER
+:
+   'phone-number'
+;
+
 PHONE_PROXY
 :
    'phone-proxy'
@@ -3698,6 +3733,11 @@ RADIUS_SERVER
    'radius-server'
 ;
 
+RANDOM
+:
+   'random'
+;
+
 RANDOM_DETECT
 :
    'random-detect'
@@ -3953,6 +3993,11 @@ ROUTE_TARGET
    'route-target'
 ;
 
+ROUTED
+:
+   'routed'
+;
+
 ROUTER
 :
    'router'
@@ -4006,6 +4051,11 @@ SAME_SECURITY_TRAFFIC
 SAMPLER
 :
    'sampler'
+;
+
+SAMPLER_MAP
+:
+   'sampler-map'
 ;
 
 SAP
@@ -4263,6 +4313,11 @@ SLA
    'sla'
 ;
 
+SLOT
+:
+   'slot'
+;
+
 SMTP
 :
    'smtp'
@@ -4443,6 +4498,11 @@ STORM_CONTROL
 STP
 :
    'stp'
+;
+
+STREET_ADDRESS
+:
+   'street-address'
 ;
 
 STUB
@@ -5950,6 +6010,11 @@ mode M_Interface;
 M_Interface_DOLLAR
 :
    '$' -> type(DOLLAR), popMode
+;
+
+M_Interface_L2TRANSPORT
+:
+   'l2transport' -> type(L2TRANSPORT), popMode
 ;
 
 M_Interface_POINT_TO_POINT

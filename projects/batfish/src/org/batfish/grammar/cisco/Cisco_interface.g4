@@ -80,7 +80,8 @@ interface_stanza
 :
    INTERFACE iname = interface_name
    (
-      MULTIPOINT
+      L2TRANSPORT
+      | MULTIPOINT
       | POINT_TO_POINT
    )? NEWLINE interface_stanza_tail
 ;
@@ -209,7 +210,9 @@ null_standalone_if_stanza
 :
    NO?
    (
-      AFFINITY
+      ADDRESS
+      | ADDRESS_FAMILY
+      | AFFINITY
       | ARP
       | ASYNC
       | ATM
@@ -376,6 +379,7 @@ null_standalone_if_stanza
       | RATE_MODE
       | RCV_QUEUE
       | ROUTE_CACHE
+      | ROUTED
       | SECURITY_LEVEL
       | SERIAL
       | SERVICE_MODULE
