@@ -453,6 +453,7 @@ null_block_substanza
          | SLOT
          | SORT_BY
          | SOURCE
+         | SOURCE_INTERFACE
          | SPANNING_TREE
          | SPEED
          | SPLIT_TUNNEL_NETWORK_LIST

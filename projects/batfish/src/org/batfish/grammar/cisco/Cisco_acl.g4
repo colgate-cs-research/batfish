@@ -497,7 +497,7 @@ prefix_set_tail
       (
          EQ eqpl = DEC
       )
-   )* NEWLINE
+   )* COMMA? NEWLINE
 ;
 
 protocol_type_code_access_list_numbered_stanza
