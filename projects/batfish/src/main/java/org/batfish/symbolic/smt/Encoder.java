@@ -454,6 +454,8 @@ public class Encoder {
       SortedSet<String> fwdModel,
       SortedMap<String, SortedMap<String, String>> envModel,
       SortedSet<String> failures) {
+
+    System.out.println("buildCoupperExample() called");
     SortedMap<Expr, String> valuation = new TreeMap<>();
 
     // If user asks for the full model
@@ -463,7 +465,9 @@ public class Encoder {
       Expr val = m.evaluate(e, true);
       if (!val.equals(e)) {
         String s = val.toString();
-        if (_question.getFullModel()) {
+        System.out.println(name + "  -->  " + s);
+
+        if (_question.getFullModel()) 
           model.put(name, s);
         }
         valuation.put(e, s);
