@@ -1,0 +1,5 @@
+Commands to run : 
+
+1. source tools/batfish_functions.sh
+2. batfish_build_all
+3. java -cp "projects/allinone/target/allinone-bundle-0.32.0.jar" org.batfish.:allinone.Main -testrig testrigs_simple/single-ospf -cmdfile queries.file

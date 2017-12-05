@@ -1,0 +1,1 @@
+get smt-reachability ingressNodeRegex="B", finalNodeRegex="C"

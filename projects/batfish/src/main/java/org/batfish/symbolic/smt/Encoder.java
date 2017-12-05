@@ -453,9 +453,10 @@ public class Encoder {
       SortedMap<String, String> packetModel,
       SortedSet<String> fwdModel,
       SortedMap<String, SortedMap<String, String>> envModel,
-      SortedSet<String> failures) {
+      SortedSet<String> failures,
+      SortedMap<Expr, Expr> additionalConstraints) {
 
-    System.out.println("buildCoupperExample() called");
+    System.out.println("buildCounterExample() called");
     SortedMap<Expr, String> valuation = new TreeMap<>();
 
     // If user asks for the full model
@@ -463,14 +464,14 @@ public class Encoder {
       String name = entry.getKey();
       Expr e = entry.getValue();
       Expr val = m.evaluate(e, true);
-      if (!val.equals(e)) {
+      if (!val.equals(e)) { //excluding constants in the model.
         String s = val.toString();
-        System.out.println(name + "  -->  " + s);
-
-        if (_question.getFullModel()) 
+        if (_question.getFullModel()){
           model.put(name, s);
         }
         valuation.put(e, s);
+        System.out.println(name+ ": "+s);
+        additionalConstraints.put(e, val);
       }
     }
 
@@ -667,6 +668,8 @@ public class Encoder {
                 failures.add("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")");
               }
             });
+
+
   }
 
   /*
@@ -706,6 +709,10 @@ public class Encoder {
 
     return mkAnd(acc1, acc2);
   }
+
+
+  //temp testing variables
+  private int _numcalls =0;
 
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
@@ -754,12 +761,26 @@ public class Encoder {
         SortedSet<String> fwdModel = new TreeSet<>();
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
-        buildCounterExample(this, m, model, packetModel, fwdModel, envModel, failures);
+        SortedMap<Expr,Expr> additionalConstraints = new TreeMap<>();
+          buildCounterExample(this, m, model, packetModel,
+              fwdModel, envModel, failures, additionalConstraints);
         if (_previousEncoder != null) {
           buildCounterExample(
-              _previousEncoder, m, model, packetModel, fwdModel, envModel, failures);
+              _previousEncoder, m, model, packetModel,
+              fwdModel, envModel, failures, additionalConstraints);
         }
 
+        if (_numcalls ==0){
+          SortedSet<BoolExpr> newEqs= new TreeSet<BoolExpr>();
+          for (Expr var:additionalConstraints.keySet()){
+            newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
+          }
+          BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+          _solver.add(_ctx.mkNot(andAllEq));
+          _numcalls++;
+          return verify();
+          //add the new constraints to the solver.
+        }
         result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures);
 
         if (!_question.getMinimize()) {
@@ -861,5 +882,10 @@ public class Encoder {
 
   public void setQuestion(HeaderQuestion question) {
     this._question = question;
+  }
+
+  //add constraints to the encoder.
+  public void addVariables(Map<String, Expr> addedConstraints) {
+    _allVariables.putAll(addedConstraints);
   }
 }
