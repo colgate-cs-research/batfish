@@ -45,7 +45,7 @@ public class ReachabilityQuestionPlugin extends QuestionPlugin {
         case MULTIPATH_DIFF:
         default:
           throw new BatfishException(
-              "Unsupported non-differential reachabilty type: " + type.reachabilityTypeName());
+              "Unsupported non-differential reachability type: " + type.reachabilityTypeName());
       }
     }
 
@@ -408,11 +408,6 @@ public class ReachabilityQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_SRC_PROTOCOLS)
     public SortedSet<Protocol> getSrcProtocols() {
       return _headerSpace.getSrcProtocols();
-    }
-
-    @Override
-    public boolean getTraffic() {
-      return true;
     }
 
     @Override

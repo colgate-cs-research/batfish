@@ -4,10 +4,11 @@
       "class" : "org.batfish.question.NodesQuestionPlugin$NodesAnswerElement",
       "nodes" : {
         "IosXrMultiCast" : {
-          "name" : "IosXrMultiCast",
           "configurationFormat" : "CISCO_NX",
+          "name" : "IosXrMultiCast",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "IosXrMultiCast"
@@ -20,10 +21,11 @@
           }
         },
         "L2VPN" : {
-          "name" : "L2VPN",
           "configurationFormat" : "CISCO_NX",
+          "name" : "L2VPN",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "L2VPN"
@@ -36,10 +38,11 @@
           }
         },
         "MCastRouting" : {
-          "name" : "MCastRouting",
           "configurationFormat" : "CISCO_NX",
+          "name" : "MCastRouting",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "MCastRouting"
@@ -52,10 +55,11 @@
           }
         },
         "aaa_accounting" : {
-          "name" : "aaa_accounting",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aaa_accounting",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "aaa" : {
@@ -76,10 +80,11 @@
           }
         },
         "aaa_authentication_login_default_tacacs_local" : {
-          "name" : "aaa_authentication_login_default_tacacs_local",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aaa_authentication_login_default_tacacs_local",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "aaa" : {
@@ -103,10 +108,11 @@
           }
         },
         "aaa_group_server_source_interface" : {
-          "name" : "aaa_group_server_source_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aaa_group_server_source_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "aaa" : {
@@ -122,10 +128,11 @@
           }
         },
         "access_list" : {
-          "name" : "access_list",
           "configurationFormat" : "CISCO_NX",
+          "name" : "access_list",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "access_list"
@@ -138,10 +145,11 @@
           }
         },
         "address_family" : {
-          "name" : "address_family",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "address_family",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -248,10 +256,11 @@
           }
         },
         "aggAddress" : {
-          "name" : "aggAddress",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aggAddress",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "ScienceDMZ-networks" : {
               "name" : "ScienceDMZ-networks",
@@ -606,10 +615,11 @@
           }
         },
         "arista-event-handler" : {
-          "name" : "arista-event-handler",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista-event-handler",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "arista-event-handler"
@@ -622,10 +632,11 @@
           }
         },
         "arista_acl" : {
-          "name" : "arista_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "abcd" : {
               "name" : "abcd",
@@ -670,10 +681,11 @@
           }
         },
         "arista_bgp" : {
-          "name" : "arista_bgp",
           "configurationFormat" : "ARISTA",
+          "name" : "arista_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -731,10 +743,11 @@
           }
         },
         "arista_dhcp_relay" : {
-          "name" : "arista_dhcp_relay",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_dhcp_relay",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Ethernet0" : {
               "name" : "Ethernet0",
@@ -754,6 +767,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -777,6 +791,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -803,10 +818,11 @@
           }
         },
         "arista_interface" : {
-          "name" : "arista_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Vlan1" : {
               "name" : "Vlan1",
@@ -829,6 +845,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.2.3.4/23",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -863,10 +880,11 @@
           }
         },
         "arista_ip_route" : {
-          "name" : "arista_ip_route",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_ip_route",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "arista_ip_route"
@@ -897,10 +915,11 @@
           }
         },
         "arista_logging" : {
-          "name" : "arista_logging",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_logging",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "arista_logging",
@@ -916,10 +935,11 @@
           }
         },
         "arista_misc" : {
-          "name" : "arista_misc",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "defaultSwitchportMode" : "NONE",
@@ -933,10 +953,11 @@
           }
         },
         "arista_ospf" : {
-          "name" : "arista_ospf",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_ospf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "~OSPF_EXPORT_POLICY:default~" : {
               "name" : "~OSPF_EXPORT_POLICY:default~"
@@ -954,10 +975,11 @@
           }
         },
         "arista_queue_monitor" : {
-          "name" : "arista_queue_monitor",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_queue_monitor",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "arista_queue_monitor"
@@ -970,10 +992,11 @@
           }
         },
         "arista_username" : {
-          "name" : "arista_username",
           "configurationFormat" : "CISCO_NX",
+          "name" : "arista_username",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "enableSecret" : "6a04b2b4f67a9c3a69b681b1782b6cbcddf018f7dd810a274e71e012c83f5efe",
@@ -998,10 +1021,11 @@
           }
         },
         "aruba_aaa" : {
-          "name" : "aruba_aaa",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_aaa",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "aaa" : {
@@ -1018,10 +1042,11 @@
           }
         },
         "aruba_acl" : {
-          "name" : "aruba_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_acl"
@@ -1034,10 +1059,11 @@
           }
         },
         "aruba_airgroup" : {
-          "name" : "aruba_airgroup",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_airgroup",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_airgroup"
@@ -1050,10 +1076,20 @@
           }
         },
         "aruba_crypto" : {
-          "name" : "aruba_crypto",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_crypto",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
+          "ikeProposals" : {
+            "1" : {
+              "name" : "1",
+              "authenticationAlgorithm" : "SHA_256",
+              "authenticationMethod" : "RSA_SIGNATURES",
+              "diffieHellmanGroup" : "GROUP20",
+              "encryptionAlgorithm" : "AES_256_CBC"
+            }
+          },
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_crypto"
@@ -1066,10 +1102,11 @@
           }
         },
         "aruba_dhcp" : {
-          "name" : "aruba_dhcp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_dhcp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_dhcp",
@@ -1087,10 +1124,11 @@
           }
         },
         "aruba_interface" : {
-          "name" : "aruba_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "GigabitEthernet0/0/0" : {
               "name" : "GigabitEthernet0/0/0",
@@ -1117,6 +1155,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.2.3.4/5",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -1143,10 +1182,11 @@
           }
         },
         "aruba_logging" : {
-          "name" : "aruba_logging",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_logging",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "loggingServers" : [
             "1.2.3.4"
           ],
@@ -1170,10 +1210,11 @@
           }
         },
         "aruba_misc" : {
-          "name" : "aruba_misc",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_misc"
@@ -1186,10 +1227,11 @@
           }
         },
         "aruba_net" : {
-          "name" : "aruba_net",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_net",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_net"
@@ -1202,10 +1244,11 @@
           }
         },
         "aruba_snmp" : {
-          "name" : "aruba_snmp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_snmp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "snmpTrapServers" : [
             "1.2.3.4"
           ],
@@ -1241,10 +1284,11 @@
           }
         },
         "aruba_time_range" : {
-          "name" : "aruba_time_range",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_time_range",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_time_range"
@@ -1257,10 +1301,11 @@
           }
         },
         "aruba_user_role" : {
-          "name" : "aruba_user_role",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_user_role",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_user_role"
@@ -1273,10 +1318,11 @@
           }
         },
         "aruba_vlan" : {
-          "name" : "aruba_vlan",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_vlan",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_vlan"
@@ -1289,10 +1335,11 @@
           }
         },
         "aruba_voice" : {
-          "name" : "aruba_voice",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_voice",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_voice"
@@ -1305,10 +1352,11 @@
           }
         },
         "aruba_vpn" : {
-          "name" : "aruba_vpn",
           "configurationFormat" : "CISCO_NX",
+          "name" : "aruba_vpn",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "aruba_vpn"
@@ -1321,10 +1369,11 @@
           }
         },
         "as_path_prepend" : {
-          "name" : "as_path_prepend",
           "configurationFormat" : "CISCO_NX",
+          "name" : "as_path_prepend",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "rmap" : {
               "name" : "rmap",
@@ -1360,10 +1409,11 @@
           }
         },
         "asa_acl" : {
-          "name" : "asa_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "asa_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "Local_LAN_Access" : {
               "name" : "Local_LAN_Access",
@@ -1438,10 +1488,11 @@
           }
         },
         "asa_banner" : {
-          "name" : "asa_banner",
           "configurationFormat" : "CISCO_NX",
+          "name" : "asa_banner",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "banners" : {
@@ -1457,10 +1508,11 @@
           }
         },
         "asa_ospf" : {
-          "name" : "asa_ospf",
           "configurationFormat" : "CISCO_ASA",
+          "name" : "asa_ospf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "interfaces" : {
             "Ethernet0/0" : {
               "name" : "Ethernet0/0",
@@ -1481,6 +1533,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "192.168.1.0/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -1525,10 +1578,11 @@
           }
         },
         "asa_ssh" : {
-          "name" : "asa_ssh",
           "configurationFormat" : "CISCO_NX",
+          "name" : "asa_ssh",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "asa_ssh"
@@ -1541,10 +1595,11 @@
           }
         },
         "banner" : {
-          "name" : "banner",
           "configurationFormat" : "CISCO_IOS_XR",
+          "name" : "banner",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "banners" : {
@@ -1568,10 +1623,11 @@
           }
         },
         "banner_dos" : {
-          "name" : "banner_dos",
           "configurationFormat" : "CISCO_NX",
+          "name" : "banner_dos",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "banners" : {
@@ -1588,10 +1644,11 @@
           }
         },
         "bgp_address_family" : {
-          "name" : "bgp_address_family",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "bgp_address_family",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -1887,10 +1944,11 @@
           }
         },
         "bgp_default_originate_policy" : {
-          "name" : "bgp_default_originate_policy",
           "configurationFormat" : "CISCO_NX",
+          "name" : "bgp_default_originate_policy",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -1948,10 +2006,11 @@
           }
         },
         "bgp_foundry" : {
-          "name" : "bgp_foundry",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "bgp_foundry",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -2079,10 +2138,11 @@
           }
         },
         "bgp_nsr" : {
-          "name" : "bgp_nsr",
           "configurationFormat" : "CISCO_NX",
+          "name" : "bgp_nsr",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -2140,10 +2200,11 @@
           }
         },
         "bgp_route_policy" : {
-          "name" : "bgp_route_policy",
           "configurationFormat" : "CISCO_NX",
+          "name" : "bgp_route_policy",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~",
@@ -2301,10 +2362,11 @@
           }
         },
         "cadant_acl" : {
-          "name" : "cadant_acl",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ip6AccessLists" : {
             "ipv6-acl-foo" : {
               "name" : "ipv6-acl-foo",
@@ -2526,10 +2588,11 @@
           }
         },
         "cadant_banner" : {
-          "name" : "cadant_banner",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_banner",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "banners" : {
@@ -2545,10 +2608,11 @@
           }
         },
         "cadant_bgp" : {
-          "name" : "cadant_bgp",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -2606,10 +2670,11 @@
           }
         },
         "cadant_cable" : {
-          "name" : "cadant_cable",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_cable",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "cable" : {
@@ -2637,10 +2702,11 @@
           }
         },
         "cadant_interface" : {
-          "name" : "cadant_interface",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Ethernet6/0.0" : {
               "name" : "Ethernet6/0.0",
@@ -2660,6 +2726,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "11.22.33.44/30",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -2687,6 +2754,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "22.33.44.55/30",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -2711,6 +2779,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2734,6 +2803,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2758,6 +2828,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2781,6 +2852,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2805,6 +2877,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2832,6 +2905,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.2.3.0/30",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -2863,6 +2937,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.2.2.0/25",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -2887,6 +2962,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2910,6 +2986,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2934,6 +3011,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2958,6 +3036,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2981,6 +3060,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -3004,6 +3084,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -3048,10 +3129,11 @@
           }
         },
         "cadant_ip_route" : {
-          "name" : "cadant_ip_route",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_ip_route",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cadant_ip_route"
@@ -3132,10 +3214,11 @@
           }
         },
         "cadant_isis" : {
-          "name" : "cadant_isis",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_isis",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cadant_isis"
@@ -3152,10 +3235,11 @@
           }
         },
         "cadant_line" : {
-          "name" : "cadant_line",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_line",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cadant_line"
@@ -3168,10 +3252,11 @@
           }
         },
         "cadant_logging" : {
-          "name" : "cadant_logging",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_logging",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "loggingServers" : [
             "1.2.3.4"
           ],
@@ -3197,10 +3282,11 @@
           }
         },
         "cadant_misc" : {
-          "name" : "cadant_misc",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ntpServers" : [
             "1.2.3.4",
             "5.6.7.8"
@@ -3235,10 +3321,11 @@
           }
         },
         "cadant_prefix_list" : {
-          "name" : "cadant_prefix_list",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_prefix_list",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "route6FilterLists" : {
             "bar" : {
               "name" : "bar",
@@ -3295,10 +3382,11 @@
           }
         },
         "cadant_qos" : {
-          "name" : "cadant_qos",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_qos",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cadant_qos"
@@ -3311,10 +3399,11 @@
           }
         },
         "cadant_rip" : {
-          "name" : "cadant_rip",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_rip",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "routingPolicies" : {
             "~RIP_EXPORT_POLICY:default~" : {
               "name" : "~RIP_EXPORT_POLICY:default~"
@@ -3335,10 +3424,11 @@
           }
         },
         "cadant_route_map" : {
-          "name" : "cadant_route_map",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_route_map",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "bar" : {
               "name" : "bar",
@@ -3371,10 +3461,11 @@
           }
         },
         "cadant_snmp" : {
-          "name" : "cadant_snmp",
           "configurationFormat" : "CADANT",
+          "name" : "cadant_snmp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "snmpSourceInterface" : "Loopback0",
           "snmpTrapServers" : [
             "1.2.3.4"
@@ -3407,10 +3498,11 @@
           }
         },
         "cisco_aaa" : {
-          "name" : "cisco_aaa",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_aaa",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "aaa" : {
@@ -3443,10 +3535,11 @@
           }
         },
         "cisco_acl" : {
-          "name" : "cisco_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "BLAH-BLAH" : {
               "name" : "BLAH-BLAH",
@@ -3759,10 +3852,11 @@
           }
         },
         "cisco_additional_paths" : {
-          "name" : "cisco_additional_paths",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "cisco_additional_paths",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -3820,10 +3914,11 @@
           }
         },
         "cisco_authentication" : {
-          "name" : "cisco_authentication",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_authentication",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_authentication"
@@ -3836,10 +3931,11 @@
           }
         },
         "cisco_bgp" : {
-          "name" : "cisco_bgp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -4023,10 +4119,11 @@
           }
         },
         "cisco_bgp_confederation" : {
-          "name" : "cisco_bgp_confederation",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_bgp_confederation",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -4084,10 +4181,11 @@
           }
         },
         "cisco_cable" : {
-          "name" : "cisco_cable",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_cable",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Cable1/2/3" : {
               "name" : "Cable1/2/3",
@@ -4103,6 +4201,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4170,10 +4269,11 @@
           }
         },
         "cisco_callhome" : {
-          "name" : "cisco_callhome",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_callhome",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_callhome",
@@ -4187,10 +4287,11 @@
           }
         },
         "cisco_control_plane" : {
-          "name" : "cisco_control_plane",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_control_plane",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_control_plane"
@@ -4203,10 +4304,11 @@
           }
         },
         "cisco_controller" : {
-          "name" : "cisco_controller",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_controller",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_controller"
@@ -4219,10 +4321,42 @@
           }
         },
         "cisco_crypto" : {
-          "name" : "cisco_crypto",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_crypto",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
+          "ikePolicies" : {
+            "myprofile" : {
+              "name" : "myprofile",
+              "proposals" : [
+                "1"
+              ]
+            }
+          },
+          "ikeProposals" : {
+            "1" : {
+              "name" : "1",
+              "authenticationAlgorithm" : "MD5",
+              "authenticationMethod" : "PRE_SHARED_KEYS",
+              "diffieHellmanGroup" : "GROUP2",
+              "encryptionAlgorithm" : "THREEDES_CBC",
+              "lifetimeSeconds" : 28800
+            }
+          },
+          "ipsecPolicies" : {
+            "abcdefg" : {
+              "name" : "abcdefg",
+              "pfsKeyGroupDynamicIke" : false
+            }
+          },
+          "ipsecProposals" : {
+            "ESP-3DES-MD5" : {
+              "name" : "ESP-3DES-MD5",
+              "authenticationAlgorithm" : "HMAC_MD5_96",
+              "encryptionAlgorithm" : "THREEDES_CBC"
+            }
+          },
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_crypto"
@@ -4235,10 +4369,11 @@
           }
         },
         "cisco_dhcp" : {
-          "name" : "cisco_dhcp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_dhcp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_dhcp",
@@ -4256,10 +4391,11 @@
           }
         },
         "cisco_domain" : {
-          "name" : "cisco_domain",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_domain",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "dnsServers" : [
             "1.2.3.4",
             "2.3.4.5"
@@ -4278,10 +4414,11 @@
           }
         },
         "cisco_dot11" : {
-          "name" : "cisco_dot11",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_dot11",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_dot11"
@@ -4294,10 +4431,11 @@
           }
         },
         "cisco_dot1x" : {
-          "name" : "cisco_dot1x",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_dot1x",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_dot1x"
@@ -4310,10 +4448,11 @@
           }
         },
         "cisco_dspfarm" : {
-          "name" : "cisco_dspfarm",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_dspfarm",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_dspfarm"
@@ -4326,10 +4465,11 @@
           }
         },
         "cisco_dynamic_access_policy_record" : {
-          "name" : "cisco_dynamic_access_policy_record",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_dynamic_access_policy_record",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_dynamic_access_policy_record"
@@ -4342,10 +4482,11 @@
           }
         },
         "cisco_eigrp" : {
-          "name" : "cisco_eigrp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_eigrp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "bippety" : {
               "name" : "bippety",
@@ -4472,10 +4613,11 @@
           }
         },
         "cisco_enable" : {
-          "name" : "cisco_enable",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_enable",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "enableSecret" : "41fb440a375eb13f1ca17ea2d14b0d4c73c37c32d764f9a34584a62fe8837ca8",
@@ -4489,10 +4631,11 @@
           }
         },
         "cisco_flow" : {
-          "name" : "cisco_flow",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_flow",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "GigabitEthernet0/1" : {
               "name" : "GigabitEthernet0/1",
@@ -4508,6 +4651,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4533,10 +4677,11 @@
           }
         },
         "cisco_hardware" : {
-          "name" : "cisco_hardware",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_hardware",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_hardware"
@@ -4549,10 +4694,11 @@
           }
         },
         "cisco_hsrp" : {
-          "name" : "cisco_hsrp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_hsrp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "TenGigabitEthernet0/0/2/2" : {
               "name" : "TenGigabitEthernet0/0/2/2",
@@ -4568,6 +4714,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4593,10 +4740,11 @@
           }
         },
         "cisco_interface" : {
-          "name" : "cisco_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Async1" : {
               "name" : "Async1",
@@ -4612,6 +4760,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4635,6 +4784,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4658,6 +4808,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4681,6 +4832,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4716,6 +4868,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.2.3.4/30",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -4741,6 +4894,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4764,6 +4918,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4791,6 +4946,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "192.168.0.1/24",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -4815,6 +4971,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4838,6 +4995,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4861,6 +5019,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4884,6 +5043,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4907,6 +5067,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4930,6 +5091,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4953,6 +5115,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4976,6 +5139,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -4999,6 +5163,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5022,6 +5187,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5045,6 +5211,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5068,6 +5235,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5091,6 +5259,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5114,6 +5283,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5181,10 +5351,11 @@
           }
         },
         "cisco_ip" : {
-          "name" : "cisco_ip",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ip",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_ip",
@@ -5200,10 +5371,11 @@
           }
         },
         "cisco_ip_nat" : {
-          "name" : "cisco_ip_nat",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ip_nat",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_ip_nat"
@@ -5216,10 +5388,11 @@
           }
         },
         "cisco_ip_route" : {
-          "name" : "cisco_ip_route",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ip_route",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_ip_route"
@@ -5335,10 +5508,11 @@
           }
         },
         "cisco_ipsla" : {
-          "name" : "cisco_ipsla",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ipsla",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_ipsla"
@@ -5351,10 +5525,11 @@
           }
         },
         "cisco_ipv6" : {
-          "name" : "cisco_ipv6",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ipv6",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_ipv6"
@@ -5367,10 +5542,11 @@
           }
         },
         "cisco_ipv6_access_list" : {
-          "name" : "cisco_ipv6_access_list",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ipv6_access_list",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ip6AccessLists" : {
             "RT404888-XO" : {
               "name" : "RT404888-XO",
@@ -5619,10 +5795,11 @@
           }
         },
         "cisco_isis" : {
-          "name" : "cisco_isis",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "cisco_isis",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "GigabitEthernet0/0" : {
               "name" : "GigabitEthernet0/0",
@@ -5638,6 +5815,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5665,6 +5843,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "137.164.25.57/30",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5689,6 +5868,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5712,6 +5892,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5735,6 +5916,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5768,10 +5950,11 @@
           }
         },
         "cisco_l2tp" : {
-          "name" : "cisco_l2tp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_l2tp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_l2tp",
@@ -5789,10 +5972,11 @@
           }
         },
         "cisco_line" : {
-          "name" : "cisco_line",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_line",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_line",
@@ -6295,10 +6479,11 @@
           }
         },
         "cisco_logging" : {
-          "name" : "cisco_logging",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_logging",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "loggingServers" : [
             "1.1.1.1",
             "1.2.3.4",
@@ -6353,10 +6538,11 @@
           }
         },
         "cisco_mac_acl" : {
-          "name" : "cisco_mac_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_mac_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_mac_acl"
@@ -6369,10 +6555,11 @@
           }
         },
         "cisco_misc" : {
-          "name" : "cisco_misc",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_misc",
@@ -6407,10 +6594,11 @@
           }
         },
         "cisco_monitor" : {
-          "name" : "cisco_monitor",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_monitor",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_monitor"
@@ -6423,10 +6611,11 @@
           }
         },
         "cisco_mpls" : {
-          "name" : "cisco_mpls",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_mpls",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_mpls"
@@ -6439,10 +6628,11 @@
           }
         },
         "cisco_multicast" : {
-          "name" : "cisco_multicast",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_multicast",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_multicast"
@@ -6455,10 +6645,11 @@
           }
         },
         "cisco_ntp" : {
-          "name" : "cisco_ntp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ntp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ntpServers" : [
             "1.2.3.4",
             "2.3.4.5"
@@ -6491,10 +6682,11 @@
           }
         },
         "cisco_ospf" : {
-          "name" : "cisco_ospf",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "cisco_ospf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "interfaces" : {
             "Ethernet0/0" : {
               "name" : "Ethernet0/0",
@@ -6515,6 +6707,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.3.3.0/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6542,6 +6735,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.1.1.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6614,10 +6808,11 @@
           }
         },
         "cisco_pim" : {
-          "name" : "cisco_pim",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_pim",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_pim"
@@ -6630,10 +6825,11 @@
           }
         },
         "cisco_platform" : {
-          "name" : "cisco_platform",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_platform",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_platform"
@@ -6646,10 +6842,11 @@
           }
         },
         "cisco_privilege" : {
-          "name" : "cisco_privilege",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_privilege",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_privilege"
@@ -6662,10 +6859,11 @@
           }
         },
         "cisco_qos" : {
-          "name" : "cisco_qos",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_qos",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_qos"
@@ -6678,10 +6876,11 @@
           }
         },
         "cisco_queue_monitor" : {
-          "name" : "cisco_queue_monitor",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_queue_monitor",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_queue_monitor"
@@ -6694,10 +6893,11 @@
           }
         },
         "cisco_redundancy" : {
-          "name" : "cisco_redundancy",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_redundancy",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_redundancy"
@@ -6710,10 +6910,11 @@
           }
         },
         "cisco_rip" : {
-          "name" : "cisco_rip",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_rip",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "routingPolicies" : {
             "~RIP_EXPORT_POLICY:default~" : {
               "name" : "~RIP_EXPORT_POLICY:default~"
@@ -6734,10 +6935,11 @@
           }
         },
         "cisco_role" : {
-          "name" : "cisco_role",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_role",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_role"
@@ -6750,10 +6952,11 @@
           }
         },
         "cisco_route_map" : {
-          "name" : "cisco_route_map",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_route_map",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "MSDP-SA-RP-FILTER" : {
               "name" : "MSDP-SA-RP-FILTER",
@@ -6861,10 +7064,11 @@
           }
         },
         "cisco_sccp" : {
-          "name" : "cisco_sccp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_sccp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_sccp"
@@ -6877,10 +7081,11 @@
           }
         },
         "cisco_snmp" : {
-          "name" : "cisco_snmp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_snmp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "snmpSourceInterface" : "Loopback0",
           "snmpTrapServers" : [
             "10.1.2.3"
@@ -7023,10 +7228,11 @@
           }
         },
         "cisco_spanning_tree" : {
-          "name" : "cisco_spanning_tree",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_spanning_tree",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_spanning_tree"
@@ -7039,10 +7245,11 @@
           }
         },
         "cisco_ssh" : {
-          "name" : "cisco_ssh",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_ssh",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_ssh",
@@ -7058,10 +7265,11 @@
           }
         },
         "cisco_stcapp" : {
-          "name" : "cisco_stcapp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_stcapp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_stcapp"
@@ -7074,10 +7282,11 @@
           }
         },
         "cisco_style_acl1" : {
-          "name" : "cisco_style_acl1",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_style_acl1",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "blah" : {
               "name" : "blah",
@@ -7106,10 +7315,11 @@
           }
         },
         "cisco_style_acl2" : {
-          "name" : "cisco_style_acl2",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_style_acl2",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "1" : {
               "name" : "1",
@@ -7138,10 +7348,11 @@
           }
         },
         "cisco_system" : {
-          "name" : "cisco_system",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_system",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "defaultSwitchportMode" : "NONE",
@@ -7155,10 +7366,11 @@
           }
         },
         "cisco_tacacs" : {
-          "name" : "cisco_tacacs",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_tacacs",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "tacacsServers" : [
             "1.2.3.4",
             "1.example.com",
@@ -7188,10 +7400,11 @@
           }
         },
         "cisco_track" : {
-          "name" : "cisco_track",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_track",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_track"
@@ -7204,10 +7417,11 @@
           }
         },
         "cisco_username" : {
-          "name" : "cisco_username",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_username",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_username",
@@ -7236,10 +7450,11 @@
           }
         },
         "cisco_username_without_password" : {
-          "name" : "cisco_username_without_password",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_username_without_password",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_username_without_password",
@@ -7263,10 +7478,11 @@
           }
         },
         "cisco_vdc" : {
-          "name" : "cisco_vdc",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_vdc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_vdc"
@@ -7279,10 +7495,11 @@
           }
         },
         "cisco_vlan" : {
-          "name" : "cisco_vlan",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_vlan",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_vlan"
@@ -7295,10 +7512,11 @@
           }
         },
         "cisco_voice" : {
-          "name" : "cisco_voice",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_voice",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_voice"
@@ -7311,10 +7529,11 @@
           }
         },
         "cisco_vpdn" : {
-          "name" : "cisco_vpdn",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_vpdn",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_vpdn"
@@ -7327,10 +7546,11 @@
           }
         },
         "cisco_vpn" : {
-          "name" : "cisco_vpn",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_vpn",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_vpn"
@@ -7343,10 +7563,11 @@
           }
         },
         "cisco_vrf" : {
-          "name" : "cisco_vrf",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_vrf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_vrf"
@@ -7372,10 +7593,11 @@
           }
         },
         "cisco_vrrp" : {
-          "name" : "cisco_vrrp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_vrrp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Ethernet0" : {
               "name" : "Ethernet0",
@@ -7394,6 +7616,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.0.0.0/24",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -7428,10 +7651,11 @@
           }
         },
         "cisco_webvpn" : {
-          "name" : "cisco_webvpn",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_webvpn",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_webvpn"
@@ -7444,10 +7668,11 @@
           }
         },
         "cisco_wsma" : {
-          "name" : "cisco_wsma",
           "configurationFormat" : "CISCO_NX",
+          "name" : "cisco_wsma",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "cisco_wsma"
@@ -7460,10 +7685,11 @@
           }
         },
         "colon_in_vrf" : {
-          "name" : "colon_in_vrf",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "colon_in_vrf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -7563,10 +7789,11 @@
           }
         },
         "commSet" : {
-          "name" : "commSet",
           "configurationFormat" : "CISCO_NX",
+          "name" : "commSet",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "commSet"
@@ -7579,6 +7806,7 @@
           }
         },
         "community-name-numbers" : {
+          "configurationFormat" : "CISCO_NX",
           "name" : "community-name-numbers",
           "communityLists" : {
             "9999-RRR" : {
@@ -7592,9 +7820,9 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_NX",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "AAA1-BBB-CCC" : {
               "name" : "AAA1-BBB-CCC",
@@ -7655,6 +7883,7 @@
           }
         },
         "community-name-numbers_dos" : {
+          "configurationFormat" : "CISCO_NX",
           "name" : "community-name-numbers_dos",
           "communityLists" : {
             "9999-RRR" : {
@@ -7668,9 +7897,9 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_NX",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "AAA1-BBB-CCC" : {
               "name" : "AAA1-BBB-CCC",
@@ -7731,6 +7960,7 @@
           }
         },
         "community_list_named" : {
+          "configurationFormat" : "CISCO_NX",
           "name" : "community_list_named",
           "communityLists" : {
             "COMM_LIST_NAME" : {
@@ -7744,9 +7974,9 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_NX",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routeFilterLists" : {
             "PFX_LIST" : {
               "name" : "PFX_LIST",
@@ -7822,10 +8052,11 @@
           }
         },
         "community_set" : {
-          "name" : "community_set",
           "configurationFormat" : "CISCO_NX",
+          "name" : "community_set",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "community_set"
@@ -7838,10 +8069,11 @@
           }
         },
         "foundry_access_list" : {
-          "name" : "foundry_access_list",
           "configurationFormat" : "FOUNDRY",
+          "name" : "foundry_access_list",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ip6AccessLists" : {
             "RT404888-Caltech" : {
               "name" : "RT404888-Caltech",
@@ -7987,10 +8219,11 @@
           }
         },
         "foundry_bgp" : {
-          "name" : "foundry_bgp",
           "configurationFormat" : "FOUNDRY",
+          "name" : "foundry_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -8048,10 +8281,11 @@
           }
         },
         "foundry_interface" : {
-          "name" : "foundry_interface",
           "configurationFormat" : "FOUNDRY",
+          "name" : "foundry_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Ethernet1/15" : {
               "name" : "Ethernet1/15",
@@ -8067,6 +8301,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -8092,10 +8327,11 @@
           }
         },
         "foundry_misc" : {
-          "name" : "foundry_misc",
           "configurationFormat" : "FOUNDRY",
+          "name" : "foundry_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "foundry_misc",
@@ -8124,10 +8360,11 @@
           }
         },
         "foundry_vlan_group" : {
-          "name" : "foundry_vlan_group",
           "configurationFormat" : "FOUNDRY",
+          "name" : "foundry_vlan_group",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "foundry_vlan_group"
@@ -8140,10 +8377,11 @@
           }
         },
         "host1" : {
-          "name" : "host1",
           "configurationFormat" : "HOST",
+          "name" : "host1",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "HOST",
           "interfaces" : {
             "eth0" : {
               "name" : "eth0",
@@ -8163,6 +8401,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "outgoingFilter" : "filter::OUTPUT",
               "prefix" : "2.128.0.101/24",
               "ripEnabled" : false,
@@ -8367,10 +8606,11 @@
           }
         },
         "host2" : {
-          "name" : "host2",
           "configurationFormat" : "CISCO_NX",
+          "name" : "host2",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "interfaces" : {
             "Ethernet0" : {
               "name" : "Ethernet0",
@@ -8392,6 +8632,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.130.0.1/24",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -8422,6 +8663,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.131.0.1/24",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -8508,10 +8750,11 @@
           }
         },
         "if_tag_is" : {
-          "name" : "if_tag_is",
           "configurationFormat" : "CISCO_NX",
+          "name" : "if_tag_is",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "FOO" : {
               "name" : "FOO",
@@ -8775,10 +9018,11 @@
           }
         },
         "interface_exit" : {
-          "name" : "interface_exit",
           "configurationFormat" : "CISCO_NX",
+          "name" : "interface_exit",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Vlan303" : {
               "name" : "Vlan303",
@@ -8797,6 +9041,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.22.33.10/29",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -8828,6 +9073,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.12.12.1/23",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -8855,10 +9101,11 @@
           }
         },
         "interface_name" : {
-          "name" : "interface_name",
           "configurationFormat" : "CISCO_IOS_XR",
+          "name" : "interface_name",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "FastEthernet12/13" : {
               "name" : "FastEthernet12/13",
@@ -8874,6 +9121,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -8897,6 +9145,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -8920,6 +9169,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -8943,6 +9193,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -8971,10 +9222,11 @@
           }
         },
         "interface_sdr" : {
-          "name" : "interface_sdr",
           "configurationFormat" : "CISCO_NX",
+          "name" : "interface_sdr",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Loopback0" : {
               "name" : "Loopback0",
@@ -8994,6 +9246,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "137.164.16.80/32",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -9020,10 +9273,11 @@
           }
         },
         "ios_bgp" : {
-          "name" : "ios_bgp",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "ios_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -9081,10 +9335,11 @@
           }
         },
         "ios_xr_acl" : {
-          "name" : "ios_xr_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "ios_xr_acl"
@@ -9097,10 +9352,11 @@
           }
         },
         "ios_xr_bgp" : {
-          "name" : "ios_xr_bgp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -9158,10 +9414,11 @@
           }
         },
         "ios_xr_bgp_neighbor_group" : {
-          "name" : "ios_xr_bgp_neighbor_group",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_bgp_neighbor_group",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -9368,10 +9625,11 @@
           }
         },
         "ios_xr_isis" : {
-          "name" : "ios_xr_isis",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_isis",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "GigabitEthernet0/2/1/6" : {
               "name" : "GigabitEthernet0/2/1/6",
@@ -9387,6 +9645,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9415,10 +9674,11 @@
           }
         },
         "ios_xr_multipart" : {
-          "name" : "ios_xr_multipart",
           "configurationFormat" : "CISCO_IOS_XR",
+          "name" : "ios_xr_multipart",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "banners" : {
@@ -9434,10 +9694,11 @@
           }
         },
         "ios_xr_ntp" : {
-          "name" : "ios_xr_ntp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_ntp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ntpServers" : [
             "1.2.3.4"
           ],
@@ -9460,10 +9721,11 @@
           }
         },
         "ios_xr_ospf" : {
-          "name" : "ios_xr_ospf",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_ospf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "interfaces" : {
             "Bundle-Ethernet101" : {
               "name" : "Bundle-Ethernet101",
@@ -9479,6 +9741,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9502,6 +9765,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9526,6 +9790,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9549,6 +9814,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9572,6 +9838,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9595,6 +9862,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9618,6 +9886,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9641,6 +9910,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9664,6 +9934,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9768,10 +10039,11 @@
           }
         },
         "ios_xr_router_static" : {
-          "name" : "ios_xr_router_static",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_router_static",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "ios_xr_router_static"
@@ -9866,10 +10138,11 @@
           }
         },
         "ios_xr_ssh" : {
-          "name" : "ios_xr_ssh",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_ssh",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "ios_xr_ssh"
@@ -9882,10 +10155,11 @@
           }
         },
         "ios_xr_taskgroup" : {
-          "name" : "ios_xr_taskgroup",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ios_xr_taskgroup",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "ios_xr_taskgroup"
@@ -9898,10 +10172,11 @@
           }
         },
         "ip_prefix_list_single_line" : {
-          "name" : "ip_prefix_list_single_line",
           "configurationFormat" : "CISCO_NX",
+          "name" : "ip_prefix_list_single_line",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routeFilterLists" : {
             "DENY-IPV4-ANY-IN" : {
               "name" : "DENY-IPV4-ANY-IN",
@@ -9926,10 +10201,11 @@
           }
         },
         "juniper-ospf" : {
-          "name" : "juniper-ospf",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper-ospf",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "interfaces" : {
             "xe-0/0/1.0" : {
               "name" : "xe-0/0/1.0",
@@ -9947,6 +10223,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -9971,6 +10248,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -9994,6 +10272,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : true,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -10061,10 +10340,11 @@
           }
         },
         "juniper-tcpflags" : {
-          "name" : "juniper-tcpflags",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper-tcpflags",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "foo" : {
               "name" : "foo",
@@ -10107,10 +10387,11 @@
           }
         },
         "juniper_apply_macro" : {
-          "name" : "juniper_apply_macro",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_apply_macro",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "juniper" : { }
           },
@@ -10121,10 +10402,11 @@
           }
         },
         "juniper_bgp" : {
-          "name" : "juniper_bgp",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "routingPolicies" : {
             "~DEFAULT_BGP_EXPORT_POLICY~" : {
               "name" : "~DEFAULT_BGP_EXPORT_POLICY~",
@@ -10397,6 +10679,7 @@
           }
         },
         "juniper_bgp_authentication" : {
+          "configurationFormat" : "FLAT_JUNIPER",
           "name" : "juniper_bgp_authentication",
           "authenticationKeyChains" : {
             "bgp-auth" : {
@@ -10420,9 +10703,9 @@
               "tolerance" : 30
             }
           },
-          "configurationFormat" : "FLAT_JUNIPER",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "routingPolicies" : {
             "~DEFAULT_BGP_EXPORT_POLICY~" : {
               "name" : "~DEFAULT_BGP_EXPORT_POLICY~",
@@ -10752,6 +11035,7 @@
           }
         },
         "juniper_extended_community" : {
+          "configurationFormat" : "FLAT_JUNIPER",
           "name" : "juniper_extended_community",
           "communityLists" : {
             "COMM_ALL" : {
@@ -10775,9 +11059,9 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "FLAT_JUNIPER",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "juniper" : { }
           },
@@ -10788,10 +11072,11 @@
           }
         },
         "juniper_firewall" : {
-          "name" : "juniper_firewall",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_firewall",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "blah" : {
               "name" : "blah",
@@ -10824,10 +11109,11 @@
           }
         },
         "juniper_forwarding_options" : {
-          "name" : "juniper_forwarding_options",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_forwarding_options",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "et-0/0/10.0" : {
               "name" : "et-0/0/10.0",
@@ -10843,6 +11129,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -10868,6 +11155,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -10890,6 +11178,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -10914,10 +11203,11 @@
           }
         },
         "juniper_interfaces" : {
-          "name" : "juniper_interfaces",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_interfaces",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "ae0.0" : {
               "name" : "ae0.0",
@@ -10933,6 +11223,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -10959,6 +11250,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.2.3.1/24",
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -10989,6 +11281,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -11011,6 +11304,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -11036,10 +11330,11 @@
           }
         },
         "juniper_misc" : {
-          "name" : "juniper_misc",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "domainName" : "my.domain.name",
           "vendorFamily" : {
             "juniper" : { }
@@ -11051,10 +11346,11 @@
           }
         },
         "juniper_ntp" : {
-          "name" : "juniper_ntp",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_ntp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ntpServers" : [
             "1.2.3.4",
             "2.3.4.5"
@@ -11069,10 +11365,11 @@
           }
         },
         "juniper_passwords" : {
-          "name" : "juniper_passwords",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_passwords",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "tacacsServers" : [
             "1.2.3.4",
             "1.2.3.5"
@@ -11101,10 +11398,11 @@
           }
         },
         "juniper_relay" : {
-          "name" : "juniper_relay",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_relay",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "irb.10" : {
               "name" : "irb.10",
@@ -11123,6 +11421,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -11148,6 +11447,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
               "spanningTreePortfast" : false,
@@ -11171,10 +11471,11 @@
           }
         },
         "juniper_route_filter" : {
-          "name" : "juniper_route_filter",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_route_filter",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "route6FilterLists" : {
             "route-filter-test-v6:t1" : {
               "name" : "route-filter-test-v6:t1",
@@ -11325,10 +11626,11 @@
           }
         },
         "juniper_routing_options" : {
-          "name" : "juniper_routing_options",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_routing_options",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "juniper" : { }
           },
@@ -11339,10 +11641,11 @@
           }
         },
         "juniper_snmp" : {
-          "name" : "juniper_snmp",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_snmp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "juniper" : { }
           },
@@ -11373,10 +11676,11 @@
           }
         },
         "juniper_syslog" : {
-          "name" : "juniper_syslog",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_syslog",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "loggingServers" : [
             "1.2.3.4"
           ],
@@ -11390,10 +11694,11 @@
           }
         },
         "juniper_system" : {
-          "name" : "juniper_system",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_system",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "juniper" : { }
           },
@@ -11404,10 +11709,11 @@
           }
         },
         "juniper_tacplus" : {
-          "name" : "juniper_tacplus",
           "configurationFormat" : "FLAT_JUNIPER",
+          "name" : "juniper_tacplus",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "tacacsServers" : [
             "1.2.3.4",
             "5.6.7.8"
@@ -11434,10 +11740,11 @@
           }
         },
         "local_v6_addr" : {
-          "name" : "local_v6_addr",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "local_v6_addr",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -11495,10 +11802,11 @@
           }
         },
         "mac_access_list" : {
-          "name" : "mac_access_list",
           "configurationFormat" : "CISCO_NX",
+          "name" : "mac_access_list",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "mac_access_list"
@@ -11511,10 +11819,11 @@
           }
         },
         "mos_application" : {
-          "name" : "mos_application",
           "configurationFormat" : "CISCO_NX",
+          "name" : "mos_application",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "mos_application"
@@ -11527,10 +11836,11 @@
           }
         },
         "mos_interface" : {
-          "name" : "mos_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "mos_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Ethernet1" : {
               "name" : "Ethernet1",
@@ -11546,6 +11856,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -11569,6 +11880,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -11592,6 +11904,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -11615,6 +11928,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -11643,10 +11957,11 @@
           }
         },
         "mos_misc" : {
-          "name" : "mos_misc",
           "configurationFormat" : "CISCO_NX",
+          "name" : "mos_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "loggingServers" : [
             "1.2.3.4"
           ],
@@ -11683,10 +11998,11 @@
           }
         },
         "msdp_originator_id" : {
-          "name" : "msdp_originator_id",
           "configurationFormat" : "CISCO_NX",
+          "name" : "msdp_originator_id",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "msdp_originator_id"
@@ -11699,10 +12015,11 @@
           }
         },
         "named_and_numbered_lists" : {
-          "name" : "named_and_numbered_lists",
           "configurationFormat" : "CISCO_NX",
+          "name" : "named_and_numbered_lists",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "foo" : {
               "name" : "foo",
@@ -11725,11 +12042,42 @@
             }
           }
         },
-        "neighbor" : {
-          "name" : "neighbor",
-          "configurationFormat" : "CISCO_NX",
+        "nat-08c21704416f06046" : {
+          "configurationFormat" : "AWS_VPC",
+          "name" : "nat-08c21704416f06046",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
+          "vendorFamily" : {
+            "aws" : { }
+          },
+          "vrfs" : {
+            "default" : {
+              "name" : "default"
+            }
+          }
+        },
+        "nat-09fd8f73171d2d9a3" : {
+          "configurationFormat" : "AWS_VPC",
+          "name" : "nat-09fd8f73171d2d9a3",
+          "defaultCrossZoneAction" : "ACCEPT",
+          "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
+          "vendorFamily" : {
+            "aws" : { }
+          },
+          "vrfs" : {
+            "default" : {
+              "name" : "default"
+            }
+          }
+        },
+        "neighbor" : {
+          "configurationFormat" : "CISCO_NX",
+          "name" : "neighbor",
+          "defaultCrossZoneAction" : "ACCEPT",
+          "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -11886,10 +12234,11 @@
           }
         },
         "neighbor-name-numbers" : {
-          "name" : "neighbor-name-numbers",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "neighbor-name-numbers",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -11947,10 +12296,11 @@
           }
         },
         "neighbor_dos" : {
-          "name" : "neighbor_dos",
           "configurationFormat" : "CISCO_NX",
+          "name" : "neighbor_dos",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -12107,10 +12457,11 @@
           }
         },
         "neighbor_mix" : {
-          "name" : "neighbor_mix",
           "configurationFormat" : "CISCO_NX",
+          "name" : "neighbor_mix",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -12384,10 +12735,11 @@
           }
         },
         "neighbor_nxos" : {
-          "name" : "neighbor_nxos",
           "configurationFormat" : "CISCO_NX",
+          "name" : "neighbor_nxos",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -12470,10 +12822,11 @@
           }
         },
         "network6" : {
-          "name" : "network6",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "network6",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~",
@@ -12538,10 +12891,11 @@
           }
         },
         "nexus" : {
-          "name" : "nexus",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nexus",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "nexus"
@@ -12554,10 +12908,11 @@
           }
         },
         "nexus-arista-router-bgp" : {
-          "name" : "nexus-arista-router-bgp",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "nexus-arista-router-bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -12615,10 +12970,11 @@
           }
         },
         "nexus_bgp" : {
-          "name" : "nexus_bgp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nexus_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~",
@@ -12795,10 +13151,11 @@
           }
         },
         "nexus_ntp" : {
-          "name" : "nexus_ntp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nexus_ntp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ntpServers" : [
             "1.2.3.4",
             "10.1.2.3"
@@ -12829,10 +13186,11 @@
           }
         },
         "nexus_ssh" : {
-          "name" : "nexus_ssh",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nexus_ssh",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "nexus_ssh"
@@ -12845,10 +13203,11 @@
           }
         },
         "no_aaa_group_server" : {
-          "name" : "no_aaa_group_server",
           "configurationFormat" : "CISCO_NX",
+          "name" : "no_aaa_group_server",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "no_aaa_group_server"
@@ -12861,10 +13220,11 @@
           }
         },
         "non_nexus_neighbor_af" : {
-          "name" : "non_nexus_neighbor_af",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "non_nexus_neighbor_af",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -13041,10 +13401,11 @@
           }
         },
         "nxos_acl" : {
-          "name" : "nxos_acl",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nxos_acl",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "blah" : {
               "name" : "blah",
@@ -13081,10 +13442,11 @@
           }
         },
         "nxos_bgp" : {
-          "name" : "nxos_bgp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nxos_bgp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -13145,10 +13507,11 @@
           }
         },
         "nxos_interface" : {
-          "name" : "nxos_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nxos_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Ethernet0/0" : {
               "name" : "Ethernet0/0",
@@ -13164,6 +13527,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -13192,10 +13556,11 @@
           }
         },
         "nxos_misc" : {
-          "name" : "nxos_misc",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nxos_misc",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "features" : {
@@ -13211,10 +13576,11 @@
           }
         },
         "nxos_system" : {
-          "name" : "nxos_system",
           "configurationFormat" : "CISCO_NX",
+          "name" : "nxos_system",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "features" : {
@@ -13230,10 +13596,11 @@
           }
         },
         "openflow" : {
-          "name" : "openflow",
           "configurationFormat" : "CISCO_NX",
+          "name" : "openflow",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "openflow"
@@ -13246,10 +13613,11 @@
           }
         },
         "peer_template" : {
-          "name" : "peer_template",
           "configurationFormat" : "CISCO_NX",
+          "name" : "peer_template",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -13686,10 +14054,11 @@
           }
         },
         "pim" : {
-          "name" : "pim",
           "configurationFormat" : "CISCO_NX",
+          "name" : "pim",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "Loopback1" : {
               "name" : "Loopback1",
@@ -13708,6 +14077,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "137.164.17.8/32",
               "proxyArp" : false,
               "ripEnabled" : false,
@@ -13734,10 +14104,11 @@
           }
         },
         "pim_snooping" : {
-          "name" : "pim_snooping",
           "configurationFormat" : "CISCO_NX",
+          "name" : "pim_snooping",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "pim_snooping"
@@ -13750,10 +14121,11 @@
           }
         },
         "preSet" : {
-          "name" : "preSet",
           "configurationFormat" : "CISCO_NX",
+          "name" : "preSet",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routeFilterLists" : {
             "default_route" : {
               "name" : "default_route",
@@ -13823,10 +14195,11 @@
           }
         },
         "prefix_list_ipv4" : {
-          "name" : "prefix_list_ipv4",
           "configurationFormat" : "CISCO_NX",
+          "name" : "prefix_list_ipv4",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routeFilterLists" : {
             "default" : {
               "name" : "default",
@@ -13894,10 +14267,11 @@
           }
         },
         "rP" : {
-          "name" : "rP",
           "configurationFormat" : "CISCO_NX",
+          "name" : "rP",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "EBGP-PEER-AS2828-LAX-PNI-OUT" : {
               "name" : "EBGP-PEER-AS2828-LAX-PNI-OUT",
@@ -15792,10 +16166,11 @@
           }
         },
         "route_maps_in_two_address_families" : {
-          "name" : "route_maps_in_two_address_families",
           "configurationFormat" : "CISCO_NX",
+          "name" : "route_maps_in_two_address_families",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "v6_list" : {
               "name" : "v6_list",
@@ -15973,6 +16348,9 @@
                     "exportPolicy" : "~BGP_PEER_EXPORT_POLICY:default:1.1.1.1~",
                     "group" : "ABC",
                     "importPolicy" : "FROM_ABC_V4",
+                    "importPolicySources" : [
+                      "FROM_ABC_V4"
+                    ],
                     "localAs" : 1,
                     "remoteAs" : 2,
                     "remotePrefix" : "1.1.1.1/32",
@@ -15988,6 +16366,7 @@
           }
         },
         "route_policy_as_path_set" : {
+          "configurationFormat" : "CISCO_NX",
           "name" : "route_policy_as_path_set",
           "asPathAccessLists" : {
             "ama-coe-as-path" : {
@@ -16030,9 +16409,9 @@
               "name" : "ama-coe-as-path3"
             }
           },
-          "configurationFormat" : "CISCO_NX",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "erick-test" : {
               "name" : "erick-test",
@@ -16545,10 +16924,11 @@
           }
         },
         "route_policy_igp_cost" : {
-          "name" : "route_policy_igp_cost",
           "configurationFormat" : "CISCO_NX",
+          "name" : "route_policy_igp_cost",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "EBGP_CUST_FULL_v4" : {
               "name" : "EBGP_CUST_FULL_v4",
@@ -16668,10 +17048,11 @@
           }
         },
         "route_policy_metric_type" : {
-          "name" : "route_policy_metric_type",
           "configurationFormat" : "CISCO_NX",
+          "name" : "route_policy_metric_type",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "to_csuchico" : {
               "name" : "to_csuchico",
@@ -16774,10 +17155,11 @@
           }
         },
         "route_policy_param" : {
-          "name" : "route_policy_param",
           "configurationFormat" : "CISCO_NX",
+          "name" : "route_policy_param",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "cust_v4_in" : {
               "name" : "cust_v4_in",
@@ -17003,10 +17385,11 @@
           }
         },
         "router_msdp" : {
-          "name" : "router_msdp",
           "configurationFormat" : "CISCO_NX",
+          "name" : "router_msdp",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "router_msdp"
@@ -17019,10 +17402,11 @@
           }
         },
         "set_inline_community" : {
-          "name" : "set_inline_community",
           "configurationFormat" : "CISCO_NX",
+          "name" : "set_inline_community",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "FOOBAR" : {
               "name" : "FOOBAR",
@@ -17082,10 +17466,11 @@
           }
         },
         "statistics" : {
-          "name" : "statistics",
           "configurationFormat" : "CISCO_NX",
+          "name" : "statistics",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "statistics"
@@ -17098,10 +17483,11 @@
           }
         },
         "switchport_range" : {
-          "name" : "switchport_range",
           "configurationFormat" : "CISCO_NX",
+          "name" : "switchport_range",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "FastEthernet0/1" : {
               "name" : "FastEthernet0/1",
@@ -17123,6 +17509,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -17148,10 +17535,11 @@
           }
         },
         "syslog_source_interface" : {
-          "name" : "syslog_source_interface",
           "configurationFormat" : "CISCO_NX",
+          "name" : "syslog_source_interface",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "syslog_source_interface"
@@ -17164,10 +17552,11 @@
           }
         },
         "taskgroup" : {
-          "name" : "taskgroup",
           "configurationFormat" : "CISCO_NX",
+          "name" : "taskgroup",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "taskgroup"
@@ -17180,10 +17569,11 @@
           }
         },
         "tcpflags" : {
-          "name" : "tcpflags",
           "configurationFormat" : "CISCO_NX",
+          "name" : "tcpflags",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "ipAccessLists" : {
             "100" : {
               "name" : "100",
@@ -17499,10 +17889,11 @@
           }
         },
         "test" : {
-          "name" : "test",
           "configurationFormat" : "CISCO_NX",
+          "name" : "test",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "test"
@@ -17515,10 +17906,11 @@
           }
         },
         "underscore_variable" : {
-          "name" : "underscore_variable",
           "configurationFormat" : "CISCO_NX",
+          "name" : "underscore_variable",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "routingPolicies" : {
             "JKL_MNO_PQR" : {
               "name" : "JKL_MNO_PQR",
@@ -17542,10 +17934,11 @@
           }
         },
         "variables" : {
-          "name" : "variables",
           "configurationFormat" : "CISCO_NX",
+          "name" : "variables",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "FastEthernet0/0" : {
               "name" : "FastEthernet0/0",
@@ -17561,6 +17954,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -17586,10 +17980,11 @@
           }
         },
         "variables_dos" : {
-          "name" : "variables_dos",
           "configurationFormat" : "CISCO_NX",
+          "name" : "variables_dos",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "interfaces" : {
             "FastEthernet0/0" : {
               "name" : "FastEthernet0/0",
@@ -17605,6 +18000,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : false,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -17630,10 +18026,11 @@
           }
         },
         "vlan_access_map4" : {
-          "name" : "vlan_access_map4",
           "configurationFormat" : "CISCO_NX",
+          "name" : "vlan_access_map4",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "ROUTER",
           "route6FilterLists" : {
             "~BGP_NETWORK6_NETWORKS_FILTER:default~" : {
               "name" : "~BGP_NETWORK6_NETWORKS_FILTER:default~"
@@ -17755,10 +18152,11 @@
           }
         },
         "vrf_context" : {
-          "name" : "vrf_context",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "vrf_context",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "vrf_context"
@@ -17794,10 +18192,11 @@
           }
         },
         "vxlan" : {
-          "name" : "vxlan",
           "configurationFormat" : "CISCO_NX",
+          "name" : "vxlan",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
+          "deviceType" : "SWITCH",
           "vendorFamily" : {
             "cisco" : {
               "hostname" : "vxlan"

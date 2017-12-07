@@ -5,17 +5,18 @@ import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.Vrf;
+import org.batfish.datamodel.vendor_family.AwsFamily;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 public class Utils {
 
   public static Configuration newAwsConfiguration(String name) {
-    Configuration config = new Configuration(name);
-    config.setConfigurationFormat(ConfigurationFormat.AWS_VPC);
+    Configuration config = new Configuration(name, ConfigurationFormat.AWS_VPC);
     config.setDefaultInboundAction(LineAction.ACCEPT);
     config.setDefaultCrossZoneAction(LineAction.ACCEPT);
     config.getVrfs().computeIfAbsent(Configuration.DEFAULT_VRF_NAME, Vrf::new);
+    config.getVendorFamily().setAws(new AwsFamily());
     return config;
   }
 

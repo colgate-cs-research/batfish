@@ -8,8 +8,11 @@ import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import javax.annotation.Nullable;
 import org.batfish.common.util.ComparableStructure;
+import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
 
 /**
  * Represents a peering with a single router (by ip address) acting as a bgp peer to the router
@@ -17,6 +20,117 @@ import org.batfish.common.util.ComparableStructure;
  */
 @JsonSchemaDescription("A configured e/iBGP peering relationship")
 public final class BgpNeighbor extends ComparableStructure<Prefix> {
+
+  public static class Builder extends NetworkFactoryBuilder<BgpNeighbor> {
+    private Configuration _owner;
+    private Ip _localIp;
+    private Ip _peerIpAddress;
+    private Integer _localAs;
+    private Integer _remoteAs;
+    private BgpProcess _bgpProcess;
+    private String _exportPolicy;
+    private Boolean _advertiseExternal;
+    private Boolean _additionalPathSend;
+    private Boolean _additionalPathSelectAll;
+    private Boolean _advertiseInactive;
+
+    Builder(NetworkFactory networkFactory) {
+      super(networkFactory, BgpNeighbor.class);
+    }
+
+    @Override
+    public BgpNeighbor build() {
+      BgpNeighbor bgpNeighbor;
+      if (_owner != null && _peerIpAddress != null) {
+        bgpNeighbor = new BgpNeighbor(_peerIpAddress, _owner);
+      } else {
+        bgpNeighbor = new BgpNeighbor();
+      }
+      if (_localIp != null) {
+        bgpNeighbor.setLocalIp(_localIp);
+      }
+      if (_localAs != null) {
+        bgpNeighbor.setLocalAs(_localAs);
+      }
+      if (_remoteAs != null) {
+        bgpNeighbor.setRemoteAs(_remoteAs);
+      }
+      if (_bgpProcess != null) {
+        _bgpProcess.getNeighbors().put(bgpNeighbor.getPrefix(), bgpNeighbor);
+      }
+      if (_exportPolicy != null) {
+        bgpNeighbor.setExportPolicy(_exportPolicy);
+      }
+      if (_advertiseInactive != null) {
+        bgpNeighbor.setAdvertiseInactive(_advertiseInactive);
+      }
+      if (_advertiseExternal != null) {
+        bgpNeighbor.setAdvertiseExternal(_advertiseExternal);
+      }
+      if (_additionalPathSend != null) {
+        bgpNeighbor.setAdditionalPathsSend(_additionalPathSend);
+      }
+      if (_additionalPathSelectAll != null) {
+        bgpNeighbor.setAdditionalPathsSelectAll(_additionalPathSelectAll);
+      }
+      return bgpNeighbor;
+    }
+
+    public Builder setOwner(Configuration owner) {
+      _owner = owner;
+      return this;
+    }
+
+    public Builder setBgpProcess(BgpProcess bgpProcess) {
+      _bgpProcess = bgpProcess;
+      return this;
+    }
+
+    public Builder setLocalIp(Ip localIp) {
+      _localIp = localIp;
+      return this;
+    }
+
+    public Builder setPeerAddress(Ip peerIpAddress) {
+      _peerIpAddress = peerIpAddress;
+      return this;
+    }
+
+    public Builder setLocalAs(Integer localAs) {
+      _localAs = localAs;
+      return this;
+    }
+
+    public Builder setRemoteAs(Integer remoteAs) {
+      _remoteAs = remoteAs;
+      return this;
+    }
+
+    public Builder setExportPolicy(String exportPolicy) {
+      _exportPolicy = exportPolicy;
+      return this;
+    }
+
+    public Builder setAdvertiseExternal(Boolean advertiseExternal) {
+      _advertiseExternal = advertiseExternal;
+      return this;
+    }
+
+    public Builder setAdditionalPathSend(Boolean additionalPathSend) {
+      _additionalPathSend = additionalPathSend;
+      return this;
+    }
+
+    public Builder setAdditionalPathSelectAll(Boolean additionalPathSelectAll) {
+      _additionalPathSelectAll = additionalPathSelectAll;
+      return this;
+    }
+
+    public Builder setAdvertiseInactive(Boolean advertiseInactive) {
+      _advertiseInactive = advertiseInactive;
+      return this;
+    }
+  }
 
   public static final class BgpNeighborSummary extends ComparableStructure<String> {
 
@@ -34,10 +148,10 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
 
     private static final String PROP_REMOTE_PREFIX = "dynamicRemotePrefix";
 
+    private static final String PROP_VRF = "vrf";
+
     /** */
     private static final long serialVersionUID = 1L;
-
-    private static final String PROP_VRF = "vrf";
 
     private final String _description;
 
@@ -172,9 +286,17 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
 
   private static final String PROP_EBGP_MULTIHOP = "ebgpMultihop";
 
+  private static final String PROP_EXPORT_POLICY = "exportPolicy";
+
+  private static final String PROP_EXPORT_POLICY_SOURCES = "exportPolicySources";
+
   private static final String PROP_GENERATED_ROUTES = "generatedRoutes";
 
   private static final String PROP_GROUP = "group";
+
+  private static final String PROP_IMPORT_POLICY = "importPolicy";
+
+  private static final String PROP_IMPORT_POLICY_SOURCES = "importPolicySources";
 
   private static final String PROP_LOCAL_AS = "localAs";
 
@@ -223,6 +345,8 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
 
   private String _exportPolicy;
 
+  private SortedSet<String> _exportPolicySources;
+
   /**
    * The set of generated and/or aggregate routes to be potentially sent to this peer before
    * outbound policies are taken into account
@@ -237,6 +361,8 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
   private String _group;
 
   private String _importPolicy;
+
+  private SortedSet<String> _importPolicySources;
 
   /** The autonomous system number of the containing BGP process as reported to this peer */
   private Integer _localAs;
@@ -280,7 +406,9 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
   @JsonCreator
   public BgpNeighbor(@JsonProperty(PROP_NAME) Prefix prefix) {
     super(prefix);
+    _exportPolicySources = new TreeSet<>();
     _generatedRoutes = new LinkedHashSet<>();
+    _importPolicySources = new TreeSet<>();
   }
 
   /**
@@ -462,9 +590,15 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     return _ebgpMultihop;
   }
 
+  @JsonProperty(PROP_EXPORT_POLICY)
   @JsonPropertyDescription("The policy governing all advertisements sent to this peer")
   public String getExportPolicy() {
     return _exportPolicy;
+  }
+
+  @JsonProperty(PROP_EXPORT_POLICY_SOURCES)
+  public SortedSet<String> getExportPolicySources() {
+    return _exportPolicySources;
   }
 
   @JsonProperty(PROP_GENERATED_ROUTES)
@@ -482,9 +616,15 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     return _group;
   }
 
+  @JsonProperty(PROP_IMPORT_POLICY)
   @JsonPropertyDescription("Routing policy governing all advertisements received from this peer")
   public String getImportPolicy() {
     return _importPolicy;
+  }
+
+  @JsonProperty(PROP_IMPORT_POLICY_SOURCES)
+  public SortedSet<String> getImportPolicySources() {
+    return _importPolicySources;
   }
 
   @JsonProperty(PROP_LOCAL_AS)
@@ -619,8 +759,14 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     _ebgpMultihop = ebgpMultihop;
   }
 
+  @JsonProperty(PROP_EXPORT_POLICY)
   public void setExportPolicy(String originationPolicyName) {
     _exportPolicy = originationPolicyName;
+  }
+
+  @JsonProperty(PROP_EXPORT_POLICY_SOURCES)
+  public void setExportPolicySources(SortedSet<String> exportPolicySources) {
+    _exportPolicySources = exportPolicySources;
   }
 
   @JsonProperty(PROP_GENERATED_ROUTES)
@@ -633,8 +779,14 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     _group = name;
   }
 
+  @JsonProperty(PROP_IMPORT_POLICY)
   public void setImportPolicy(String importPolicy) {
     _importPolicy = importPolicy;
+  }
+
+  @JsonProperty(PROP_IMPORT_POLICY_SOURCES)
+  public void setImportPolicySources(SortedSet<String> importPolicySources) {
+    _importPolicySources = importPolicySources;
   }
 
   @JsonProperty(PROP_LOCAL_AS)
