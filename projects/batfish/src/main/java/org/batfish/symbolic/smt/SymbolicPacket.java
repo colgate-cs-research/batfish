@@ -1,9 +1,13 @@
 package org.batfish.symbolic.smt;
 
+import com.microsoft.z3.Expr;
 import com.microsoft.z3.ArithExpr;
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Context;
+
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * A symbolic data plane packet. Includes the source and destination Ip address, source and
@@ -81,6 +85,26 @@ class SymbolicPacket {
         _ctx.mkEq(this.getTcpPsh(), other.getTcpPsh()),
         _ctx.mkEq(this.getTcpRst(), other.getTcpRst()),
         _ctx.mkEq(this.getTcpUrg(), other.getTcpUrg()));
+  }
+
+  SortedSet<Expr> getSymbolicPacketVars(){
+    SortedSet<Expr> packetVars = new TreeSet<Expr>();
+    packetVars.add(_dstIp);
+    packetVars.add(_srcIp);
+    packetVars.add(_dstPort);
+    packetVars.add(_srcPort);
+    packetVars.add(_icmpCode);
+    packetVars.add(_icmpType);
+    packetVars.add(_tcpAck);
+    packetVars.add(_tcpCwr);
+    packetVars.add(_tcpEce);
+    packetVars.add(_tcpFin);
+    packetVars.add(_tcpPsh);
+    packetVars.add(_tcpRst);
+    packetVars.add(_tcpSyn);
+    packetVars.add(_tcpUrg);
+    packetVars.add(_ipProtocol);
+    return packetVars;
   }
 
   BitVecExpr getDstIp() {
