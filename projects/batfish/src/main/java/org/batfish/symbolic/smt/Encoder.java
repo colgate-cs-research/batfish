@@ -455,12 +455,14 @@ public class Encoder {
       SortedSet<String> failures,
       SortedMap<Expr, Expr> additionalConstraints) {
 
-    System.out.println("buildCounterExample() called");
+    System.out.println("buildCounterExample() called.");
     SortedMap<Expr, String> valuation = new TreeMap<>();
 
     // If user asks for the full model
     for (Entry<String, Expr> entry : _allVariables.entrySet()) {
+
       String name = entry.getKey();
+//      System.out.print(name + ',');
       Expr e = entry.getValue();
       Expr val = m.evaluate(e, true);
       if (!val.equals(e)) { //excluding constants in the model.
@@ -469,10 +471,12 @@ public class Encoder {
           model.put(name, s);
         }
         valuation.put(e, s);
-        System.out.println(name+ ": "+s);
+       System.out.println(name+ ": "+s);
         additionalConstraints.put(e, val);
       }
     }
+
+
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -711,8 +715,9 @@ public class Encoder {
 
 
   //temp testing variables
-  private int _numcalls =0;
-
+  private int num_iters=5;
+  private int numcalls =0;
+  private SortedMap<Expr, Expr> filterdConstraints;
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -769,14 +774,28 @@ public class Encoder {
               fwdModel, envModel, failures, additionalConstraints);
         }
 
-        if (_numcalls ==0){
+        if (numcalls < num_iters){//this is the first time verify is called. the 15 data plane packet variables need to be set
+          SortedSet<Expr> packetVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars(); //should be added to solver during the first iteration.
           SortedSet<BoolExpr> newEqs= new TreeSet<BoolExpr>();
+
+          if (numcalls==0) {
+            for (Expr e : packetVars) {
+              if (additionalConstraints.containsKey(e)) {
+                newEqs.add(_ctx.mkEq(e, additionalConstraints.get(e)));
+              }
+            }
+
+            BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+            _solver.add(andPcktVars);
+          }
+          newEqs.clear();
           for (Expr var:additionalConstraints.keySet()){
-            newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
+            if (!packetVars.contains(var))
+              newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
           }
           BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
           _solver.add(_ctx.mkNot(andAllEq));
-          _numcalls++;
+          numcalls++;
           return verify();
           //add the new constraints to the solver.
         }
