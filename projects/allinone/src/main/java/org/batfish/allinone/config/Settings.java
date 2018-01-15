@@ -23,7 +23,6 @@ public class Settings extends BaseSettings {
   private static final String ARG_TRACING_AGENT_PORT = "tracingagentport";
   private static final String ARG_TRACING_ENABLE = "tracingenable";
   private static final String ARG_VERSION = "version";
-  private static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
 
   private static final String EXECUTABLE_NAME = "allinone";
 
@@ -39,7 +38,6 @@ public class Settings extends BaseSettings {
   private String _tracingAgentHost;
   private Integer _tracingAgentPort;
   private boolean _tracingEnable;
-  private Integer _numIters;
 
   public Settings(String[] args) throws Exception {
     super(
@@ -101,10 +99,6 @@ public class Settings extends BaseSettings {
     return _tracingEnable;
   }
 
-  public Integer getNumIters(){
-    return _numIters;
-  }
-
   private void initConfigDefaults() {
     // setDefaultProperty(ARG_COMMAND_FILE,
     // Paths.get(org.batfish.common.Util.getJarOrClassDir(
@@ -122,7 +116,6 @@ public class Settings extends BaseSettings {
     setDefaultProperty(ARG_TRACING_AGENT_PORT, 5775);
     setDefaultProperty(ARG_TRACING_ENABLE, false);
     setDefaultProperty(ARG_VERSION, false);
-    setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
   }
 
   private void initOptions() {
@@ -156,7 +149,6 @@ public class Settings extends BaseSettings {
 
     addBooleanOption(ARG_VERSION, "print the version number of the code and exit");
 
-    addOption(ARG_NUM_ITERS_FAULTLOC, "number of calls to verify() for faultloc", "numIters");
   }
 
   private void parseCommandLine(String[] args) {
@@ -184,6 +176,5 @@ public class Settings extends BaseSettings {
     _tracingAgentHost = getStringOptionValue(ARG_TRACING_AGENT_HOST);
     _tracingAgentPort = getIntegerOptionValue(ARG_TRACING_AGENT_PORT);
     _tracingEnable = getBooleanOptionValue(ARG_TRACING_ENABLE);
-    _numIters = getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);
   }
 }

@@ -1,1 +1,2 @@
+add-batfish-option numIters 8
 get smt-reachability ingressNodeRegex="B", finalNodeRegex="C"

@@ -1812,6 +1812,11 @@ public class Batfish extends PluginConsumer implements IBatfish {
     return _settings;
   }
 
+  @Override
+  public Integer getNumIters() {
+    return _settings.getNumIters();
+  }
+
   private Set<Edge> getSymmetricEdgePairs(SortedSet<Edge> edges) {
     Set<Edge> consumedEdges = new LinkedHashSet<>();
     for (Edge edge : edges) {

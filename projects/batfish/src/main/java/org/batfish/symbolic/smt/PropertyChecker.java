@@ -338,7 +338,7 @@ public class PropertyChecker {
               Set<String> srcRouters = mapConcreteToAbstract(ec, sourceRouters);
 
               long l1 = System.currentTimeMillis();
-              Encoder enc = new Encoder(g, question);
+              Encoder enc = new Encoder(g, question, _batfish.getNumIters());
               enc.computeEncoding();
               if (question.getBenchmark()) {
                 System.out.println("  Base Encoding: " + (System.currentTimeMillis() - l1));

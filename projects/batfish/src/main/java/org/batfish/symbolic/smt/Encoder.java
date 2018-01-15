@@ -446,7 +446,7 @@ public class Encoder {
    * Add the relevant variables in the counterexample to
    * display to the user in a human-readable fashion
    */
-  private Map<String,String> buildCounterExample(
+  private HashMap<String,String> buildCounterExample(
       Encoder enc,
       Model m,
       SortedMap<String, String> model,
@@ -729,6 +729,8 @@ public class Encoder {
    */
   public Tuple<VerificationResult, Model> verify() {
 
+    System.out.println(_numIters);
+
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
 
     int numVariables = _allVariables.size();
@@ -738,6 +740,8 @@ public class Encoder {
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
+
+    HashMap<String, Set<String>> variableHistoryMap = new HashMap<>();
 
     long start = System.currentTimeMillis();
     Status status = _solver.check();
@@ -770,16 +774,23 @@ public class Encoder {
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
         SortedMap<Expr,Expr> additionalConstraints = new TreeMap<>();
-        buildCounterExample(this, m, model, packetModel,
+        HashMap<String, String> ce = buildCounterExample(this, m, model, packetModel,
               fwdModel, envModel, failures, additionalConstraints);
+        for (String key: ce.keySet()){
+          //first values assigned to counter-example variables...
+          variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
+        }
         if (_previousEncoder != null) {
-          buildCounterExample(
+          ce = buildCounterExample(
               _previousEncoder, m, model, packetModel,
               fwdModel, envModel, failures, additionalConstraints);
+          for (String varName : ce.keySet()){
+            variableHistoryMap.get(varName).add(ce.get(varName));
+          }
         }
 
         result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures);
-        
+
         numCounterexamples++;
 
         // Generate multiple counter examples
@@ -822,7 +833,14 @@ public class Encoder {
           throw new BatfishException("ERROR: satisfiability unknown");
         }
       } while(_question.getMinimize() || numCounterexamples < _numIters);
+      ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
+      Collections.sort(variableNames);
 
+
+      System.out.println("What Changed in variables: ");
+      for (String variableName: variableNames){
+        System.out.println(variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " } \n\n");
+      }
       return new Tuple<>(result, m);
     }
   }

@@ -503,6 +503,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String EXECUTABLE_NAME = "batfish";
 
+  private static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
+
   private TestrigSettings _activeTestrigSettings;
 
   private String _analysisName;
@@ -700,6 +702,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
   private boolean _validateEnvironment;
 
   private boolean _verboseParse;
+
+  private Integer _numIters;
 
   public Settings() {
     this(new String[] {});
@@ -1113,6 +1117,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _ignoreUnsupported;
   }
 
+  public Integer getNumIters(){
+    return _numIters;
+  }
+
   private void initConfigDefaults() {
     setDefaultProperty(BfConsts.ARG_ANALYSIS_NAME, null);
     setDefaultProperty(ARG_ANONYMIZE, false);
@@ -1201,6 +1209,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(BfConsts.COMMAND_PARSE_VENDOR_SPECIFIC, false);
     setDefaultProperty(BfConsts.COMMAND_REPORT, false);
     setDefaultProperty(BfConsts.COMMAND_VALIDATE_ENVIRONMENT, false);
+    setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
   }
 
   private void initOptions() {
@@ -1481,6 +1490,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(
         BfConsts.COMMAND_VALIDATE_ENVIRONMENT, "validate an environment that has been initialized");
+
+    addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
   }
 
   private void parseCommandLine(String[] args) {
@@ -1588,6 +1599,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     _unrecognizedAsRedFlag = getBooleanOptionValue(BfConsts.ARG_UNRECOGNIZED_AS_RED_FLAG);
     _validateEnvironment = getBooleanOptionValue(BfConsts.COMMAND_VALIDATE_ENVIRONMENT);
     _verboseParse = getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
+    _numIters = getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);
   }
 
   public boolean prettyPrintAnswer() {
