@@ -718,7 +718,6 @@ public class Encoder {
 
 
   //temp testing variables
-  private int numcalls =0;
   private SortedMap<Expr, Expr> filterdConstraints;
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
@@ -760,7 +759,8 @@ public class Encoder {
       VerificationResult result;
 
       Model m;
-      while (true) {
+      int numCounterexamples = 0;
+      do {
         m = _solver.getModel();
         SortedMap<String, String> model = new TreeMap<>();
         SortedMap<String, String> packetModel = new TreeMap<>();
@@ -768,7 +768,7 @@ public class Encoder {
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
         SortedMap<Expr,Expr> additionalConstraints = new TreeMap<>();
-          buildCounterExample(this, m, model, packetModel,
+        buildCounterExample(this, m, model, packetModel,
               fwdModel, envModel, failures, additionalConstraints);
         if (_previousEncoder != null) {
           buildCounterExample(
@@ -776,11 +776,17 @@ public class Encoder {
               fwdModel, envModel, failures, additionalConstraints);
         }
 
-        if (numcalls < _numIters){//this is the first time verify is called. the 15 data plane packet variables need to be set
+        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures);
+        
+        numCounterexamples++;
+
+        // Generate multiple counter examples
+        if (_numIters > 1) {
           SortedSet<Expr> packetVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars(); //should be added to solver during the first iteration.
           SortedSet<BoolExpr> newEqs= new TreeSet<BoolExpr>();
 
-          if (numcalls==0) {
+        //this is the counterexample. the 15 data plane packet variables need to be set
+          if (numCounterexamples==1) {
             for (Expr e : packetVars) {
               if (additionalConstraints.containsKey(e)) {
                 newEqs.add(_ctx.mkEq(e, additionalConstraints.get(e)));
@@ -790,6 +796,7 @@ public class Encoder {
             BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
             _solver.add(andPcktVars);
           }
+
           newEqs.clear();
           for (Expr var:additionalConstraints.keySet()){
             if (!packetVars.contains(var))
@@ -797,18 +804,13 @@ public class Encoder {
           }
           BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
           _solver.add(_ctx.mkNot(andAllEq));
-          numcalls++;
-          return verify();
-          //add the new constraints to the solver.
-        }
-        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures);
-
-        if (!_question.getMinimize()) {
-          break;
         }
 
-        BoolExpr blocking = environmentBlockingClause(m);
-        add(blocking);
+        // Find the smallest possible counterexample
+        if (_question.getMinimize()) {
+            BoolExpr blocking = environmentBlockingClause(m);
+            add(blocking);
+        }
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
@@ -817,7 +819,7 @@ public class Encoder {
         if (s == Status.UNKNOWN) {
           throw new BatfishException("ERROR: satisfiability unknown");
         }
-      }
+      } while(_question.getMinimize() || numCounterexamples < _numIters);
 
       return new Tuple<>(result, m);
     }
