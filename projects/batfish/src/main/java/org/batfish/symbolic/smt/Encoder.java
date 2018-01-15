@@ -446,7 +446,7 @@ public class Encoder {
    * Add the relevant variables in the counterexample to
    * display to the user in a human-readable fashion
    */
-  private void buildCounterExample(
+  private Map<String,String> buildCounterExample(
       Encoder enc,
       Model m,
       SortedMap<String, String> model,
@@ -458,12 +458,11 @@ public class Encoder {
 
     System.out.println("buildCounterExample() called.");
     SortedMap<Expr, String> valuation = new TreeMap<>();
-    ArrayList<String> counterExampleState= new ArrayList<>();
+    HashMap<String, String> counterExampleState= new HashMap<>();
     // If user asks for the full model
     for (Entry<String, Expr> entry : _allVariables.entrySet()) {
 
       String name = entry.getKey();
-//      System.out.print(name + ',');
       Expr e = entry.getValue();
       Expr val = m.evaluate(e, true);
       if (!val.equals(e)) { //excluding constants in the model.
@@ -472,14 +471,17 @@ public class Encoder {
           model.put(name, s);
         }
         valuation.put(e, s);
-       counterExampleState.add(name+ ": "+s);
+       counterExampleState.put(name, s);
         additionalConstraints.put(e, val);
       }
     }
 
-    counterExampleState.sort(String::compareToIgnoreCase);
-    System.out.print("Counter Example: Values assigned to variables -> ");
-    System.out.println(String.join("\n", counterExampleState));
+    System.out.println("Counter Example: Values assigned to variables -> ");
+    ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
+    Collections.sort(sortedKeys);
+    for (String i: sortedKeys){
+      System.out.println(i + ": "  + counterExampleState.get(i));
+    }
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -675,7 +677,7 @@ public class Encoder {
               }
             });
 
-
+    return counterExampleState;
   }
 
   /*
