@@ -826,6 +826,7 @@ public class Encoder {
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
+          System.out.println("Now satisfiable");
           break;
         }
         if (s == Status.UNKNOWN) {
@@ -834,6 +835,8 @@ public class Encoder {
       } while(_question.getMinimize() || numCounterexamples < _numIters);
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
+
+      System.out.println("Generated " + numCounterexamples +" counterexamples");
 
 
       System.out.println("What Changed in variables: ");
