@@ -729,7 +729,6 @@ public class Encoder {
    */
   public Tuple<VerificationResult, Model> verify() {
 
-    System.out.println(_numIters);
 
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
 
