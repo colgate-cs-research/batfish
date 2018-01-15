@@ -775,9 +775,15 @@ public class Encoder {
         SortedMap<Expr,Expr> additionalConstraints = new TreeMap<>();
         HashMap<String, String> ce = buildCounterExample(this, m, model, packetModel,
               fwdModel, envModel, failures, additionalConstraints);
-        for (String key: ce.keySet()){
-          //first values assigned to counter-example variables...
-          variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
+        if (numCounterexamples==0) {
+          for (String key : ce.keySet()) {
+            //first values assigned to counter-example variables...
+            variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
+          }
+        }else{
+          for (String varName : ce.keySet()){
+            variableHistoryMap.get(varName).add(ce.get(varName));
+          }
         }
         if (_previousEncoder != null) {
           ce = buildCounterExample(
