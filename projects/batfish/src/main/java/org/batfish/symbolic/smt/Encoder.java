@@ -9,16 +9,9 @@ import com.microsoft.z3.Model;
 import com.microsoft.z3.Solver;
 import com.microsoft.z3.Status;
 import com.microsoft.z3.Tactic;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
@@ -83,6 +76,8 @@ public class Encoder {
 
   private UnsatCore _unsatCore;
 
+  private Integer _numIters;
+
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
    *
@@ -98,7 +93,7 @@ public class Encoder {
    * @param graph The network graph
    */
   Encoder(Graph graph, HeaderQuestion q) {
-    this(null, graph, q, null, null, null, 0);
+    this(null, graph, q, null, null, null, 0,-1);
   }
 
   /**
@@ -108,7 +103,7 @@ public class Encoder {
    * @param g An existing network graph
    */
   Encoder(Encoder e, Graph g) {
-    this(e, g, e._question, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1);
+    this(e, g, e._question, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1,-1);
   }
 
   /**
@@ -119,9 +114,13 @@ public class Encoder {
    * @param q A header question
    */
   Encoder(Encoder e, Graph g, HeaderQuestion q) {
-    this(e, g, q, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1);
+    this(e, g, q, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1,-1);
   }
 
+  Encoder(Graph graph, HeaderQuestion q, int numIters){
+    this(null, graph, q, null, null, null, 0,numIters);
+    System.out.println("WOOHOO!! " + numIters);
+  }
   /**
    * Create an encoder object while possibly reusing the partial encoding of another encoder. mkIf
    * the context and solver are null, then a new encoder is created. Otherwise the old encoder is
@@ -134,7 +133,8 @@ public class Encoder {
       @Nullable Context ctx,
       @Nullable Solver solver,
       @Nullable Map<String, Expr> vars,
-      int id) {
+      int id,
+      int numIters) {
     _graph = graph;
     _previousEncoder = enc;
     _modelIgp = true;
@@ -142,6 +142,7 @@ public class Encoder {
     _question = q;
     _slices = new HashMap<>();
     _sliceReachability = new HashMap<>();
+    _numIters = numIters;
 
     HashMap<String, String> cfg = new HashMap<>();
 
@@ -457,7 +458,7 @@ public class Encoder {
 
     System.out.println("buildCounterExample() called.");
     SortedMap<Expr, String> valuation = new TreeMap<>();
-
+    ArrayList<String> counterExampleState= new ArrayList<>();
     // If user asks for the full model
     for (Entry<String, Expr> entry : _allVariables.entrySet()) {
 
@@ -471,12 +472,14 @@ public class Encoder {
           model.put(name, s);
         }
         valuation.put(e, s);
-       System.out.println(name+ ": "+s);
+       counterExampleState.add(name+ ": "+s);
         additionalConstraints.put(e, val);
       }
     }
 
-
+    counterExampleState.sort(String::compareToIgnoreCase);
+    System.out.print("Counter Example: Values assigned to variables -> ");
+    System.out.println(String.join("\n", counterExampleState));
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -715,7 +718,6 @@ public class Encoder {
 
 
   //temp testing variables
-  private int num_iters=5;
   private int numcalls =0;
   private SortedMap<Expr, Expr> filterdConstraints;
   /**
@@ -774,7 +776,7 @@ public class Encoder {
               fwdModel, envModel, failures, additionalConstraints);
         }
 
-        if (numcalls < num_iters){//this is the first time verify is called. the 15 data plane packet variables need to be set
+        if (numcalls < _numIters){//this is the first time verify is called. the 15 data plane packet variables need to be set
           SortedSet<Expr> packetVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars(); //should be added to solver during the first iteration.
           SortedSet<BoolExpr> newEqs= new TreeSet<BoolExpr>();
 
