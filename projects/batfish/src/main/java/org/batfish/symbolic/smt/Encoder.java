@@ -479,9 +479,9 @@ public class Encoder {
     System.out.println("Counter Example: Values assigned to variables -> ");
     ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
     Collections.sort(sortedKeys);
-    for (String i: sortedKeys){
-      System.out.println(i + ": "  + counterExampleState.get(i));
-    }
+//    for (String i: sortedKeys){
+//      System.out.println(i + ": "  + counterExampleState.get(i));
+//    }
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -795,7 +795,11 @@ public class Encoder {
         }
 
         result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures);
-
+        //TODO: need to print each result information.. Need to go from a VerificationResult object to an AnswerElement object in order get the summary
+        //TODO: REMOVE THE FOLLOWING LINE >
+        for (IpWildcard ip : _question.getSrcIps()){
+          System.out.println(result.prettyPrint(ip.toString()));
+        }
         numCounterexamples++;
 
         // Generate multiple counter examples
@@ -832,7 +836,8 @@ public class Encoder {
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
-          System.out.println("Now satisfiable");
+          System.out.println("Now unsatisfiable.");
+
           break;
         }
         if (s == Status.UNKNOWN) {
