@@ -845,9 +845,11 @@ public class Encoder {
       System.out.println("Generated " + numCounterexamples +" counterexamples");
 
 
-      System.out.println("What Changed in variables: ");
-      for (String variableName: variableNames){
-        System.out.println(variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " } \n\n");
+      System.out.println("Changes in Model Variables");
+      for (String variableName: variableNames) {
+        if (variableHistoryMap.get(variableName).size() > 1) {
+          System.out.println(variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
+        }
       }
       return new Tuple<>(result, m);
     }
