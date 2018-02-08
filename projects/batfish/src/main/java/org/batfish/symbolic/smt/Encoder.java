@@ -50,7 +50,7 @@ public class Encoder {
 
   static final Boolean ENABLE_DEBUGGING = false;
   static final String MAIN_SLICE_NAME = "SLICE-MAIN_";
-  private static final boolean ENABLE_UNSAT_CORE = false;
+  private static final boolean ENABLE_UNSAT_CORE = true;
   private static final Boolean ENABLE_BENCHMARKING = false;
   private int _encodingId;
 
@@ -152,7 +152,7 @@ public class Encoder {
       cfg.put("auto-config", "false");
     }
 
-    _ctx = (ctx == null ? new Context(cfg) : ctx);
+    _ctx = (ctx==null?new Context(cfg):ctx);
 
     if (solver == null) {
       if (ENABLE_UNSAT_CORE) {
@@ -837,6 +837,7 @@ public class Encoder {
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
           System.out.println("Now unsatisfiable. Unsat core");
+          System.out.println(_solver.getProof());
           System.out.println("Size of UnsatCore : "  + _solver.getUnsatCore().length);
           for (Expr e:_solver.getUnsatCore()){
             System.out.println(e);
