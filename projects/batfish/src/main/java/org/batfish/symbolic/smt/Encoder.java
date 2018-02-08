@@ -836,8 +836,11 @@ public class Encoder {
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
-          System.out.println("Now unsatisfiable.");
-
+          System.out.println("Now unsatisfiable. Unsat core");
+          System.out.println("Size of UnsatCore : "  + _solver.getUnsatCore().length);
+          for (Expr e:_solver.getUnsatCore()){
+            System.out.println(e);
+          }
           break;
         }
         if (s == Status.UNKNOWN) {
