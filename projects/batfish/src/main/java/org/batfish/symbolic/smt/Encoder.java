@@ -729,7 +729,7 @@ public class Encoder {
    */
   public Tuple<VerificationResult, Model> verify() {
 
-
+    Map<String, BoolExpr> unsatVarsMap = _unsatCore.getTrackingVars();
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
 
     int numVariables = _allVariables.size();
@@ -837,10 +837,9 @@ public class Encoder {
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
           System.out.println("Now unsatisfiable. Unsat core");
-          System.out.println(_solver.getProof());
           System.out.println("Size of UnsatCore : "  + _solver.getUnsatCore().length);
           for (Expr e:_solver.getUnsatCore()){
-            System.out.println(e);
+            System.out.println(e.toString() + " : " + unsatVarsMap.get(e.toString()));
           }
           break;
         }
