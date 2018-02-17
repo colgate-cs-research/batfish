@@ -189,7 +189,7 @@ public class PropertyChecker {
         ArithExpr f = enc.getSymbolicFailures().getFailedVariable(ge);
         assert f != null;
         if (!failSet.contains(ge)) {
-          enc.add(enc.mkEq(f, enc.mkInt(0)));
+          enc.add(enc.mkEq(f, enc.mkInt(0)), "addFailureConstraints()");
         } else if (dstPorts.contains(ge)) {
           // Don't fail an interface if it is for the destination ip we are considering
           // Otherwise, any failure can trivially make equivalence false
@@ -197,7 +197,7 @@ public class PropertyChecker {
           BitVecExpr dstIp = enc.getMainSlice().getSymbolicPacket().getDstIp();
           BoolExpr relevant = enc.getMainSlice().isRelevantFor(pfx, dstIp);
           BoolExpr notFailed = enc.mkEq(f, enc.mkInt(0));
-          enc.add(enc.mkImplies(relevant, notFailed));
+          enc.add(enc.mkImplies(relevant, notFailed), "addFailureConstraints()");
         }
       }
     }
@@ -211,12 +211,12 @@ public class PropertyChecker {
         break;
       case NONE:
         for (SymbolicRoute vars : lg.getEnvironmentVars().values()) {
-          enc.add(ctx.mkNot(vars.getPermitted()));
+          enc.add(ctx.mkNot(vars.getPermitted()), "addEnvironmentConstraints()");
         }
         break;
       case SANE:
         for (SymbolicRoute vars : lg.getEnvironmentVars().values()) {
-          enc.add(ctx.mkLe(vars.getMetric(), ctx.mkInt(50)));
+          enc.add(ctx.mkLe(vars.getMetric(), ctx.mkInt(50)), "addEnvironmentConstraints()");
         }
         break;
       default:
@@ -527,7 +527,7 @@ public class PropertyChecker {
             lens.add(lenVars.get(router));
           }
           BoolExpr allEqual = PropertyAdder.allEqual(enc.getCtx(), lens);
-          enc.add(enc.mkNot(allEqual));
+          enc.add(enc.mkNot(allEqual), "checkEqualLength");
           for (Entry<String, ArithExpr> entry : lenVars.entrySet()) {
             String name = entry.getKey();
             BoolExpr b = srcRouters.contains(name) ? allEqual : enc.mkTrue();
@@ -677,7 +677,7 @@ public class PropertyChecker {
       someBlackHole = ctx.mkOr(someBlackHole, ctx.mkAnd(isFwdTo, doesNotFwd));
     }
 
-    enc.add(someBlackHole);
+    enc.add(someBlackHole, "checkBlackHole()");
     VerificationResult result = enc.verify().getFirst();
     return new SmtOneAnswerElement(result);
   }
@@ -719,7 +719,7 @@ public class PropertyChecker {
       acc = enc.mkOr(acc, enc.mkNot(enc.mkImplies(reach, all)));
     }
 
-    enc.add(acc);
+    enc.add(acc, "checkMultipathConsistency()");
     VerificationResult res = enc.verify().getFirst();
     return new SmtOneAnswerElement(res);
   }
@@ -770,7 +770,7 @@ public class PropertyChecker {
       BoolExpr hasLoop = pa.instrumentLoop(router);
       someLoop = ctx.mkOr(someLoop, hasLoop);
     }
-    enc.add(someLoop);
+    enc.add(someLoop, "checkRoutingLoop()");
 
     VerificationResult result = enc.verify().getFirst();
     return new SmtOneAnswerElement(result);

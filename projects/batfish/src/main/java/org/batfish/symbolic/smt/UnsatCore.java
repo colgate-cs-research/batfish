@@ -18,17 +18,20 @@ class UnsatCore {
   private boolean _doTrack;
 
   private Map<String, BoolExpr> _trackingVars;
+  private Map<String, String> _trackingLabels;
 
   private int _trackingNum;
 
   UnsatCore(boolean doTrack) {
     _doTrack = doTrack;
+    _trackingLabels = new HashMap<>();
     _trackingVars = new HashMap<>();
     _trackingNum = 0;
   }
 
-  void track(Solver solver, Context ctx, BoolExpr be) {
-    String name = "Pred" + _trackingNum;
+  void track(Solver solver, Context ctx, BoolExpr be, String label){
+    String name = "Pred" + _trackingNum;// + "(label:" +label+ ")";
+    _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
     _trackingVars.put(name, be);
     if (_doTrack) {
@@ -36,6 +39,9 @@ class UnsatCore {
     } else {
       solver.add(be);
     }
+  }
+  void track(Solver solver, Context ctx, BoolExpr be) {
+    track(solver, ctx, be, "");
   }
 
   boolean getDoTrack() {
@@ -45,4 +51,6 @@ class UnsatCore {
   Map<String, BoolExpr> getTrackingVars() {
     return _trackingVars;
   }
+
+  Map<String, String> getTrackingLabels() {return _trackingLabels;}
 }

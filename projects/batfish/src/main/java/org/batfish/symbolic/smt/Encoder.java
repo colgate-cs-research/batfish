@@ -398,6 +398,11 @@ public class Encoder {
     _unsatCore.track(_solver, _ctx, e);
   }
 
+  void add(BoolExpr e, String caller){
+    _unsatCore.track(_solver, _ctx, e, caller);
+
+  }
+
   /*
    * Adds the constraint that at most k links have failed.
    * This is done in two steps. First we ensure that each link
@@ -417,15 +422,15 @@ public class Encoder {
     ArithExpr sum = mkInt(0);
     for (ArithExpr var : vars) {
       sum = mkSum(sum, var);
-      add(mkGe(var, mkInt(0)));
-      add(mkLe(var, mkInt(1)));
+      add(mkGe(var, mkInt(0)), "addFailedConstraints");
+      add(mkLe(var, mkInt(1)),"addFailedConstraints");
     }
     if (k == 0) {
       for (ArithExpr var : vars) {
-        add(mkEq(var, mkInt(0)));
+        add(mkEq(var, mkInt(0)),"addFailedConstraints");
       }
     } else {
-      add(mkLe(sum, mkInt(k)));
+      add(mkLe(sum, mkInt(k)),"addFailedConstraints");
     }
   }
 
@@ -730,6 +735,7 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
 
     Map<String, BoolExpr> unsatVarsMap = _unsatCore.getTrackingVars();
+    Map<String, String> unsatcoreLabelsMap = _unsatCore.getTrackingLabels();
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
 
     int numVariables = _allVariables.size();
@@ -831,7 +837,7 @@ public class Encoder {
         // Find the smallest possible counterexample
         if (_question.getMinimize()) {
             BoolExpr blocking = environmentBlockingClause(m);
-            add(blocking);
+            add(blocking, "verify():blockingClause");
         }
 
         Status s = _solver.check();
@@ -839,7 +845,8 @@ public class Encoder {
           System.out.println("Now unsatisfiable. Unsat core");
           System.out.println("Size of UnsatCore : "  + _solver.getUnsatCore().length);
           for (Expr e:_solver.getUnsatCore()){
-            System.out.println(e.toString() + " : " + unsatVarsMap.get(e.toString()));
+            System.out.println(e.toString() + ":" +unsatcoreLabelsMap.get(e.toString()) + " : " + unsatVarsMap.get(e.toString()));
+          }
           }
           break;
         }
@@ -855,10 +862,13 @@ public class Encoder {
 
       System.out.println("Changes in Model Variables");
       for (String variableName: variableNames) {
-        if (variableHistoryMap.get(variableName).size() > 1) {
+        if (variableHistoryMap.get(variableName).size() <= 1) {
           System.out.println(variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
         }
       }
+
+
+
       return new Tuple<>(result, m);
     }
   }
