@@ -930,51 +930,51 @@ class EncoderSlice {
     ArithExpr zero = mkInt(0);
 
     // Valid 16 bit integer
-    add(mkGe(_symbolicPacket.getDstPort(), zero), "addBoundConstraints():dstPort");
-    add(mkGe(_symbolicPacket.getSrcPort(), zero),"addBoundConstraints():srcPort");
-    add(mkLt(_symbolicPacket.getDstPort(), upperBound16), "addBoundConstraints():dstPort");
-    add(mkLt(_symbolicPacket.getSrcPort(), upperBound16),"addBoundConstraints():srctPort");
+    add(mkGe(_symbolicPacket.getDstPort(), zero), UnsatCore.BOUND);
+    add(mkGe(_symbolicPacket.getSrcPort(), zero), UnsatCore.BOUND);
+    add(mkLt(_symbolicPacket.getDstPort(), upperBound16), UnsatCore.BOUND);
+    add(mkLt(_symbolicPacket.getSrcPort(), upperBound16), UnsatCore.BOUND);
 
     // Valid 8 bit integer
-    add(mkGe(_symbolicPacket.getIcmpType(), zero), "addBoundConstraints():icmpType");
-    add(mkGe(_symbolicPacket.getIpProtocol(), zero), "addBoundConstraints():ipProtocol");
-    add(mkLt(_symbolicPacket.getIcmpType(), upperBound8),"addBoundConstraints():icmpType");
-    add(mkLe(_symbolicPacket.getIpProtocol(), upperBound8),"addBoundConstraints():ipProtocol");
+    add(mkGe(_symbolicPacket.getIcmpType(), zero), UnsatCore.BOUND);
+    add(mkGe(_symbolicPacket.getIpProtocol(), zero), UnsatCore.BOUND);
+    add(mkLt(_symbolicPacket.getIcmpType(), upperBound8), UnsatCore.BOUND);
+    add(mkLe(_symbolicPacket.getIpProtocol(), upperBound8), UnsatCore.BOUND);
 
     // Valid 4 bit integer
-    add(mkGe(_symbolicPacket.getIcmpCode(), zero), "addBoundConstraints():icmpCode");
-    add(mkLt(_symbolicPacket.getIcmpCode(), upperBound4),"addBoundConstraints():icmpCode");
+    add(mkGe(_symbolicPacket.getIcmpCode(), zero), UnsatCore.BOUND);
+    add(mkLt(_symbolicPacket.getIcmpCode(), upperBound4), UnsatCore.BOUND);
 
     for (SymbolicRoute e : getAllSymbolicRecords()) {
       if (e.getRouterId() != null) {
-        add(mkGe(e.getRouterId(), zero),"addBoundConstraints():routerId");
+        add(mkGe(e.getRouterId(), zero), UnsatCore.BOUND);
       }
 
       if (e.getAdminDist() != null) {
-        add(mkGe(e.getAdminDist(), zero), "addBoundConstraints():adminDist");
-        add(mkLt(e.getAdminDist(), upperBound8), "addBoundConstraints():adminDist");
+        add(mkGe(e.getAdminDist(), zero), UnsatCore.BOUND);
+        add(mkLt(e.getAdminDist(), upperBound8), UnsatCore.BOUND);
       }
       if (e.getMed() != null) {
-        add(mkGe(e.getMed(), zero), "addBoundConstraints():med");
-        add(mkLt(e.getMed(), upperBound32), "addBoundConstraints():med");
+        add(mkGe(e.getMed(), zero), UnsatCore.BOUND);
+        add(mkLt(e.getMed(), upperBound32), UnsatCore.BOUND);
       }
       if (e.getLocalPref() != null) {
-        add(mkGe(e.getLocalPref(), zero),"addBoundConstraints():localPref");
-        add(mkLt(e.getLocalPref(), upperBound32), "addBoundConstraints():localPref");
+        add(mkGe(e.getLocalPref(), zero), UnsatCore.BOUND);
+        add(mkLt(e.getLocalPref(), upperBound32), UnsatCore.BOUND);
       }
       if (e.getMetric() != null) {
-        add(mkGe(e.getMetric(), zero), "addBoundConstraints():metric");
+        add(mkGe(e.getMetric(), zero), UnsatCore.BOUND);
         if (e.isEnv()) {
-          add(mkLt(e.getMetric(), upperBound8), "addBoundConstraints():metric");
+          add(mkLt(e.getMetric(), upperBound8), UnsatCore.BOUND);
         }
-        add(mkLt(e.getMetric(), upperBound16), "addBoundConstraints():metric");
+        add(mkLt(e.getMetric(), upperBound16), UnsatCore.BOUND);
       }
       if (e.getIgpMetric() != null) {
-        add(mkGe(e.getIgpMetric(), zero), "addBoundConstraints():igpMetric");
+        add(mkGe(e.getIgpMetric(), zero), UnsatCore.BOUND);
       }
       if (e.getPrefixLength() != null) {
-        add(mkGe(e.getPrefixLength(), zero), "addBoundConstraints():prefixLength");
-        add(mkLe(e.getPrefixLength(), mkInt(32)), "addBoundConstraints():prefixLength");
+        add(mkGe(e.getPrefixLength(), zero), UnsatCore.BOUND);
+        add(mkLe(e.getPrefixLength(), mkInt(32)), UnsatCore.BOUND);
       }
     }
   }
@@ -1482,16 +1482,16 @@ class EncoderSlice {
           }
           add(
               mkImplies(
-                  bestVars.getPermitted(), greaterOrEqual(conf, proto, best, bestVars, null)),"addBestOverallConstraints()");
+                  bestVars.getPermitted(), greaterOrEqual(conf, proto, best, bestVars, null)), UnsatCore.BEST_OVERALL);
         }
 
         if (someProto) {
           if (acc != null) {
-            add(mkEq(somePermitted, best.getPermitted()),"addBestOverallConstraints()");
-            add(mkImplies(somePermitted, acc), "addBestOverallConstraints()");
+            add(mkEq(somePermitted, best.getPermitted()), UnsatCore.BEST_OVERALL);
+            add(mkImplies(somePermitted, acc), UnsatCore.BEST_OVERALL);
           }
         } else {
-          add(mkNot(best.getPermitted()), "addBestOverallConstraints()");
+          add(mkNot(best.getPermitted()), UnsatCore.BEST_OVERALL);
         }
       }
     }
@@ -1531,12 +1531,12 @@ class EncoderSlice {
           } else {
             acc = mkOr(acc, v);
           }
-          add(mkImplies(vars.getPermitted(), greaterOrEqual(conf, proto, bestVars, vars, e)), "addBestPerProtocolConstraints()");
+          add(mkImplies(vars.getPermitted(), greaterOrEqual(conf, proto, bestVars, vars, e)), UnsatCore.BEST_PER_PROTOCOL);
         }
 
         if (acc != null) {
-          add(mkEq(somePermitted, bestVars.getPermitted()), "addBestPerProtocolConstraints()");
-          add(mkImplies(somePermitted, acc), "addBestPerProtocolConstraints()");
+          add(mkEq(somePermitted, bestVars.getPermitted()), UnsatCore.BEST_PER_PROTOCOL);
+          add(mkImplies(somePermitted, acc), UnsatCore.BEST_PER_PROTOCOL);
         }
       }
     }
@@ -1561,7 +1561,7 @@ class EncoderSlice {
           BoolExpr choice = _symbolicDecisions.getChoiceVariables().get(router, proto, e);
           assert (choice != null);
           BoolExpr isBest = equal(conf, proto, bestVars, vars, e, false);
-          add(mkEq(choice, mkAnd(vars.getPermitted(), isBest)), "addChoicePerProtocolConstraints()");
+          add(mkEq(choice, mkAnd(vars.getPermitted(), isBest)), UnsatCore.CHOICE_PER_PROTOCOL);
         }
       }
     }
@@ -1615,7 +1615,7 @@ class EncoderSlice {
 
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
-          add(mkImplies(sends, cForward),"addControlForwardingConstraints()");
+          add(mkImplies(sends, cForward), UnsatCore.CONTROL_FORWARDING);
 
           // record the negation as well
           cfExprs.merge(ge, sends, (a, b) -> mkOr(a, b));
@@ -1636,7 +1636,7 @@ class EncoderSlice {
         for (GraphEdge ge : getGraph().getEdgeMap().get(router)) {
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
-          add(mkNot(cForward), "addControlForwardingConstraints()");
+          add(mkNot(cForward), UnsatCore.CONTROL_FORWARDING);
         }
       } else {
         // If no best route, then no forwarding
@@ -1656,9 +1656,9 @@ class EncoderSlice {
               BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
               assert (cForward != null);
               if (expr != null) {
-                add(mkImplies(mkNot(expr), mkNot(cForward)),"addControlForwardingConstraints()");
+                add(mkImplies(mkNot(expr), mkNot(cForward)),UnsatCore.CONTROL_FORWARDING);
               } else {
-                add(mkNot(cForward), "addControlForwardingConstraints()");
+                add(mkNot(cForward), UnsatCore.CONTROL_FORWARDING);
               }
             }
           }

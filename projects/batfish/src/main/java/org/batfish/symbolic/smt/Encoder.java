@@ -422,15 +422,15 @@ public class Encoder {
     ArithExpr sum = mkInt(0);
     for (ArithExpr var : vars) {
       sum = mkSum(sum, var);
-      add(mkGe(var, mkInt(0)), "addFailedConstraints");
-      add(mkLe(var, mkInt(1)),"addFailedConstraints");
+      add(mkGe(var, mkInt(0)), UnsatCore.FAILED);
+      add(mkLe(var, mkInt(1)), UnsatCore.FAILED);
     }
     if (k == 0) {
       for (ArithExpr var : vars) {
-        add(mkEq(var, mkInt(0)),"addFailedConstraints");
+        add(mkEq(var, mkInt(0)), UnsatCore.FAILED);
       }
     } else {
-      add(mkLe(sum, mkInt(k)),"addFailedConstraints");
+      add(mkLe(sum, mkInt(k)), UnsatCore.FAILED);
     }
   }
 
@@ -837,16 +837,28 @@ public class Encoder {
         // Find the smallest possible counterexample
         if (_question.getMinimize()) {
             BoolExpr blocking = environmentBlockingClause(m);
-            add(blocking, "verify():blockingClause");
+            add(blocking, UnsatCore.ENVIRONMENT);
         }
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
           System.out.println("Now unsatisfiable. Unsat core");
-          System.out.println("Size of UnsatCore : "  + _solver.getUnsatCore().length);
+          System.out.println("Size of UnsatCore : " 
+                  + _solver.getUnsatCore().length);
           for (Expr e:_solver.getUnsatCore()){
-            System.out.println(e.toString() + ":" +unsatcoreLabelsMap.get(e.toString()) + " : " + unsatVarsMap.get(e.toString()));
-          }
+            String label = unsatcoreLabelsMap.get(e.toString());
+            // Only consider constraints we can change
+            if (!(label.equals(UnsatCore.FAILED)
+                    || label.equals(UnsatCore.ENVIRONMENT)
+                    || label.equals(UnsatCore.BEST_OVERALL)
+                    || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+                    || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+                    || label.equals(UnsatCore.CONTROL_FORWARDING)
+                    || label.equals(UnsatCore.POLICY)
+                    || label.equals(UnsatCore.BOUND))) {
+              System.out.println(e.toString() + ":" + label + " : " 
+                      + unsatVarsMap.get(e.toString()));
+            }
           }
           break;
         }

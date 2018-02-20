@@ -22,6 +22,15 @@ class UnsatCore {
 
   private int _trackingNum;
 
+  protected static final String BOUND = "bound";
+  protected static final String FAILED = "failed";
+  protected static final String ENVIRONMENT = "environment";
+  protected static final String BEST_OVERALL = "bestOverall";
+  protected static final String BEST_PER_PROTOCOL = "bestPerProtocol";
+  protected static final String CHOICE_PER_PROTOCOL = "choicePerProtocol";
+  protected static final String CONTROL_FORWARDING = "controlForwarding";
+  protected static final String POLICY = "policy";
+
   UnsatCore(boolean doTrack) {
     _doTrack = doTrack;
     _trackingLabels = new HashMap<>();
