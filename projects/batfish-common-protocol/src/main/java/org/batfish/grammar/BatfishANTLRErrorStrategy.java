@@ -1,10 +1,7 @@
 package org.batfish.grammar;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
-import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.DefaultErrorStrategy;
 import org.antlr.v4.runtime.InputMismatchException;
 import org.antlr.v4.runtime.IntStream;
@@ -14,7 +11,6 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.TokenSource;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.atn.ATNState;
 import org.antlr.v4.runtime.misc.IntervalSet;
@@ -56,7 +52,7 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
    * Generic {@link RecognitionException} used by {@link BatfishANTLRErrorStrategy} to be thrown in
    * situations not easily mappable to traditional ANTLR parser error conditions.
    */
-  private static class BatfishRecognitionException extends RecognitionException {
+  static class BatfishRecognitionException extends RecognitionException {
 
     /** */
     private static final long serialVersionUID = 1L;
@@ -67,25 +63,25 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
     }
   }
 
-  private final List<String> _lines;
+  private final String[] _lines;
+
+  private boolean _recoveredAtEof;
 
   private int _separatorToken;
 
   /**
    * Construct a {@link BatfishANTLRErrorStrategy} that throws out invalid lines from as delimited
-   * by {@link separatorToken}. The {@link minimumRequiredSeparatorText} is used to split {@link
+   * by {@code separatorToken}. The {@code minimumRequiredSeparatorText} is used to split {@code
    * text} into lines, which {@link BatfishANTLRErrorStrategy} uses when creating instances of
    * {@link ErrorNode} from discarded lines.
    *
    * @param separatorToken Token that delimits lines
-   * @param minimumRequiredSeparatorText Minimal string representation of {@link separatorToken}
-   * @param text {@link text of file to split into lines}
+   * @param minimumRequiredSeparatorText Minimal string representation of {@code separatorToken}
+   * @param text text of file to split into lines
    */
   private BatfishANTLRErrorStrategy(
       int separatorToken, String minimumRequiredSeparatorText, String text) {
-    _lines =
-        Collections.unmodifiableList(
-            Arrays.asList(text.split(Pattern.quote(minimumRequiredSeparatorText))));
+    _lines = text.split(Pattern.quote(minimumRequiredSeparatorText), -1);
     _separatorToken = separatorToken;
   }
 
@@ -108,17 +104,15 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
 
       // Get the line number and separator text from the separator token
       Token separatorToken = recognizer.getCurrentToken();
-      int lineIndex = separatorToken.getLine() - 1;
-      String separator = separatorToken.getText();
 
       // Insert the current line as an {@link ErrorNode} as a child of the current rule
-      createErrorNode(recognizer, recognizer.getContext(), lineIndex, separator);
+      createErrorNode(recognizer, recognizer.getContext(), separatorToken);
 
       // Eat the separator token
       recognizer.consume();
 
       nextToken = recognizer.getInputStream().LA(1);
-    } while (!whatFollowsLoopIterationOrRule.contains(nextToken));
+    } while (!whatFollowsLoopIterationOrRule.contains(nextToken) && nextToken != Lexer.EOF);
   }
 
   private void consumeUntilEndOfLine(Parser parser) {
@@ -129,24 +123,30 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
    * Create an error node with the text of the current line and insert it into parse tree
    *
    * @param recognizer The recognizer with which to create the error node
-   * @param lineIndex The 0-based line of input whose text will go in the error node
-   * @param separator The text of the separator to append to the input line text
+   * @param separator The token that ends the unrecognized link. This is also used to determine the
+   *     index of the line to return in error messages.
    * @return The token contained in the error node
    */
-  private Token createErrorNode(
-      Parser recognizer, ParserRuleContext ctx, int lineIndex, String separator) {
-    String lineText = _lines.get(lineIndex) + separator;
+  private Token createErrorNode(Parser recognizer, ParserRuleContext ctx, Token separator) {
+    if (_recoveredAtEof) {
+      _recoveredAtEof = false;
+      throw new BatfishRecognitionException(recognizer, recognizer.getInputStream(), ctx);
+    }
+    if (separator.getType() == Lexer.EOF) {
+      _recoveredAtEof = true;
+    }
+    String lineText = _lines[separator.getLine() - 1] + separator.getText();
     Token lineToken =
         recognizer
             .getTokenFactory()
             .create(
-                new Pair<TokenSource, CharStream>(null, null),
+                new Pair<>(null, null),
                 BatfishLexer.UNRECOGNIZED_LINE_TOKEN,
                 lineText,
                 Lexer.DEFAULT_TOKEN_CHANNEL,
                 -1,
                 -1,
-                lineIndex,
+                separator.getLine(),
                 0);
     ErrorNode errorNode = recognizer.createErrorNode(ctx, lineToken);
     ctx.addErrorNode(errorNode);
@@ -154,15 +154,16 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
   }
 
   /**
-   * Attempt to get {@link recognizer} into a state where parsing can continue by throwing away the
+   * Attempt to get {@code parser} into a state where parsing can continue by throwing away the
    * current line and abandoning the current rule if possible. If at root already, the current line
    * is placed into an {@link ErrorNode} at the root and parsing continues at the next line (first
    * base case). If in a child rule with a parent that A) has its own parent and B) started on the
    * same line; then an exception is thrown to defer cleanup to the parent (recursive case). In any
    * other case, this rule is removed from its parent, and the current line is inserted as an {@link
-   * ErrorNode} in its place as a child of that parent (second base case).
+   * ErrorNode} in its place as a child of that parent (second base case). If no lines remain,
+   * parsing stops.
    *
-   * @param recognizer The {@link Parser} needing to perform recovery
+   * @param parser The {@link Parser} needing to perform recovery
    * @return If base case applies, returns a {@link Token} whose containing the text of the
    *     created @{link ErrorNode}.
    */
@@ -188,19 +189,17 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
 
     // Get the line number and separator text from the separator token
     Token separatorToken = parser.getCurrentToken();
-    int lineIndex = separatorToken.getLine() - 1;
-    String separator = separatorToken.getText();
 
     if (parent == null) {
       // First base case
       parser.consume();
-      return createErrorNode(parser, ctx, lineIndex, separator);
+      return createErrorNode(parser, ctx, separatorToken);
     } else {
       // Second base case
       List<ParseTree> parentChildren = parent.children;
       parentChildren.remove(parentChildren.size() - 1);
       parser.consume();
-      return createErrorNode(parser, parent, lineIndex, separator);
+      return createErrorNode(parser, parent, separatorToken);
     }
   }
 
@@ -229,13 +228,14 @@ public class BatfishANTLRErrorStrategy extends DefaultErrorStrategy {
 
     // Get the line number and separator text from the separator token
     Token separatorToken = recognizer.getCurrentToken();
-    int lineIndex = separatorToken.getLine() - 1;
-    String separator = separatorToken.getText();
 
     ParserRuleContext ctx = recognizer.getContext();
     recognizer.consume();
-    createErrorNode(recognizer, ctx, lineIndex, separator);
+    createErrorNode(recognizer, ctx, separatorToken);
     endErrorCondition(recognizer);
+    if (recognizer.getInputStream().LA(1) == Lexer.EOF) {
+      recover(recognizer);
+    }
   }
 
   @Override

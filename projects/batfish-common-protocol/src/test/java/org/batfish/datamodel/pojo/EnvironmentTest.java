@@ -3,6 +3,7 @@ package org.batfish.datamodel.pojo;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -39,7 +40,7 @@ public class EnvironmentTest {
     bgpAdvertisements.add(
         new BgpAdvertisement(
             BgpAdvertisementType.EBGP_SENT,
-            new Prefix("1.1.1.1/24"),
+            Prefix.parse("1.1.1.1/24"),
             new Ip("1.1.1.1"),
             "srcNode",
             "srcVrf",
@@ -53,8 +54,8 @@ public class EnvironmentTest {
             20,
             new Ip("0.0.0.0"),
             new AsPath(Lists.newArrayList()),
-            null,
-            null,
+            ImmutableSortedSet.of(),
+            ImmutableSortedSet.of(),
             10));
     Environment e =
         new Environment(

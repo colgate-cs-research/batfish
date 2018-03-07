@@ -2,14 +2,11 @@ package org.batfish.datamodel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.collect.ImmutableSortedSet;
 import java.io.Serializable;
-import java.util.BitSet;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.SortedSet;
-import java.util.TreeSet;
 import javax.annotation.Nullable;
-import org.batfish.common.BatfishException;
 
 public class PrefixTrie implements Serializable {
 
@@ -26,18 +23,18 @@ public class PrefixTrie implements Serializable {
 
     public void addPrefix(Prefix prefix) {
       int prefixLength = prefix.getPrefixLength();
-      BitSet bits = prefix.getAddress().getAddressBits();
+      long bits = prefix.getStartIp().asLong();
       _root.addPrefix(prefix, bits, prefixLength, 0);
     }
 
     public boolean containsPathFromPrefix(Prefix prefix) {
       int prefixLength = prefix.getPrefixLength();
-      BitSet bits = prefix.getAddress().getAddressBits();
+      long bits = prefix.getStartIp().asLong();
       return _root.containsPathFromPrefix(bits, prefixLength, 0);
     }
 
     public Prefix getLongestPrefixMatch(Ip address) {
-      BitSet addressBits = address.getAddressBits();
+      long addressBits = address.asLong();
       return _root.getLongestPrefixMatch(address, addressBits, 0);
     }
   }
@@ -53,12 +50,12 @@ public class PrefixTrie implements Serializable {
 
     private ByteTrieNode _right;
 
-    public void addPrefix(Prefix prefix, BitSet bits, int prefixLength, int depth) {
+    public void addPrefix(Prefix prefix, long bits, int prefixLength, int depth) {
       if (prefixLength == depth) {
         _prefix = prefix;
         return;
       } else {
-        boolean currentBit = bits.get(depth);
+        boolean currentBit = Ip.getBitAtPosition(bits, depth);
         if (currentBit) {
           if (_right == null) {
             _right = new ByteTrieNode();
@@ -73,7 +70,7 @@ public class PrefixTrie implements Serializable {
       }
     }
 
-    public boolean containsPathFromPrefix(BitSet bits, int prefixLength, int depth) {
+    public boolean containsPathFromPrefix(long bits, int prefixLength, int depth) {
       if (prefixLength == depth) {
         if (depth == 0 && _prefix == null) {
           return false;
@@ -81,7 +78,7 @@ public class PrefixTrie implements Serializable {
           return true;
         }
       } else {
-        boolean currentBit = bits.get(depth);
+        boolean currentBit = Ip.getBitAtPosition(bits, depth);
         if (currentBit) {
           if (_right == null) {
             return false;
@@ -107,12 +104,12 @@ public class PrefixTrie implements Serializable {
       }
     }
 
-    public Prefix getLongestPrefixMatch(Ip address, BitSet bits, int index) {
+    public Prefix getLongestPrefixMatch(Ip address, long bits, int index) {
       Prefix longestPrefixMatch = getLongestPrefixMatch(address);
       if (index == Prefix.MAX_PREFIX_LENGTH) {
         return longestPrefixMatch;
       }
-      boolean currentBit = bits.get(index);
+      boolean currentBit = Ip.getBitAtPosition(bits, index);
       Prefix longerMatch = null;
       if (currentBit) {
         if (_right != null) {
@@ -140,35 +137,16 @@ public class PrefixTrie implements Serializable {
 
   public PrefixTrie() {
     _trie = new ByteTrie();
-    _prefixes = new TreeSet<>();
+    _prefixes = Collections.emptySortedSet();
   }
 
   @JsonCreator
   public PrefixTrie(SortedSet<Prefix> prefixes) {
+    _prefixes = ImmutableSortedSet.copyOf(prefixes);
     _trie = new ByteTrie();
-    _prefixes = prefixes;
-    for (Prefix prefix : prefixes) {
+    for (Prefix prefix : _prefixes) {
       _trie.addPrefix(prefix);
     }
-  }
-
-  public boolean add(Prefix prefix) {
-    if (prefix == null) {
-      throw new BatfishException("Cannot add null prefix to trie");
-    }
-    boolean changed = _prefixes.add(prefix);
-    if (changed) {
-      _trie.addPrefix(prefix);
-    }
-    return changed;
-  }
-
-  public boolean addAll(Collection<Prefix> prefixes) {
-    boolean changed = false;
-    for (Prefix prefix : prefixes) {
-      changed = changed || add(prefix);
-    }
-    return changed;
   }
 
   public boolean containsIp(Ip address) {
@@ -185,6 +163,6 @@ public class PrefixTrie implements Serializable {
 
   @JsonValue
   public SortedSet<Prefix> getPrefixes() {
-    return Collections.unmodifiableSortedSet(_prefixes);
+    return _prefixes;
   }
 }

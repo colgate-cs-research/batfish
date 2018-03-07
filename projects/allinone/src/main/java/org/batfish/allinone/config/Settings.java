@@ -1,14 +1,19 @@
 package org.batfish.allinone.config;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import org.batfish.common.BaseSettings;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.Version;
 import org.batfish.common.util.CommonUtil;
+import org.batfish.main.Driver;
+import org.batfish.main.Driver.RunMode;
 
 public class Settings extends BaseSettings {
 
   private static final String ARG_BATFISH_ARGS = "batfishargs";
+  private static final String ARG_BATFISH_RUN_MODE = "batfishmode";
   private static final String ARG_CLIENT_ARGS = "clientargs";
   private static final String ARG_COMMAND_FILE =
       org.batfish.client.config.Settings.ARG_COMMAND_FILE;
@@ -18,6 +23,7 @@ public class Settings extends BaseSettings {
   private static final String ARG_LOG_LEVEL = "loglevel";
   private static final String ARG_RUN_CLIENT = "runclient";
   private static final String ARG_RUN_MODE = org.batfish.client.config.Settings.ARG_RUN_MODE;
+  public static final String ARG_SERVICE_NAME = "servicename";
   private static final String ARG_TESTRIG_DIR = org.batfish.client.config.Settings.ARG_TESTRIG_DIR;
   private static final String ARG_TRACING_AGENT_HOST = "tracingagenthost";
   private static final String ARG_TRACING_AGENT_PORT = "tracingagentport";
@@ -27,6 +33,7 @@ public class Settings extends BaseSettings {
   private static final String EXECUTABLE_NAME = "allinone";
 
   private String _batfishArgs;
+  private Driver.RunMode _batfishRunMode;
   private String _clientArgs;
   private String _commandFile;
   private String _coordinatorArgs;
@@ -34,12 +41,13 @@ public class Settings extends BaseSettings {
   private String _logLevel;
   private boolean _runClient;
   private String _runMode;
+  private String _serviceName;
   private String _testrigDir;
   private String _tracingAgentHost;
   private Integer _tracingAgentPort;
   private boolean _tracingEnable;
 
-  public Settings(String[] args) throws Exception {
+  public Settings(String[] args) {
     super(
         CommonUtil.getConfig(
             BfConsts.PROP_ALLINONE_PROPERTIES_PATH,
@@ -53,6 +61,10 @@ public class Settings extends BaseSettings {
 
   public String getBatfishArgs() {
     return _batfishArgs;
+  }
+
+  public RunMode getBatfishRunMode() {
+    return _batfishRunMode;
   }
 
   public String getClientArgs() {
@@ -83,6 +95,10 @@ public class Settings extends BaseSettings {
     return _runMode;
   }
 
+  public String getServiceName() {
+    return _serviceName;
+  }
+
   public String getTestrigDir() {
     return _testrigDir;
   }
@@ -108,10 +124,12 @@ public class Settings extends BaseSettings {
     setDefaultProperty(ARG_LOG_FILE, null);
     setDefaultProperty(ARG_LOG_LEVEL, BatfishLogger.getLogLevelStr(BatfishLogger.LEVEL_OUTPUT));
     setDefaultProperty(ARG_BATFISH_ARGS, "");
+    setDefaultProperty(ARG_BATFISH_RUN_MODE, RunMode.WORKSERVICE.toString());
     setDefaultProperty(ARG_CLIENT_ARGS, "");
     setDefaultProperty(ARG_COORDINATOR_ARGS, "");
     setDefaultProperty(ARG_RUN_CLIENT, true);
     setDefaultProperty(ARG_RUN_MODE, "batch");
+    setDefaultProperty(ARG_SERVICE_NAME, "allinone-service");
     setDefaultProperty(ARG_TRACING_AGENT_HOST, "localhost");
     setDefaultProperty(ARG_TRACING_AGENT_PORT, 5775);
     setDefaultProperty(ARG_TRACING_ENABLE, false);
@@ -129,6 +147,14 @@ public class Settings extends BaseSettings {
 
     addOption(ARG_BATFISH_ARGS, "arguments for batfish process", "batfish_args");
 
+    addOption(
+        ARG_BATFISH_RUN_MODE,
+        "mode in which to start batfish",
+        Arrays.stream(RunMode.values())
+            .filter(v -> v != RunMode.WORKER)
+            .map(v -> v.toString())
+            .collect(Collectors.joining("|")));
+
     addOption(ARG_CLIENT_ARGS, "arguments for the client process", "client_args");
 
     addOption(ARG_COMMAND_FILE, "which command file to use", "command_file");
@@ -138,6 +164,8 @@ public class Settings extends BaseSettings {
     addBooleanOption(ARG_RUN_CLIENT, "whether to run the client");
 
     addOption(ARG_RUN_MODE, "which mode to run in (batch|interactive)", "run_mode");
+
+    addOption(ARG_SERVICE_NAME, "service name", "service_name");
 
     addOption(ARG_TESTRIG_DIR, "where the testrig sits", "testrig_dir");
 
@@ -168,10 +196,15 @@ public class Settings extends BaseSettings {
     _logFile = getStringOptionValue(ARG_LOG_FILE);
     _logLevel = getStringOptionValue(ARG_LOG_LEVEL);
     _batfishArgs = getStringOptionValue(ARG_BATFISH_ARGS);
+    _batfishRunMode = RunMode.valueOf(getStringOptionValue(ARG_BATFISH_RUN_MODE).toUpperCase());
+    if (_batfishRunMode == RunMode.WORKER) {
+      throw new IllegalArgumentException("Cannot start batfish in worker mode");
+    }
     _clientArgs = getStringOptionValue(ARG_CLIENT_ARGS);
     _coordinatorArgs = getStringOptionValue(ARG_COORDINATOR_ARGS);
     _runClient = getBooleanOptionValue(ARG_RUN_CLIENT);
     _runMode = getStringOptionValue(ARG_RUN_MODE);
+    _serviceName = getStringOptionValue(ARG_SERVICE_NAME);
     _testrigDir = getStringOptionValue(ARG_TESTRIG_DIR);
     _tracingAgentHost = getStringOptionValue(ARG_TRACING_AGENT_HOST);
     _tracingAgentPort = getIntegerOptionValue(ARG_TRACING_AGENT_PORT);

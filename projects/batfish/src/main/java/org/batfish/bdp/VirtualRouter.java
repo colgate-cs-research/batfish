@@ -24,11 +24,14 @@ import org.batfish.datamodel.BgpRoute;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConnectedRoute;
 import org.batfish.datamodel.Edge;
+import org.batfish.datamodel.Fib;
 import org.batfish.datamodel.GeneratedRoute;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.OriginType;
 import org.batfish.datamodel.OspfArea;
+import org.batfish.datamodel.OspfAreaSummary;
 import org.batfish.datamodel.OspfExternalRoute;
 import org.batfish.datamodel.OspfExternalType1Route;
 import org.batfish.datamodel.OspfExternalType2Route;
@@ -230,9 +233,7 @@ public class VirtualRouter extends ComparableStructure<String> {
         Prefix matchingRoutePrefix = matchingRoute.getNetwork();
         // check to make sure matching route's prefix does not totally
         // contain this static route's prefix
-        if (matchingRoutePrefix.getAddress().asLong() > staticRoutePrefix.getAddress().asLong()
-            || matchingRoutePrefix.getEndAddress().asLong()
-                < staticRoutePrefix.getEndAddress().asLong()) {
+        if (!matchingRoutePrefix.containsPrefix(staticRoutePrefix)) {
           changed |= _mainRib.mergeRoute(sr);
           break; // break out of the inner loop but continue processing static routes
         }
@@ -305,24 +306,26 @@ public class VirtualRouter extends ComparableStructure<String> {
     for (Entry<Long, OspfArea> e : proc.getAreas().entrySet()) {
       long areaNum = e.getKey();
       OspfArea area = e.getValue();
-      for (Entry<Prefix, Boolean> e2 : area.getSummaries().entrySet()) {
+      for (Entry<Prefix, OspfAreaSummary> e2 : area.getSummaries().entrySet()) {
         Prefix prefix = e2.getKey();
-        boolean advertise = e2.getValue();
+        OspfAreaSummary summary = e2.getValue();
 
         // Only advertised summaries can contribute
-        if (!advertise) {
+        if (!summary.getAdvertised()) {
           continue;
         }
 
-        // Compute the metric from any possible contributing routes
-        Long metric = null;
-        for (OspfIntraAreaRoute contributingRoute : _ospfIntraAreaRib.getRoutes()) {
-          metric =
-              computeUpdatedOspfSummaryMetric(contributingRoute, prefix, metric, areaNum, useMin);
-        }
-        for (OspfInterAreaRoute contributingRoute : _ospfInterAreaRib.getRoutes()) {
-          metric =
-              computeUpdatedOspfSummaryMetric(contributingRoute, prefix, metric, areaNum, useMin);
+        Long metric = summary.getMetric();
+        if (summary.getMetric() == null) {
+          // No metric was configured; compute it from any possible contributing routes.
+          for (OspfIntraAreaRoute contributingRoute : _ospfIntraAreaRib.getRoutes()) {
+            metric =
+                computeUpdatedOspfSummaryMetric(contributingRoute, prefix, metric, areaNum, useMin);
+          }
+          for (OspfInterAreaRoute contributingRoute : _ospfInterAreaRib.getRoutes()) {
+            metric =
+                computeUpdatedOspfSummaryMetric(contributingRoute, prefix, metric, areaNum, useMin);
+          }
         }
 
         // No routes contributed to the summary, nothing to construct
@@ -462,6 +465,7 @@ public class VirtualRouter extends ComparableStructure<String> {
               builder.setOriginType(originType);
               builder.setProtocol(targetProtocol);
               // TODO: support external route reflector clients
+              builder.setReceivedFromIp(advert.getSrcIp());
               builder.setReceivedFromRouteReflectorClient(false);
               builder.setSrcProtocol(srcProtocol);
               // TODO: possibly suppport setting tag
@@ -484,6 +488,7 @@ public class VirtualRouter extends ComparableStructure<String> {
               outgoingRouteBuilder.setOriginatorIp(advert.getOriginatorIp());
               outgoingRouteBuilder.setOriginType(advert.getOriginType());
               outgoingRouteBuilder.setProtocol(targetProtocol);
+              outgoingRouteBuilder.setReceivedFromIp(advert.getSrcIp());
               // TODO:
               // outgoingRouteBuilder.setReceivedFromRouteReflectorClient(...);
               outgoingRouteBuilder.setSrcProtocol(advert.getSrcProtocol());
@@ -493,6 +498,10 @@ public class VirtualRouter extends ComparableStructure<String> {
               // Incoming originatorIp
               transformedIncomingRouteBuilder.setOriginatorIp(
                   transformedOutgoingRoute.getOriginatorIp());
+
+              // Incoming receivedFromIp
+              transformedIncomingRouteBuilder.setReceivedFromIp(
+                  transformedOutgoingRoute.getReceivedFromIp());
 
               // Incoming clusterList
               transformedIncomingRouteBuilder
@@ -595,13 +604,14 @@ public class VirtualRouter extends ComparableStructure<String> {
     proc.getAreas()
         .forEach(
             (areaNum, area) -> {
-              for (Interface iface : area.getInterfaces().values()) {
+              for (String ifaceName : area.getInterfaces()) {
+                Interface iface = _c.getInterfaces().get(ifaceName);
                 if (iface.getActive()) {
                   Set<Prefix> allNetworkPrefixes =
                       iface
-                          .getAllPrefixes()
+                          .getAllAddresses()
                           .stream()
-                          .map(Prefix::getNetworkPrefix)
+                          .map(InterfaceAddress::getPrefix)
                           .collect(Collectors.toSet());
                   int interfaceOspfCost = iface.getOspfCost();
                   for (Prefix prefix : allNetworkPrefixes) {
@@ -641,9 +651,9 @@ public class VirtualRouter extends ComparableStructure<String> {
       if (iface.getActive()) {
         Set<Prefix> allNetworkPrefixes =
             iface
-                .getAllPrefixes()
+                .getAllAddresses()
                 .stream()
-                .map(Prefix::getNetworkPrefix)
+                .map(InterfaceAddress::getPrefix)
                 .collect(Collectors.toSet());
         long cost = RipProcess.DEFAULT_RIP_COST;
         for (Prefix prefix : allNetworkPrefixes) {
@@ -688,6 +698,7 @@ public class VirtualRouter extends ComparableStructure<String> {
       /* Note: Origin type and originator IP should get overwritten, but are needed initially */
       b.setOriginatorIp(_vrf.getBgpProcess().getRouterId());
       b.setOriginType(OriginType.INCOMPLETE);
+      b.setReceivedFromIp(Ip.ZERO);
       BgpRoute br = b.build();
       br.setNonRouting(true);
       _bgpMultipathRib.mergeRoute(br);
@@ -705,8 +716,8 @@ public class VirtualRouter extends ComparableStructure<String> {
     for (Interface i : _vrf.getInterfaces().values()) {
       if (i.getActive()) { // Make sure the interface is active
         // Create a route for each interface prefix
-        for (Prefix ifacePrefix : i.getAllPrefixes()) {
-          Prefix prefix = ifacePrefix.getNetworkPrefix();
+        for (InterfaceAddress ifaceAddress : i.getAllAddresses()) {
+          Prefix prefix = ifaceAddress.getPrefix();
           ConnectedRoute cr = new ConnectedRoute(prefix, i.getName());
           _connectedRib.mergeRoute(cr);
         }
@@ -899,7 +910,7 @@ public class VirtualRouter extends ComparableStructure<String> {
         // Do not support dynamic outside neighbors
         continue;
       }
-      Ip remoteIp = remotePrefix.getAddress();
+      Ip remoteIp = remotePrefix.getStartIp();
       if (ipOwners.get(remoteIp) != null) {
         // Skip if neighbor is not outside the network
         continue;
@@ -957,9 +968,7 @@ public class VirtualRouter extends ComparableStructure<String> {
               && neighbor.getAdditionalPathsSend()
               && neighbor.getAdditionalPathsSelectAll();
       if (additionalPaths) {
-        for (AbstractRoute candidateRoute : _bgpMultipathRib.getRoutes()) {
-          candidateRoutes.add(candidateRoute);
-        }
+        candidateRoutes.addAll(_bgpMultipathRib.getRoutes());
       }
       for (AbstractRoute route : candidateRoutes) {
         BgpRoute.Builder transformedOutgoingRouteBuilder = new BgpRoute.Builder();
@@ -976,6 +985,7 @@ public class VirtualRouter extends ComparableStructure<String> {
           originatorIp = _vrf.getBgpProcess().getRouterId();
         }
         transformedOutgoingRouteBuilder.setOriginatorIp(originatorIp);
+        transformedOutgoingRouteBuilder.setReceivedFromIp(neighbor.getLocalIp());
 
         // clusterList, receivedFromRouteReflectorClient, (originType
         // for bgp remote route)
@@ -1059,11 +1069,11 @@ public class VirtualRouter extends ComparableStructure<String> {
         if (nextHopIp.equals(Route.UNSET_ROUTE_NEXT_HOP_IP)) {
           // should only happen for ibgp
           String nextHopInterface = route.getNextHopInterface();
-          Prefix nextHopPrefix = _c.getInterfaces().get(nextHopInterface).getPrefix();
-          if (nextHopPrefix == null) {
+          InterfaceAddress nextHopAddress = _c.getInterfaces().get(nextHopInterface).getAddress();
+          if (nextHopAddress == null) {
             throw new BatfishException("route's nextHopInterface has no address");
           }
-          nextHopIp = nextHopPrefix.getAddress();
+          nextHopIp = nextHopAddress.getIp();
         }
         transformedOutgoingRouteBuilder.setNextHopIp(nextHopIp);
         transformedOutgoingRouteBuilder.setLocalPreference(localPreference);
@@ -1083,11 +1093,9 @@ public class VirtualRouter extends ComparableStructure<String> {
           BgpAdvertisementType sentType =
               ebgpSession ? BgpAdvertisementType.EBGP_SENT : BgpAdvertisementType.IBGP_SENT;
           Ip sentOriginatorIp = transformedOutgoingRoute.getOriginatorIp();
-          SortedSet<Long> sentClusterList =
-              new TreeSet<>(transformedOutgoingRoute.getClusterList());
+          SortedSet<Long> sentClusterList = transformedOutgoingRoute.getClusterList();
           AsPath sentAsPath = transformedOutgoingRoute.getAsPath();
-          SortedSet<Long> sentCommunities =
-              new TreeSet<>(transformedOutgoingRoute.getCommunities());
+          SortedSet<Long> sentCommunities = transformedOutgoingRoute.getCommunities();
           Prefix sentNetwork = route.getNetwork();
           Ip sentNextHopIp;
           String sentSrcNode = hostname;
@@ -1123,8 +1131,8 @@ public class VirtualRouter extends ComparableStructure<String> {
                   sentMed,
                   sentOriginatorIp,
                   sentAsPath,
-                  new TreeSet<>(sentCommunities),
-                  new TreeSet<>(sentClusterList),
+                  sentCommunities,
+                  sentClusterList,
                   sentWeight);
           _sentBgpAdvertisements.add(sentAdvert);
           numAdvertisements++;
@@ -1228,13 +1236,11 @@ public class VirtualRouter extends ComparableStructure<String> {
               && remoteBgpNeighbor.getAdditionalPathsSend()
               && remoteBgpNeighbor.getAdditionalPathsSelectAll();
       if (additionalPaths) {
-        for (AbstractRoute remoteCandidateRoute :
-            remoteVirtualRouter._prevBgpMultipathRib.getRoutes()) {
-          remoteCandidateRoutes.add(remoteCandidateRoute);
-        }
+        remoteCandidateRoutes.addAll(remoteVirtualRouter._prevBgpMultipathRib.getRoutes());
       }
       for (AbstractRoute remoteRoute : remoteCandidateRoutes) {
         BgpRoute.Builder transformedOutgoingRouteBuilder = new BgpRoute.Builder();
+        transformedOutgoingRouteBuilder.setReceivedFromIp(remoteBgpNeighbor.getLocalIp());
         RoutingProtocol remoteRouteProtocol = remoteRoute.getProtocol();
         boolean remoteRouteIsBgp =
             remoteRouteProtocol == RoutingProtocol.IBGP
@@ -1249,6 +1255,10 @@ public class VirtualRouter extends ComparableStructure<String> {
           originatorIp = remoteVrf.getBgpProcess().getRouterId();
         }
         transformedOutgoingRouteBuilder.setOriginatorIp(originatorIp);
+
+        // note whether new route is received from route reflector client
+        transformedOutgoingRouteBuilder.setReceivedFromRouteReflectorClient(
+            !ebgpSession && neighbor.getRouteReflectorClient());
 
         // clusterList, receivedFromRouteReflectorClient, (originType
         // for bgp remote route)
@@ -1280,30 +1290,42 @@ public class VirtualRouter extends ComparableStructure<String> {
             continue;
           }
           if (remoteRouteProtocol.equals(RoutingProtocol.IBGP) && !ebgpSession) {
+            /*
+             *  The remote route is iBGP. The session is iBGP. We consider whether to reflect, and
+             *  modify the outgoing route as appropriate.
+             */
             boolean remoteRouteReceivedFromRouteReflectorClient =
                 bgpRemoteRoute.getReceivedFromRouteReflectorClient();
             boolean sendingToRouteReflectorClient = remoteBgpNeighbor.getRouteReflectorClient();
-            boolean newRouteReceivedFromRouteReflectorClient = neighbor.getRouteReflectorClient();
-            transformedOutgoingRouteBuilder.setReceivedFromRouteReflectorClient(
-                newRouteReceivedFromRouteReflectorClient);
+            Ip remoteReceivedFromIp = bgpRemoteRoute.getReceivedFromIp();
+            boolean remoteRouteOriginatedByRemoteNeighbor = remoteReceivedFromIp.equals(Ip.ZERO);
+            if (!remoteRouteReceivedFromRouteReflectorClient
+                && !sendingToRouteReflectorClient
+                && !remoteRouteOriginatedByRemoteNeighbor) {
+              /*
+               * Neither reflecting nor originating this iBGP route, so don't send
+               */
+              continue;
+            }
             transformedOutgoingRouteBuilder
                 .getClusterList()
                 .addAll(bgpRemoteRoute.getClusterList());
-            if (!remoteRouteReceivedFromRouteReflectorClient && !sendingToRouteReflectorClient) {
-              continue;
+            if (!remoteRouteOriginatedByRemoteNeighbor) {
+              // we are reflecting, so we need to get the clusterid associated with the remoteRoute
+              BgpNeighbor remoteReceivedFromSession =
+                  remoteVrf
+                      .getBgpProcess()
+                      .getNeighbors()
+                      .get(new Prefix(remoteReceivedFromIp, Prefix.MAX_PREFIX_LENGTH));
+              long newClusterId = remoteReceivedFromSession.getClusterId();
+              transformedOutgoingRouteBuilder.getClusterList().add(newClusterId);
             }
-            if (sendingToRouteReflectorClient) {
-              // sender adds its local cluster id to clusterlist of
-              // new route
-              transformedOutgoingRouteBuilder
-                  .getClusterList()
-                  .add(remoteBgpNeighbor.getClusterId());
-            }
-            if (transformedOutgoingRouteBuilder
-                .getClusterList()
-                .contains(neighbor.getClusterId())) {
-              // receiver will reject new route if it contains its
-              // local cluster id
+            Set<Long> localClusterIds = _vrf.getBgpProcess().getClusterIds();
+            Set<Long> outgoingClusterList = transformedOutgoingRouteBuilder.getClusterList();
+            if (localClusterIds.stream().anyMatch(outgoingClusterList::contains)) {
+              /*
+               *  receiver will reject new route if it contains any of its local cluster ids
+               */
               continue;
             }
           }
@@ -1350,11 +1372,12 @@ public class VirtualRouter extends ComparableStructure<String> {
         if (nextHopIp.equals(Route.UNSET_ROUTE_NEXT_HOP_IP)) {
           // should only happen for ibgp
           String nextHopInterface = remoteRoute.getNextHopInterface();
-          Prefix nextHopPrefix = remoteVrf.getInterfaces().get(nextHopInterface).getPrefix();
-          if (nextHopPrefix == null) {
+          InterfaceAddress nextHopAddress =
+              remoteVrf.getInterfaces().get(nextHopInterface).getAddress();
+          if (nextHopAddress == null) {
             throw new BatfishException("remote route's nextHopInterface has no address");
           }
-          nextHopIp = nextHopPrefix.getAddress();
+          nextHopIp = nextHopAddress.getIp();
         }
         transformedOutgoingRouteBuilder.setNextHopIp(nextHopIp);
         transformedOutgoingRouteBuilder.setLocalPreference(localPreference);
@@ -1377,14 +1400,13 @@ public class VirtualRouter extends ComparableStructure<String> {
           // Record sent advertisement
           BgpAdvertisementType sentType =
               ebgpSession ? BgpAdvertisementType.EBGP_SENT : BgpAdvertisementType.IBGP_SENT;
+          Ip sentReceivedFromIp = transformedOutgoingRoute.getReceivedFromIp();
           Ip sentOriginatorIp = transformedOutgoingRoute.getOriginatorIp();
-          SortedSet<Long> sentClusterList =
-              new TreeSet<>(transformedOutgoingRoute.getClusterList());
+          SortedSet<Long> sentClusterList = transformedOutgoingRoute.getClusterList();
           boolean sentReceivedFromRouteReflectorClient =
               transformedOutgoingRoute.getReceivedFromRouteReflectorClient();
           AsPath sentAsPath = transformedOutgoingRoute.getAsPath();
-          SortedSet<Long> sentCommunities =
-              new TreeSet<>(transformedOutgoingRoute.getCommunities());
+          SortedSet<Long> sentCommunities = transformedOutgoingRoute.getCommunities();
           Prefix sentNetwork = remoteRoute.getNetwork();
           Ip sentNextHopIp;
           String sentSrcNode = remoteHostname;
@@ -1407,6 +1429,9 @@ public class VirtualRouter extends ComparableStructure<String> {
 
           // Incoming originatorIp
           transformedIncomingRouteBuilder.setOriginatorIp(sentOriginatorIp);
+
+          // Incoming receivedFromIp
+          transformedIncomingRouteBuilder.setReceivedFromIp(sentReceivedFromIp);
 
           // Incoming clusterList
           transformedIncomingRouteBuilder.getClusterList().addAll(sentClusterList);
@@ -1472,8 +1497,8 @@ public class VirtualRouter extends ComparableStructure<String> {
                   sentMed,
                   sentOriginatorIp,
                   sentAsPath,
-                  new TreeSet<>(sentCommunities),
-                  new TreeSet<>(sentClusterList),
+                  sentCommunities,
+                  sentClusterList,
                   sentWeight);
 
           Prefix prefix = remoteRoute.getNetwork();
@@ -1528,9 +1553,8 @@ public class VirtualRouter extends ComparableStructure<String> {
             long receivedMed = transformedIncomingRoute.getMetric();
             Ip receivedOriginatorIp = sentOriginatorIp;
             AsPath receivedAsPath = transformedIncomingRoute.getAsPath();
-            SortedSet<Long> receivedCommunities =
-                new TreeSet<>(transformedIncomingRoute.getCommunities());
-            SortedSet<Long> receivedClusterList = new TreeSet<>(sentClusterList);
+            SortedSet<Long> receivedCommunities = transformedIncomingRoute.getCommunities();
+            SortedSet<Long> receivedClusterList = sentClusterList;
             int receivedWeight = transformedIncomingRoute.getWeight();
             BgpAdvertisement receivedAdvert =
                 new BgpAdvertisement(
@@ -1549,8 +1573,8 @@ public class VirtualRouter extends ComparableStructure<String> {
                     receivedMed,
                     receivedOriginatorIp,
                     receivedAsPath,
-                    new TreeSet<>(receivedCommunities),
-                    new TreeSet<>(receivedClusterList),
+                    receivedCommunities,
+                    receivedClusterList,
                     receivedWeight);
             if (targetRib.mergeRoute(transformedIncomingRoute)) {
               numRoutes++;
@@ -1641,7 +1665,7 @@ public class VirtualRouter extends ComparableStructure<String> {
             OspfExternalType1Route newRoute =
                 new OspfExternalType1Route(
                     neighborRoute.getNetwork(),
-                    neighborInterface.getPrefix().getAddress(),
+                    neighborInterface.getAddress().getIp(),
                     admin,
                     newMetric,
                     neighborRoute.getLsaMetric(),
@@ -1672,7 +1696,7 @@ public class VirtualRouter extends ComparableStructure<String> {
             OspfExternalType2Route newRoute =
                 new OspfExternalType2Route(
                     neighborRoute.getNetwork(),
-                    neighborInterface.getPrefix().getAddress(),
+                    neighborInterface.getAddress().getIp(),
                     admin,
                     neighborRoute.getMetric(),
                     neighborRoute.getLsaMetric(),
@@ -1775,7 +1799,7 @@ public class VirtualRouter extends ComparableStructure<String> {
         && stageOspfInterAreaRoute(
             neighborRoute,
             neighborInterface.getVrf().getOspfProcess().getMaxMetricSummaryNetworks(),
-            neighborInterface.getPrefix().getAddress(),
+            neighborInterface.getAddress().getIp(),
             incrementalCost,
             adminCost,
             areaNum);
@@ -1852,7 +1876,7 @@ public class VirtualRouter extends ComparableStructure<String> {
         && stageOspfInterAreaRoute(
             neighborRoute,
             neighborInterface.getVrf().getOspfProcess().getMaxMetricSummaryNetworks(),
-            neighborInterface.getPrefix().getAddress(),
+            neighborInterface.getAddress().getIp(),
             incrementalCost,
             adminCost,
             areaNum);
@@ -1865,7 +1889,7 @@ public class VirtualRouter extends ComparableStructure<String> {
       int adminCost,
       long areaNum) {
     long newCost = neighborRoute.getMetric() + incrementalCost;
-    Ip nextHopIp = neighborInterface.getPrefix().getAddress();
+    Ip nextHopIp = neighborInterface.getAddress().getIp();
     OspfIntraAreaRoute newRoute =
         new OspfIntraAreaRoute(neighborRoute.getNetwork(), nextHopIp, adminCost, newCost, areaNum);
     return neighborRoute.getArea() == areaNum && _ospfIntraAreaStagingRib.mergeRoute(newRoute);
@@ -1975,7 +1999,7 @@ public class VirtualRouter extends ComparableStructure<String> {
          */
         for (RipInternalRoute neighborRoute : neighborVirtualRouter._ripInternalRib.getRoutes()) {
           long newCost = neighborRoute.getMetric() + RipProcess.DEFAULT_RIP_COST;
-          Ip nextHopIp = neighborInterface.getPrefix().getAddress();
+          Ip nextHopIp = neighborInterface.getAddress().getIp();
           RipInternalRoute newRoute =
               new RipInternalRoute(neighborRoute.getNetwork(), nextHopIp, admin, newCost);
           if (_ripInternalStagingRib.mergeRoute(newRoute)) {

@@ -38,6 +38,7 @@ public class Settings extends BaseSettings {
   private static final String ARG_QUEUE_INCOMPLETE_WORK = "qincompletework";
   private static final String ARG_QUEUE_TYPE = "qtype";
 
+  public static final String ARG_SERVICE_NAME = "servicename";
   private static final String ARG_SERVICE_POOL_PORT = "poolport";
   private static final String ARG_SERVICE_WORK_PORT = "workport";
   private static final String ARG_SERVICE_WORK_V2_PORT = "workv2port";
@@ -90,6 +91,7 @@ public class Settings extends BaseSettings {
   private String _queueCompletedWork;
   private WorkQueue.Type _queueType;
   private String _queuIncompleteWork;
+  private String _serviceName;
   private int _servicePoolPort;
   private int _serviceWorkPort;
   private int _serviceWorkV2Port;
@@ -113,7 +115,7 @@ public class Settings extends BaseSettings {
   private boolean _tracingEnable;
   private String _workBindHost;
 
-  public Settings(String[] args) throws Exception {
+  public Settings(String[] args) {
     super(
         CommonUtil.getConfig(
             BfConsts.PROP_COORDINATOR_PROPERTIES_PATH,
@@ -121,7 +123,6 @@ public class Settings extends BaseSettings {
             Settings.class));
 
     initConfigDefaults();
-
     initOptions();
     parseCommandLine(args);
   }
@@ -196,6 +197,10 @@ public class Settings extends BaseSettings {
 
   public WorkQueue.Type getQueueType() {
     return _queueType;
+  }
+
+  public String getServiceName() {
+    return _serviceName;
   }
 
   public int getServicePoolPort() {
@@ -309,13 +314,14 @@ public class Settings extends BaseSettings {
     setDefaultProperty(ARG_PERIOD_ASSIGN_WORK_MS, 1000);
     setDefaultProperty(ARG_PERIOD_CHECK_WORK_MS, 1000);
     setDefaultProperty(ARG_PERIOD_WORKER_STATUS_REFRESH_MS, 10000);
-    setDefaultProperty(ARG_QUESTION_TEMPLATE_DIRS, Collections.<String>emptyList());
+    setDefaultProperty(ARG_QUESTION_TEMPLATE_DIRS, Collections.emptyList());
     setDefaultProperty(ARG_QUEUE_COMPLETED_WORK, "batfishcompletedwork");
     setDefaultProperty(ARG_QUEUE_INCOMPLETE_WORK, "batfishincompletework");
     setDefaultProperty(ARG_QUEUE_TYPE, WorkQueue.Type.memory.toString());
     setDefaultProperty(ARG_POOL_BIND_HOST, Ip.ZERO.toString());
     setDefaultProperty(ARG_SERVICE_POOL_PORT, CoordConsts.SVC_CFG_POOL_PORT);
     setDefaultProperty(ARG_WORK_BIND_HOST, Ip.ZERO.toString());
+    setDefaultProperty(ARG_SERVICE_NAME, "coordinator-service");
     setDefaultProperty(ARG_SERVICE_WORK_PORT, CoordConsts.SVC_CFG_WORK_PORT);
     setDefaultProperty(ARG_SERVICE_WORK_V2_PORT, CoordConsts.SVC_CFG_WORK_V2_PORT);
     setDefaultProperty(ARG_SSL_POOL_DISABLE, CoordConsts.SVC_CFG_POOL_SSL_DISABLE);
@@ -389,6 +395,8 @@ public class Settings extends BaseSettings {
         "hostname for pool management service",
         "base url for pool management service");
 
+    addOption(ARG_SERVICE_NAME, "service name", "service_name");
+
     addOption(
         ARG_SERVICE_POOL_PORT, "port for pool management service", "port_number_pool_service");
 
@@ -440,6 +448,7 @@ public class Settings extends BaseSettings {
     _queueCompletedWork = getStringOptionValue(ARG_QUEUE_COMPLETED_WORK);
     _queueType = WorkQueue.Type.valueOf(getStringOptionValue(ARG_QUEUE_TYPE));
     _poolBindHost = getStringOptionValue(ARG_POOL_BIND_HOST);
+    _serviceName = getStringOptionValue(ARG_SERVICE_NAME);
     _servicePoolPort = getIntegerOptionValue(ARG_SERVICE_POOL_PORT);
     _workBindHost = getStringOptionValue(ARG_WORK_BIND_HOST);
     _serviceWorkPort = getIntegerOptionValue(ARG_SERVICE_WORK_PORT);
@@ -468,6 +477,10 @@ public class Settings extends BaseSettings {
     _periodCheckWorkMs = getLongOptionValue(ARG_PERIOD_CHECK_WORK_MS);
     _logFile = getStringOptionValue(ARG_LOG_FILE);
     _logLevel = getStringOptionValue(ARG_LOG_LEVEL);
+  }
+
+  public void setContainersLocation(Path dir) {
+    _containersLocation = dir;
   }
 
   public void setSslPoolDisable(boolean sslPoolDisable) {

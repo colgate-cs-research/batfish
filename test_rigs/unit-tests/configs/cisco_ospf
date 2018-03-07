@@ -18,8 +18,28 @@ router ospf abcdefg
 router ospf 1
   address-family ipv4
   area 0.0.0.0 authentication message-digest
+  area 0.0.0.0 default-cost 5
+  area 0.0.0.0 filter-list prefix filterName in
+  area 0.0.0.0 filter-list prefix filterName out
+  area 0.0.0.0 nssa
+  area 0.0.0.0 nssa default-information-originate
+  area 0.0.0.0 nssa default-information-originate metric 5
+  area 0.0.0.0 nssa default-information-originate metric-type 1
+  area 0.0.0.0 nssa no-redistribution
+  area 0.0.0.0 nssa no-redistribution no-summary
+  area 0.0.0.0 nssa no-redistribution default-information-originate no-summary
+  area 0.0.0.0 nssa no-summary
   area 0.0.0.0 range 1.2.3.0/24
+  area 0.0.0.0 range 1.2.3.0/24 cost 17
+  area 0.0.0.0 range 1.2.3.0 255.255.255.0
+  area 0.0.0.0 range 1.2.3.0 255.255.255.0 advertise
+  area 0.0.0.0 range 1.2.3.0 255.255.255.0 advertise cost 10
+  area 0.0.0.0 range 1.2.3.0 255.255.255.0 cost 10
+  area 0.0.0.0 range 1.2.3.0 255.255.255.0 not-advertise
   auto-cost reference-bandwidth 40 Gbps
+  capability lls
+  capability transit
+  capability vrf-lite
   discard-route external
   discard-route internal
   distance 110
@@ -27,6 +47,7 @@ router ospf 1
   graceful-restart grace-period 180
   ip ospf event-history hello size small
   log-adjacency-changes detail
+  log-adj-changes
   maximum-paths 32
   redistribute direct route-map DIRECT_OSPF
   redistribute ospf 2 match internal
@@ -41,6 +62,8 @@ router ospf 1
     network point-to-point
     dead-interval 6
     hello-interval 2
+  area 0 filter-list prefix INFILTER in
+  area 0 filter-list prefix OUTFILTER out
 !
 ospf name-lookup
 ospfv3 name-lookup

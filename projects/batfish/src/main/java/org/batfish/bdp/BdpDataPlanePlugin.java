@@ -11,20 +11,21 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import org.batfish.common.plugin.DataPlanePlugin;
 import org.batfish.common.plugin.Plugin;
-import org.batfish.config.BdpSettings;
 import org.batfish.datamodel.AbstractRoute;
 import org.batfish.datamodel.BgpAdvertisement;
 import org.batfish.datamodel.Configuration;
+import org.batfish.datamodel.DataPlane;
 import org.batfish.datamodel.Flow;
 import org.batfish.datamodel.FlowTrace;
 import org.batfish.datamodel.Topology;
-import org.batfish.datamodel.answers.Answer;
 import org.batfish.datamodel.answers.BdpAnswerElement;
 import org.batfish.datamodel.collections.IbgpTopology;
 import org.batfish.datamodel.collections.NodeInterfacePair;
 
 @AutoService(Plugin.class)
 public class BdpDataPlanePlugin extends DataPlanePlugin {
+
+  public static final String PLUGIN_NAME = "bdp";
 
   private final Map<BdpDataPlane, Map<Flow, Set<FlowTrace>>> _flowTraces;
 
@@ -35,23 +36,40 @@ public class BdpDataPlanePlugin extends DataPlanePlugin {
   }
 
   @Override
-  public Answer computeDataPlane(boolean differentialContext) {
-    Answer answer = new Answer();
-    BdpAnswerElement ae = new BdpAnswerElement();
-    answer.addAnswerElement(ae);
+  public ComputeDataPlaneResult computeDataPlane(boolean differentialContext) {
     Map<String, Configuration> configurations = _batfish.loadConfigurations();
-    Topology topology = _batfish.computeTopology(configurations);
+    Topology topology = _batfish.getEnvironmentTopology();
+    return computeDataPlane(differentialContext, configurations, topology);
+  }
+
+  @Override
+  public ComputeDataPlaneResult computeDataPlane(
+      boolean differentialContext, Map<String, Configuration> configurations, Topology topology) {
+    BdpAnswerElement ae = new BdpAnswerElement();
     Set<BgpAdvertisement> externalAdverts = _batfish.loadExternalBgpAnnouncements(configurations);
     Set<NodeInterfacePair> flowSinks =
         _batfish.computeFlowSinks(configurations, differentialContext, topology);
     BdpDataPlane dp =
         _engine.computeDataPlane(
             differentialContext, configurations, topology, externalAdverts, flowSinks, ae);
-    _logger.resetTimer();
-    _batfish.newBatch("Writing data plane to disk", 0);
-    _batfish.writeDataPlane(dp, ae);
-    _logger.printElapsedTime();
-    return answer;
+    double averageRoutes =
+        dp.getNodes()
+            .values()
+            .stream()
+            .flatMap(n -> n._virtualRouters.values().stream())
+            .mapToInt(vr -> vr._mainRib.getRoutes().size())
+            .average()
+            .orElse(0.00d);
+    _logger.infof(
+        "Generated data plane for testrig:%s in container:%s; iterations:%s, total nodes:%s, "
+            + "avg entries per node:%.2f, work-id:%s\n",
+        _batfish.getTestrigName(),
+        _batfish.getContainerName(),
+        ae.getDependentRoutesIterations(),
+        configurations.size(),
+        averageRoutes,
+        _batfish.getTaskId());
+    return new ComputeDataPlaneResult(ae, dp);
   }
 
   @Override
@@ -77,8 +95,8 @@ public class BdpDataPlanePlugin extends DataPlanePlugin {
   }
 
   @Override
-  public List<Flow> getHistoryFlows() {
-    BdpDataPlane dp = loadDataPlane();
+  public List<Flow> getHistoryFlows(DataPlane dataPlane) {
+    BdpDataPlane dp = (BdpDataPlane) dataPlane;
     List<Flow> flowList = new ArrayList<>();
     _flowTraces
         .get(dp)
@@ -92,16 +110,14 @@ public class BdpDataPlanePlugin extends DataPlanePlugin {
   }
 
   @Override
-  public List<FlowTrace> getHistoryFlowTraces() {
-    BdpDataPlane dp = loadDataPlane();
+  public List<FlowTrace> getHistoryFlowTraces(DataPlane dataPlane) {
+    BdpDataPlane dp = (BdpDataPlane) dataPlane;
     List<FlowTrace> flowTraceList = new ArrayList<>();
     _flowTraces
         .get(dp)
         .forEach(
             (flow, flowTraces) -> {
-              for (FlowTrace flowTrace : flowTraces) {
-                flowTraceList.add(flowTrace);
-              }
+              flowTraceList.addAll(flowTraces);
             });
     return flowTraceList;
   }
@@ -113,8 +129,9 @@ public class BdpDataPlanePlugin extends DataPlanePlugin {
   }
 
   @Override
-  public SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> getRoutes() {
-    BdpDataPlane dp = loadDataPlane();
+  public SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> getRoutes(
+      DataPlane dataPlane) {
+    BdpDataPlane dp = (BdpDataPlane) dataPlane;
     return _engine.getRoutes(dp);
   }
 
@@ -123,8 +140,13 @@ public class BdpDataPlanePlugin extends DataPlanePlugin {
   }
 
   @Override
-  public void processFlows(Set<Flow> flows) {
-    BdpDataPlane dp = loadDataPlane();
+  public void processFlows(Set<Flow> flows, DataPlane dataPlane) {
+    BdpDataPlane dp = (BdpDataPlane) dataPlane;
     _flowTraces.put(dp, _engine.processFlows(dp, flows));
+  }
+
+  @Override
+  public String getName() {
+    return PLUGIN_NAME;
   }
 }

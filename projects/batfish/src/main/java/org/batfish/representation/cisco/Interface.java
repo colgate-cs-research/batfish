@@ -1,5 +1,6 @@
 package org.batfish.representation.cisco;
 
+import com.google.common.collect.ImmutableSortedSet;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -9,9 +10,9 @@ import java.util.TreeSet;
 import org.batfish.common.BatfishException;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.ConfigurationFormat;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IsisInterfaceMode;
-import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.SubRange;
 import org.batfish.datamodel.SwitchportEncapsulationType;
 import org.batfish.datamodel.SwitchportMode;
@@ -61,7 +62,7 @@ public class Interface extends ComparableStructure<String> {
         case CISCO_NX:
           return NXOS_ETHERNET_BANDWIDTH;
 
-        case AWS_VPC:
+        case AWS:
         case BLADENETWORK:
         case EMPTY:
         case F5:
@@ -150,7 +151,7 @@ public class Interface extends ComparableStructure<String> {
 
   private int _outgoingFilterLine;
 
-  private Prefix _prefix;
+  private InterfaceAddress _address;
 
   private boolean _proxyArp;
 
@@ -158,13 +159,13 @@ public class Interface extends ComparableStructure<String> {
 
   int _routingPolicyLine;
 
-  private Set<Prefix> _secondaryPrefixes;
+  private Set<InterfaceAddress> _secondaryAddresses;
 
   private List<CiscoSourceNat> _sourceNats;
 
   private boolean _spanningTreePortfast;
 
-  private Prefix _standbyPrefix;
+  private InterfaceAddress _standbyAddress;
 
   private Boolean _switchport;
 
@@ -178,15 +179,18 @@ public class Interface extends ComparableStructure<String> {
 
   private String _vrf;
 
+  private SortedSet<String> _declaredNames;
+
   public Interface(String name, CiscoConfiguration c) {
     super(name);
     _active = true;
     _autoState = true;
     _allowedVlans = new ArrayList<>();
+    _declaredNames = ImmutableSortedSet.of();
     _dhcpRelayAddresses = new TreeSet<>();
     _isisInterfaceMode = IsisInterfaceMode.UNSET;
     _nativeVlan = 1;
-    _secondaryPrefixes = new LinkedHashSet<>();
+    _secondaryAddresses = new LinkedHashSet<>();
     SwitchportMode defaultSwitchportMode = c.getCf().getDefaultSwitchportMode();
     ConfigurationFormat vendor = c.getVendor();
     if (defaultSwitchportMode == null) {
@@ -196,7 +200,7 @@ public class Interface extends ComparableStructure<String> {
           break;
 
         case ALCATEL_AOS:
-        case AWS_VPC:
+        case AWS:
         case CADANT:
         case CISCO_ASA:
         case CISCO_IOS:
@@ -234,13 +238,13 @@ public class Interface extends ComparableStructure<String> {
     return _allowedVlans;
   }
 
-  public Set<Prefix> getAllPrefixes() {
-    Set<Prefix> allPrefixes = new TreeSet<>();
-    if (_prefix != null) {
-      allPrefixes.add(_prefix);
+  public Set<InterfaceAddress> getAllAddresses() {
+    Set<InterfaceAddress> allAddresses = new TreeSet<>();
+    if (_address != null) {
+      allAddresses.add(_address);
     }
-    allPrefixes.addAll(_secondaryPrefixes);
-    return allPrefixes;
+    allAddresses.addAll(_secondaryAddresses);
+    return allAddresses;
   }
 
   public boolean getAutoState() {
@@ -323,8 +327,8 @@ public class Interface extends ComparableStructure<String> {
     return _outgoingFilterLine;
   }
 
-  public Prefix getPrefix() {
-    return _prefix;
+  public InterfaceAddress getAddress() {
+    return _address;
   }
 
   public boolean getProxyArp() {
@@ -339,8 +343,8 @@ public class Interface extends ComparableStructure<String> {
     return _routingPolicyLine;
   }
 
-  public Set<Prefix> getSecondaryPrefixes() {
-    return _secondaryPrefixes;
+  public Set<InterfaceAddress> getSecondaryAddresses() {
+    return _secondaryAddresses;
   }
 
   public List<CiscoSourceNat> getSourceNats() {
@@ -351,8 +355,8 @@ public class Interface extends ComparableStructure<String> {
     return _spanningTreePortfast;
   }
 
-  public Prefix getStandbyPrefix() {
-    return _standbyPrefix;
+  public InterfaceAddress getStandbyAddress() {
+    return _standbyAddress;
   }
 
   public Boolean getSwitchport() {
@@ -474,8 +478,8 @@ public class Interface extends ComparableStructure<String> {
     _outgoingFilterLine = outgoingFilterLine;
   }
 
-  public void setPrefix(Prefix prefix) {
-    _prefix = prefix;
+  public void setAddress(InterfaceAddress address) {
+    _address = address;
   }
 
   public void setProxyArp(boolean proxyArp) {
@@ -498,8 +502,8 @@ public class Interface extends ComparableStructure<String> {
     _spanningTreePortfast = spanningTreePortfast;
   }
 
-  public void setStandbyPrefix(Prefix standbyPrefix) {
-    _standbyPrefix = standbyPrefix;
+  public void setStandbyAddress(InterfaceAddress standbyAddress) {
+    _standbyAddress = standbyAddress;
   }
 
   public void setSwitchport(boolean switchport) {
@@ -528,5 +532,13 @@ public class Interface extends ComparableStructure<String> {
 
   public void setVrf(String vrf) {
     _vrf = vrf;
+  }
+
+  public SortedSet<String> getDeclaredNames() {
+    return _declaredNames;
+  }
+
+  public void setDeclaredNames(SortedSet<String> declaredNames) {
+    _declaredNames = ImmutableSortedSet.copyOf(declaredNames);
   }
 }

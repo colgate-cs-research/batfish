@@ -4,7 +4,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.Assert.assertThat;
 
-import java.io.IOException;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.grammar.GrammarSettings;
@@ -15,9 +14,9 @@ import org.junit.Test;
 public class RecoveryGrammarTest {
 
   @Test
-  public void testParsingRecovery() throws IOException {
+  public void testParsingRecovery() {
     String recoveryText = CommonUtil.readResource("org/batfish/grammar/recovery/recovery_text");
-    int totalLines = recoveryText.split("\n").length;
+    int totalLines = recoveryText.split("\n", -1).length;
     GrammarSettings settings = new TestGrammarSettings(false, 0, 0, 0, false, true, true);
     RecoveryCombinedParser cp = new RecoveryCombinedParser(recoveryText, settings);
     RecoveryContext ctx = cp.parse();
@@ -25,6 +24,7 @@ public class RecoveryGrammarTest {
     ParseTreeWalker walker = new ParseTreeWalker();
     walker.walk(extractor, ctx);
 
+    assertThat(extractor.getFirstErrorLine(), equalTo(2));
     assertThat(extractor.getNumBlockStatements(), equalTo(2));
     assertThat(extractor.getNumErrorNodes(), equalTo(15));
     assertThat(extractor.getNumInnerStatements(), equalTo(1));

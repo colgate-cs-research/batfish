@@ -2,24 +2,25 @@ package org.batfish.question;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
+import com.google.common.collect.Sets;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.batfish.common.Answerer;
 import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
-import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.NodeRoleSpecifier;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.questions.INodeRegexQuestion;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 
 @AutoService(Plugin.class)
@@ -76,14 +77,13 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
             "The question " + innerQuestion.getName() + " does not implement INodeRegexQuestion");
       }
 
-      SortedMap<String, Configuration> configurations = _batfish.loadConfigurations();
+      Map<String, Configuration> configurations = _batfish.loadConfigurations();
       // collect the desired nodes in a list
-      List<String> nodes =
-          CommonUtil.getMatchingStrings(question.getNodeRegex(), configurations.keySet());
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
 
       NodeRoleSpecifier roleSpecifier = _batfish.getNodeRoleSpecifier(false);
       SortedMap<String, SortedSet<String>> roleNodeMap =
-          roleSpecifier.createRoleNodesMap(new TreeSet<>(nodes));
+          roleSpecifier.createRoleNodesMap(includeNodes);
 
       List<String> desiredRoles = question.getRoles();
       if (desiredRoles != null) {
@@ -101,11 +101,13 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
       SortedMap<String, AnswerElement> results = new TreeMap<>();
 
       // now ask the inner question once per role
-      String origRegex = innerNRQuestion.getNodeRegex();
+      Set<String> innerIncludeNodes =
+          innerNRQuestion.getNodeRegex().getMatchingNodes(configurations);
       for (Map.Entry<String, SortedSet<String>> entry : roleNodeMap.entrySet()) {
         String role = entry.getKey();
-        String regex = namesToRegex(entry.getValue());
-        innerNRQuestion.setNodeRegex("(?=" + regex + ")" + origRegex);
+        Set<String> roleNodes = entry.getValue();
+        String regex = namesToRegex(Sets.intersection(innerIncludeNodes, roleNodes));
+        innerNRQuestion.setNodeRegex(new NodesSpecifier(regex));
         String innerQuestionName = innerQuestion.getName();
         Answerer innerAnswerer =
             _batfish.getAnswererCreators().get(innerQuestionName).apply(innerQuestion, _batfish);
@@ -140,6 +142,8 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
    * @param roles List of the role names to include in the answer. Default is to use all role names.
    * @param nodeRegex Regular expression for names of nodes to include. Default value is '.*' (all
    *     nodes). *
+   * @param roleSpecifier Specifies the mapping from roles to nodes. If not provided, the default is
+   *     to use the role specifier that was installed when the test rig was initialized.
    */
   public static final class PerRoleQuestion extends Question {
 
@@ -149,14 +153,18 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
 
     private static final String PROP_ROLES = "roles";
 
-    private String _nodeRegex;
+    private static final String PROP_ROLE_SPECIFIER = "roleSpecifier";
+
+    private NodesSpecifier _nodeRegex;
 
     private Question _question;
 
     private List<String> _roles;
 
+    private NodeRoleSpecifier _roleSpecifier;
+
     public PerRoleQuestion() {
-      _nodeRegex = ".*";
+      _nodeRegex = NodesSpecifier.ALL;
     }
 
     @Override
@@ -170,7 +178,7 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public String getNodeRegex() {
+    public NodesSpecifier getNodeRegex() {
       return _nodeRegex;
     }
 
@@ -184,8 +192,13 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
       return _roles;
     }
 
+    @JsonProperty(PROP_ROLE_SPECIFIER)
+    public Optional<NodeRoleSpecifier> getRoleSpecifier() {
+      return Optional.ofNullable(_roleSpecifier);
+    }
+
     @JsonProperty(PROP_NODE_REGEX)
-    public void setNodeRegex(String regex) {
+    public void setNodeRegex(NodesSpecifier regex) {
       _nodeRegex = regex;
     }
 
@@ -197,6 +210,11 @@ public class PerRoleQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_ROLES)
     public void setRoles(List<String> roles) {
       _roles = roles;
+    }
+
+    @JsonProperty(PROP_ROLE_SPECIFIER)
+    public void setRoleSpecifier(NodeRoleSpecifier roleSpecifier) {
+      _roleSpecifier = roleSpecifier;
     }
   }
 

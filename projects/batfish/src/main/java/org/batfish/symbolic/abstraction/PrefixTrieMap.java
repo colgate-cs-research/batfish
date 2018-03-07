@@ -2,7 +2,6 @@ package org.batfish.symbolic.abstraction;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,10 +28,10 @@ public class PrefixTrieMap implements Serializable {
 
     void addPrefix(Prefix prefix, String device) {
       int prefixLength = prefix.getPrefixLength();
-      BitSet bits = prefix.getAddress().getAddressBits();
+      long bits = prefix.getStartIp().asLong();
       Set<String> devices = new HashSet<>();
       devices.add(device);
-      _root.addPrefix(prefix.getNetworkPrefix(), devices, bits, prefixLength, 0);
+      _root.addPrefix(prefix, devices, bits, prefixLength, 0);
     }
   }
 
@@ -50,7 +49,7 @@ public class PrefixTrieMap implements Serializable {
     private ByteTrieNode _right;
 
     private void addPrefix(
-        Prefix prefix, Set<String> devices, BitSet bits, int prefixLength, int depth) {
+        Prefix prefix, Set<String> devices, long bits, int prefixLength, int depth) {
       if (prefixLength == depth) {
         _prefix = prefix;
         if (_devices == null) {
@@ -59,7 +58,7 @@ public class PrefixTrieMap implements Serializable {
           _devices.addAll(devices);
         }
       } else {
-        boolean currentBit = bits.get(depth);
+        boolean currentBit = Ip.getBitAtPosition(bits, depth);
         if (_devices != null) {
           devices.addAll(_devices);
         }
@@ -80,8 +79,8 @@ public class PrefixTrieMap implements Serializable {
 
     private Prefix extendPrefixWith(Prefix p, boolean val) {
       int length = p.getPrefixLength();
-      assert (length < 32);
-      Ip ip = p.getAddress();
+      assert (length < Prefix.MAX_PREFIX_LENGTH);
+      Ip ip = p.getStartIp();
       long l = ip.asLong();
       long lnew = l;
       if (val) {
@@ -100,10 +99,8 @@ public class PrefixTrieMap implements Serializable {
     }
 
     private boolean hasUniqueDevice(@Nullable Set<String> devices) {
-      if (devices == null) {
-        return true;
-      }
-      return _devices != null && !devices.containsAll(_devices)
+      return devices == null
+          || _devices != null && !devices.containsAll(_devices)
           || _left != null && _left.hasUniqueDevice(devices)
           || _right != null && _right.hasUniqueDevice(devices);
     }
@@ -117,7 +114,7 @@ public class PrefixTrieMap implements Serializable {
       if (_left == null && _right == null) {
         addEntry(map, devices, prefix);
       } else {
-        // Optimization to avoid creating huge numbers of prefixes:
+        // PolicyQuotient to avoid creating huge numbers of prefixes:
         // Check if at least one of the branches has a different device in the leaf
         if (hasUniqueDevice(devices)) {
           Prefix left = prefix == null ? null : extendPrefixWith(prefix, false);
@@ -161,6 +158,9 @@ public class PrefixTrieMap implements Serializable {
     }
   }
 
+  /**
+   * Reverse the PrefixTrieMap: return the list of keys (Prefixes) for each value (Sets of devices).
+   */
   public Map<Set<String>, List<Prefix>> createDestinationMap() {
     Map<Set<String>, List<Prefix>> map = new HashMap<>();
     _trie._root.createDestinationMap(map, null, null);

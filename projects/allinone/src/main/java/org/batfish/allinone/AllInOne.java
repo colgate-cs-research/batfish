@@ -10,11 +10,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.allinone.config.Settings;
 import org.batfish.client.Client;
 import org.batfish.common.BatfishLogger;
-import org.batfish.common.BfConsts;
 
 public class AllInOne {
 
@@ -125,7 +124,7 @@ public class AllInOne {
           _logger.info("allinone: still alive ....\n");
         }
       } catch (Exception ex) {
-        String stackTrace = ExceptionUtils.getFullStackTrace(ex);
+        String stackTrace = ExceptionUtils.getStackTrace(ex);
         System.err.println(stackTrace);
       }
     }
@@ -134,7 +133,7 @@ public class AllInOne {
   private void initTracer() {
     GlobalTracer.register(
         new Configuration(
-                BfConsts.PROP_ALLINONE_SERVICE,
+                _settings.getServiceName(),
                 new SamplerConfiguration(ConstSampler.TYPE, 1),
                 new ReporterConfiguration(
                     false,
@@ -149,9 +148,10 @@ public class AllInOne {
 
     String batfishArgs =
         String.format(
-            "%s -%s -%s %s -%s %s",
+            "%s -%s %s -%s %s -%s %s",
             _settings.getBatfishArgs(),
-            org.batfish.config.Settings.ARG_SERVICE_MODE,
+            org.batfish.config.Settings.ARG_RUN_MODE,
+            _settings.getBatfishRunMode(),
             org.batfish.config.Settings.ARG_COORDINATOR_REGISTER,
             "true",
             org.batfish.config.Settings.ARG_TRACING_ENABLE,

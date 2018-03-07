@@ -1,6 +1,10 @@
 package org.batfish.representation.cisco;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.ImmutableSortedSet;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +12,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,7 @@ import org.batfish.datamodel.GeneratedRoute;
 import org.batfish.datamodel.GeneratedRoute6;
 import org.batfish.datamodel.IkeGateway;
 import org.batfish.datamodel.IkePolicy;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.Ip6;
 import org.batfish.datamodel.Ip6AccessList;
@@ -56,6 +60,7 @@ import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.MultipathEquivalentAsPathMatchMode;
 import org.batfish.datamodel.OriginType;
 import org.batfish.datamodel.OspfArea;
+import org.batfish.datamodel.OspfAreaSummary;
 import org.batfish.datamodel.OspfMetricType;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Prefix6;
@@ -94,6 +99,7 @@ import org.batfish.datamodel.routing_policy.expr.NamedPrefixSet;
 import org.batfish.datamodel.routing_policy.expr.Not;
 import org.batfish.datamodel.routing_policy.expr.SelfNextHop;
 import org.batfish.datamodel.routing_policy.expr.WithEnvironmentExpr;
+import org.batfish.datamodel.routing_policy.statement.CallStatement;
 import org.batfish.datamodel.routing_policy.statement.If;
 import org.batfish.datamodel.routing_policy.statement.SetMetric;
 import org.batfish.datamodel.routing_policy.statement.SetNextHop;
@@ -115,7 +121,77 @@ public final class CiscoConfiguration extends VendorConfiguration {
 
   private static final int CISCO_AGGREGATE_ROUTE_ADMIN_COST = 200;
 
-  private static final Map<String, String> CISCO_INTERFACE_PREFIXES = getCiscoInterfacePrefixes();
+  /*
+   * This map is used to convert interface names to their canonical forms.
+   * The entries are visited in insertion order until a key is found of which the name to convert is
+   * case-insensitively a prefix. The value corresponding to that key is chosen as the canonical
+   * form for that name.
+   *
+   * NOTE: Entries are sorted by priority. Do not reorder unless you have a good reason.
+   * For instance, we don't want 'e' to be canonically considered 'Embedded-Service-Engine' instead
+   * of 'Ethernet'.
+   */
+  private static final Map<String, String> CISCO_INTERFACE_PREFIXES =
+      ImmutableMap.<String, String>builder()
+          .put("ap", "ap")
+          .put("Async", "Async")
+          .put("ATM", "ATM")
+          .put("BDI", "BDI")
+          .put("BRI", "BRI")
+          .put("Bundle-Ether", "Bundle-Ethernet")
+          .put("BVI", "BVI")
+          .put("Cable", "Cable")
+          .put("cable-downstream", "cable-downstream")
+          .put("cable-mac", "cable-mac")
+          .put("cable-upstream", "cable-upstream")
+          .put("Cellular", "Cellular")
+          .put("Crypto-Engine", "Crypto-Engine")
+          .put("cmp-mgmt", "cmp-mgmt")
+          .put("Dialer", "Dialer")
+          .put("Dot11Radio", "Dot11Radio")
+          .put("Ethernet", "Ethernet")
+          .put("Embedded-Service-Engine", "Embedded-Service-Engine")
+          .put("FastEthernet", "FastEthernet")
+          .put("fc", "fc")
+          .put("fe", "FastEthernet")
+          .put("fortyGigE", "FortyGigabitEthernet")
+          .put("FortyGigabitEthernet", "FortyGigabitEthernet")
+          .put("GigabitEthernet", "GigabitEthernet")
+          .put("ge", "GigabitEthernet")
+          .put("GMPLS", "GMPLS")
+          .put("HundredGigE", "HundredGigabitEthernet")
+          .put("ip", "ip")
+          .put("Group-Async", "Group-Async")
+          .put("LongReachEthernet", "LongReachEthernet")
+          .put("Loopback", "Loopback")
+          .put("ma", "Management")
+          .put("Management", "Management")
+          .put("ManagementEthernet", "ManagementEthernet")
+          .put("mfr", "mfr")
+          .put("mgmt", "mgmt")
+          .put("MgmtEth", "ManagementEthernet")
+          .put("Modular-Cable", "Modular-Cable")
+          .put("Multilink", "Multilink")
+          .put("Null", "Null")
+          .put("nve", "nve")
+          .put("Port-channel", "Port-Channel")
+          .put("POS", "POS")
+          .put("PTP", "PTP")
+          .put("Serial", "Serial")
+          .put("Service-Engine", "Service-Engine")
+          .put("TenGigabitEthernet", "TenGigabitEthernet")
+          .put("TenGigE", "TenGigabitEthernet")
+          .put("te", "TenGigabitEthernet")
+          .put("trunk", "trunk")
+          .put("Tunnel", "Tunnel")
+          .put("tunnel-ip", "tunnel-ip")
+          .put("tunnel-te", "tunnel-te")
+          .put("ve", "VirtualEthernet")
+          .put("Virtual-Template", "Virtual-Template")
+          .put("Vlan", "Vlan")
+          .put("Vxlan", "Vxlan")
+          .put("Wideband-Cable", "Wideband-Cable")
+          .build();
 
   static final boolean DEFAULT_VRRP_PREEMPT = true;
 
@@ -134,65 +210,6 @@ public final class CiscoConfiguration extends VendorConfiguration {
   private static final int VLAN_NORMAL_MAX_CISCO = 1005;
 
   private static final int VLAN_NORMAL_MIN_CISCO = 2;
-
-  private static synchronized Map<String, String> getCiscoInterfacePrefixes() {
-    Map<String, String> prefixes = new LinkedHashMap<>();
-    prefixes.put("ap", "ap");
-    prefixes.put("Async", "Async");
-    prefixes.put("ATM", "ATM");
-    prefixes.put("BDI", "BDI");
-    prefixes.put("BRI", "BRI");
-    prefixes.put("Bundle-Ether", "Bundle-Ethernet");
-    prefixes.put("BVI", "BVI");
-    prefixes.put("Cable", "Cable");
-    prefixes.put("cable-downstream", "cable-downstream");
-    prefixes.put("cable-mac", "cable-mac");
-    prefixes.put("cable-upstream", "cable-upstream");
-    prefixes.put("Crypto-Engine", "Crypto-Engine");
-    prefixes.put("cmp-mgmt", "cmp-mgmt");
-    prefixes.put("Dialer", "Dialer");
-    prefixes.put("Dot11Radio", "Dot11Radio");
-    prefixes.put("Embedded-Service-Engine", "Embedded-Service-Engine");
-    prefixes.put("Ethernet", "Ethernet");
-    prefixes.put("FastEthernet", "FastEthernet");
-    prefixes.put("fc", "fc");
-    prefixes.put("fe", "FastEthernet");
-    prefixes.put("fortyGigE", "FortyGigabitEthernet");
-    prefixes.put("FortyGigabitEthernet", "FortyGigabitEthernet");
-    prefixes.put("GigabitEthernet", "GigabitEthernet");
-    prefixes.put("ge", "GigabitEthernet");
-    prefixes.put("GMPLS", "GMPLS");
-    prefixes.put("HundredGigE", "HundredGigabitEthernet");
-    prefixes.put("ip", "ip");
-    prefixes.put("Group-Async", "Group-Async");
-    prefixes.put("LongReachEthernet", "LongReachEthernet");
-    prefixes.put("Loopback", "Loopback");
-    prefixes.put("ma", "Management");
-    prefixes.put("Management", "Management");
-    prefixes.put("ManagementEthernet", "ManagementEthernet");
-    prefixes.put("mgmt", NXOS_MANAGEMENT_INTERFACE_PREFIX);
-    prefixes.put("MgmtEth", "ManagementEthernet");
-    prefixes.put("Modular-Cable", "Modular-Cable");
-    prefixes.put("Null", "Null");
-    prefixes.put("Port-channel", "Port-Channel");
-    prefixes.put("POS", "POS");
-    prefixes.put("PTP", "PTP");
-    prefixes.put("Serial", "Serial");
-    prefixes.put("Service-Engine", "Service-Engine");
-    prefixes.put("TenGigabitEthernet", "TenGigabitEthernet");
-    prefixes.put("TenGigE", "TenGigabitEthernet");
-    prefixes.put("te", "TenGigabitEthernet");
-    prefixes.put("trunk", "trunk");
-    prefixes.put("Tunnel", "Tunnel");
-    prefixes.put("tunnel-ip", "tunnel-ip");
-    prefixes.put("tunnel-te", "tunnel-te");
-    prefixes.put("ve", "VirtualEthernet");
-    prefixes.put("Virtual-Template", "Virtual-Template");
-    prefixes.put("Vlan", "Vlan");
-    prefixes.put("Vxlan", "Vxlan");
-    prefixes.put("Wideband-Cable", "Wideband-Cable");
-    return prefixes;
-  }
 
   @Override
   public String canonicalizeInterfaceName(String ifaceName) {
@@ -275,11 +292,11 @@ public final class CiscoConfiguration extends VendorConfiguration {
 
   private final Map<String, String> _failoverInterfaces;
 
-  private final Map<String, Prefix> _failoverPrimaryPrefixes;
+  private final Map<String, InterfaceAddress> _failoverPrimaryAddresses;
 
   private boolean _failoverSecondary;
 
-  private final Map<String, Prefix> _failoverStandbyPrefixes;
+  private final Map<String, InterfaceAddress> _failoverStandbyAddresses;
 
   private String _failoverStatefulSignalingInterface;
 
@@ -391,8 +408,8 @@ public final class CiscoConfiguration extends VendorConfiguration {
     _extendedAccessLists = new TreeMap<>();
     _extendedIpv6AccessLists = new TreeMap<>();
     _failoverInterfaces = new TreeMap<>();
-    _failoverPrimaryPrefixes = new TreeMap<>();
-    _failoverStandbyPrefixes = new TreeMap<>();
+    _failoverPrimaryAddresses = new TreeMap<>();
+    _failoverStandbyAddresses = new TreeMap<>();
     _igmpAcls = new TreeSet<>();
     _isakmpPolicies = new TreeMap<>();
     _isakmpProfiles = new TreeMap<>();
@@ -446,12 +463,13 @@ public final class CiscoConfiguration extends VendorConfiguration {
                           new org.batfish.datamodel.VrrpGroup(groupNum);
                       newGroup.setPreempt(vrrpGroup.getPreempt());
                       newGroup.setPriority(vrrpGroup.getPriority());
-                      Prefix ifacePrefix = iface.getPrefix();
-                      if (ifacePrefix != null) {
-                        int prefixLength = ifacePrefix.getPrefixLength();
+                      InterfaceAddress ifaceAddress = iface.getAddress();
+                      if (ifaceAddress != null) {
+                        int prefixLength = ifaceAddress.getNetworkBits();
                         Ip address = vrrpGroup.getVirtualAddress();
                         if (address != null) {
-                          Prefix virtualAddress = new Prefix(address, prefixLength);
+                          InterfaceAddress virtualAddress =
+                              new InterfaceAddress(address, prefixLength);
                           newGroup.setVirtualAddress(virtualAddress);
                         } else {
                           _w.redFlag(
@@ -565,9 +583,9 @@ public final class CiscoConfiguration extends VendorConfiguration {
         String iname = e.getKey();
         org.batfish.datamodel.Interface iface = e.getValue();
         if (iname.startsWith("Loopback")) {
-          Prefix prefix = iface.getPrefix();
-          if (prefix != null) {
-            Ip currentIp = prefix.getAddress();
+          InterfaceAddress address = iface.getAddress();
+          if (address != null) {
+            Ip currentIp = address.getIp();
             if (currentIp.asLong() > processRouterId.asLong()) {
               processRouterId = currentIp;
             }
@@ -576,9 +594,9 @@ public final class CiscoConfiguration extends VendorConfiguration {
       }
       if (processRouterId.equals(Ip.ZERO)) {
         for (org.batfish.datamodel.Interface currentInterface : vrf.getInterfaces().values()) {
-          Prefix prefix = currentInterface.getPrefix();
-          if (prefix != null) {
-            Ip currentIp = prefix.getAddress();
+          InterfaceAddress address = currentInterface.getAddress();
+          if (address != null) {
+            Ip currentIp = address.getIp();
             if (currentIp.asLong() > processRouterId.asLong()) {
               processRouterId = currentIp;
             }
@@ -654,16 +672,16 @@ public final class CiscoConfiguration extends VendorConfiguration {
     return _failoverInterfaces;
   }
 
-  public Map<String, Prefix> getFailoverPrimaryPrefixes() {
-    return _failoverPrimaryPrefixes;
+  public Map<String, InterfaceAddress> getFailoverPrimaryAddresses() {
+    return _failoverPrimaryAddresses;
   }
 
   public boolean getFailoverSecondary() {
     return _failoverSecondary;
   }
 
-  public Map<String, Prefix> getFailoverStandbyPrefixes() {
-    return _failoverStandbyPrefixes;
+  public Map<String, InterfaceAddress> getFailoverStandbyAddresses() {
+    return _failoverStandbyAddresses;
   }
 
   public String getFailoverStatefulSignalingInterface() {
@@ -699,8 +717,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
             .values()
             .stream()
             .filter(
-                i ->
-                    i.getAllPrefixes().stream().anyMatch(p -> p.getAddress().equals(sourceAddress)))
+                i -> i.getAllAddresses().stream().anyMatch(p -> p.getIp().equals(sourceAddress)))
             .findFirst()
             .orElse(null);
       }
@@ -943,9 +960,9 @@ public final class CiscoConfiguration extends VendorConfiguration {
         org.batfish.datamodel.Interface sourceInterface =
             vrf.getInterfaces().get(updateSourceInterface);
         if (sourceInterface != null) {
-          Prefix prefix = sourceInterface.getPrefix();
-          if (prefix != null) {
-            Ip sourceIp = prefix.getAddress();
+          InterfaceAddress address = sourceInterface.getAddress();
+          if (address != null) {
+            Ip sourceIp = address.getIp();
             updateSource = sourceIp;
           } else {
             _w.redFlag(
@@ -962,17 +979,17 @@ public final class CiscoConfiguration extends VendorConfiguration {
               updateSourceInterfaceLine);
         }
       } else {
-        Ip neighborAddress = lpg.getNeighborPrefix().getAddress();
+        Ip neighborAddress = lpg.getNeighborPrefix().getStartIp();
         for (org.batfish.datamodel.Interface iface : vrf.getInterfaces().values()) {
-          for (Prefix ifacePrefix : iface.getAllPrefixes()) {
-            if (ifacePrefix.contains(neighborAddress)) {
-              Ip ifaceAddress = ifacePrefix.getAddress();
+          for (InterfaceAddress interfaceAddress : iface.getAllAddresses()) {
+            if (interfaceAddress.getPrefix().contains(neighborAddress)) {
+              Ip ifaceAddress = interfaceAddress.getIp();
               updateSource = ifaceAddress;
             }
           }
         }
       }
-      if (updateSource == null && lpg.getNeighborPrefix().getAddress().valid()) {
+      if (updateSource == null && lpg.getNeighborPrefix().getStartIp().valid()) {
         _w.redFlag("Could not determine update source for BGP neighbor: '" + lpg.getName() + "'");
       }
     }
@@ -1081,7 +1098,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
    * @param maps A list of maps to check for the structure to be updated. Each map could be null.
    *     There must be at least one element. The structure may exist in more than one map.
    */
-  private final void markStructure(
+  private void markStructure(
       CiscoStructureType type,
       CiscoStructureUsage usage,
       List<Map<String, ? extends ReferenceCountedStructure>> maps) {
@@ -1114,7 +1131,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
     }
   }
 
-  private final void markStructure(
+  private void markStructure(
       CiscoStructureType type,
       CiscoStructureUsage usage,
       Map<String, ? extends ReferenceCountedStructure> map) {
@@ -1124,26 +1141,26 @@ public final class CiscoConfiguration extends VendorConfiguration {
   private void processFailoverSettings() {
     if (_failover) {
       Interface commIface;
-      Prefix commPrefix;
+      InterfaceAddress commAddress;
       Interface sigIface;
-      Prefix sigPrefix;
+      InterfaceAddress sigAddress;
       if (_failoverSecondary) {
         commIface = _interfaces.get(_failoverCommunicationInterface);
-        commPrefix = _failoverStandbyPrefixes.get(_failoverCommunicationInterfaceAlias);
+        commAddress = _failoverStandbyAddresses.get(_failoverCommunicationInterfaceAlias);
         sigIface = _interfaces.get(_failoverStatefulSignalingInterface);
-        sigPrefix = _failoverStandbyPrefixes.get(_failoverStatefulSignalingInterfaceAlias);
+        sigAddress = _failoverStandbyAddresses.get(_failoverStatefulSignalingInterfaceAlias);
         for (Interface iface : _interfaces.values()) {
-          iface.setPrefix(iface.getStandbyPrefix());
+          iface.setAddress(iface.getStandbyAddress());
         }
       } else {
         commIface = _interfaces.get(_failoverCommunicationInterface);
-        commPrefix = _failoverPrimaryPrefixes.get(_failoverCommunicationInterfaceAlias);
+        commAddress = _failoverPrimaryAddresses.get(_failoverCommunicationInterfaceAlias);
         sigIface = _interfaces.get(_failoverStatefulSignalingInterface);
-        sigPrefix = _failoverPrimaryPrefixes.get(_failoverStatefulSignalingInterfaceAlias);
+        sigAddress = _failoverPrimaryAddresses.get(_failoverStatefulSignalingInterfaceAlias);
       }
-      commIface.setPrefix(commPrefix);
+      commIface.setAddress(commAddress);
       commIface.setActive(true);
-      sigIface.setPrefix(sigPrefix);
+      sigIface.setAddress(sigAddress);
       sigIface.setActive(true);
     }
   }
@@ -1322,7 +1339,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
       BgpAggregateIpv4Network aggNet = e.getValue();
       boolean summaryOnly = aggNet.getSummaryOnly();
       int prefixLength = prefix.getPrefixLength();
-      SubRange prefixRange = new SubRange(prefixLength + 1, 32);
+      SubRange prefixRange = new SubRange(prefixLength + 1, Prefix.MAX_PREFIX_LENGTH);
       if (summaryOnly) {
         summaryOnlyNetworks.add(aggNet);
       }
@@ -1356,7 +1373,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
               new MatchPrefixSet(
                   new DestinationNetwork(),
                   new ExplicitPrefixSet(
-                      new PrefixSpace(Collections.singleton(new PrefixRange(prefix.toString()))))));
+                      new PrefixSpace(Collections.singleton(PrefixRange.fromPrefix(prefix))))));
       applyCurrentAggregateAttributesConditions
           .getConjuncts()
           .add(new MatchProtocol(RoutingProtocol.AGGREGATE));
@@ -1391,7 +1408,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
       BgpAggregateIpv6Network aggNet = e.getValue();
       boolean summaryOnly = aggNet.getSummaryOnly();
       int prefixLength = prefix6.getPrefixLength();
-      SubRange prefixRange = new SubRange(prefixLength + 1, 32);
+      SubRange prefixRange = new SubRange(prefixLength + 1, Prefix.MAX_PREFIX_LENGTH);
       if (summaryOnly) {
         summaryOnlyIpv6Networks.add(aggNet);
       }
@@ -1462,7 +1479,10 @@ public final class CiscoConfiguration extends VendorConfiguration {
         Prefix prefix = summaryOnlyNetwork.getPrefix();
         int prefixLength = prefix.getPrefixLength();
         RouteFilterLine line =
-            new RouteFilterLine(LineAction.ACCEPT, prefix, new SubRange(prefixLength + 1, 32));
+            new RouteFilterLine(
+                LineAction.ACCEPT,
+                prefix,
+                new SubRange(prefixLength + 1, Prefix.MAX_PREFIX_LENGTH));
         matchSuppressedSummaryOnlyRoutes.addLine(line);
       }
       suppressSummaryOnly.setGuard(
@@ -1565,6 +1585,34 @@ public final class CiscoConfiguration extends VendorConfiguration {
       BooleanExpr we = bgpRedistributeWithEnvironmentExpr(weInterior, OriginType.INCOMPLETE);
       exportConnectedConditions.getConjuncts().add(we);
       preFilterConditions.getDisjuncts().add(exportConnectedConditions);
+    }
+
+    // redistribute ospf
+    BgpRedistributionPolicy redistributeOspfPolicy =
+        proc.getRedistributionPolicies().get(RoutingProtocol.OSPF);
+    if (redistributeOspfPolicy != null) {
+      BooleanExpr weInterior = BooleanExprs.True.toStaticBooleanExpr();
+      Conjunction exportOspfConditions = new Conjunction();
+      exportOspfConditions.setComment("Redistribute OSPF routes into BGP");
+      exportOspfConditions.getConjuncts().add(new MatchProtocol(RoutingProtocol.OSPF));
+      String mapName = redistributeOspfPolicy.getRouteMap();
+      if (mapName != null) {
+        int mapLine = redistributeOspfPolicy.getRouteMapLine();
+        RouteMap redistributeOspfRouteMap = _routeMaps.get(mapName);
+        if (redistributeOspfRouteMap != null) {
+          redistributeOspfRouteMap.getReferers().put(proc, "ospf redistribution route-map");
+          weInterior = new CallExpr(mapName);
+        } else {
+          undefined(
+              CiscoStructureType.ROUTE_MAP,
+              mapName,
+              CiscoStructureUsage.BGP_REDISTRIBUTE_OSPF_MAP,
+              mapLine);
+        }
+      }
+      BooleanExpr we = bgpRedistributeWithEnvironmentExpr(weInterior, OriginType.INCOMPLETE);
+      exportOspfConditions.getConjuncts().add(we);
+      preFilterConditions.getDisjuncts().add(exportOspfConditions);
     }
 
     // cause ip peer groups to inherit unset fields from owning named peer
@@ -2113,13 +2161,18 @@ public final class CiscoConfiguration extends VendorConfiguration {
     newIface.setProxyArp(iface.getProxyArp());
     newIface.setSpanningTreePortfast(iface.getSpanningTreePortfast());
     newIface.setSwitchport(iface.getSwitchport());
-    if (iface.getPrefix() != null) {
-      newIface.setPrefix(iface.getPrefix());
-      newIface.getAllPrefixes().add(iface.getPrefix());
-    }
-    newIface.getAllPrefixes().addAll(iface.getSecondaryPrefixes());
-    Long ospfAreaLong = iface.getOspfArea();
+    newIface.setDeclaredNames(ImmutableSortedSet.copyOf(iface.getDeclaredNames()));
 
+    // All prefixes is the combination of the interface prefix + any secondary prefixes.
+    ImmutableSet.Builder<InterfaceAddress> allPrefixes = ImmutableSet.builder();
+    if (iface.getAddress() != null) {
+      newIface.setAddress(iface.getAddress());
+      allPrefixes.add(iface.getAddress());
+    }
+    allPrefixes.addAll(iface.getSecondaryAddresses());
+    newIface.setAllAddresses(allPrefixes.build());
+
+    Long ospfAreaLong = iface.getOspfArea();
     if (ospfAreaLong != null) {
       OspfProcess proc = vrf.getOspfProcess();
       if (proc != null) {
@@ -2129,9 +2182,9 @@ public final class CiscoConfiguration extends VendorConfiguration {
         if (iface.getOspfPassive()) {
           proc.getPassiveInterfaceList().add(name);
         }
-        for (Prefix prefix : newIface.getAllPrefixes()) {
-          Prefix networkPrefix = prefix.getNetworkPrefix();
-          OspfNetwork ospfNetwork = new OspfNetwork(networkPrefix, ospfAreaLong);
+        for (InterfaceAddress address : newIface.getAllAddresses()) {
+          Prefix prefix = address.getPrefix();
+          OspfNetwork ospfNetwork = new OspfNetwork(prefix, ospfAreaLong);
           proc.getNetworks().add(ospfNetwork);
         }
       } else {
@@ -2235,21 +2288,17 @@ public final class CiscoConfiguration extends VendorConfiguration {
       }
       newIface.setOutgoingFilter(outgoingFilter);
     }
-    if (!CommonUtil.isNullOrEmpty(iface.getSourceNats())) {
-      List<CiscoSourceNat> origSourceNats = iface.getSourceNats();
-
-      if (newIface.getSourceNats() == null) {
-        newIface.setSourceNats(new ArrayList<>(origSourceNats.size()));
-      }
-
+    List<CiscoSourceNat> origSourceNats = iface.getSourceNats();
+    if (origSourceNats != null) {
       // Process each of the CiscoSourceNats:
       //   1) Collect references to ACLs and NAT pools.
       //   2) For valid CiscoSourceNat rules, add them to the newIface source NATs list.
-      origSourceNats
-          .stream()
-          .map(nat -> processSourceNat(nat, iface, ipAccessLists))
-          .filter(Objects::nonNull)
-          .forEach(newIface.getSourceNats()::add);
+      newIface.setSourceNats(
+          origSourceNats
+              .stream()
+              .map(nat -> processSourceNat(nat, iface, ipAccessLists))
+              .filter(Objects::nonNull)
+              .collect(ImmutableList.toImmutableList()));
     }
     String routingPolicyName = iface.getRoutingPolicy();
     if (routingPolicyName != null) {
@@ -2323,35 +2372,35 @@ public final class CiscoConfiguration extends VendorConfiguration {
       newLine.setAction(fromLine.getAction());
       IpWildcard srcIpWildcard = fromLine.getSourceIpWildcard();
       if (srcIpWildcard != null) {
-        newLine.getSrcIps().add(srcIpWildcard);
+        newLine.setSrcIps(ImmutableSortedSet.of(srcIpWildcard));
       }
       IpWildcard dstIpWildcard = fromLine.getDestinationIpWildcard();
       if (dstIpWildcard != null) {
-        newLine.getDstIps().add(dstIpWildcard);
+        newLine.setDstIps(ImmutableSortedSet.of(dstIpWildcard));
       }
       // TODO: src/dst address group
       IpProtocol protocol = fromLine.getProtocol();
       if (protocol != IpProtocol.IP) {
-        newLine.getIpProtocols().add(protocol);
+        newLine.setIpProtocols(ImmutableSortedSet.of(protocol));
       }
-      newLine.getDstPorts().addAll(fromLine.getDstPorts());
-      newLine.getSrcPorts().addAll(fromLine.getSrcPorts());
+      newLine.setDstPorts(fromLine.getDstPorts());
+      newLine.setSrcPorts(fromLine.getSrcPorts());
       Integer icmpType = fromLine.getIcmpType();
       if (icmpType != null) {
-        newLine.setIcmpTypes(new TreeSet<>(Collections.singleton(new SubRange(icmpType))));
+        newLine.setIcmpTypes(ImmutableSortedSet.of(new SubRange(icmpType)));
       }
       Integer icmpCode = fromLine.getIcmpCode();
       if (icmpCode != null) {
-        newLine.setIcmpCodes(new TreeSet<>(Collections.singleton(new SubRange(icmpCode))));
+        newLine.setIcmpCodes(ImmutableSortedSet.of(new SubRange(icmpCode)));
       }
       Set<State> states = fromLine.getStates();
-      newLine.getStates().addAll(states);
+      newLine.setStates(states);
       List<TcpFlags> tcpFlags = fromLine.getTcpFlags();
-      newLine.getTcpFlags().addAll(tcpFlags);
+      newLine.setTcpFlags(tcpFlags);
       Set<Integer> dscps = fromLine.getDscps();
-      newLine.getDscps().addAll(dscps);
+      newLine.setDscps(dscps);
       Set<Integer> ecns = fromLine.getEcns();
-      newLine.getEcns().addAll(ecns);
+      newLine.setEcns(ecns);
       lines.add(newLine);
     }
     return new IpAccessList(name, lines);
@@ -2421,11 +2470,11 @@ public final class CiscoConfiguration extends VendorConfiguration {
     // .add(new PolicyMapSetLevelLine(summaryLevel));
     // int length = summaryPrefix.getPrefixLength();
     // int rejectLowerBound = length + 1;
-    // if (rejectLowerBound > 32) {
+    // if (rejectLowerBound > Prefix.MAX_LENGTH) {
     // throw new VendorConversionException(
     // "Invalid summary prefix: " + summaryPrefix.toString());
     // }
-    // SubRange summarizedRange = new SubRange(rejectLowerBound, 32);
+    // SubRange summarizedRange = new SubRange(rejectLowerBound, Prefix.MAX_LENGTH);
     // RouteFilterLine summarized = new RouteFilterLine(LineAction.ACCEPT,
     // summaryPrefix, summarizedRange);
     // RouteFilterLine summary = new RouteFilterLine(LineAction.ACCEPT,
@@ -2647,8 +2696,11 @@ public final class CiscoConfiguration extends VendorConfiguration {
       newProcess.setMaxMetricSummaryNetworks(proc.getMaxMetricSummaryLsa());
     }
 
+    newProcess.setProcessId(proc.getName());
+
     // establish areas and associated interfaces
     Map<Long, OspfArea> areas = newProcess.getAreas();
+    Map<Long, ImmutableSortedSet.Builder<String>> areaInterfacesBuilders = new HashMap<>();
     List<OspfNetwork> networks = new ArrayList<>();
     networks.addAll(proc.getNetworks());
     Collections.sort(
@@ -2661,8 +2713,8 @@ public final class CiscoConfiguration extends VendorConfiguration {
             int rhsPrefixLength = rhs.getPrefix().getPrefixLength();
             int result = Integer.compare(rhsPrefixLength, lhsPrefixLength); // intentionally swapped
             if (result == 0) {
-              long lhsIp = lhs.getPrefix().getAddress().asLong();
-              long rhsIp = rhs.getPrefix().getAddress().asLong();
+              long lhsIp = lhs.getPrefix().getStartIp().asLong();
+              long rhsIp = rhs.getPrefix().getStartIp().asLong();
               result = Long.compare(lhsIp, rhsIp);
             }
             return result;
@@ -2675,20 +2727,23 @@ public final class CiscoConfiguration extends VendorConfiguration {
     for (Entry<String, org.batfish.datamodel.Interface> e : vrf.getInterfaces().entrySet()) {
       String ifaceName = e.getKey();
       org.batfish.datamodel.Interface iface = e.getValue();
-      Prefix interfacePrefix = iface.getPrefix();
-      if (interfacePrefix == null) {
+      InterfaceAddress interfaceAddress = iface.getAddress();
+      if (interfaceAddress == null) {
         continue;
       }
       for (OspfNetwork network : networks) {
         Prefix networkPrefix = network.getPrefix();
-        Ip networkAddress = networkPrefix.getAddress();
+        Ip networkAddress = networkPrefix.getStartIp();
         Ip maskedInterfaceAddress =
-            interfacePrefix.getAddress().getNetworkAddress(networkPrefix.getPrefixLength());
+            interfaceAddress.getIp().getNetworkAddress(networkPrefix.getPrefixLength());
         if (maskedInterfaceAddress.equals(networkAddress)) {
           // we have a longest prefix match
           long areaNum = network.getArea();
           OspfArea newArea = areas.computeIfAbsent(areaNum, OspfArea::new);
-          newArea.getInterfaces().put(ifaceName, iface);
+          ImmutableSortedSet.Builder<String> newAreaInterfacesBuilder =
+              areaInterfacesBuilders.computeIfAbsent(
+                  areaNum, n -> ImmutableSortedSet.naturalOrder());
+          newAreaInterfacesBuilder.add(ifaceName);
           iface.setOspfArea(newArea);
           iface.setOspfEnabled(true);
           boolean passive =
@@ -2699,12 +2754,15 @@ public final class CiscoConfiguration extends VendorConfiguration {
           break;
         }
       }
+      areaInterfacesBuilders.forEach(
+          (areaNum, interfacesBuilder) ->
+              areas.get(areaNum).setInterfaces(interfacesBuilder.build()));
     }
 
     // create summarization filters for inter-area routes
-    for (Entry<Long, Map<Prefix, Boolean>> e1 : proc.getSummaries().entrySet()) {
+    for (Entry<Long, Map<Prefix, OspfAreaSummary>> e1 : proc.getSummaries().entrySet()) {
       long areaLong = e1.getKey();
-      Map<Prefix, Boolean> summaries = e1.getValue();
+      Map<Prefix, OspfAreaSummary> summaries = e1.getValue();
       OspfArea area = areas.get(areaLong);
       String summaryFilterName = "~OSPF_SUMMARY_FILTER:" + vrfName + ":" + areaLong + "~";
       RouteFilterList summaryFilter = new RouteFilterList(summaryFilterName);
@@ -2714,19 +2772,21 @@ public final class CiscoConfiguration extends VendorConfiguration {
         areas.put(areaLong, area);
       }
       area.setSummaryFilter(summaryFilterName);
-      for (Entry<Prefix, Boolean> e2 : summaries.entrySet()) {
+      for (Entry<Prefix, OspfAreaSummary> e2 : summaries.entrySet()) {
         Prefix prefix = e2.getKey();
-        boolean advertise = e2.getValue();
+        OspfAreaSummary summary = e2.getValue();
         int prefixLength = prefix.getPrefixLength();
         int filterMinPrefixLength =
-            advertise ? Math.min(Prefix.MAX_PREFIX_LENGTH, prefixLength + 1) : prefixLength;
+            summary.getAdvertised()
+                ? Math.min(Prefix.MAX_PREFIX_LENGTH, prefixLength + 1)
+                : prefixLength;
         summaryFilter.addLine(
             new RouteFilterLine(
                 LineAction.REJECT,
                 prefix,
                 new SubRange(filterMinPrefixLength, Prefix.MAX_PREFIX_LENGTH)));
-        area.getSummaries().put(prefix, advertise);
       }
+      area.setSummaries(ImmutableSortedMap.copyOf(summaries));
       summaryFilter.addLine(
           new RouteFilterLine(
               LineAction.ACCEPT, Prefix.ZERO, new SubRange(0, Prefix.MAX_PREFIX_LENGTH)));
@@ -2954,7 +3014,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
         Interface iface = e.getValue();
         if (ifaceName.toLowerCase().startsWith("loopback")
             && iface.getActive()
-            && iface.getPrefix() != null) {
+            && iface.getAddress() != null) {
           loopbackInterfaces.put(ifaceName, iface);
         }
       }
@@ -2968,8 +3028,8 @@ public final class CiscoConfiguration extends VendorConfiguration {
         if (!iface.getActive()) {
           continue;
         }
-        for (Prefix prefix : iface.getAllPrefixes()) {
-          Ip ip = prefix.getAddress();
+        for (InterfaceAddress address : iface.getAllAddresses()) {
+          Ip ip = address.getIp();
           if (highestIp.asLong() < ip.asLong()) {
             highestIp = ip;
           }
@@ -2995,11 +3055,11 @@ public final class CiscoConfiguration extends VendorConfiguration {
     for (Entry<String, org.batfish.datamodel.Interface> e : vrf.getInterfaces().entrySet()) {
       String ifaceName = e.getKey();
       org.batfish.datamodel.Interface i = e.getValue();
-      Prefix interfaceAddressPrefix = i.getPrefix();
-      if (interfaceAddressPrefix == null) {
+      InterfaceAddress interfaceAddress = i.getAddress();
+      if (interfaceAddress == null) {
         continue;
       }
-      Prefix interfaceNetwork = interfaceAddressPrefix.getNetworkPrefix();
+      Prefix interfaceNetwork = interfaceAddress.getPrefix();
       if (networks.contains(interfaceNetwork)) {
         newProcess.getInterfaces().add(ifaceName);
         i.setRipEnabled(true);
@@ -3257,35 +3317,35 @@ public final class CiscoConfiguration extends VendorConfiguration {
   private RouteFilterList toRouteFilterList(ExtendedAccessList eaList) {
     String name = eaList.getName();
     RouteFilterList newList = new RouteFilterList(name);
-    List<RouteFilterLine> lines = new ArrayList<>();
     for (ExtendedAccessListLine fromLine : eaList.getLines()) {
       RouteFilterLine newLine = toRouteFilterLine(fromLine);
-      lines.add(newLine);
+      newList.addLine(newLine);
     }
-    newList.getLines().addAll(lines);
     return newList;
   }
 
   private RouteFilterList toRouteFilterList(PrefixList list) {
     RouteFilterList newRouteFilterList = new RouteFilterList(list.getName());
-    for (PrefixListLine prefixListLine : list.getLines()) {
-      RouteFilterLine newRouteFilterListLine =
-          new RouteFilterLine(
-              prefixListLine.getAction(),
-              prefixListLine.getPrefix(),
-              prefixListLine.getLengthRange());
-      newRouteFilterList.addLine(newRouteFilterListLine);
-    }
+    List<RouteFilterLine> newLines =
+        list.getLines()
+            .stream()
+            .map(l -> new RouteFilterLine(l.getAction(), l.getPrefix(), l.getLengthRange()))
+            .collect(ImmutableList.toImmutableList());
+    newRouteFilterList.setLines(newLines);
     return newRouteFilterList;
   }
 
   private RoutingPolicy toRoutingPolicy(final Configuration c, RouteMap map) {
+    boolean hasContinue =
+        map.getClauses().values().stream().anyMatch(clause -> clause.getContinueLine() != null);
+    if (hasContinue) {
+      return toRoutingPolicies(c, map);
+    }
     RoutingPolicy output = new RoutingPolicy(map.getName(), c);
     List<Statement> statements = output.getStatements();
     Map<Integer, If> clauses = new HashMap<>();
     // descend map so continue targets are available
     If followingClause = null;
-    Integer followingClauseNumber = null;
     for (Entry<Integer, RouteMapClause> e : map.getClauses().descendingMap().entrySet()) {
       int clauseNumber = e.getKey();
       RouteMapClause rmClause = e.getValue();
@@ -3315,41 +3375,9 @@ public final class CiscoConfiguration extends VendorConfiguration {
       for (RouteMapSetLine rmSet : rmClause.getSetList()) {
         rmSet.applyTo(matchStatements, this, c, _w);
       }
-      RouteMapContinue continueStatement = rmClause.getContinueLine();
-      Integer continueTarget = null;
-      If continueTargetIf = null;
-      if (continueStatement != null) {
-        continueTarget = continueStatement.getTarget();
-        int statementLine = continueStatement.getStatementLine();
-        if (continueTarget == null) {
-          continueTarget = followingClauseNumber;
-        }
-        if (continueTarget != null) {
-          if (continueTarget <= clauseNumber) {
-            throw new BatfishException("Can only continue to later clause");
-          }
-          continueTargetIf = clauses.get(continueTarget);
-          if (continueTargetIf == null) {
-            String name = "clause: '" + continueTarget + "' in route-map: '" + map.getName() + "'";
-            undefined(
-                CiscoStructureType.ROUTE_MAP_CLAUSE,
-                name,
-                CiscoStructureUsage.ROUTE_MAP_CONTINUE,
-                statementLine);
-            continueStatement = null;
-          }
-        } else {
-          continueStatement = null;
-        }
-      }
       switch (rmClause.getAction()) {
         case ACCEPT:
-          if (continueStatement == null) {
-            matchStatements.add(Statements.ReturnTrue.toStaticStatement());
-          } else {
-            matchStatements.add(Statements.SetLocalDefaultActionAccept.toStaticStatement());
-            matchStatements.add(continueTargetIf);
-          }
+          matchStatements.add(Statements.ReturnTrue.toStaticStatement());
           break;
 
         case REJECT:
@@ -3365,9 +3393,105 @@ public final class CiscoConfiguration extends VendorConfiguration {
         ifExpr.getFalseStatements().add(Statements.ReturnLocalDefaultAction.toStaticStatement());
       }
       followingClause = ifExpr;
-      followingClauseNumber = clauseNumber;
     }
     statements.add(followingClause);
+    return output;
+  }
+
+  private RoutingPolicy toRoutingPolicies(Configuration c, RouteMap map) {
+    RoutingPolicy output = new RoutingPolicy(map.getName(), c);
+    List<Statement> statements = output.getStatements();
+    Map<Integer, RoutingPolicy> clauses = new HashMap<>();
+    // descend map so continue targets are available
+    RoutingPolicy followingClause = null;
+    Integer followingClauseNumber = null;
+    for (Entry<Integer, RouteMapClause> e : map.getClauses().descendingMap().entrySet()) {
+      int clauseNumber = e.getKey();
+      RouteMapClause rmClause = e.getValue();
+      String clausePolicyName = getRouteMapClausePolicyName(map, clauseNumber);
+      Conjunction conj = new Conjunction();
+      // match ipv4s must be disjoined with match ipv6
+      Disjunction matchIpOrPrefix = new Disjunction();
+      for (RouteMapMatchLine rmMatch : rmClause.getMatchList()) {
+        BooleanExpr matchExpr = rmMatch.toBooleanExpr(c, this, _w);
+        if (rmMatch instanceof RouteMapMatchIpAccessListLine
+            || rmMatch instanceof RouteMapMatchIpPrefixListLine
+            || rmMatch instanceof RouteMapMatchIpv6AccessListLine
+            || rmMatch instanceof RouteMapMatchIpv6PrefixListLine) {
+          matchIpOrPrefix.getDisjuncts().add(matchExpr);
+        } else {
+          conj.getConjuncts().add(matchExpr);
+        }
+      }
+      if (!matchIpOrPrefix.getDisjuncts().isEmpty()) {
+        conj.getConjuncts().add(matchIpOrPrefix);
+      }
+      RoutingPolicy clausePolicy = new RoutingPolicy(clausePolicyName, c);
+      c.getRoutingPolicies().put(clausePolicyName, clausePolicy);
+      If ifStatement = new If();
+      clausePolicy.getStatements().add(ifStatement);
+      clauses.put(clauseNumber, clausePolicy);
+      ifStatement.setComment(clausePolicyName);
+      ifStatement.setGuard(conj);
+      List<Statement> onMatchStatements = ifStatement.getTrueStatements();
+      for (RouteMapSetLine rmSet : rmClause.getSetList()) {
+        rmSet.applyTo(onMatchStatements, this, c, _w);
+      }
+      RouteMapContinue continueStatement = rmClause.getContinueLine();
+      Integer continueTarget = null;
+      RoutingPolicy continueTargetPolicy = null;
+      if (continueStatement != null) {
+        continueTarget = continueStatement.getTarget();
+        int statementLine = continueStatement.getStatementLine();
+        if (continueTarget == null) {
+          continueTarget = followingClauseNumber;
+        }
+        if (continueTarget != null) {
+          if (continueTarget <= clauseNumber) {
+            throw new BatfishException("Can only continue to later clause");
+          }
+          continueTargetPolicy = clauses.get(continueTarget);
+          if (continueTargetPolicy == null) {
+            String name = "clause: '" + continueTarget + "' in route-map: '" + map.getName() + "'";
+            undefined(
+                CiscoStructureType.ROUTE_MAP_CLAUSE,
+                name,
+                CiscoStructureUsage.ROUTE_MAP_CONTINUE,
+                statementLine);
+            continueStatement = null;
+          }
+        } else {
+          continueStatement = null;
+        }
+      }
+      switch (rmClause.getAction()) {
+        case ACCEPT:
+          if (continueStatement == null) {
+            onMatchStatements.add(Statements.ReturnTrue.toStaticStatement());
+          } else {
+            onMatchStatements.add(Statements.SetLocalDefaultActionAccept.toStaticStatement());
+            onMatchStatements.add(new CallStatement(continueTargetPolicy.getName()));
+          }
+          break;
+
+        case REJECT:
+          onMatchStatements.add(Statements.ReturnFalse.toStaticStatement());
+          break;
+
+        default:
+          throw new BatfishException("Invalid action");
+      }
+      if (followingClause != null) {
+        ifStatement.getFalseStatements().add(new CallStatement(followingClause.getName()));
+      } else {
+        ifStatement
+            .getFalseStatements()
+            .add(Statements.ReturnLocalDefaultAction.toStaticStatement());
+      }
+      followingClause = clausePolicy;
+      followingClauseNumber = clauseNumber;
+    }
+    statements.add(new CallStatement(followingClause.getName()));
     return output;
   }
 
@@ -3424,12 +3548,12 @@ public final class CiscoConfiguration extends VendorConfiguration {
   public Configuration toVendorIndependentConfiguration() {
     final Configuration c = new Configuration(_hostname, _vendor);
     c.getVendorFamily().setCisco(_cf);
-    c.setDomainName(_domainName);
     c.setRoles(_roles);
     c.setDefaultInboundAction(LineAction.ACCEPT);
     c.setDefaultCrossZoneAction(LineAction.ACCEPT);
     c.setDnsServers(_dnsServers);
     c.setDnsSourceInterface(_dnsSourceInterface);
+    c.setDomainName(_domainName);
     c.setNormalVlanRange(new SubRange(VLAN_NORMAL_MIN_CISCO, VLAN_NORMAL_MAX_CISCO));
     c.setTacacsServers(_tacacsServers);
     c.setTacacsSourceInterface(_tacacsSourceInterface);
@@ -3632,7 +3756,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
           _w.redFlag("Can't match IkeGateway: tunnel source or destination is not set for " + name);
         } else {
           for (IkeGateway ikeGateway : c.getIkeGateways().values()) {
-            if (source.equals(ikeGateway.getLocalAddress())
+            if (source.equals(ikeGateway.getLocalIp())
                 && destination.equals(ikeGateway.getAddress())) {
               ipsecVpn.setIkeGateway(ikeGateway);
             }
@@ -3726,7 +3850,6 @@ public final class CiscoConfiguration extends VendorConfiguration {
     markIpv4Acls(CiscoStructureUsage.PIM_RP_CANDIDATE_ACL);
     markIpv4Acls(CiscoStructureUsage.PIM_SEND_RP_ANNOUNCE_ACL);
     markIpv4Acls(CiscoStructureUsage.PIM_SPT_THRESHOLD_ACL);
-    markIpv4Acls(CiscoStructureUsage.PIM_SSM_ACL);
     markAcls(CiscoStructureUsage.RIP_DISTRIBUTE_LIST);
     markAcls(CiscoStructureUsage.ROUTER_ISIS_DISTRIBUTE_LIST_ACL);
     markAcls(CiscoStructureUsage.SNMP_SERVER_FILE_TRANSFER_ACL);
@@ -3745,6 +3868,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
     // TODO: fill in
 
     // mark references to route-maps that may not appear in data model
+    markRouteMaps(CiscoStructureUsage.BGP_REDISTRIBUTE_OSPFV3_MAP);
     markRouteMaps(CiscoStructureUsage.BGP_ROUTE_MAP_OTHER);
     markRouteMaps(CiscoStructureUsage.BGP_VRF_AGGREGATE_ROUTE_MAP);
     markRouteMaps(CiscoStructureUsage.PIM_ACCEPT_REGISTER_ROUTE_MAP);
@@ -3825,7 +3949,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
       } else {
         IkeGateway ikeGateway = new IkeGateway(e.getKey());
         c.getIkeGateways().put(name, ikeGateway);
-        ikeGateway.setAddress(remotePrefix.getAddress());
+        ikeGateway.setAddress(remotePrefix.getStartIp());
         Interface oldIface = getInterfaceByTunnelAddresses(localAddress, remotePrefix);
         if (oldIface != null) {
           ikeGateway.setExternalInterface(c.getInterfaces().get(oldIface.getName()));
@@ -3833,7 +3957,7 @@ public final class CiscoConfiguration extends VendorConfiguration {
           _w.redFlag("External interface not found for ikeGateway for isakmpProfile " + name);
         }
         ikeGateway.setIkePolicy(ikePolicy);
-        ikeGateway.setLocalAddress(isakmpProfile.getLocalAddress());
+        ikeGateway.setLocalIp(isakmpProfile.getLocalAddress());
       }
     }
   }

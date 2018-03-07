@@ -25,13 +25,23 @@ aaa accounting exec default
 !
 aaa accounting nested
 aaa accounting network default start-stop group tacacs+
+aaa accounting network default
+ action-type start-stop
+ group tacacs+
+!
 aaa accounting send stop-record authentication failure
 aaa accounting system default start-stop group tacacs+
 aaa accounting system default
  action-type start-stop
  group tacacs+
 !
+! Cisco command reference: https://www.cisco.com/c/en/us/td/docs/ios/12_2/security/command/reference/fsecur_r/srfacct.html#wpmkr1031586
+aaa accounting update 30
 aaa accounting update newinfo
+aaa accounting update newinfo 30
+aaa accounting update periodic 30
+aaa accounting update newinfo periodic 30
+!
 aaa authentication banner ^CUnauthorized access prohibited by law - disconnect now!^C
 aaa authentication dot1x default group radius
 aaa authentication enable default enable

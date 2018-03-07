@@ -1,17 +1,18 @@
 package org.batfish.z3;
 
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Z3Exception;
-import java.util.List;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.batfish.datamodel.HeaderSpace;
-import org.batfish.z3.node.AcceptExpr;
-import org.batfish.z3.node.AndExpr;
-import org.batfish.z3.node.DropExpr;
-import org.batfish.z3.node.OriginateVrfExpr;
-import org.batfish.z3.node.QueryExpr;
-import org.batfish.z3.node.QueryRelationExpr;
-import org.batfish.z3.node.RuleExpr;
-import org.batfish.z3.node.SaneExpr;
+import org.batfish.z3.expr.AndExpr;
+import org.batfish.z3.expr.BasicRuleStatement;
+import org.batfish.z3.expr.CurrentIsOriginalExpr;
+import org.batfish.z3.expr.HeaderSpaceMatchExpr;
+import org.batfish.z3.expr.QueryStatement;
+import org.batfish.z3.expr.SaneExpr;
+import org.batfish.z3.state.Accept;
+import org.batfish.z3.state.Drop;
+import org.batfish.z3.state.OriginateVrf;
+import org.batfish.z3.state.Query;
 
 public class MultipathInconsistencyQuerySynthesizer extends BaseQuerySynthesizer {
 
@@ -29,23 +30,21 @@ public class MultipathInconsistencyQuerySynthesizer extends BaseQuerySynthesizer
   }
 
   @Override
-  public NodProgram getNodProgram(NodProgram baseProgram) throws Z3Exception {
-    NodProgram program = new NodProgram(baseProgram.getContext());
-    OriginateVrfExpr originate = new OriginateVrfExpr(_hostname, _vrf);
-    RuleExpr injectSymbolicPackets = new RuleExpr(originate);
-    AndExpr queryConditions = new AndExpr();
-    queryConditions.addConjunct(AcceptExpr.INSTANCE);
-    queryConditions.addConjunct(DropExpr.INSTANCE);
-    queryConditions.addConjunct(SaneExpr.INSTANCE);
-    queryConditions.addConjunct(Synthesizer.matchHeaderSpace(_headerSpace));
-    RuleExpr queryRule = new RuleExpr(queryConditions, QueryRelationExpr.INSTANCE);
-    List<BoolExpr> rules = program.getRules();
-    BoolExpr injectSymbolicPacketsBoolExpr = injectSymbolicPackets.toBoolExpr(baseProgram);
-    rules.add(injectSymbolicPacketsBoolExpr);
-    rules.add(queryRule.toBoolExpr(baseProgram));
-    QueryExpr query = new QueryExpr(QueryRelationExpr.INSTANCE);
-    BoolExpr queryBoolExpr = query.toBoolExpr(baseProgram);
-    program.getQueries().add(queryBoolExpr);
-    return program;
+  public ReachabilityProgram getReachabilityProgram(SynthesizerInput input) {
+    return ReachabilityProgram.builder()
+        .setInput(input)
+        .setQueries(ImmutableList.of(new QueryStatement(Query.INSTANCE)))
+        .setRules(
+            ImmutableList.of(
+                new BasicRuleStatement(
+                    new AndExpr(
+                        ImmutableList.of(
+                            CurrentIsOriginalExpr.INSTANCE,
+                            SaneExpr.INSTANCE,
+                            new HeaderSpaceMatchExpr(_headerSpace))),
+                    new OriginateVrf(_hostname, _vrf)),
+                new BasicRuleStatement(
+                    ImmutableSet.of(Accept.INSTANCE, Drop.INSTANCE), Query.INSTANCE)))
+        .build();
   }
 }

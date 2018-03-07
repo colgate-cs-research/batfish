@@ -10,10 +10,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import org.batfish.common.Answerer;
-import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
 import org.batfish.datamodel.BgpNeighbor;
@@ -22,9 +19,11 @@ import org.batfish.datamodel.BgpRoute;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConnectedRoute;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Vrf;
 import org.batfish.datamodel.answers.AnswerElement;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 import org.batfish.datamodel.routing_policy.Environment.Direction;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
@@ -103,24 +102,14 @@ public class BgpLoopbacksQuestionPlugin extends QuestionPlugin {
 
       BgpLoopbacksQuestion question = (BgpLoopbacksQuestion) _question;
 
-      Pattern nodeRegex;
-      try {
-        nodeRegex = Pattern.compile(question.getNodeRegex());
-      } catch (PatternSyntaxException e) {
-        throw new BatfishException(
-            "Supplied regex for nodes is not a valid java regex: \""
-                + question.getNodeRegex()
-                + "\"",
-            e);
-      }
-
       BgpLoopbacksAnswerElement answerElement = new BgpLoopbacksAnswerElement();
 
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
 
       for (Entry<String, Configuration> e : configurations.entrySet()) {
         String hostname = e.getKey();
-        if (!nodeRegex.matcher(hostname).matches()) {
+        if (!includeNodes.contains(hostname)) {
           continue;
         }
         Configuration c = e.getValue();
@@ -148,8 +137,10 @@ public class BgpLoopbacksQuestionPlugin extends QuestionPlugin {
               boolean exported = false;
 
               outerloop:
-              for (Prefix prefix : iface.getAllPrefixes()) {
-                ConnectedRoute route = new ConnectedRoute(prefix, interfaceName);
+              for (InterfaceAddress address : iface.getAllAddresses()) {
+                ConnectedRoute route =
+                    new ConnectedRoute(
+                        new Prefix(address.getIp(), address.getNetworkBits()), interfaceName);
                 for (RoutingPolicy exportPolicy : exportPolicies) {
                   if (exportPolicy.process(
                       route, new BgpRoute.Builder(), null, vrf.getName(), Direction.OUT)) {
@@ -190,10 +181,10 @@ public class BgpLoopbacksQuestionPlugin extends QuestionPlugin {
 
     private static final String PROP_NODE_REGEX = "nodeRegex";
 
-    private String _nodeRegex;
+    private NodesSpecifier _nodeRegex;
 
     public BgpLoopbacksQuestion() {
-      _nodeRegex = ".*";
+      _nodeRegex = NodesSpecifier.ALL;
     }
 
     @Override
@@ -207,7 +198,7 @@ public class BgpLoopbacksQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public String getNodeRegex() {
+    public NodesSpecifier getNodeRegex() {
       return _nodeRegex;
     }
 
@@ -220,7 +211,7 @@ public class BgpLoopbacksQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public void setNodeRegex(String nodeRegex) {
+    public void setNodeRegex(NodesSpecifier nodeRegex) {
       _nodeRegex = nodeRegex;
     }
   }

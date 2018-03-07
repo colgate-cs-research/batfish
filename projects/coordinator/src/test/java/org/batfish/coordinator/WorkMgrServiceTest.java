@@ -30,7 +30,6 @@ import org.batfish.coordinator.config.Settings;
 import org.batfish.datamodel.questions.Question;
 import org.batfish.datamodel.questions.Question.InstanceData;
 import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -69,7 +68,10 @@ public class WorkMgrServiceTest {
     initContainerEnvironment();
     Response response = _service.getContainer("100", "0.0.0", _containerName);
     String containerJson = response.getEntity().toString();
-    String expected = "{\n  \"name\" : \"myContainer\"\n}";
+    String expected =
+        String.format(
+            "{%s  \"name\" : \"myContainer\"%s}",
+            System.getProperty("line.separator"), System.getProperty("line.separator"));
     assertThat(containerJson, equalTo(expected));
   }
 
@@ -120,7 +122,8 @@ public class WorkMgrServiceTest {
         "new",
         "analysis",
         new FileInputStream(analysisFile),
-        "");
+        "",
+        null);
     Path questionPath =
         _containersFolder
             .getRoot()
@@ -142,7 +145,8 @@ public class WorkMgrServiceTest {
         "",
         "analysis",
         null,
-        questionsToDelete);
+        questionsToDelete,
+        null);
     assertFalse(Files.exists(questionPath));
     JSONArray result =
         _service.configureAnalysis(
@@ -152,7 +156,8 @@ public class WorkMgrServiceTest {
             "",
             "analysis",
             null,
-            questionsToDelete);
+            questionsToDelete,
+            null);
     assertThat(result.getString(0), equalTo(CoordConsts.SVC_KEY_FAILURE));
   }
 
@@ -242,7 +247,7 @@ public class WorkMgrServiceTest {
     }
   }
 
-  private Question createTestQuestion(String name, String description) throws JSONException {
+  private Question createTestQuestion(String name, String description) {
     InstanceData instanceData = new InstanceData();
     instanceData.setDescription(description);
     instanceData.setInstanceName(name);

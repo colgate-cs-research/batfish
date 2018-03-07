@@ -115,6 +115,7 @@ l_null
       | PASSWORD
       | PRIVILEGE
       | ROTARY
+      | RXSPEED
       | SESSION_DISCONNECT_WARNING
       | SESSION_LIMIT
       | SESSION_TIMEOUT
@@ -122,8 +123,17 @@ l_null
       | TERMINAL_TYPE
       | TIMEOUT
       | TIMESTAMP
-      | VACANT_MESSAGE
+      | TXSPEED
+      |
+      (
+        NO VACANT_MESSAGE
+      )
    ) ~NEWLINE* NEWLINE
+;
+
+l_script
+:
+   SCRIPT DIALER variable NEWLINE
 ;
 
 l_transport
@@ -134,6 +144,11 @@ l_transport
       | OUTPUT
       | PREFERRED
    ) prot += variable+ NEWLINE
+;
+
+l_vacant_message
+:
+  VACANT_MESSAGE ESCAPE_C ~ESCAPE_C* ESCAPE_C NEWLINE
 ;
 
 lc_null
@@ -178,7 +193,9 @@ s_line
       | l_length
       | l_login
       | l_null
+      | l_script
       | l_transport
+      | l_vacant_message
       | description_line
    )*
 ;

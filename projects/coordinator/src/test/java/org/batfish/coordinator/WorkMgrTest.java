@@ -2,6 +2,7 @@ package org.batfish.coordinator;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -23,7 +24,10 @@ import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.Container;
+import org.batfish.common.WorkItem;
 import org.batfish.common.util.CommonUtil;
+import org.batfish.common.util.WorkItemBuilder;
+import org.batfish.coordinator.AnalysisMetadataMgr.AnalysisType;
 import org.batfish.coordinator.config.Settings;
 import org.junit.Before;
 import org.junit.Rule;
@@ -79,27 +83,39 @@ public class WorkMgrTest {
   @Test
   public void listEmptyQuestion() {
     _manager.initContainer("container", null);
-    SortedSet<String> questions = _manager.listQuestions("container");
+    SortedSet<String> questions = _manager.listQuestions("container", false);
     assertThat(questions.isEmpty(), is(true));
   }
 
   @Test
   public void listQuestionNames() {
+    String questionName = "publicquestion";
+    // Leading __ means this question is an internal question
+    // And should be hidden from listQuestions when verbose is false
+    String internalQuestionName = "__internalquestion";
     _manager.initContainer("container", null);
     Path containerDir =
         Main.getSettings().getContainersLocation().resolve("container").toAbsolutePath();
     Path questionsDir = containerDir.resolve(BfConsts.RELPATH_QUESTIONS_DIR);
-    assertThat(questionsDir.resolve("initinfo").toFile().mkdirs(), is(true));
-    SortedSet<String> questions = _manager.listQuestions("container");
-    assertThat(questions.size(), is(1));
-    assertThat(questions.first(), equalTo("initinfo"));
+    // Make sure the question directories are created
+    assertThat(questionsDir.resolve(questionName).toFile().mkdirs(), is(true));
+    assertThat(questionsDir.resolve(internalQuestionName).toFile().mkdirs(), is(true));
+
+    SortedSet<String> questionsNotVerbose = _manager.listQuestions("container", false);
+    SortedSet<String> questionsVerbose = _manager.listQuestions("container", true);
+
+    // Only the public question should show up when verbose is false
+    assertThat(questionsNotVerbose, equalTo(Sets.newHashSet(questionName)));
+
+    // Both questions should show up when verbose is true
+    assertThat(questionsVerbose, equalTo(Sets.newHashSet(questionName, internalQuestionName)));
   }
 
   @Test
   public void listQuestionWithNonExistContainer() {
     _thrown.expect(BatfishException.class);
     _thrown.expectMessage(equalTo("Container 'container' does not exist"));
-    _manager.listQuestions("container");
+    _manager.listQuestions("container", false);
   }
 
   @Test
@@ -111,9 +127,8 @@ public class WorkMgrTest {
     assertTrue(questionsDir.resolve("nodes").toFile().mkdirs());
     assertTrue(questionsDir.resolve("access").toFile().mkdirs());
     assertTrue(questionsDir.resolve("initinfo").toFile().mkdirs());
-    SortedSet<String> questions = _manager.listQuestions("container");
-    assertThat(questions.size(), is(3));
-    assertThat(questions.toString(), equalTo("[access, initinfo, nodes]"));
+    SortedSet<String> questions = _manager.listQuestions("container", false);
+    assertThat(questions, equalTo(Sets.newHashSet("access", "initinfo", "nodes")));
   }
 
   @Test
@@ -186,18 +201,41 @@ public class WorkMgrTest {
   }
 
   @Test
-  public void testConfigureAnalysis() throws Exception {
+  public void testListAnalysesSuggested() {
+    String containerName = "myContainer";
+    _manager.initContainer(containerName, null);
+
+    // Create analysis1 (user analysis) and analysis2 (suggested analysis)
+    _manager.configureAnalysis(
+        containerName, true, "analysis1", Maps.newHashMap(), Lists.newArrayList(), false);
+    _manager.configureAnalysis(
+        containerName, true, "analysis2", Maps.newHashMap(), Lists.newArrayList(), true);
+
+    // checking that we get analyses according to AnalysisType
+    assertThat(
+        _manager.listAnalyses(containerName, AnalysisType.ALL),
+        equalTo(Sets.newHashSet("analysis1", "analysis2")));
+    assertThat(
+        _manager.listAnalyses(containerName, AnalysisType.USER),
+        equalTo(Sets.newHashSet("analysis1")));
+    assertThat(
+        _manager.listAnalyses(containerName, AnalysisType.SUGGESTED),
+        equalTo(Sets.newHashSet("analysis2")));
+  }
+
+  @Test
+  public void testConfigureAnalysis() {
     String containerName = "myContainer";
     _manager.initContainer(containerName, null);
     // test init and add questions to analysis
     Map<String, String> questionsToAdd =
         Maps.newHashMap(Collections.singletonMap("question1", "question1Content"));
     _manager.configureAnalysis(
-        containerName, true, "analysis", questionsToAdd, Lists.newArrayList());
+        containerName, true, "analysis", questionsToAdd, Lists.newArrayList(), null);
     questionsToAdd = Maps.newHashMap(Collections.singletonMap("question2", "question2Content"));
     questionsToAdd.put("question3", "question3Content");
     _manager.configureAnalysis(
-        containerName, false, "analysis", questionsToAdd, Lists.newArrayList());
+        containerName, false, "analysis", questionsToAdd, Lists.newArrayList(), null);
     Path questionPath =
         _folder
             .getRoot()
@@ -222,21 +260,140 @@ public class WorkMgrTest {
     // test delete questions
     List<String> questionsToDelete = Lists.newArrayList();
     _manager.configureAnalysis(
-        containerName, false, "analysis", Maps.newHashMap(), questionsToDelete);
+        containerName, false, "analysis", Maps.newHashMap(), questionsToDelete, null);
     assertTrue(
         Files.exists(questionPath.resolve("question1"))
             && Files.exists(questionPath.resolve("question2"))
             && Files.exists(questionPath.resolve("question3")));
     questionsToDelete = Lists.newArrayList("question1", "question2");
     _manager.configureAnalysis(
-        containerName, false, "analysis", Maps.newHashMap(), questionsToDelete);
+        containerName, false, "analysis", Maps.newHashMap(), questionsToDelete, null);
     assertFalse(Files.exists(questionPath.resolve("question1")));
     assertFalse(Files.exists(questionPath.resolve("question2")));
     assertTrue(Files.exists(questionPath.resolve("question3")));
     _thrown.expect(BatfishException.class);
-    _thrown.expectMessage(equalTo("Question question1 does not exist for analysis analysis"));
+    _thrown.expectMessage(equalTo("Question 'question1' does not exist for analysis 'analysis'"));
     questionsToDelete = Lists.newArrayList("question1");
     _manager.configureAnalysis(
-        containerName, false, "analysis", Maps.newHashMap(), questionsToDelete);
+        containerName, false, "analysis", Maps.newHashMap(), questionsToDelete, null);
+  }
+
+  @Test
+  public void testConfigureAnalysisSuggested() {
+    String containerName = "myContainer";
+    _manager.initContainer(containerName, null);
+
+    // Analysis initialized with suggested = null should not be marked as suggested
+    _manager.configureAnalysis(
+        containerName, true, "analysis", Maps.newHashMap(), Lists.newArrayList(), null);
+    assertFalse(getMetadataSuggested(containerName, "analysis"));
+
+    // Analysis initialized with suggested = true should be marked as suggested
+    _manager.configureAnalysis(
+        containerName, true, "analysis2", Maps.newHashMap(), Lists.newArrayList(), true);
+    assertTrue(getMetadataSuggested(containerName, "analysis2"));
+
+    // Analysis initialized with suggested = false should not be marked as suggested
+    _manager.configureAnalysis(
+        containerName, true, "analysis3", Maps.newHashMap(), Lists.newArrayList(), false);
+    assertFalse(getMetadataSuggested(containerName, "analysis3"));
+
+    // Existing analysis should not change suggested if suggested arg is null
+    _manager.configureAnalysis(
+        containerName, false, "analysis2", Maps.newHashMap(), Lists.newArrayList(), null);
+    assertTrue(getMetadataSuggested(containerName, "analysis2"));
+    _manager.configureAnalysis(
+        containerName, false, "analysis3", Maps.newHashMap(), Lists.newArrayList(), null);
+    assertFalse(getMetadataSuggested(containerName, "analysis3"));
+
+    // Existing analysis should update suggested if arg is not null
+    _manager.configureAnalysis(
+        containerName, false, "analysis2", Maps.newHashMap(), Lists.newArrayList(), false);
+    assertFalse(getMetadataSuggested(containerName, "analysis2"));
+    _manager.configureAnalysis(
+        containerName, false, "analysis3", Maps.newHashMap(), Lists.newArrayList(), true);
+    assertTrue(getMetadataSuggested(containerName, "analysis3"));
+  }
+
+  @Test
+  public void testGetAutoWorkQueueUserAnalysis() {
+    String containerName = "myContainer";
+    String testrigName = "myTestrig";
+    _manager.initContainer(containerName, null);
+
+    // user policy
+    _manager.configureAnalysis(
+        containerName, true, "useranalysis", Maps.newHashMap(), Lists.newArrayList(), false);
+
+    WorkItem parseWorkItem = WorkItemBuilder.getWorkItemParse(containerName, testrigName);
+
+    WorkItem analysisWorkItem =
+        WorkItemBuilder.getWorkItemRunAnalysis(
+            "useranalysis",
+            containerName,
+            testrigName,
+            BfConsts.RELPATH_DEFAULT_ENVIRONMENT_NAME,
+            null,
+            null,
+            false,
+            false);
+
+    List<WorkItem> workQueue = _manager.getAutoWorkQueue(containerName, testrigName);
+
+    assertThat(workQueue, hasSize(2));
+
+    // checking that the first work item is for parse
+    assertThat(workQueue.get(0).matches(parseWorkItem), equalTo(true));
+
+    // checking run analysis workitem
+    assertThat(
+        "Work Queue not correct for user analyses",
+        workQueue.get(1).matches(analysisWorkItem),
+        equalTo(true));
+  }
+
+  @Test
+  public void testGetAutoWorkQueueSuggestedAnalysis() {
+    String containerName = "myContainer";
+    String testrigName = "myTestrig";
+    _manager.initContainer(containerName, null);
+
+    // user policy
+    _manager.configureAnalysis(
+        containerName, true, "suggestedanalysis", Maps.newHashMap(), Lists.newArrayList(), true);
+
+    WorkItem parseWorkItem = WorkItemBuilder.getWorkItemParse(containerName, testrigName);
+
+    WorkItem analysisWorkItem =
+        WorkItemBuilder.getWorkItemRunAnalysis(
+            "suggestedanalysis",
+            containerName,
+            testrigName,
+            BfConsts.RELPATH_DEFAULT_ENVIRONMENT_NAME,
+            null,
+            null,
+            false,
+            false);
+
+    List<WorkItem> workQueue = _manager.getAutoWorkQueue(containerName, testrigName);
+
+    assertThat(workQueue, hasSize(2));
+
+    // checking that the first work item is for parse
+    assertThat(workQueue.get(0).matches(parseWorkItem), equalTo(true));
+
+    // checking run analysis workitem
+    assertThat(
+        "Work Queue not correct for suggested analyses",
+        workQueue.get(1).matches(analysisWorkItem),
+        equalTo(true));
+  }
+
+  private boolean getMetadataSuggested(String containerName, String analysisName) {
+    try {
+      return AnalysisMetadataMgr.readMetadata(containerName, analysisName).getSuggested();
+    } catch (IOException e) {
+      throw new BatfishException("Failed to read metadata", e);
+    }
   }
 }

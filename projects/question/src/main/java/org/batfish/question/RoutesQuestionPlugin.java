@@ -11,8 +11,6 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import org.batfish.common.Answerer;
 import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
@@ -26,6 +24,7 @@ import org.batfish.datamodel.Route;
 import org.batfish.datamodel.RoutingProtocol;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.collections.RoutesByVrf;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 
 @AutoService(Plugin.class)
@@ -136,13 +135,13 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
     public RoutesAnswerElement(
         SortedMap<String, RoutesByVrf> environmentRoutesByHostname,
-        Pattern nodeRegex,
+        Set<String> includeNodes,
         Set<RoutingProtocol> protocols,
         PrefixSpace prefixSpace) {
       this();
       for (Entry<String, RoutesByVrf> e : environmentRoutesByHostname.entrySet()) {
         String hostname = e.getKey();
-        if (!nodeRegex.matcher(hostname).matches()) {
+        if (!includeNodes.contains(hostname)) {
           continue;
         }
         RoutesByVrf environmentRoutesByVrf = e.getValue();
@@ -175,14 +174,14 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     public RoutesAnswerElement(
         SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> inputRoutesByHostname,
         Map<Ip, String> ipOwners,
-        Pattern nodeRegex,
+        Set<String> includeNodes,
         Set<RoutingProtocol> protocols,
         PrefixSpace prefixSpace) {
       this();
       for (Entry<String, SortedMap<String, SortedSet<AbstractRoute>>> e :
           inputRoutesByHostname.entrySet()) {
         String hostname = e.getKey();
-        if (!nodeRegex.matcher(hostname).matches()) {
+        if (!includeNodes.contains(hostname)) {
           continue;
         }
         SortedMap<String, SortedSet<AbstractRoute>> inputRoutesByVrf = e.getValue();
@@ -282,11 +281,12 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
             SortedSet<AbstractRoute> routes = e2.getValue();
             for (AbstractRoute route : routes) {
               String diffSymbol = null;
-              if (_added.contains(route)) {
-                diffSymbol = addedSymbol;
-              } else if (_removed.contains(route)) {
-                diffSymbol = removedSymbol;
-              }
+              // TODO(https://github.com/batfish/batfish/issues/719)
+              // if (_added.contains(route)) {
+              //   diffSymbol = addedSymbol;
+              // } else if (_removed.contains(route)) {
+              //   diffSymbol = removedSymbol;
+              // }
               String diffStr = diffSymbol != null ? diffSymbol + " " : "";
               String routeStr = route.fullString();
               String newStr = String.format("%s%s\n", diffStr, routeStr);
@@ -331,7 +331,6 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
   }
 
   public static class RoutesAnswerer extends Answerer {
-
     public RoutesAnswerer(Question question, IBatfish batfish) {
       super(question, batfish);
     }
@@ -357,16 +356,8 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
                 "%s and %s flags together are currently unsupported",
                 RoutesQuestion.PROP_FROM_ENVIRONMENT, RoutesQuestion.PROP_DETAIL));
       }
-      Pattern nodeRegex;
-      try {
-        nodeRegex = Pattern.compile(question.getNodeRegex());
-      } catch (PatternSyntaxException e) {
-        throw new BatfishException(
-            "Supplied regex for nodes is not a valid java regex: \""
-                + question.getNodeRegex()
-                + "\"",
-            e);
-      }
+      Set<String> includeNodes =
+          question.getNodeRegex().getMatchingNodes(_batfish.loadConfigurations());
       RoutesAnswerElement answerElement;
       RoutesAnswerElement environmentAnswerElement = null;
       RoutesAnswerElement batfishAnswerElement = null;
@@ -374,18 +365,18 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
         SortedMap<String, RoutesByVrf> environmentRoutes = _batfish.loadEnvironmentRoutingTables();
         environmentAnswerElement =
             new RoutesAnswerElement(
-                environmentRoutes, nodeRegex, question._protocols, question._prefixSpace);
+                environmentRoutes, includeNodes, question._protocols, question._prefixSpace);
       }
       if (!question._fromEnvironment) {
         SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> routesByHostname =
-            _batfish.getRoutes();
+            _batfish.getRoutes(question.getUseCompression());
         Map<String, Configuration> configurations = _batfish.loadConfigurations();
         Map<Ip, String> ipOwnersSimple = CommonUtil.computeIpOwnersSimple(configurations, true);
         batfishAnswerElement =
             new RoutesAnswerElement(
                 routesByHostname,
                 ipOwnersSimple,
-                nodeRegex,
+                includeNodes,
                 question._protocols,
                 question._prefixSpace);
       }
@@ -449,22 +440,27 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
     private static final String PROP_PROTOCOLS = "protocols";
 
+    private static final String PROP_USE_COMPRESSION = "useCompression";
+
     private boolean _againstEnvironment;
 
     private boolean _detail;
 
     private boolean _fromEnvironment;
 
-    private String _nodeRegex;
+    private NodesSpecifier _nodeRegex;
 
     private PrefixSpace _prefixSpace;
 
     private SortedSet<RoutingProtocol> _protocols;
 
+    private boolean _useCompression;
+
     public RoutesQuestion() {
-      _nodeRegex = ".*";
+      _nodeRegex = NodesSpecifier.ALL;
       _prefixSpace = new PrefixSpace();
       _protocols = new TreeSet<>();
+      _useCompression = false;
     }
 
     @JsonProperty(PROP_AGAINST_ENVIRONMENT)
@@ -487,13 +483,18 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
       return _fromEnvironment;
     }
 
+    @JsonProperty(PROP_USE_COMPRESSION)
+    public boolean getUseCompression() {
+      return _useCompression;
+    }
+
     @Override
     public String getName() {
       return "routes";
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public String getNodeRegex() {
+    public NodesSpecifier getNodeRegex() {
       return _nodeRegex;
     }
 
@@ -523,7 +524,7 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public void setNodeRegex(String nodeRegex) {
+    public void setNodeRegex(NodesSpecifier nodeRegex) {
       _nodeRegex = nodeRegex;
     }
 
@@ -535,6 +536,11 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_PROTOCOLS)
     public void setProtocols(SortedSet<RoutingProtocol> protocols) {
       _protocols = protocols;
+    }
+
+    @JsonProperty(PROP_USE_COMPRESSION)
+    public void setUseCompression(boolean useCompression) {
+      _useCompression = useCompression;
     }
   }
 

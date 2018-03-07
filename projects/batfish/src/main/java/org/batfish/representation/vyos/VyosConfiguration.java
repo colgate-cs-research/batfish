@@ -1,5 +1,7 @@
 package org.batfish.representation.vyos;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -15,13 +17,13 @@ import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.IkeGateway;
 import org.batfish.datamodel.IkePolicy;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpsecPolicy;
 import org.batfish.datamodel.IpsecProposal;
 import org.batfish.datamodel.IpsecProtocol;
 import org.batfish.datamodel.IpsecVpn;
 import org.batfish.datamodel.LineAction;
-import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.RouteFilterLine;
 import org.batfish.datamodel.RouteFilterList;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
@@ -301,16 +303,17 @@ public class VyosConfiguration extends VendorConfiguration {
   private org.batfish.datamodel.Interface toInterface(Interface iface) {
     String name = iface.getName();
     org.batfish.datamodel.Interface newIface = new org.batfish.datamodel.Interface(name, _c);
+    newIface.setDeclaredNames(ImmutableSortedSet.of(name));
     newIface.setActive(true); // TODO: may have to change
     newIface.setBandwidth(iface.getBandwidth());
     newIface.setDescription(iface.getDescription());
-    Prefix prefix = iface.getPrefix();
-    if (prefix != null) {
-      newIface.setPrefix(iface.getPrefix());
+    InterfaceAddress address = iface.getAddress();
+    if (address != null) {
+      newIface.setAddress(iface.getAddress());
     }
-    newIface.getAllPrefixes().addAll(iface.getAllPrefixes());
-    for (Prefix p : newIface.getAllPrefixes()) {
-      _ipToInterfaceMap.put(p.getAddress(), newIface);
+    newIface.getAllAddresses().addAll(iface.getAllAddresses());
+    for (InterfaceAddress p : newIface.getAllAddresses()) {
+      _ipToInterfaceMap.put(p.getIp(), newIface);
     }
     return newIface;
   }
@@ -318,11 +321,14 @@ public class VyosConfiguration extends VendorConfiguration {
   private RouteFilterList toRouteFilterList(PrefixList prefixList) {
     String name = prefixList.getName();
     RouteFilterList newList = new RouteFilterList(name);
-    for (PrefixListRule rule : prefixList.getRules().values()) {
-      RouteFilterLine newLine =
-          new RouteFilterLine(rule.getAction(), rule.getPrefix(), rule.getLengthRange());
-      newList.getLines().add(newLine);
-    }
+    List<RouteFilterLine> newLines =
+        prefixList
+            .getRules()
+            .values()
+            .stream()
+            .map(l -> new RouteFilterLine(l.getAction(), l.getPrefix(), l.getLengthRange()))
+            .collect(ImmutableList.toImmutableList());
+    newList.setLines(newLines);
     return newList;
   }
 

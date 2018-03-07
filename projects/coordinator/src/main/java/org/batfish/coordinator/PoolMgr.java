@@ -14,7 +14,7 @@ import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.util.CommonUtil;
@@ -67,9 +67,7 @@ public class PoolMgr {
 
   private synchronized List<String> getAllWorkers() {
     List<String> workers = new LinkedList<>();
-    for (String worker : _workerPool.keySet()) {
-      workers.add(worker);
-    }
+    workers.addAll(_workerPool.keySet());
     return workers;
   }
 
@@ -145,7 +143,7 @@ public class PoolMgr {
       // _logger.debug(webTarget.getUri());
 
       if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-        _logger.error("PM:RefreshWorkerStatus: Got non-OK response " + response.getStatus() + "\n");
+        _logger.errorf("PM:RefreshWorkerStatus: Got non-OK response %s\n", response.getStatus());
       } else {
         String sobj = response.readEntity(String.class);
         JSONArray array = new JSONArray(sobj);
@@ -182,7 +180,7 @@ public class PoolMgr {
       _logger.error(String.format("unable to connect to %s: %s\n", worker, e.getMessage()));
       updateWorkerStatus(worker, WorkerStatus.StatusCode.UNREACHABLE);
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
       _logger.error(String.format("exception: %s\n", stackTrace));
       updateWorkerStatus(worker, WorkerStatus.StatusCode.UNKNOWN);
     } finally {

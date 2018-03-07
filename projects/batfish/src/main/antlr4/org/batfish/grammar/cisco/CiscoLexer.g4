@@ -2046,6 +2046,16 @@ CONGESTION_CONTROL
    'congestion-control'
 ;
 
+CONN
+:
+   'conn'
+;
+
+CONN_HOLDDOWN
+:
+   'conn-holddown'
+;
+
 CONNECT_RETRY
 :
    'connect-retry'
@@ -2255,6 +2265,11 @@ CRITICAL
 CRYPTO
 :
    'crypto'
+;
+
+CRYPTOCHECKSUM
+:
+   'Cryptochecksum'
 ;
 
 CRYPTO_LOCAL
@@ -2472,6 +2487,11 @@ DEFAULT_ACTION
    'default-action'
 ;
 
+DEFAULT_COST
+:
+   'default-cost'
+;
+
 DEFAULT_DESTINATION
 :
    'default-destination'
@@ -2600,6 +2620,11 @@ DELETE_DYNAMIC_LEARN
 DEMAND_CIRCUIT
 :
    'demand-circuit'
+;
+
+DENSE_MODE
+:
+   'dense-mode'
 ;
 
 DENY
@@ -2850,6 +2875,11 @@ DEVICE
 DEVICE_SENSOR
 :
    'device-sensor'
+;
+
+DISABLE_CONNECTED_CHECK
+:
+   'disable-connected-check'
 ;
 
 DISABLE_PEER_AS_CHECK
@@ -4069,6 +4099,11 @@ FCOE
    'fcoe'
 ;
 
+FDL
+:
+	'fdl'
+;
+
 FEATURE
 :
    'feature'
@@ -4164,6 +4199,21 @@ FIRMWARE
 FLAP_LIST
 :
    'flap-list'
+;
+
+FLASH
+:
+   'flash'
+;
+
+FLASH_OVERRIDE
+:
+   'flash-override'
+;
+
+FLOATING_CONN
+:
+   'floating-conn'
 ;
 
 FLOW
@@ -4359,6 +4409,11 @@ GATEKEEPER
 GATEWAY
 :
    'gateway'
+;
+
+GBPS
+:
+    'Gbps'
 ;
 
 GE
@@ -4559,6 +4614,11 @@ H323_GATEWAY
 HA_POLICY
 :
    'ha-policy'
+;
+
+HALF_CLOSED
+:
+   'half-closed'
 ;
 
 HALF_DUPLEX
@@ -4806,6 +4866,11 @@ ICMP_ECHO
    'icmp-echo'
 ;
 
+ICMP_ERROR
+:
+   'icmp-error'
+;
+
 ICMP_ERRORS
 :
    'icmp-errors'
@@ -4979,6 +5044,11 @@ ILMI_KEEPALIVE
 IMAP4
 :
    'imap4'
+;
+
+IMMEDIATE
+:
+   'immediate'
 ;
 
 IMPERSONATION_PROFILE
@@ -5333,6 +5403,11 @@ ISL
    'isl'
 ;
 
+ISOLATE
+:
+  'isolate'
+;
+
 ISPF
 :
    'ispf'
@@ -5346,6 +5421,11 @@ ISSUER_NAME
 IUC
 :
    'iuc'
+;
+
+JOIN_GROUP
+:
+    'join-group'
 ;
 
 JUMBO
@@ -5833,6 +5913,11 @@ LOG
    'log'
 ;
 
+LOG_ADJ_CHANGES
+:
+   'log-adj-changes'
+;
+
 LOG_ADJACENCY_CHANGES
 :
    'log-adjacency-changes'
@@ -6016,6 +6101,11 @@ MAIL_SERVER
 MAIN_CPU
 :
    'main-cpu'
+;
+
+MAINTENANCE
+:
+  'maintenance'
 ;
 
 MANAGEMENT
@@ -6248,6 +6338,11 @@ MAXSTARTUPS
    'maxstartups'
 ;
 
+MBPS
+:
+    'Mbps'
+;
+
 MBSSID
 :
    'mbssid'
@@ -6421,6 +6516,11 @@ MFWD
 MGCP
 :
    'mgcp'
+;
+
+MGCP_PAT
+:
+   'mgcp-pat'
 ;
 
 MGMT
@@ -6811,6 +6911,11 @@ NAT
 NAT_CONTROL
 :
    'nat-control'
+;
+
+NAT_TRANSPARENCY
+:
+   'nat-transparency'
 ;
 
 NAT_TRAVERSAL
@@ -7268,6 +7373,11 @@ ON_FAILURE
    'on-failure'
 ;
 
+ON_PASSIVE
+:
+   'on-passive'
+;
+
 ON_STARTUP
 :
    'on-startup'
@@ -7356,6 +7466,11 @@ OR
 ORIGIN
 :
    'origin'
+;
+
+ORIGIN_ID
+:
+   'origin-id'
 ;
 
 ORIGINATE
@@ -7493,6 +7608,11 @@ PACKETCABLE
    'packetcable'
 ;
 
+PACKETSIZE
+:
+   'packetsize'
+;
+
 PAGER
 :
    'pager'
@@ -7596,6 +7716,11 @@ PASSWORD_STORAGE
 PASSWD
 :
    'passwd'
+;
+
+PAT_XLATE
+:
+   'pat-xlate'
 ;
 
 PATH_ECHO
@@ -8813,6 +8938,11 @@ RESPONDER
    'responder'
 ;
 
+RESPONSE
+:
+   'response'
+;
+
 RESTRICTED
 :
    'restricted'
@@ -9178,11 +9308,6 @@ RUN
    'run'
 ;
 
-RX_COS_SLOT
-:
-   'rx-cos-slot'
-;
-
 RW
 :
    [Rr] [Ww]
@@ -9191,6 +9316,16 @@ RW
 RX
 :
    'rx'
+;
+
+RX_COS_SLOT
+:
+   'rx-cos-slot'
+;
+
+RXSPEED
+:
+   'rxspeed'
 ;
 
 SA_FILTER
@@ -9291,6 +9426,11 @@ SCP
 SCRAMBLE
 :
    'scramble'
+;
+
+SCRIPT
+:
+   'script'
 ;
 
 SCRIPTING
@@ -9748,6 +9888,21 @@ SIP
    'sip'
 ;
 
+SIP_DISCONNECT
+:
+   'sip-disconnect'
+;
+
+SIP_INVITE
+:
+   'sip-invite'
+;
+
+SIP_MEDIA
+:
+   'sip_media'
+;
+
 SIP_MIDCALL_REQ_TIMEOUT
 :
    'sip-midcall-req-timeout'
@@ -9756,6 +9911,11 @@ SIP_MIDCALL_REQ_TIMEOUT
 SIP_PROFILES
 :
    'sip-profiles'
+;
+
+SIP_PROVISIONAL_MEDIA
+:
+   'sip-provisional-media'
 ;
 
 SIP_SERVER
@@ -9933,6 +10093,11 @@ SOURCE_IP_ADDRESS
    'source-ip-address'
 ;
 
+SOURCE_PROTOCOL
+:
+   'source-protocol'
+;
+
 SOURCE_ROUTE
 :
    'source-route'
@@ -10076,6 +10241,11 @@ STACK_MIB
 STACK_UNIT
 :
    'stack-unit'
+;
+
+STALE_ROUTE
+:
+   'stale-route'
 ;
 
 STANDARD
@@ -10605,6 +10775,16 @@ TCP_CONNECT
    'tcp-connect'
 ;
 
+TCP_INSPECTION
+:
+   'tcp-inspection'
+;
+
+TCP_PROXY_REASSEMBLY
+:
+   'tcp-proxy-reassembly'
+;
+
 TCP_SESSION
 :
    'tcp-session'
@@ -10935,6 +11115,11 @@ TRAP_SOURCE
    'trap-source' -> pushMode ( M_Interface )
 ;
 
+TRAP_TIMEOUT
+:
+   'trap-timeout'
+;
+
 TRAPS
 :
    'traps'
@@ -11055,6 +11240,11 @@ TX_QUEUE
    'tx-queue'
 ;
 
+TXSPEED
+:
+   'txspeed'
+;
+
 TYPE
 :
    'type'
@@ -11068,6 +11258,11 @@ TYPE_1
 TYPE_2
 :
    'type-2'
+;
+
+UAUTH
+:
+   'uauth'
 ;
 
 UC_TX_QUEUE
@@ -11255,6 +11450,11 @@ USER_IDENTITY
    'user-identity'
 ;
 
+USERINFO
+:
+	'userinfo'
+;
+
 USER_MESSAGE
 :
    'user-message' -> pushMode ( M_Description )
@@ -11332,7 +11532,7 @@ V6
 
 VACANT_MESSAGE
 :
-   'vacant-message'
+   'vacant-message' -> pushMode ( M_VacantMessageText )
 ;
 
 VACL
@@ -11685,6 +11885,11 @@ VTY_POOL
 VXLAN
 :
    'vxlan'
+;
+
+WAIT_FOR
+:
+  'wait-for'
 ;
 
 WAIT_START
@@ -13806,4 +14011,24 @@ M_SshKey_NEWLINE
 M_SshKey_WS
 :
    F_Whitespace+ -> channel ( HIDDEN )
+;
+
+mode M_VacantMessageText;
+
+M_VacantMessage_WS
+:
+   F_Whitespace+ -> channel ( HIDDEN )
+;
+
+M_VacantMessage_ESCAPE_C
+:
+   (
+      '^C'
+      | '\u0003'
+   ) -> type ( ESCAPE_C ) , mode ( M_MOTD_C )
+;
+
+M_VacantMessage_NEWLINE
+:
+   F_Newline+ -> type ( NEWLINE ) , popMode
 ;

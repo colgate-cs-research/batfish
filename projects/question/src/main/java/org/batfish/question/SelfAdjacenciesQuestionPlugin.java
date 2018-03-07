@@ -10,21 +10,20 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import org.batfish.common.Answerer;
-import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Vrf;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.collections.MultiSet;
 import org.batfish.datamodel.collections.TreeMultiSet;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 
 @AutoService(Plugin.class)
@@ -92,29 +91,19 @@ public class SelfAdjacenciesQuestionPlugin extends QuestionPlugin {
 
       SelfAdjacenciesQuestion question = (SelfAdjacenciesQuestion) _question;
 
-      Pattern nodeRegex;
-      try {
-        nodeRegex = Pattern.compile(question.getNodeRegex());
-      } catch (PatternSyntaxException e) {
-        throw new BatfishException(
-            "Supplied regex for nodes is not a valid java regex: \""
-                + question.getNodeRegex()
-                + "\"",
-            e);
-      }
-
       SelfAdjacenciesAnswerElement answerElement = new SelfAdjacenciesAnswerElement();
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
       configurations.forEach(
           (hostname, c) -> {
-            if (nodeRegex.matcher(hostname).matches()) {
+            if (includeNodes.contains(hostname)) {
               for (Vrf vrf : c.getVrfs().values()) {
                 MultiSet<Prefix> nodePrefixes = new TreeMultiSet<>();
                 for (Interface iface : vrf.getInterfaces().values()) {
                   Set<Prefix> ifaceBasePrefixes = new HashSet<>();
                   if (iface.getActive()) {
-                    for (Prefix prefix : iface.getAllPrefixes()) {
-                      Prefix basePrefix = prefix.getNetworkPrefix();
+                    for (InterfaceAddress address : iface.getAllAddresses()) {
+                      Prefix basePrefix = address.getPrefix();
                       if (!ifaceBasePrefixes.contains(basePrefix)) {
                         ifaceBasePrefixes.add(basePrefix);
                         nodePrefixes.add(basePrefix);
@@ -123,12 +112,12 @@ public class SelfAdjacenciesQuestionPlugin extends QuestionPlugin {
                   }
                 }
                 for (Interface iface : vrf.getInterfaces().values()) {
-                  for (Prefix prefix : iface.getAllPrefixes()) {
-                    Prefix basePrefix = prefix.getNetworkPrefix();
+                  for (InterfaceAddress address : iface.getAllAddresses()) {
+                    Prefix basePrefix = address.getPrefix();
                     if (nodePrefixes.count(basePrefix) > 1) {
-                      Ip address = prefix.getAddress();
+                      Ip ip = address.getIp();
                       String interfaceName = iface.getName();
-                      answerElement.add(hostname, basePrefix, interfaceName, address);
+                      answerElement.add(hostname, basePrefix, interfaceName, ip);
                     }
                   }
                 }
@@ -156,10 +145,10 @@ public class SelfAdjacenciesQuestionPlugin extends QuestionPlugin {
 
     private static final String PROP_NODE_REGEX = "nodeRegex";
 
-    private String _nodeRegex;
+    private NodesSpecifier _nodeRegex;
 
     public SelfAdjacenciesQuestion() {
-      _nodeRegex = ".*";
+      _nodeRegex = NodesSpecifier.ALL;
     }
 
     @Override
@@ -173,12 +162,12 @@ public class SelfAdjacenciesQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public String getNodeRegex() {
+    public NodesSpecifier getNodeRegex() {
       return _nodeRegex;
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public void setNodeRegex(String nodeRegex) {
+    public void setNodeRegex(NodesSpecifier nodeRegex) {
       _nodeRegex = nodeRegex;
     }
   }

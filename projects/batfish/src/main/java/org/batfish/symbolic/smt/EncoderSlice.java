@@ -16,7 +16,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
-import org.batfish.common.plugin.IBatfish;
 import org.batfish.datamodel.BgpNeighbor;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.HeaderSpace;
@@ -49,7 +48,7 @@ import org.batfish.symbolic.utils.PrefixUtils;
 
 /**
  * A class responsible for building a symbolic encoding of the network for a particular packet. The
- * encoding is heavily specialized based on the Optimizations class, and what optimizations it
+ * encoding is heavily specialized based on the PolicyQuotient class, and what optimizations it
  * indicates are possible.
  *
  * @author Ryan Beckett
@@ -78,29 +77,11 @@ class EncoderSlice {
 
   private Table2<String, GraphEdge, BoolExpr> _forwardsAcross;
 
-  private Set<CommunityVar> _allCommunities;
-
-  private Map<String, String> _namedCommunities;
-
-  private Map<CommunityVar, List<CommunityVar>> _communityDependencies;
-
   private List<SymbolicRoute> _allSymbolicRoutes;
 
   private Map<String, SymbolicRoute> _ospfRedistributed;
 
   private Table2<String, Protocol, Set<Prefix>> _originatedNetworks;
-
-  /**
-   * Create a new encoding slice
-   *
-   * @param enc The parent encoder object
-   * @param h The packet headerspace of interest
-   * @param batfish The batfish object
-   * @param sliceName The name of this slice
-   */
-  EncoderSlice(Encoder enc, HeaderSpace h, IBatfish batfish, String sliceName) {
-    this(enc, h, new Graph(batfish), sliceName);
-  }
 
   /**
    * Create a new encoding slice
@@ -149,7 +130,6 @@ class EncoderSlice {
 
     initOptimizations();
     initOriginatedPrefixes();
-    initCommunities();
     initRedistributionProtocols();
     initVariables();
     initAclFunctions();
@@ -348,17 +328,6 @@ class EncoderSlice {
   }
 
   /*
-   * Initializes a dependency graph of community values and
-   * community regex matches. Each community regex is mapped
-   * to the collection of exact matches that it subsumes
-   */
-  private void initCommunities() {
-    _allCommunities = getGraph().findAllCommunities();
-    _namedCommunities = getGraph().findNamedCommunities();
-    _communityDependencies = getGraph().getCommunityDependencies();
-  }
-
-  /*
    * Initialize the map of redistributed protocols.
    */
   private void initRedistributionProtocols() {
@@ -450,12 +419,12 @@ class EncoderSlice {
   BoolExpr isRelevantFor(ArithExpr prefixLen, PrefixRange range) {
     Prefix p = range.getPrefix();
     SubRange r = range.getLengthRange();
-    long pfx = p.getNetworkAddress().asLong();
+    long pfx = p.getStartIp().asLong();
     int len = p.getPrefixLength();
     int lower = r.getStart();
     int upper = r.getEnd();
     // well formed prefix
-    assert (p.getPrefixLength() < lower && lower <= upper);
+    assert (p.getPrefixLength() <= lower && lower <= upper);
     BoolExpr lowerBitsMatch = firstBitsEqual(_symbolicPacket.getDstIp(), pfx, len);
     if (lower == upper) {
       BoolExpr equalLen = mkEq(prefixLen, mkInt(lower));
@@ -482,7 +451,7 @@ class EncoderSlice {
   }
 
   BoolExpr isRelevantFor(Prefix p, BitVecExpr be) {
-    long pfx = p.getNetworkAddress().asLong();
+    long pfx = p.getStartIp().asLong();
     return firstBitsEqual(be, pfx, p.getPrefixLength());
   }
 
@@ -720,10 +689,10 @@ class EncoderSlice {
                       .contains(e);
 
               Interface i = e.getStart();
-              Prefix p = i.getPrefix();
+              Prefix p = i.getAddress().getPrefix();
 
               boolean doModel = !(proto.isConnected() && p != null && !relevantPrefix(p));
-              // Optimization: Don't model the connected interfaces that aren't relevant
+              // PolicyQuotient: Don't model the connected interfaces that aren't relevant
               if (doModel) {
                 if (notNeeded) {
                   String name =
@@ -997,7 +966,7 @@ class EncoderSlice {
         BoolExpr e = entry.getValue();
         if (cvar.getType() == CommunityVar.Type.REGEX) {
           BoolExpr acc = mkFalse();
-          List<CommunityVar> deps = _communityDependencies.get(cvar);
+          List<CommunityVar> deps = getGraph().getCommunityDependencies().get(cvar);
           for (CommunityVar dep : deps) {
             BoolExpr depExpr = r.getCommunities().get(dep);
             acc = mkOr(acc, depExpr);
@@ -1601,11 +1570,11 @@ class EncoderSlice {
           GraphEdge other = getGraph().getOtherEnd().get(ge);
           BoolExpr connectedWillSend;
           if (other == null || getGraph().isHost(ge.getPeer())) {
-            Ip ip = ge.getStart().getPrefix().getAddress();
+            Ip ip = ge.getStart().getAddress().getIp();
             BitVecExpr val = getCtx().mkBV(ip.asLong(), 32);
             connectedWillSend = mkNot(mkEq(_symbolicPacket.getDstIp(), val));
           } else {
-            Ip ip = other.getStart().getPrefix().getAddress();
+            Ip ip = other.getStart().getAddress().getIp();
             BitVecExpr val = getCtx().mkBV(ip.asLong(), 32);
             connectedWillSend = mkEq(_symbolicPacket.getDstIp(), val);
           }
@@ -1999,7 +1968,7 @@ class EncoderSlice {
     if (vars.getIsUsed()) {
 
       if (proto.isConnected()) {
-        Prefix p = iface.getPrefix();
+        Prefix p = iface.getAddress().getPrefix();
         BoolExpr relevant =
             mkAnd(
                 interfaceActive(iface, proto),
@@ -2778,11 +2747,11 @@ class EncoderSlice {
   }
 
   Set<CommunityVar> getAllCommunities() {
-    return _allCommunities;
+    return getGraph().getAllCommunities();
   }
 
   Map<String, String> getNamedCommunities() {
-    return _namedCommunities;
+    return getGraph().getNamedCommunities();
   }
 
   UnsatCore getUnsatCore() {
@@ -2798,7 +2767,7 @@ class EncoderSlice {
   }
 
   Map<CommunityVar, List<CommunityVar>> getCommunityDependencies() {
-    return _communityDependencies;
+    return getGraph().getCommunityDependencies();
   }
 
   Table2<String, Protocol, Set<Prefix>> getOriginatedNetworks() {

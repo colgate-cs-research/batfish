@@ -33,6 +33,9 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     private Boolean _additionalPathSend;
     private Boolean _additionalPathSelectAll;
     private Boolean _advertiseInactive;
+    private Vrf _vrf;
+    private Long _clusterId;
+    private Boolean _routeReflectorClient;
 
     Builder(NetworkFactory networkFactory) {
       super(networkFactory, BgpNeighbor.class);
@@ -41,10 +44,10 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     @Override
     public BgpNeighbor build() {
       BgpNeighbor bgpNeighbor;
-      if (_owner != null && _peerIpAddress != null) {
-        bgpNeighbor = new BgpNeighbor(_peerIpAddress, _owner);
-      } else {
-        bgpNeighbor = new BgpNeighbor();
+      Ip peerIpAddress = _peerIpAddress != null ? _peerIpAddress : new Ip(generateLong());
+      bgpNeighbor = new BgpNeighbor(peerIpAddress, _owner);
+      if (_clusterId != null) {
+        bgpNeighbor.setClusterId(_clusterId);
       }
       if (_localIp != null) {
         bgpNeighbor.setLocalIp(_localIp);
@@ -72,6 +75,12 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
       }
       if (_additionalPathSelectAll != null) {
         bgpNeighbor.setAdditionalPathsSelectAll(_additionalPathSelectAll);
+      }
+      if (_routeReflectorClient != null) {
+        bgpNeighbor.setRouteReflectorClient(_routeReflectorClient);
+      }
+      if (_vrf != null) {
+        bgpNeighbor.setVrf(_vrf.getName());
       }
       return bgpNeighbor;
     }
@@ -128,6 +137,21 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
 
     public Builder setAdvertiseInactive(Boolean advertiseInactive) {
       _advertiseInactive = advertiseInactive;
+      return this;
+    }
+
+    public Builder setVrf(Vrf vrf) {
+      _vrf = vrf;
+      return this;
+    }
+
+    public Builder setClusterId(Long clusterId) {
+      _clusterId = clusterId;
+      return this;
+    }
+
+    public Builder setRouteReflectorClient(Boolean routeReflectorClient) {
+      _routeReflectorClient = routeReflectorClient;
       return this;
     }
   }
@@ -231,7 +255,7 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
     @JsonIgnore
     public Prefix getPrefix() {
       if (_remotePrefix == null) {
-        return new Prefix(_remoteIp, 32);
+        return new Prefix(_remoteIp, Prefix.MAX_PREFIX_LENGTH);
       } else {
         return _remotePrefix;
       }
@@ -400,7 +424,7 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
    * @param owner The owner of this neighbor
    */
   public BgpNeighbor(Ip address, Configuration owner) {
-    this(new Prefix(address, 32), owner);
+    this(new Prefix(address, Prefix.MAX_PREFIX_LENGTH), owner);
   }
 
   @JsonCreator
@@ -508,8 +532,8 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
   @JsonProperty(PROP_ADDRESS)
   @JsonPropertyDescription("The IPV4 address of the remote peer if not dynamic (passive)")
   public Ip getAddress() {
-    if (_key != null && _key.getPrefixLength() == 32) {
-      return _key.getAddress();
+    if (_key != null && _key.getPrefixLength() == Prefix.MAX_PREFIX_LENGTH) {
+      return _key.getStartIp();
     } else {
       return null;
     }
@@ -580,7 +604,7 @@ public final class BgpNeighbor extends ComparableStructure<Prefix> {
       "Whether this represents a connection to a specific peer (false) or a passive connection to "
           + "a network of peers (true)")
   public boolean getDynamic() {
-    return _key != null && _key.getPrefixLength() < 32;
+    return _key != null && _key.getPrefixLength() < Prefix.MAX_PREFIX_LENGTH;
   }
 
   @JsonProperty(PROP_EBGP_MULTIHOP)

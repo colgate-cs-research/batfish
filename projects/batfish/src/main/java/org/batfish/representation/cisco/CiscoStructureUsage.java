@@ -19,6 +19,8 @@ public enum CiscoStructureUsage implements StructureUsage {
   BGP_OUTBOUND_ROUTE_MAP("bgp outbound route-map"),
   BGP_OUTBOUND_ROUTE6_MAP("bgp outbound ipv6 route-map"),
   BGP_REDISTRIBUTE_CONNECTED_MAP("bgp redistribute connected route-map"),
+  BGP_REDISTRIBUTE_OSPF_MAP("bgp redistribute ospf route-map"),
+  BGP_REDISTRIBUTE_OSPFV3_MAP("bgp redistribute ospfv3 route-map"),
   BGP_REDISTRIBUTE_RIP_MAP("bgp redistribute rip route-map"),
   BGP_REDISTRIBUTE_STATIC_MAP("bgp redistribute static route-map"),
   BGP_ROUTE_MAP_OTHER("bgp otherwise in/outbound route-map"),
@@ -52,6 +54,7 @@ public enum CiscoStructureUsage implements StructureUsage {
   MANAGEMENT_TELNET_ACCESS_GROUP("management telnet ip access-group"),
   MSDP_PEER_SA_LIST("msdp peer sa-list"),
   NTP_ACCESS_GROUP("ntp access-group"),
+  OSPF_AREA_FILTER_LIST("ospf area filter-list"),
   OSPF_DEFAULT_ORIGINATE_ROUTE_MAP("ospf default-originate route-map"),
   OSPF_REDISTRIBUTE_BGP_MAP("ospf redistribute bgp route-map"),
   OSPF_REDISTRIBUTE_CONNECTED_MAP("ospf redistribute connected route-map"),
@@ -64,7 +67,6 @@ public enum CiscoStructureUsage implements StructureUsage {
   PIM_RP_CANDIDATE_ACL("pim rp candidate acl"),
   PIM_SEND_RP_ANNOUNCE_ACL("pim send rp announce acl"),
   PIM_SPT_THRESHOLD_ACL("pim spt threshold acl"),
-  PIM_SSM_ACL("pim ssl acl"),
   QOS_ENFORCE_RULE_SERVICE_CLASS("cable qos enforce-rule service-class"),
   RIP_DEFAULT_ORIGINATE_ROUTE_MAP("rip default-information originate route-map"),
   RIP_DISTRIBUTE_LIST("router rip distribute-list"),
@@ -94,13 +96,14 @@ public enum CiscoStructureUsage implements StructureUsage {
   SSH_IPV4_ACL("ssh ipv4 access-list"),
   SSH_IPV6_ACL("ssh ipv6 access-list"),
   TUNNEL_PROTECTION_IPSEC_PROFILE("interface TunnelX tunnel protection ipsec profile"),
+  TUNNEL_SOURCE("tunnel source"),
   WCCP_GROUP_LIST("ip wccp group-list"),
   WCCP_REDIRECT_LIST("ip wccp redirect-list"),
   WCCP_SERVICE_LIST("ip wccp service-list");
 
   private final String _description;
 
-  private CiscoStructureUsage(String description) {
+  CiscoStructureUsage(String description) {
     _description = description;
   }
 

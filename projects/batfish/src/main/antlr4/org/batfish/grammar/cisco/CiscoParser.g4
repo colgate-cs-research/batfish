@@ -20,7 +20,7 @@ options {
    public void setMultilineBgpNeighbors(boolean multilineBgpNeighbors) {
       _multilineBgpNeighbors = multilineBgpNeighbors;
    }
-   
+
    @Override
    public String getStateInfo() {
       return String.format("_cadant: %s\n_multilineBgpNeighbors: %s\n",
@@ -215,6 +215,51 @@ cisco_configuration
    (
       sl += stanza
    )+ COLON? NEWLINE? EOF
+;
+
+configure_maintenance
+:
+   MAINTENANCE ~NEWLINE* NEWLINE
+   (
+      configure_maintenance_null
+      | configure_maintenance_router
+   )*
+;
+
+configure_maintenance_null
+:
+   NO?
+   (
+      IP
+   ) ~NEWLINE* NEWLINE
+;
+
+configure_maintenance_router
+:
+   NO?
+   (
+      ROUTER
+   ) ~NEWLINE* NEWLINE
+   (
+      configure_maintenance_router_null
+   )*
+;
+
+configure_maintenance_router_null
+:
+   NO?
+   (
+      ISOLATE
+   ) ~NEWLINE* NEWLINE
+;
+
+configure_null
+:
+   NO?
+   (
+      | SESSION
+      | TERMINAL
+   ) ~NEWLINE* NEWLINE
 ;
 
 cops_listener
@@ -904,6 +949,7 @@ ip_dhcp_null
       | PACKET
       | SMART_RELAY
       | SNOOPING
+      | USE
    ) ~NEWLINE* NEWLINE
 ;
 
@@ -1105,6 +1151,7 @@ ip_sla_null
       | REQUEST_DATA_SIZE
       | SAMPLES_OF_HISTORY_KEPT
       | TAG
+      | TIMEOUT
       | TOS
       | UDP_JITTER
    ) ~NEWLINE* NEWLINE
@@ -1115,6 +1162,7 @@ ip_ssh_null
    (
       AUTHENTICATION_RETRIES
       | CLIENT
+      | LOGGING
       | MAXSTARTUPS
       | PORT
       | RSA
@@ -2049,6 +2097,15 @@ s_call_manager_fallback
    (
       cmf_null
    )+
+;
+
+s_configure
+:
+   NO? CONFIGURE
+   (
+      configure_maintenance
+      | configure_null
+   )
 ;
 
 s_control_plane
@@ -3160,11 +3217,14 @@ spanning_tree_null
 :
    (
       BACKBONEFAST
+      | BPDUFILTER
       | BRIDGE
+      | COST
       | DISPUTE
       | ETHERCHANNEL
       | EXTEND
       | FCOE
+      | GUARD
       | LOGGING
       | LOOPGUARD
       | MODE
@@ -3291,6 +3351,7 @@ stanza
    | s_application
    | s_application_var
    | s_archive
+   | s_arp_access_list_extended
    | s_authentication
    | s_cable
    | s_call_home
@@ -3298,6 +3359,7 @@ stanza
    | s_call_manager_fallback
    | s_class_map
    | s_cluster
+   | s_configure
    | s_control_plane
    | s_control_plane_security
    | s_controller

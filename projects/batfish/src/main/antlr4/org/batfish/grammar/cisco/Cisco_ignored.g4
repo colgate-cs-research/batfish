@@ -38,11 +38,12 @@ null_block
       | COMMIT
       | CONFDCONFIG
       | CONFIGURATION
-      | CONFIGURE
       | COAP
       | COPP
       | COPY
       | CPD
+      | CRYPTOCHECKSUM
+      | DAEMON
       | DCB
       | DCB_BUFFER_THRESHOLD
       | DEBUG
@@ -57,7 +58,6 @@ null_block
       | DYNAMIC_ACCESS_POLICY_RECORD
       | ENABLE_ACL_COUNTER
       | ENABLE_QOS_STATISTICS
-      | END
       | ETHERNET
       | EXCEPTION_SLAVE
       | EXIT
@@ -622,6 +622,7 @@ null_single
       | DOWNLINK
       | DSP
       | DSS
+      | END
       | ENVIRONMENT
       | ENVIRONMENT_MONITOR
       | ERRDISABLE
@@ -903,6 +904,35 @@ null_single
       | THREAT_DETECTION
       | THREAT_VISIBILITY
       | THU
+      |
+      (
+         TIMEOUT
+         (
+            CONN
+            | CONN_HOLDDOWN
+            | FLOATING_CONN
+            | H225
+            | H323
+            | HALF_CLOSED
+            | ICMP
+            | ICMP_ERROR
+            | IGP STALE_ROUTE
+            | MGCP
+            | MGCP_PAT
+            | PAT_XLATE
+            | SCTP
+            | SIP
+            | SIP_DISCONNECT
+            | SIP_INVITE
+            | SIP_MEDIA
+            | SIP_PROVISIONAL_MEDIA
+            | SUNRPC
+            | TCP_PROXY_REASSEMBLY
+            | UAUTH
+            | UDP
+            | XLATE
+         )
+      )
       | TRANSLATE
       | TUE
       | TUNNELED_NODE_ADDRESS
@@ -946,8 +976,18 @@ null_single
    )* NEWLINE
 ;
 
+null_no
+:
+   NO
+   (
+      TIMEOUT
+   )
+   NEWLINE
+;
+
 s_null
 :
    null_block
    | null_single
+   | null_no
 ;

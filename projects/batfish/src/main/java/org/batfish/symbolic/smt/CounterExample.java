@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.batfish.datamodel.AsPath;
 import org.batfish.datamodel.BgpAdvertisement;
 import org.batfish.datamodel.BgpAdvertisement.BgpAdvertisementType;
@@ -189,10 +189,8 @@ class CounterExample {
           for (Entry<CommunityVar, BoolExpr> entry2 : r.getCommunities().entrySet()) {
             CommunityVar cvar = entry2.getKey();
             BoolExpr expr = entry2.getValue();
-            if (cvar.getType() == Type.EXACT) {
-              if (boolVal(expr)) {
-                communities.add(cvar.asLong());
-              }
+            if (cvar.getType() == Type.EXACT && boolVal(expr)) {
+              communities.add(cvar.asLong());
             }
           }
 
@@ -252,10 +250,10 @@ class CounterExample {
       nhint = ge.getStart().getName();
     } else {
       type = StringUtils.capitalize(proto.name().toLowerCase()) + "Route";
-      nhip = ge.getStart().getPrefix().getAddress().toString();
+      nhip = ge.getStart().getAddress().getIp().toString();
       nhint = "dynamic";
     }
-    return String.format("%s<%s,nhip:%s,nhint:%s>", type, pfx.getNetworkPrefix(), nhip, nhint);
+    return String.format("%s<%s,nhip:%s,nhint:%s>", type, pfx, nhip, nhint);
   }
 
   /*
@@ -388,7 +386,7 @@ class CounterExample {
           // Check if there is an accepting interface
           for (GraphEdge ge : slice.getGraph().getEdgeMap().get(current)) {
             Interface i = ge.getStart();
-            Ip ip = i.getPrefix().getAddress();
+            Ip ip = i.getAddress().getIp();
             if (ip.equals(f.getDstIp())) {
               FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops, "ACCEPTED");
               return new Tuple<>(f, ft);
@@ -415,12 +413,12 @@ class CounterExample {
       String testrigName,
       Collection<String> sourceRouters,
       Encoder enc,
-      Map<String, BoolExpr> reach) {
+      Map<String, Boolean> reach) {
 
     FlowHistory fh = new FlowHistory();
     for (String source : sourceRouters) {
-      BoolExpr sourceVar = reach.get(source);
-      if (isFalse(sourceVar)) {
+      Boolean sourceVar = reach.get(source);
+      if (!sourceVar) {
         Tuple<Flow, FlowTrace> tup = buildFlowTrace(enc, source);
         SortedSet<Edge> failedLinks = buildFailedLinks(enc);
         SortedSet<BgpAdvertisement> envRoutes = buildEnvRoutingTable(enc);

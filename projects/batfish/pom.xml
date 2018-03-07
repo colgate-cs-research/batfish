@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.batfish</groupId>
     <artifactId>batfish-parent</artifactId>
-    <version>0.33.0</version>
+    <version>0.35.0</version>
   </parent>
 
   <artifactId>batfish</artifactId>
@@ -36,7 +36,9 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>findbugs-maven-plugin</artifactId>
-          <configuration><skip>true</skip></configuration>
+          <configuration>
+            <skip>true</skip>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -118,7 +120,7 @@
             <id>check</id>
             <goals><goal>check</goal></goals>
             <configuration>
-               <failOnViolation>false</failOnViolation>
+              <failOnViolation>true</failOnViolation>
             </configuration>
           </execution>
 
@@ -126,7 +128,7 @@
             <id>cpd-check</id>
             <goals><goal>cpd-check</goal></goals>
             <configuration>
-               <failOnViolation>false</failOnViolation>
+              <failOnViolation>false</failOnViolation>
             </configuration>
           </execution>
         </executions>
@@ -158,7 +160,7 @@
     <dependency>
       <groupId>com.google.auto.service</groupId>
       <artifactId>auto-service</artifactId>
-		<optional>true</optional>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -182,15 +184,10 @@
     </dependency>
 
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>io.opentracing</groupId>
       <artifactId>opentracing-api</artifactId>
     </dependency>
-    
+
     <dependency>
       <groupId>io.opentracing</groupId>
       <artifactId>opentracing-util</artifactId>
@@ -223,7 +220,12 @@
 
     <dependency>
       <groupId>org.apache.commons</groupId>
-      <artifactId>commons-exec</artifactId>
+      <artifactId>commons-configuration2</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
     </dependency>
 
     <dependency>
@@ -259,6 +261,13 @@
     </dependency>
 
     <!-- Test scope dependencies. -->
+    <dependency>
+      <groupId>org.batfish</groupId>
+      <artifactId>batfish-common-protocol</artifactId>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

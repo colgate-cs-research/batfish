@@ -11,36 +11,6 @@ ro_address_family
    ADDRESS_FAMILY IPV4 UNICAST? NEWLINE ro_common*
 ;
 
-ro_area_nssa
-:
-   AREA
-   (
-      area_int = DEC
-      | area_ip = IP_ADDRESS
-   ) NSSA
-   (
-      NO_SUMMARY
-      | DEFAULT_INFORMATION_ORIGINATE
-   )* NEWLINE
-;
-
-ro_area_range
-:
-   AREA area = IP_ADDRESS RANGE area_range = IP_PREFIX NEWLINE
-;
-
-ro_area_stub
-:
-   AREA
-   (
-      area_int = DEC
-      | area_ip = IP_ADDRESS
-   ) STUB
-   (
-      NO_SUMMARY
-   )* NEWLINE
-;
-
 ro_area
 :
    AREA
@@ -57,9 +27,95 @@ ro_area
    )*
 ;
 
+ro_area_default_cost
+:
+   AREA
+   (
+      area_int = DEC
+      | area_ip = IP_ADDRESS
+   )
+   DEFAULT_COST cost = DEC NEWLINE
+;
+
+ro_area_filterlist
+:
+   AREA
+   (
+      area_int = DEC
+      | area_ip = IP_ADDRESS
+   )
+   FILTER_LIST PREFIX list = variable (IN | OUT)
+   NEWLINE
+;
+
+ro_area_nssa
+:
+   AREA
+   (
+      area_int = DEC
+      | area_ip = IP_ADDRESS
+   ) NSSA
+   (
+      (
+         DEFAULT_INFORMATION_ORIGINATE
+         (
+            (
+               METRIC metric = DEC
+            )
+            |
+            (
+               METRIC_TYPE metric_type = DEC
+            )
+         )*
+      )
+      | NO_REDISTRIBUTION
+      | NO_SUMMARY
+   )* NEWLINE
+;
+
+ro_area_range
+:
+   AREA
+   (
+      area_int = DEC
+      | area_ip = IP_ADDRESS
+   ) RANGE
+   (
+      (
+         area_ip = IP_ADDRESS area_subnet = IP_ADDRESS
+      )
+      | area_prefix = IP_PREFIX
+   )
+   (
+      ADVERTISE
+      | NOT_ADVERTISE
+   )?
+   (
+      COST cost = DEC
+   )?
+   NEWLINE
+;
+
+ro_area_stub
+:
+   AREA
+   (
+      area_int = DEC
+      | area_ip = IP_ADDRESS
+   ) STUB
+   (
+      NO_SUMMARY
+   )* NEWLINE
+;
+
 ro_authentication
 :
    AUTHENTICATION MESSAGE_DIGEST? NEWLINE
+;
+
+ro_auto_cost
+:
+   AUTO_COST REFERENCE_BANDWIDTH DEC (GBPS | MBPS)? NEWLINE
 ;
 
 ro_common
@@ -114,6 +170,10 @@ ro_max_metric
       |
       (
          summary_lsa = SUMMARY_LSA summary = DEC?
+      )
+      |
+      (
+         wait_for_bgp = WAIT_FOR BGP bgptag = variable_max_metric
       )
    )* NEWLINE
 ;
@@ -174,6 +234,7 @@ ro_null
       )
       | AUTO_COST
       | BFD
+      | CAPABILITY
       | DEAD_INTERVAL
       | DISCARD_ROUTE
       | DISTRIBUTE_LIST
@@ -191,6 +252,7 @@ ro_null
          )
       )
       | LOG
+      | LOG_ADJ_CHANGES
       | LOG_ADJACENCY_CHANGES
       | MAX_LSA
       |
@@ -331,6 +393,16 @@ ro_summary_address
    NEWLINE
 ;
 
+ro_vrf
+:
+   VRF name = variable NEWLINE
+   (
+      ro_max_metric
+      | ro_redistribute_connected
+      | ro_redistribute_static
+   )*
+;
+
 ro6_area
 :
    AREA ~NEWLINE* NEWLINE
@@ -422,7 +494,11 @@ roa_range
    (
       ADVERTISE
       | NOT_ADVERTISE
-   ) NEWLINE
+   )?
+   (
+      COST cost=DEC
+   )?
+   NEWLINE
 ;
 
 roa_network_null
@@ -538,9 +614,12 @@ s_router_ospf
    (
       ro_address_family
       | ro_area
+      | ro_area_default_cost
+      | ro_area_filterlist
       | ro_area_nssa
       | ro_area_range
       | ro_area_stub
+      | ro_auto_cost
       | ro_common
       | ro_default_information
       | ro_distance
@@ -556,6 +635,7 @@ s_router_ospf
       | ro_redistribute_static
       | ro_router_id
       | ro_summary_address
+      | ro_vrf
    )*
 ;
 

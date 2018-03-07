@@ -11,6 +11,7 @@ import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedMap;
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +30,6 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.batfish.common.BatfishException;
-import org.batfish.common.CompositeBatfishException;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
@@ -78,7 +78,7 @@ public class BatfishTest {
 
     Path questionPath = _folder.newFile("testAnswerBadQuestion").toPath();
     Files.write(questionPath, badQuestionStr.getBytes(StandardCharsets.UTF_8));
-    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), null);
+    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), _folder);
     batfish.getSettings().setQuestionPath(questionPath);
     Answer answer = batfish.answer();
     assertThat(answer.getQuestion(), is(nullValue()));
@@ -93,15 +93,15 @@ public class BatfishTest {
   public void testOverlayIptables() throws IOException {
     SortedMap<String, String> configurationsText = new TreeMap<>();
     String[] configurationNames = new String[] {"host1.cfg"};
-    String testConfigsPrefix = "org/batfish/grammar/hosts/testrigs/router-iptables/configs/";
+    String testConfigsPrefix = "org/batfish/grammar/host/testrigs/router-iptables/configs/";
 
     SortedMap<String, String> hostsText = new TreeMap<>();
     String[] hostNames = new String[] {"host1.json"};
-    String testHostsPrefix = "org/batfish/grammar/hosts/testrigs/router-iptables/hosts/";
+    String testHostsPrefix = "org/batfish/grammar/host/testrigs/router-iptables/hosts/";
 
     SortedMap<String, String> iptablesFilesText = new TreeMap<>();
     String[] iptablesNames = new String[] {"host1.iptables"};
-    String testIptablesPrefix = "org/batfish/grammar/hosts/testrigs/router-iptables/iptables/";
+    String testIptablesPrefix = "org/batfish/grammar/host/testrigs/router-iptables/iptables/";
 
     for (String configurationName : configurationNames) {
       String configurationText = CommonUtil.readResource(testConfigsPrefix + configurationName);
@@ -117,13 +117,13 @@ public class BatfishTest {
     }
     Batfish batfish =
         BatfishTestUtils.getBatfishFromTestrigText(
-            configurationsText,
-            Collections.emptySortedMap(),
-            hostsText,
-            iptablesFilesText,
-            Collections.emptySortedMap(),
+            TestrigText.builder()
+                .setConfigurationText(configurationsText)
+                .setHostsText(hostsText)
+                .setIptablesFilesText(iptablesFilesText)
+                .build(),
             _folder);
-    SortedMap<String, Configuration> configurations = batfish.loadConfigurations();
+    Map<String, Configuration> configurations = batfish.loadConfigurations();
     assertThat(
         configurations.get("host1").getInterfaces().get("Ethernet0").getIncomingFilterName(),
         is(notNullValue()));
@@ -131,23 +131,17 @@ public class BatfishTest {
 
   @Test
   public void testMultipleBestVrrpCandidates() throws IOException {
-    SortedMap<String, String> configurationsText = new TreeMap<>();
-    String[] configurationNames = new String[] {"r1", "r2"};
+    String testrigResourcePrefix = "org/batfish/grammar/cisco/testrigs/vrrp_multiple_best";
+    List<String> configurationNames = ImmutableList.of("r1", "r2");
+
     Ip vrrpAddress = new Ip("1.0.0.10");
-    String testConfigsPrefix = "org/batfish/grammar/cisco/testrigs/vrrp_multiple_best/configs/";
-    for (String configurationName : configurationNames) {
-      String configurationText = CommonUtil.readResource(testConfigsPrefix + configurationName);
-      configurationsText.put(configurationName, configurationText);
-    }
     Batfish batfish =
         BatfishTestUtils.getBatfishFromTestrigText(
-            configurationsText,
-            Collections.emptySortedMap(),
-            Collections.emptySortedMap(),
-            Collections.emptySortedMap(),
-            Collections.emptySortedMap(),
+            TestrigText.builder()
+                .setConfigurationText(testrigResourcePrefix, configurationNames)
+                .build(),
             _folder);
-    SortedMap<String, Configuration> configurations = batfish.loadConfigurations();
+    Map<String, Configuration> configurations = batfish.loadConfigurations();
     Map<Ip, Set<String>> ipOwners = CommonUtil.computeIpOwners(configurations, true);
     assertThat(ipOwners.get(vrrpAddress), equalTo(Collections.singleton("r1")));
   }
@@ -173,7 +167,7 @@ public class BatfishTest {
 
     Path topologyFilePath = _folder.newFile("testParseTopologyJson").toPath();
     Files.write(topologyFilePath, topologyBadJson.getBytes(StandardCharsets.UTF_8));
-    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), null);
+    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), _folder);
     String errorMessage = "Topology format error";
     _thrown.expect(BatfishException.class);
     _thrown.expectMessage(errorMessage);
@@ -184,7 +178,7 @@ public class BatfishTest {
   public void testParseTopologyEmpty() throws IOException {
     Path topologyFilePath = _folder.newFile("testParseTopologyJson").toPath();
     Files.write(topologyFilePath, new byte[0]);
-    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), null);
+    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), _folder);
     String errorMessage = "ERROR: empty topology\n";
     _thrown.expect(BatfishException.class);
     _thrown.expectMessage(errorMessage);
@@ -211,13 +205,13 @@ public class BatfishTest {
 
     Path topologyFilePath = _folder.newFile("testParseTopologyJson").toPath();
     Files.write(topologyFilePath, topologyJson.getBytes(StandardCharsets.UTF_8));
-    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), null);
+    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), _folder);
     Topology topology = batfish.parseTopology(topologyFilePath);
     assertEquals(topology.getEdges().size(), 2);
   }
 
   @Test
-  public void testCheckValidTopology() throws IOException {
+  public void testCheckValidTopology() {
     Map<String, Configuration> configs = new HashMap<>();
     configs.put(
         "h1", BatfishTestUtils.createTestConfiguration("h1", ConfigurationFormat.HOST, "eth0"));
@@ -232,7 +226,7 @@ public class BatfishTest {
   }
 
   @Test
-  public void testCheckTopologyInvalidNode() throws IOException {
+  public void testCheckTopologyInvalidNode() {
     Map<String, Configuration> configs = new HashMap<>();
     configs.put(
         "h1", BatfishTestUtils.createTestConfiguration("h1", ConfigurationFormat.HOST, "eth0"));
@@ -246,7 +240,7 @@ public class BatfishTest {
   }
 
   @Test
-  public void testCheckTopologyInvalidInterface() throws IOException {
+  public void testCheckTopologyInvalidInterface() {
     Map<String, Configuration> configs = new HashMap<>();
     configs.put(
         "h1", BatfishTestUtils.createTestConfiguration("h1", ConfigurationFormat.HOST, "eth0"));
@@ -261,6 +255,7 @@ public class BatfishTest {
     Batfish.checkTopology(configs, topology);
   }
 
+  @Test
   public void testReadMissingIptableFile() throws IOException {
     HostConfiguration host1 = new HostConfiguration();
     host1.setHostname("host1");
@@ -272,10 +267,11 @@ public class BatfishTest {
     ParseVendorConfigurationAnswerElement answerElement =
         new ParseVendorConfigurationAnswerElement();
     answerElement.getParseStatus().put("host1", ParseStatus.PASSED);
-    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), null);
+    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), _folder);
     String failureMessage =
-        "Iptables file iptables/host1.iptables for host host1 "
-            + "is not contained within the testrig";
+        "Iptables file iptables"
+            + File.separator
+            + "host1.iptables for host host1 is not contained within the testrig";
     batfish.readIptableFiles(testRigPath, hostConfigurations, iptablesData, answerElement);
     assertThat(answerElement.getParseStatus().get("host1"), equalTo(ParseStatus.FAILED));
     assertThat(
@@ -299,7 +295,7 @@ public class BatfishTest {
     String parseErrorMessage =
         "Fatal exception due to at least one Iptables file is not contained"
             + " within the testrig";
-    _thrown.expect(CompositeBatfishException.class);
+    _thrown.expect(BatfishException.class);
     _thrown.expectMessage(parseErrorMessage);
     batfish.readIptableFiles(testRigPath, hostConfigurations, iptablesData, answerElement);
   }
@@ -359,13 +355,8 @@ public class BatfishTest {
     SortedMap<String, String> configMap = ImmutableSortedMap.of("host1", configurationText);
     Batfish batfish =
         BatfishTestUtils.getBatfishFromTestrigText(
-            configMap,
-            Collections.emptySortedMap(),
-            Collections.emptySortedMap(),
-            Collections.emptySortedMap(),
-            Collections.emptySortedMap(),
-            _folder);
-    SortedMap<String, Configuration> configs = batfish.loadConfigurations();
+            TestrigText.builder().setConfigurationText(configMap).build(), _folder);
+    Map<String, Configuration> configs = batfish.loadConfigurations();
 
     // Assert that the config parsed successfully
     assertThat(configs, hasKey("host1"));
@@ -393,7 +384,7 @@ public class BatfishTest {
     ParseVendorConfigurationAnswerElement answerElement =
         new ParseVendorConfigurationAnswerElement();
     answerElement.getParseStatus().put("host1", ParseStatus.PASSED);
-    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), null);
+    Batfish batfish = BatfishTestUtils.getBatfish(new TreeMap<>(), _folder);
     batfish.readIptableFiles(testRigPath, hostConfigurations, iptablesData, answerElement);
     assertThat(answerElement.getParseStatus().get("host1"), equalTo(ParseStatus.PASSED));
     assertThat(answerElement.getErrors().size(), is(0));

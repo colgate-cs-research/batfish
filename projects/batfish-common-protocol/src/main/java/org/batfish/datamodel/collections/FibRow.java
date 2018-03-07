@@ -5,7 +5,7 @@ import org.batfish.datamodel.Prefix;
 
 public class FibRow implements Comparable<FibRow>, Serializable {
 
-  public static final String DROP_INTERFACE = "drop";
+  public static final String DROP_NO_ROUTE = "drop_no_route";
 
   private static final long serialVersionUID = 1L;
 
@@ -23,7 +23,7 @@ public class FibRow implements Comparable<FibRow>, Serializable {
 
   @Override
   public int compareTo(FibRow rhs) {
-    int prefixComparison = _prefix.getAddress().compareTo(rhs._prefix.getAddress());
+    int prefixComparison = _prefix.getStartIp().compareTo(rhs._prefix.getStartIp());
     if (prefixComparison == 0) {
       int lengthComparison =
           Integer.compare(_prefix.getPrefixLength(), rhs._prefix.getPrefixLength());

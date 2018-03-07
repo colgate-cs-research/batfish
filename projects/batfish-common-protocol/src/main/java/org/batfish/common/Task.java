@@ -1,16 +1,13 @@
 package org.batfish.common;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
 import org.batfish.common.BfConsts.TaskStatus;
-import org.batfish.common.util.BatfishObjectMapper;
 
 public class Task {
 
@@ -89,33 +86,58 @@ public class Task {
 
   private static final String PROP_ARGS = "args";
 
+  private static final String PROP_BATCHES = "batches";
+
+  private static final String PROP_ERR_MESSAGE = "errMessage";
+
   private static final String PROP_OBTAINED = "obtained";
 
   private static final String PROP_STATUS = "status";
 
   private static final String PROP_TERMINATED = "terminated";
 
-  private String[] _args;
+  private final String[] _args;
 
-  private List<Batch> _batches;
+  private final List<Batch> _batches;
 
-  private Date _obtained;
+  private String _errMessage;
+
+  private final Date _obtained;
 
   private TaskStatus _status;
 
   private Date _terminated;
 
-  private volatile boolean _terminationRequested;
-
   @JsonCreator
-  public Task() {}
+  public Task(
+      @JsonProperty(PROP_ARGS) String[] args,
+      @JsonProperty(PROP_OBTAINED) Date obtained,
+      @JsonProperty(PROP_STATUS) TaskStatus status,
+      @JsonProperty(PROP_TERMINATED) Date terminated,
+      @JsonProperty(PROP_BATCHES) List<Batch> batches,
+      @JsonProperty(PROP_ERR_MESSAGE) String errMessage) {
+    _args = args;
+    _obtained = obtained;
+    _status = status;
+    _terminated = terminated;
+    _batches = batches;
+    _errMessage = errMessage;
+  }
 
   public Task(@Nullable String[] args) {
-    this._args = args;
-    _batches = new ArrayList<>();
-    _obtained = new Date();
-    _terminated = null;
-    _status = TaskStatus.Unscheduled;
+    this(args, new Date(), TaskStatus.Unscheduled, null, new ArrayList<>(), null);
+  }
+
+  public Task(TaskStatus status) {
+    this(null, new Date(), status, null, new ArrayList<>(), null);
+    if (status == TaskStatus.TerminatedNormally || status == TaskStatus.TerminatedAbnormally) {
+      _terminated = new Date();
+    }
+  }
+
+  public Task(TaskStatus status, String description) {
+    this(status);
+    newBatch(description);
   }
 
   @JsonProperty(PROP_ARGS)
@@ -125,6 +147,11 @@ public class Task {
 
   public List<Batch> getBatches() {
     return _batches;
+  }
+
+  @JsonProperty(PROP_ERR_MESSAGE)
+  public String getErrMessage() {
+    return _errMessage;
   }
 
   @JsonProperty(PROP_OBTAINED)
@@ -142,11 +169,6 @@ public class Task {
     return _terminated;
   }
 
-  @JsonIgnore
-  public boolean getTerminationRequested() {
-    return _terminationRequested;
-  }
-
   public Batch newBatch(String description) {
     Batch batch = new Batch();
     batch.setDescription(description);
@@ -156,42 +178,22 @@ public class Task {
     return batch;
   }
 
-  @JsonIgnore
-  public void requestTermination() {
-    _terminationRequested = true;
+  @JsonProperty(PROP_ERR_MESSAGE)
+  public void setErrMessage(String msg) {
+    _errMessage = msg;
   }
 
-  @JsonProperty(PROP_ARGS)
-  public void setArgs(String[] args) {
-    _args = args;
-  }
-
-  public void setBatches(List<Batch> batches) {
-    _batches = batches;
-  }
-
-  @JsonProperty(PROP_OBTAINED)
-  public void setObtained(Date obtained) {
-    _obtained = obtained;
-  }
-
-  @JsonProperty(PROP_STATUS)
   public void setStatus(TaskStatus status) {
     _status = status;
   }
 
-  public void setTerminated() {
-    _terminated = new Date();
-  }
-
-  @JsonProperty(PROP_TERMINATED)
   public void setTerminated(Date terminated) {
     _terminated = terminated;
   }
 
-  public synchronized String updateAndWrite() throws JsonProcessingException {
-    _obtained = new Date();
-    BatfishObjectMapper mapper = new BatfishObjectMapper();
-    return mapper.writeValueAsString(this);
+  public String toString() {
+    return String.format(
+        "[Status: %s LastBatch: %s]",
+        _status, _batches.isEmpty() ? "None" : _batches.get(_batches.size() - 1));
   }
 }

@@ -19,15 +19,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
-import org.batfish.common.BfJson;
 import org.batfish.common.Warnings;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 import org.batfish.datamodel.vendor_family.VendorFamily;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
 
 @JsonSchemaDescription(
     "A Configuration represents an autonomous network device, such as a router, host, switch, or "
@@ -38,7 +36,13 @@ public final class Configuration extends ComparableStructure<String> {
 
     private ConfigurationFormat _configurationFormat;
 
+    private String _domainName;
+
     private String _hostname;
+
+    private LineAction _defaultCrossZoneAction;
+
+    private LineAction _defaultInboundAction;
 
     Builder(NetworkFactory networkFactory) {
       super(networkFactory, Configuration.class);
@@ -48,6 +52,13 @@ public final class Configuration extends ComparableStructure<String> {
     public Configuration build() {
       String name = _hostname != null ? _hostname : generateName();
       Configuration configuration = new Configuration(name, _configurationFormat);
+      if (_defaultCrossZoneAction != null) {
+        configuration.setDefaultCrossZoneAction(_defaultCrossZoneAction);
+      }
+      if (_defaultInboundAction != null) {
+        configuration.setDefaultInboundAction(_defaultInboundAction);
+      }
+      configuration.setDomainName(_domainName);
       return configuration;
     }
 
@@ -56,8 +67,23 @@ public final class Configuration extends ComparableStructure<String> {
       return this;
     }
 
+    public Builder setDomainName(String domainName) {
+      _domainName = domainName;
+      return this;
+    }
+
     public Builder setHostname(String hostname) {
       _hostname = hostname;
+      return this;
+    }
+
+    public Builder setDefaultCrossZoneAction(LineAction defaultCrossZoneAction) {
+      _defaultCrossZoneAction = defaultCrossZoneAction;
+      return this;
+    }
+
+    public Builder setDefaultInboundAction(LineAction defaultInboundAction) {
+      _defaultInboundAction = defaultInboundAction;
       return this;
     }
   }
@@ -82,6 +108,8 @@ public final class Configuration extends ComparableStructure<String> {
 
   private static final String PROP_DNS_SOURCE_INTERFACE = "dnsSourceInterface";
 
+  private static final String PROP_DOMAIN_NAME = "domainName";
+
   private static final String PROP_IKE_GATEWAYS = "ikeGateways";
 
   private static final String PROP_IKE_POLICIES = "ikePolicies";
@@ -102,11 +130,17 @@ public final class Configuration extends ComparableStructure<String> {
 
   private static final String PROP_ROLES = "roles";
 
+  private static final String PROP_ROLE_DIMENSIONS = "roleDimensions";
+
   private static final String PROP_ROUTE_FILTER_LISTS = "routeFilterLists";
 
   private static final String PROP_ROUTING_POLICIES = "routingPolicies";
 
   private static final String PROP_SNMP_SOURCE_INTERFACE = "snmpSourceInterface";
+
+  private static final String PROP_SNMP_TRAP_SERVERS = "snmpTrapServers";
+
+  private static final String PROP_TACACS_SERVERS = "tacacsServers";
 
   private static final String PROP_TACACS_SOURCE_INTERFACE = "tacacsSourceInterface";
 
@@ -181,9 +215,9 @@ public final class Configuration extends ComparableStructure<String> {
 
   private transient NavigableSet<BgpAdvertisement> _receivedIbgpAdvertisements;
 
-  private transient boolean _resolved;
-
   private SortedSet<String> _roles;
+
+  private NavigableMap<Integer, String> _roleDimensions;
 
   private NavigableMap<String, Route6FilterList> _route6FilterLists;
 
@@ -226,6 +260,7 @@ public final class Configuration extends ComparableStructure<String> {
     }
     _configurationFormat = configurationFormat;
     _dnsServers = new TreeSet<>();
+    _domainName = null;
     _ikeGateways = new TreeMap<>();
     _ikePolicies = new TreeMap<>();
     _ikeProposals = new TreeMap<>();
@@ -300,6 +335,20 @@ public final class Configuration extends ComparableStructure<String> {
     return _bgpAdvertisements;
   }
 
+  /** Returns the lowest IP across all interfaces for now. We'll improve it later. */
+  @JsonIgnore
+  @Nullable
+  public Ip getCanonicalIp() {
+    return getVrfs()
+        .values()
+        .stream()
+        .flatMap(v -> v.getInterfaces().values().stream())
+        .flatMap(i -> i.getAllAddresses().stream())
+        .map(InterfaceAddress::getIp)
+        .min(Ip::compareTo)
+        .orElse(null);
+  }
+
   @JsonProperty(PROP_COMMUNITY_LISTS)
   @JsonPropertyDescription("Dictionary of all community-lists for this node.")
   public NavigableMap<String, CommunityList> getCommunityLists() {
@@ -347,6 +396,7 @@ public final class Configuration extends ComparableStructure<String> {
     return _dnsSourceInterface;
   }
 
+  @JsonProperty(PROP_DOMAIN_NAME)
   @JsonPropertyDescription("Domain name of this node.")
   public String getDomainName() {
     return _domainName;
@@ -469,6 +519,12 @@ public final class Configuration extends ComparableStructure<String> {
     return _roles;
   }
 
+  @JsonProperty(PROP_ROLE_DIMENSIONS)
+  @JsonPropertyDescription("Set of possible role dimensions based on the node name.")
+  public NavigableMap<Integer, String> getRoleDimensions() {
+    return _roleDimensions;
+  }
+
   @JsonPropertyDescription("Dictionary of all IPV6 route filter lists for this node.")
   public NavigableMap<String, Route6FilterList> getRoute6FilterLists() {
     return _route6FilterLists;
@@ -525,10 +581,12 @@ public final class Configuration extends ComparableStructure<String> {
     return _snmpSourceInterface;
   }
 
+  @JsonProperty(PROP_SNMP_TRAP_SERVERS)
   public NavigableSet<String> getSnmpTrapServers() {
     return _snmpTrapServers;
   }
 
+  @JsonProperty(PROP_TACACS_SERVERS)
   public NavigableSet<String> getTacacsServers() {
     return _tacacsServers;
   }
@@ -570,50 +628,6 @@ public final class Configuration extends ComparableStructure<String> {
     }
   }
 
-  public void initRoutes() {
-    _routes = new TreeSet<>();
-    for (Vrf vrf : _vrfs.values()) {
-      vrf.initRoutes();
-    }
-  }
-
-  public void resolveReferences() {
-    if (_resolved) {
-      return;
-    }
-    _resolved = true;
-    for (IkeGateway gateway : _ikeGateways.values()) {
-      gateway.resolveReferences(this);
-    }
-    for (IkePolicy ikePolicy : _ikePolicies.values()) {
-      ikePolicy.resolveReferences(this);
-    }
-    for (Interface iface : _interfaces.values()) {
-      iface.resolveReferences(this);
-    }
-    for (IpsecPolicy ipsecPolicy : _ipsecPolicies.values()) {
-      ipsecPolicy.resolveReferences(this);
-    }
-    for (IpsecVpn ipsecVpn : _ipsecVpns.values()) {
-      ipsecVpn.resolveReferences(this);
-    }
-    for (Vrf vrf : _vrfs.values()) {
-      vrf.resolveReferences(this);
-      BgpProcess bgpProc = vrf.getBgpProcess();
-      if (bgpProc != null) {
-        for (BgpNeighbor neighbor : bgpProc.getNeighbors().values()) {
-          neighbor.resolveReferences(this);
-        }
-      }
-      OspfProcess ospfProc = vrf.getOspfProcess();
-      if (ospfProc != null) {
-        for (OspfArea area : ospfProc.getAreas().values()) {
-          area.resolveReferences(this);
-        }
-      }
-    }
-  }
-
   @JsonProperty(PROP_AS_PATH_ACCESS_LISTS)
   public void setAsPathAccessLists(NavigableMap<String, AsPathAccessList> asPathAccessLists) {
     _asPathAccessLists = asPathAccessLists;
@@ -652,6 +666,7 @@ public final class Configuration extends ComparableStructure<String> {
     _dnsSourceInterface = dnsSourceInterface;
   }
 
+  @JsonProperty(PROP_DOMAIN_NAME)
   public void setDomainName(String domainName) {
     _domainName = domainName;
   }
@@ -726,6 +741,10 @@ public final class Configuration extends ComparableStructure<String> {
     _roles = roles;
   }
 
+  public void setRoleDimensions(NavigableMap<Integer, String> roleDimensions) {
+    _roleDimensions = roleDimensions;
+  }
+
   public void setRoute6FilterLists(NavigableMap<String, Route6FilterList> route6FilterLists) {
     _route6FilterLists = route6FilterLists;
   }
@@ -745,10 +764,12 @@ public final class Configuration extends ComparableStructure<String> {
     _snmpSourceInterface = snmpSourceInterface;
   }
 
+  @JsonProperty(PROP_SNMP_TRAP_SERVERS)
   public void setSnmpTrapServers(NavigableSet<String> snmpTrapServers) {
     _snmpTrapServers = snmpTrapServers;
   }
 
+  @JsonProperty(PROP_TACACS_SERVERS)
   public void setTacacsServers(NavigableSet<String> tacacsServers) {
     _tacacsServers = tacacsServers;
   }
@@ -772,20 +793,12 @@ public final class Configuration extends ComparableStructure<String> {
   }
 
   public void simplifyRoutingPolicies() {
-    NavigableMap<String, RoutingPolicy> simpleRoutingPolicies = new TreeMap<>();
-    simpleRoutingPolicies.putAll(
-        _routingPolicies
-            .entrySet()
-            .stream()
-            .collect(
-                Collectors.<Entry<String, RoutingPolicy>, String, RoutingPolicy>toMap(
-                    e -> e.getKey(), e -> e.getValue().simplify())));
+    NavigableMap<String, RoutingPolicy> simpleRoutingPolicies =
+        new TreeMap<>(
+            _routingPolicies
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(Entry::getKey, e -> e.getValue().simplify())));
     _routingPolicies = simpleRoutingPolicies;
-  }
-
-  public JSONObject toJson() throws JSONException {
-    JSONObject jObj = new JSONObject();
-    jObj.put(BfJson.KEY_NODE_NAME, getHostname());
-    return jObj;
   }
 }

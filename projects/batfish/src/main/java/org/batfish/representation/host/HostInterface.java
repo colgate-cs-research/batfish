@@ -3,14 +3,19 @@ package org.batfish.representation.host;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Iterables;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.SourceNat;
 import org.batfish.datamodel.Vrf;
 
 public class HostInterface implements Serializable {
@@ -25,6 +30,8 @@ public class HostInterface implements Serializable {
 
   private static final String PROP_PREFIX = "prefix";
 
+  private static final String PROP_SHARED = "shared";
+
   private static final String PROP_VRF = "vrf";
 
   /** */
@@ -38,16 +45,23 @@ public class HostInterface implements Serializable {
 
   private String _name;
 
-  private Set<Prefix> _otherPrefixes;
+  private Set<InterfaceAddress> _otherAddresses;
 
-  private Prefix _prefix;
+  private InterfaceAddress _address;
+
+  private boolean _shared;
 
   private Vrf _vrf;
 
   @JsonCreator
   public HostInterface(@JsonProperty(PROP_NAME) String name) {
     _name = name;
-    _otherPrefixes = new TreeSet<>();
+    _otherAddresses = new TreeSet<>();
+  }
+
+  @JsonProperty(PROP_PREFIX)
+  public InterfaceAddress getAddress() {
+    return _address;
   }
 
   @JsonProperty(PROP_BANDWIDTH)
@@ -71,13 +85,13 @@ public class HostInterface implements Serializable {
   }
 
   @JsonProperty(PROP_OTHER_PREFIXES)
-  public Set<Prefix> getOtherPrefixes() {
-    return _otherPrefixes;
+  public Set<InterfaceAddress> getOtherAddresses() {
+    return _otherAddresses;
   }
 
-  @JsonProperty(PROP_PREFIX)
-  public Prefix getPrefix() {
-    return _prefix;
+  @JsonProperty(PROP_SHARED)
+  public boolean getShared() {
+    return _shared;
   }
 
   @JsonProperty(PROP_VRF)
@@ -101,13 +115,18 @@ public class HostInterface implements Serializable {
   }
 
   @JsonProperty(PROP_OTHER_PREFIXES)
-  public void setOtherPrefixes(Set<Prefix> otherPrefixes) {
-    _otherPrefixes = otherPrefixes;
+  public void setOtherAddresses(Set<InterfaceAddress> otherAddresses) {
+    _otherAddresses = otherAddresses;
   }
 
   @JsonProperty(PROP_PREFIX)
-  public void setPrefix(Prefix prefix) {
-    _prefix = prefix;
+  public void setAddress(InterfaceAddress address) {
+    _address = address;
+  }
+
+  @JsonProperty(PROP_SHARED)
+  public void setShared(boolean shared) {
+    _shared = shared;
   }
 
   @JsonProperty(PROP_VRF)
@@ -118,10 +137,17 @@ public class HostInterface implements Serializable {
   public Interface toInterface(Configuration configuration, Warnings warnings) {
     Interface iface = new Interface(_canonicalName, configuration);
     iface.setBandwidth(_bandwidth);
-    iface.setPrefix(_prefix);
-    iface.getAllPrefixes().add(_prefix);
-    iface.getAllPrefixes().addAll(_otherPrefixes);
+    iface.setDeclaredNames(ImmutableSortedSet.of(_name));
+    iface.setAddress(_address);
+    iface.setAllAddresses(Iterables.concat(Collections.singleton(_address), _otherAddresses));
     iface.setVrf(configuration.getDefaultVrf());
+    if (_shared) {
+      SourceNat sourceNat = new SourceNat();
+      iface.setSourceNats(ImmutableList.of(sourceNat));
+      Ip publicIp = _address.getIp();
+      sourceNat.setPoolIpFirst(publicIp);
+      sourceNat.setPoolIpLast(publicIp);
+    }
     return iface;
   }
 }

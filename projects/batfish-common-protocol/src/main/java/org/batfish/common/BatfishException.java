@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.datamodel.answers.AnswerElement;
 
 /**
@@ -29,8 +29,8 @@ public class BatfishException extends RuntimeException {
     private final List<String> _lines;
 
     public BatfishStackTrace(BatfishException exception) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(exception).replace("\t", "   ");
-      _lines = Arrays.asList(stackTrace.split("\\n"));
+      String stackTrace = ExceptionUtils.getStackTrace(exception).replace("\t", "   ");
+      _lines = Arrays.asList(stackTrace.split("\\n", -1));
       _exception = exception;
     }
 

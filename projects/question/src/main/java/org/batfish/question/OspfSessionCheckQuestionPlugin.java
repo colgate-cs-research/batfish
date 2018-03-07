@@ -2,6 +2,8 @@ package org.batfish.question;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
+import com.google.common.base.MoreObjects;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -11,14 +13,13 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import org.batfish.common.Answerer;
-import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
+import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.OspfNeighbor;
 import org.batfish.datamodel.OspfNeighbor.OspfNeighborSummary;
@@ -29,6 +30,7 @@ import org.batfish.datamodel.Topology;
 import org.batfish.datamodel.Vrf;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.collections.IpPair;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 
 @AutoService(Plugin.class)
@@ -192,24 +194,13 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
 
       OspfSessionCheckQuestion question = (OspfSessionCheckQuestion) _question;
 
-      Pattern node1Regex;
-      Pattern node2Regex;
-      try {
-        node1Regex = Pattern.compile(question.getNode1Regex());
-        node2Regex = Pattern.compile(question.getNode2Regex());
-      } catch (PatternSyntaxException e) {
-        throw new BatfishException(
-            String.format(
-                "One of the supplied regexes (%s  OR  %s) is not a valid java regex.",
-                question.getNode1Regex(), question.getNode2Regex()),
-            e);
-      }
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
+      Set<String> includeNodes1 = question.getNode1Regex().getMatchingNodes(configurations);
+      Set<String> includeNodes2 = question.getNode2Regex().getMatchingNodes(configurations);
 
-      PrefixTrie foreignPrefixTrie = new PrefixTrie();
-      if (question._foreignOspfNetworks != null) {
-        foreignPrefixTrie.addAll(question._foreignOspfNetworks);
-      }
+      SortedSet<Prefix> foreignPrefixes =
+          MoreObjects.firstNonNull(question._foreignOspfNetworks, Collections.emptySortedSet());
+      PrefixTrie foreignPrefixTrie = new PrefixTrie(foreignPrefixes);
 
       OspfSessionCheckAnswerElement answerElement = new OspfSessionCheckAnswerElement();
       Set<Ip> allInterfaceIps = new HashSet<>();
@@ -217,24 +208,24 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
       Map<Ip, Set<String>> ipOwners = new HashMap<>();
       for (Configuration c : configurations.values()) {
         for (Interface i : c.getInterfaces().values()) {
-          if (i.getActive() && i.getPrefix() != null) {
-            for (Prefix prefix : i.getAllPrefixes()) {
-              Ip address = prefix.getAddress();
+          if (i.getActive() && i.getAddress() != null) {
+            for (InterfaceAddress address : i.getAllAddresses()) {
+              Ip ip = address.getIp();
               if (i.isLoopback(c.getConfigurationFormat())) {
-                loopbackIps.add(address);
+                loopbackIps.add(ip);
               }
-              allInterfaceIps.add(address);
-              Set<String> currentIpOwners = ipOwners.computeIfAbsent(address, k -> new HashSet<>());
+              allInterfaceIps.add(ip);
+              Set<String> currentIpOwners = ipOwners.computeIfAbsent(ip, k -> new HashSet<>());
               currentIpOwners.add(c.getHostname());
             }
           }
         }
       }
-      Topology topology = _batfish.computeTopology(configurations);
-      _batfish.initRemoteOspfNeighbors(configurations, ipOwners, topology);
+      Topology topology = _batfish.getEnvironmentTopology();
+      CommonUtil.initRemoteOspfNeighbors(configurations, ipOwners, topology);
       for (Configuration co : configurations.values()) {
         String hostname = co.getHostname();
-        if (!node1Regex.matcher(co.getHostname()).matches()) {
+        if (!includeNodes1.contains(co.getHostname())) {
           continue;
         }
         for (Vrf vrf : co.getVrfs().values()) {
@@ -264,7 +255,7 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
                 OspfNeighbor remoteOspfNeighbor = ospfNeighbor.getRemoteOspfNeighbor();
 
                 String remoteHostname = remoteOspfNeighbor.getOwner().getHostname();
-                if (!node2Regex.matcher(remoteHostname).matches()) {
+                if (!includeNodes2.contains(remoteHostname)) {
                   continue;
                 }
 
@@ -311,14 +302,14 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
 
     private SortedSet<Prefix> _foreignOspfNetworks;
 
-    private String _node1Regex;
+    private NodesSpecifier _node1Regex;
 
-    private String _node2Regex;
+    private NodesSpecifier _node2Regex;
 
     public OspfSessionCheckQuestion() {
       _foreignOspfNetworks = new TreeSet<>();
-      _node1Regex = ".*";
-      _node2Regex = ".*";
+      _node1Regex = NodesSpecifier.ALL;
+      _node2Regex = NodesSpecifier.ALL;
     }
 
     @Override
@@ -337,12 +328,12 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE1_REGEX)
-    public String getNode1Regex() {
+    public NodesSpecifier getNode1Regex() {
       return _node1Regex;
     }
 
     @JsonProperty(PROP_NODE2_REGEX)
-    public String getNode2Regex() {
+    public NodesSpecifier getNode2Regex() {
       return _node2Regex;
     }
 
@@ -352,12 +343,12 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE1_REGEX)
-    public void setNode1Regex(String regex) {
+    public void setNode1Regex(NodesSpecifier regex) {
       _node1Regex = regex;
     }
 
     @JsonProperty(PROP_NODE2_REGEX)
-    public void setNode2Regex(String regex) {
+    public void setNode2Regex(NodesSpecifier regex) {
       _node2Regex = regex;
     }
   }

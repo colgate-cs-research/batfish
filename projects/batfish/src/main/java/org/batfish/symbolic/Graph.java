@@ -1,5 +1,7 @@
 package org.batfish.symbolic;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,6 +16,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.SerializationUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.datamodel.BgpNeighbor;
@@ -24,6 +27,7 @@ import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.Edge;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.OspfArea;
 import org.batfish.datamodel.OspfProcess;
@@ -32,6 +36,7 @@ import org.batfish.datamodel.PrefixRange;
 import org.batfish.datamodel.RoutingProtocol;
 import org.batfish.datamodel.StaticRoute;
 import org.batfish.datamodel.Topology;
+import org.batfish.datamodel.Vrf;
 import org.batfish.datamodel.collections.NodeInterfacePair;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 import org.batfish.datamodel.routing_policy.expr.BooleanExpr;
@@ -66,8 +71,14 @@ import org.batfish.symbolic.collections.Table2;
  */
 public class Graph {
 
+  public enum BgpSendType {
+    TO_EBGP,
+    TO_NONCLIENT,
+    TO_CLIENT,
+    TO_RR
+  }
+
   public static final String BGP_COMMON_FILTER_LIST_NAME = "BGP_COMMON_EXPORT_POLICY";
-  private static final int DEFAULT_CISCO_VLAN_OSPF_COST = 1;
   private static final String NULL_INTERFACE_NAME = "null_interface";
   private IBatfish _batfish;
   private Set<String> _routers;
@@ -88,14 +99,40 @@ public class Graph {
   private Map<String, Integer> _domainMap;
   private Map<Integer, Set<String>> _domainMapInverse;
 
-  /*
-   * Create a graph from a Batfish object
+  /**
+   * A graph with a static route with a dynamic next hop cannot be encoded to SMT, so some of the
+   * Minesweeper analyses will fail. Compression is still possible though.
+   */
+  private boolean _hasStaticRouteWithDynamicNextHop;
+
+  private Set<CommunityVar> _allCommunities;
+
+  private SortedMap<CommunityVar, List<CommunityVar>> _communityDependencies;
+
+  private Map<String, String> _namedCommunities;
+
+  /**
+   * Create a graph, loading configurations from the given {@link IBatfish}.
+   *
+   * <p>Note that, because configurations are not supplied, this {@link Graph} will clone the active
+   * configurations before use. This avoids side-effects that occur when {@link Graph} and other
+   * code in this package mutates the configs in the graph.
+   *
+   * <p>For increased, efficiency, use {@link #Graph(IBatfish, Map)} which will skip the cloning,
+   * assuming that the caller has made a defensive copy first.
    */
   public Graph(IBatfish batfish) {
     this(batfish, null, null);
   }
 
-  public Graph(IBatfish batfish, Map<String, Configuration> configs) {
+  /**
+   * Create a graph, using the specified configurations.
+   *
+   * <p>Note that the given {@code configs} may be mutated during computation; callers are advised
+   * to defensively copy them or use {@link #Graph(IBatfish)}, which will do the defensive copy
+   * automatically, to avoid this side effect.
+   */
+  public Graph(IBatfish batfish, @Nullable Map<String, Configuration> configs) {
     this(batfish, configs, null);
   }
 
@@ -123,15 +160,28 @@ public class Graph {
     _domainMap = new HashMap<>();
     _domainMapInverse = new HashMap<>();
     _configurations = configs;
+    _communityDependencies = new TreeMap<>();
 
     if (_configurations == null) {
-      _configurations = new HashMap<>(_batfish.loadConfigurations());
+      // Since many functions that use the graph mutate the configurations, we must clone them
+      // before that happens.
+      // A simple way to do this is to create a deep clone of each entry using Java serialization.
+      Map<String, Configuration> clonedConfigs =
+          _batfish
+              .loadConfigurations()
+              .entrySet()
+              .parallelStream()
+              .collect(toMap(Entry::getKey, entry -> SerializationUtils.clone(entry.getValue())));
+
+      _configurations = clonedConfigs;
     }
     _routers = _configurations.keySet();
 
+    Topology topology = _batfish.getEnvironmentTopology();
+
     // Remove the routers we don't want to model
     if (routers != null) {
-      List<String> toRemove = new ArrayList<>();
+      Set<String> toRemove = new HashSet<>();
       for (String router : _configurations.keySet()) {
         if (!routers.contains(router)) {
           toRemove.add(router);
@@ -140,16 +190,19 @@ public class Graph {
       for (String router : toRemove) {
         _configurations.remove(router);
       }
+      topology.prune(null, toRemove, null);
     }
 
-    initGraph();
-    initOspfCosts();
+    initGraph(topology);
     initStaticRoutes();
     addNullRouteEdges();
     initEbgpNeighbors();
     initIbgpNeighbors();
     initAreaIds();
     initDomains();
+    initAllCommunities();
+    initCommDependencies();
+    initNamedCommunities();
   }
 
   /*
@@ -157,6 +210,18 @@ public class Graph {
    */
   private static boolean isNullRouted(StaticRoute sr) {
     return sr.getNextHopInterface().equals(NULL_INTERFACE_NAME);
+  }
+
+  /*
+   * Is a graph edge external facing (can receive BGP advertisements)
+   */
+  public boolean isExternal(GraphEdge ge) {
+    return ge.getPeer() == null && _ebgpNeighbors.containsKey(ge);
+  }
+
+  /** Does the graph have a static route with a dynamic next hop? */
+  public boolean hasStaticRouteWithDynamicNextHop() {
+    return _hasStaticRouteWithDynamicNextHop;
   }
 
   /*
@@ -186,6 +251,22 @@ public class Graph {
     throw new BatfishException("TODO: findCommonRoutingPolicy for " + proto.name());
   }
 
+  public static Set<Prefix> getOriginatedNetworks(Configuration conf) {
+    Set<Prefix> allNetworks = new HashSet<>();
+    Vrf vrf = conf.getDefaultVrf();
+    if (vrf.getOspfProcess() != null) {
+      allNetworks.addAll(getOriginatedNetworks(conf, Protocol.OSPF));
+    }
+    if (vrf.getBgpProcess() != null) {
+      allNetworks.addAll(getOriginatedNetworks(conf, Protocol.BGP));
+    }
+    if (vrf.getStaticRoutes() != null) {
+      allNetworks.addAll(getOriginatedNetworks(conf, Protocol.STATIC));
+    }
+    allNetworks.addAll(getOriginatedNetworks(conf, Protocol.CONNECTED));
+    return allNetworks;
+  }
+
   /*
    * Collects and returns all originated prefixes for the given
    * router as well as the protocol. Static routes and connected
@@ -197,9 +278,10 @@ public class Graph {
     if (proto.isOspf()) {
       OspfProcess ospf = conf.getDefaultVrf().getOspfProcess();
       for (OspfArea area : ospf.getAreas().values()) {
-        for (Interface iface : area.getInterfaces().values()) {
+        for (String ifaceName : area.getInterfaces()) {
+          Interface iface = conf.getInterfaces().get(ifaceName);
           if (iface.getActive() && iface.getOspfEnabled()) {
-            acc.add(iface.getPrefix().getNetworkPrefix());
+            acc.add(iface.getAddress().getPrefix());
           }
         }
       }
@@ -231,7 +313,7 @@ public class Graph {
                           ExplicitPrefixSet eps = (ExplicitPrefixSet) e;
                           Set<PrefixRange> ranges = eps.getPrefixSpace().getPrefixRanges();
                           for (PrefixRange r : ranges) {
-                            acc.add(r.getPrefix().getNetworkPrefix());
+                            acc.add(r.getPrefix());
                           }
                         }
                       }
@@ -246,9 +328,9 @@ public class Graph {
 
     if (proto.isConnected()) {
       for (Interface iface : conf.getInterfaces().values()) {
-        Prefix p = iface.getPrefix();
-        if (p != null) {
-          acc.add(p.getNetworkPrefix());
+        InterfaceAddress address = iface.getAddress();
+        if (address != null) {
+          acc.add(address.getPrefix());
         }
       }
       return acc;
@@ -257,7 +339,7 @@ public class Graph {
     if (proto.isStatic()) {
       for (StaticRoute sr : conf.getDefaultVrf().getStaticRoutes()) {
         if (sr.getNetwork() != null) {
-          acc.add(sr.getNetwork().getNetworkPrefix());
+          acc.add(sr.getNetwork());
         }
       }
       return acc;
@@ -267,18 +349,10 @@ public class Graph {
   }
 
   /*
-   * Is a graph edge external facing (can receive BGP advertisements)
-   */
-  public boolean isExternal(GraphEdge ge) {
-    return ge.getPeer() == null && _ebgpNeighbors.containsKey(ge);
-  }
-
-  /*
    * Initialize the topology by inferring interface pairs and
    * create the opposite edge mapping.
    */
-  private void initGraph() {
-    Topology topology = _batfish.computeTopology(_configurations);
+  private void initGraph(Topology topology) {
     Map<NodeInterfacePair, Interface> ifaceMap = new HashMap<>();
     Map<String, Set<NodeInterfacePair>> routerIfaceMap = new HashMap<>();
 
@@ -309,7 +383,7 @@ public class Graph {
       for (NodeInterfacePair nip : nips) {
         SortedSet<Edge> es = ifaceEdges.get(nip);
         Interface i1 = ifaceMap.get(nip);
-        boolean hasNoOtherEnd = (es == null && i1.getPrefix() != null);
+        boolean hasNoOtherEnd = (es == null && i1.getAddress() != null);
         if (hasNoOtherEnd) {
           GraphEdge ge = new GraphEdge(i1, null, router, null, false, false);
           graphEdges.add(ge);
@@ -348,54 +422,6 @@ public class Graph {
     }
   }
 
-  /** TODO: This was copied from BdpDataPlanePlugin.java to initialize the OSPF inteface costs */
-  private void initOspfInterfaceCosts(Configuration conf) {
-    if (conf.getDefaultVrf().getOspfProcess() != null) {
-      for (Entry<String, Interface> entry : conf.getInterfaces().entrySet()) {
-        String interfaceName = entry.getKey();
-        Interface i = entry.getValue();
-        if (!i.getActive()) {
-          continue;
-        }
-        Integer ospfCost = i.getOspfCost();
-        if (ospfCost == null) {
-          if (interfaceName.startsWith("Vlan")) {
-            // TODO: fix for non-cisco
-            ospfCost = DEFAULT_CISCO_VLAN_OSPF_COST;
-          } else {
-            if (i.getBandwidth() != null) {
-              ospfCost =
-                  Math.max(
-                      (int)
-                          (conf.getDefaultVrf().getOspfProcess().getReferenceBandwidth()
-                              / i.getBandwidth()),
-                      1);
-            } else {
-              throw new BatfishException(
-                  "Expected non-null interface "
-                      + "bandwidth"
-                      + " for \""
-                      + conf.getHostname()
-                      + "\":\""
-                      + interfaceName
-                      + "\"");
-            }
-          }
-        }
-        i.setOspfCost(ospfCost);
-      }
-    }
-  }
-
-  /*
-   * Initialize the ospf interface costs for each configuration
-   */
-  private void initOspfCosts() {
-    for (Configuration conf : _configurations.values()) {
-      initOspfInterfaceCosts(conf);
-    }
-  }
-
   /*
    * Collect all static routes after inferring which interface they indicate
    * should be used for the next-hop.
@@ -431,8 +457,8 @@ public class Graph {
 
           boolean isNextHop =
               there != null
-                  && there.getPrefix() != null
-                  && there.getPrefix().getAddress().equals(nhIp);
+                  && there.getAddress() != null
+                  && there.getAddress().getIp().equals(nhIp);
 
           if (isNextHop) {
             someIface = true;
@@ -449,15 +475,7 @@ public class Graph {
         }
 
         if (!someIface && !Graph.isNullRouted(sr)) {
-          throw new BatfishException(
-              "Router "
-                  + router
-                  + " has static route: "
-                  + sr.getNextHopInterface()
-                  + "("
-                  + sr.getNetwork()
-                  + ")"
-                  + " for non next-hop");
+          _hasStaticRouteWithDynamicNextHop = true;
         }
       }
     }
@@ -475,7 +493,8 @@ public class Graph {
         // Create null route interface
         Interface iface = new Interface(name);
         iface.setActive(true);
-        iface.setPrefix(sr.getNetwork());
+        iface.setAddress(
+            new InterfaceAddress(sr.getNetwork().getStartIp(), sr.getNextHopIp().numSubnetBits()));
         iface.setBandwidth(0.);
         // Add static route to all static routes list
         Map<String, List<StaticRoute>> map = _staticRoutes.get(router);
@@ -527,7 +546,7 @@ public class Graph {
             Ip ip = ipList.get(i);
             BgpNeighbor n = ns.get(i);
             Interface iface = ge.getStart();
-            if (ip != null && iface.getPrefix().contains(ip)) {
+            if (ip != null && iface.getAddress().getPrefix().contains(ip)) {
               _ebgpNeighbors.put(ge, n);
             }
           }
@@ -543,7 +562,10 @@ public class Graph {
   private Interface createIbgpInterface(BgpNeighbor n, String peer) {
     Interface iface = new Interface("iBGP-" + peer);
     iface.setActive(true);
-    iface.setPrefix(n.getPrefix());
+    // TODO is this valid.
+    Prefix p = n.getPrefix();
+    assert p.getPrefixLength() == Prefix.MAX_PREFIX_LENGTH;
+    iface.setAddress(new InterfaceAddress(n.getPrefix().getStartIp(), Prefix.MAX_PREFIX_LENGTH));
     iface.setBandwidth(0.);
     return iface;
   }
@@ -688,25 +710,6 @@ public class Graph {
   }
 
   /*
-   * Conservatively check if an edge may be used by an IGP protocol
-   * such as OSPF, static routes etc. We can do better possibly
-   * by taking into account constraints on the packet header.
-   */
-  private boolean maybeIgpEdge(GraphEdge ge) {
-    String peer = ge.getPeer();
-    if (peer == null) {
-      return true;
-    }
-    String router = ge.getRouter();
-    Interface i = ge.getStart();
-    List<StaticRoute> srs = _staticRoutes.get(router, peer);
-    BgpNeighbor n = _ibgpNeighbors.get(ge);
-    boolean mightUseStatic = (srs != null && !srs.isEmpty());
-    boolean mightUseOspf = i.getOspfEnabled() && i.getActive();
-    return (mightUseOspf || mightUseStatic || n != null);
-  }
-
-  /*
    * Determines the collection of routers within the same AS
    * as the router provided as a parameter
    */
@@ -719,10 +722,9 @@ public class Graph {
       sameDomain.add(router);
       for (GraphEdge ge : getEdgeMap().get(router)) {
         String peer = ge.getPeer();
-        if (peer != null) {
-          if (maybeIgpEdge(ge) && !sameDomain.contains(peer)) {
-            todo.add(peer);
-          }
+        BgpNeighbor n = _ebgpNeighbors.get(ge);
+        if (peer != null && n == null && !sameDomain.contains(peer)) {
+          todo.add(peer);
         }
       }
     }
@@ -758,48 +760,72 @@ public class Graph {
     return _domainMapInverse.get(idx);
   }
 
-  /*
-   * Create a community dependency mapping. Each community regex will
-   * map to zero or more actual community values
-   */
-  public SortedMap<CommunityVar, List<CommunityVar>> getCommunityDependencies() {
-    Set<CommunityVar> allComms = findAllCommunities();
+  private void initAllCommunities() {
+    _allCommunities = findAllCommunities();
+  }
 
+  private void initCommDependencies() {
     // Map community regex matches to Java regex
     Map<CommunityVar, java.util.regex.Pattern> regexes = new HashMap<>();
-    for (CommunityVar c : allComms) {
+    for (CommunityVar c : _allCommunities) {
       if (c.getType() == CommunityVar.Type.REGEX) {
         java.util.regex.Pattern p = java.util.regex.Pattern.compile(c.getValue());
         regexes.put(c, p);
       }
     }
 
-    SortedMap<CommunityVar, List<CommunityVar>> deps = new TreeMap<>();
-    for (CommunityVar c1 : allComms) {
+    for (CommunityVar c1 : _allCommunities) {
       // map exact match to corresponding regexes
       if (c1.getType() == CommunityVar.Type.REGEX) {
 
         List<CommunityVar> list = new ArrayList<>();
-        deps.put(c1, list);
+        _communityDependencies.put(c1, list);
         java.util.regex.Pattern p = regexes.get(c1);
 
-        for (CommunityVar c2 : allComms) {
+        for (CommunityVar c2 : _allCommunities) {
           if (c2.getType() == CommunityVar.Type.EXACT) {
             Matcher m = p.matcher(c2.getValue());
             if (m.find()) {
               list.add(c2);
             }
           }
-          if (c2.getType() == CommunityVar.Type.OTHER) {
-            if (c1.getValue().equals(c2.getValue())) {
-              list.add(c2);
-            }
+          if (c2.getType() == CommunityVar.Type.OTHER && c1.getValue().equals(c2.getValue())) {
+            list.add(c2);
           }
         }
       }
     }
+  }
 
-    return deps;
+  /*
+   * Map named community sets that contain a single match
+   * back to the community/regex value. This makes it
+   * easier to provide intuitive counter examples.
+   */
+  private void initNamedCommunities() {
+    _namedCommunities = new HashMap<>();
+    for (Configuration conf : getConfigurations().values()) {
+      for (Entry<String, CommunityList> entry : conf.getCommunityLists().entrySet()) {
+        String name = entry.getKey();
+        CommunityList cl = entry.getValue();
+        if (cl != null && cl.getLines().size() == 1) {
+          CommunityListLine line = cl.getLines().get(0);
+          _namedCommunities.put(line.getRegex(), name);
+        }
+      }
+    }
+  }
+
+  public Set<CommunityVar> getAllCommunities() {
+    return _allCommunities;
+  }
+
+  public SortedMap<CommunityVar, List<CommunityVar>> getCommunityDependencies() {
+    return _communityDependencies;
+  }
+
+  public Map<String, String> getNamedCommunities() {
+    return _namedCommunities;
   }
 
   /*
@@ -823,7 +849,7 @@ public class Graph {
     return comms;
   }
 
-  private Set<CommunityVar> findAllCommunities(String router) {
+  public Set<CommunityVar> findAllCommunities(String router) {
     Set<CommunityVar> comms = new HashSet<>();
     Configuration conf = getConfigurations().get(router);
 
@@ -1060,10 +1086,8 @@ public class Graph {
    * Determine if an edge is potentially attached to a host
    */
   public boolean isHost(String router) {
-    Configuration conf = _configurations.get(router);
-    // System.out.println("Router: " + router);
-    // System.out.println("Conf: " + conf);
-    String vendor = conf.getConfigurationFormat().getVendorString();
+    Configuration peerConf = _configurations.get(router);
+    String vendor = peerConf.getConfigurationFormat().getVendorString();
     return "host".equals(vendor);
   }
 
@@ -1162,7 +1186,7 @@ public class Graph {
                       .append(",")
                       .append(edge.getEnd().getName());
                 }
-                sb.append(edge.getStart().getPrefix());
+                sb.append(edge.getStart().getAddress());
                 sb.append("\n");
               });
         });
@@ -1210,13 +1234,13 @@ public class Graph {
     return _routeReflectorParent;
   }
 
-  public Map<String, Set<String>> getRouteReflectorClients() {
-    return _routeReflectorClients;
-  }
-
   /*
    * Getters and setters
    */
+
+  public Map<String, Set<String>> getRouteReflectorClients() {
+    return _routeReflectorClients;
+  }
 
   public Map<String, Integer> getOriginatorId() {
     return _originatorId;
@@ -1268,12 +1292,5 @@ public class Graph {
 
   public Set<String> getRouters() {
     return _routers;
-  }
-
-  public enum BgpSendType {
-    TO_EBGP,
-    TO_NONCLIENT,
-    TO_CLIENT,
-    TO_RR
   }
 }

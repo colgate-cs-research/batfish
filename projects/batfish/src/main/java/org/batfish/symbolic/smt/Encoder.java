@@ -15,7 +15,7 @@ import java.util.Map.Entry;
 import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
-import org.batfish.common.plugin.IBatfish;
+import org.batfish.config.Settings;
 import org.batfish.datamodel.BgpNeighbor;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Interface;
@@ -76,24 +76,18 @@ public class Encoder {
 
   private UnsatCore _unsatCore;
 
+  private Settings _settings;
+
   private Integer _numIters;
 
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
    *
-   * @param batfish The Batfish object
-   */
-  Encoder(IBatfish batfish, HeaderQuestion q) {
-    this(new Graph(batfish), q);
-  }
-
-  /**
-   * Create an encoder object that will consider all packets in the provided headerspace.
-   *
+   * @param settings The Batfish configuration settings object
    * @param graph The network graph
    */
-  Encoder(Graph graph, HeaderQuestion q) {
-    this(null, graph, q, null, null, null, 0,-1);
+  Encoder(Settings settings, Graph graph, HeaderQuestion q) {
+    this(settings, null, graph, q, null, null, null, 0, -1);
   }
 
   /**
@@ -103,7 +97,16 @@ public class Encoder {
    * @param g An existing network graph
    */
   Encoder(Encoder e, Graph g) {
-    this(e, g, e._question, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1,-1);
+    this(
+        e._settings,
+        e,
+        g,
+        e._question,
+        e.getCtx(),
+        e.getSolver(),
+        e.getAllVariables(),
+        e.getId() + 1,
+        -1);
   }
 
   /**
@@ -114,7 +117,7 @@ public class Encoder {
    * @param q A header question
    */
   Encoder(Encoder e, Graph g, HeaderQuestion q) {
-    this(e, g, q, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1,-1);
+    this(e._settings, e, g, q, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1, -1);
   }
 
   Encoder(Graph graph, HeaderQuestion q, int numIters){
@@ -127,6 +130,7 @@ public class Encoder {
    * used.
    */
   private Encoder(
+      Settings settings,
       @Nullable Encoder enc,
       Graph graph,
       HeaderQuestion q,
@@ -135,6 +139,7 @@ public class Encoder {
       @Nullable Map<String, Expr> vars,
       int id,
       int numIters) {
+    _settings = settings;
     _graph = graph;
     _previousEncoder = enc;
     _modelIgp = true;
@@ -152,7 +157,9 @@ public class Encoder {
       cfg.put("auto-config", "false");
     }
 
-    _ctx = (ctx==null?new Context(cfg):ctx);
+    cfg.put("timeout", String.valueOf(_settings.getZ3timeout()));
+
+    _ctx = (ctx == null ? new Context(cfg) : ctx);
 
     if (solver == null) {
       if (ENABLE_UNSAT_CORE) {
@@ -571,8 +578,7 @@ public class Encoder {
             if (x != null) {
               int len = Integer.parseInt(x);
               Prefix p1 = new Prefix(dip, len);
-              Prefix p2 = p1.getNetworkPrefix();
-              recordMap.put("prefix", p2.toString());
+              recordMap.put("prefix", p1.toString());
             }
           }
           if (r.getAdminDist() != null) {
@@ -621,13 +627,11 @@ public class Encoder {
             BoolExpr e = entry3.getValue();
             String c = valuation.get(e);
             // TODO: what about OTHER type?
-            if ("true".equals(c)) {
-              if (displayCommunity(cvar)) {
-                String s = cvar.getValue();
-                String t = slice.getNamedCommunities().get(cvar.getValue());
-                s = (t == null ? s : t);
-                recordMap.put("community " + s, "");
-              }
+            if ("true".equals(c) && displayCommunity(cvar)) {
+              String s = cvar.getValue();
+              String t = slice.getNamedCommunities().get(cvar.getValue());
+              s = (t == null ? s : t);
+              recordMap.put("community " + s, "");
             }
           }
         }
@@ -752,17 +756,28 @@ public class Encoder {
     Status status = _solver.check();
     long time = System.currentTimeMillis() - start;
 
-    if (ENABLE_BENCHMARKING) {
-      VerificationStats stats =
-          new VerificationStats(numNodes, numEdges, numVariables, numConstraints, time);
-      System.out.println("Constraints: " + stats.getNumConstraints());
-      System.out.println("Variables: " + stats.getNumVariables());
-      System.out.println("Z3 Time: " + stats.getTime());
-      System.out.println("Stats: \n" + _solver.getStatistics());
+    VerificationStats stats = null;
+    if (_question.getBenchmark()) {
+      stats = new VerificationStats();
+      stats.setAvgNumNodes(numNodes);
+      stats.setMaxNumNodes(numNodes);
+      stats.setMinNumNodes(numNodes);
+      stats.setAvgNumEdges(numEdges);
+      stats.setMaxNumEdges(numEdges);
+      stats.setMinNumEdges(numEdges);
+      stats.setAvgNumVariables(numVariables);
+      stats.setMaxNumVariables(numVariables);
+      stats.setMinNumVariables(numVariables);
+      stats.setAvgNumConstraints(numConstraints);
+      stats.setMaxNumConstraints(numConstraints);
+      stats.setMinNumConstraints(numConstraints);
+      stats.setAvgSolverTime(time);
+      stats.setMaxSolverTime(time);
+      stats.setMinSolverTime(time);
     }
 
     if (status == Status.UNSATISFIABLE) {
-      VerificationResult res = new VerificationResult(true, null, null, null, null, null);
+      VerificationResult res = new VerificationResult(true, null, null, null, null, null, stats);
       return new Tuple<>(res, null);
     } else if (status == Status.UNKNOWN) {
       throw new BatfishException("ERROR: satisfiability unknown");
@@ -800,7 +815,7 @@ public class Encoder {
           }
         }
 
-        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures);
+        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
         //TODO: need to print each result information.. Need to go from a VerificationResult object to an AnswerElement object in order get the summary
         //TODO: REMOVE THE FOLLOWING LINE >
         for (IpWildcard ip : _question.getSrcIps()){
@@ -890,6 +905,10 @@ public class Encoder {
    * network. This should be called prior to calling the <b>verify method</b>
    */
   void computeEncoding() {
+    if (_graph.hasStaticRouteWithDynamicNextHop()) {
+      throw new BatfishException(
+          "Cannot encode a network that has a static route with a dynamic next hop");
+    }
     addFailedConstraints(_question.getFailures());
     getMainSlice().computeEncoding();
     for (Entry<String, EncoderSlice> entry : _slices.entrySet()) {

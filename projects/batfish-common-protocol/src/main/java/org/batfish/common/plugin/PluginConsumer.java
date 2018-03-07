@@ -8,7 +8,6 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
@@ -31,7 +30,6 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import org.apache.commons.io.IOUtils;
 import org.batfish.common.BatfishException;
-import org.batfish.common.CompositeBatfishException;
 import org.batfish.common.util.BatfishObjectInputStream;
 
 public abstract class PluginConsumer implements IPluginConsumer {
@@ -150,9 +148,9 @@ public abstract class PluginConsumer implements IPluginConsumer {
       }
     }
     if (!initializationExceptions.isEmpty()) {
-      throw new CompositeBatfishException(
-          new BatfishException("Failed to initialize one or more plugins"),
-          initializationExceptions);
+      BatfishException e = new BatfishException("Failed to initialize one or more plugins");
+      initializationExceptions.forEach(e::addSuppressed);
+      throw e;
     }
   }
 
@@ -168,13 +166,6 @@ public abstract class PluginConsumer implements IPluginConsumer {
       throw new BatfishException(
           "Failed to serialize object to gzip output file: " + outputFile, e);
     }
-  }
-
-  /** Serializes the given object to a GZIP-compressed byte[]. */
-  protected byte[] toGzipData(Serializable object) {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    serializeToGzipData(object, baos);
-    return baos.toByteArray();
   }
 
   private static class CloseIgnoringOutputStream extends FilterOutputStream {

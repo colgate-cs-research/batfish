@@ -33,9 +33,9 @@ public class JsonPathResult {
 
   public static class JsonPathResultEntry {
 
-    private static final String PROP_CONCRETE_PATH = "concretePath";
+    static final String PROP_CONCRETE_PATH = "concretePath";
 
-    private static final String PROP_SUFFIX = "suffix";
+    static final String PROP_SUFFIX = "suffix";
 
     private final List<String> _concretePath;
 
@@ -59,9 +59,7 @@ public class JsonPathResult {
 
     @Override
     public boolean equals(Object o) {
-      if (o == null) {
-        return o == null;
-      } else if (!(o instanceof JsonPathResultEntry)) {
+      if (!(o instanceof JsonPathResultEntry)) {
         return false;
       }
       return Objects.equals(_concretePath, ((JsonPathResultEntry) o)._concretePath)
@@ -137,7 +135,8 @@ public class JsonPathResult {
       try {
         jpeHint = JsonPathExtractionHint.fromExtractionHint(entry.getValue());
       } catch (IOException e) {
-        throw new BatfishException("Could not extract JsonPathExtractionHint from ExtractionHint");
+        throw new BatfishException(
+            "Could not extract JsonPathExtractionHint from ExtractionHint", e);
       }
       switch (jpeHint.getUse()) {
         case PREFIX:
@@ -275,9 +274,7 @@ public class JsonPathResult {
       Configuration c = (new ConfigurationBuilder()).build();
       Object jsonObject = JsonPath.parse(entry.getValue().getSuffix(), c).json();
 
-      JsonPathQuery query = new JsonPathQuery();
-      query.setPath(jpeHint.getFilter());
-      query.setSuffix(true);
+      JsonPathQuery query = new JsonPathQuery(jpeHint.getFilter(), true);
 
       List<JsonNode> extractedList = new LinkedList<>();
       switch (jpeHint.getUse()) {

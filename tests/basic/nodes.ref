@@ -4,6 +4,7 @@
       "class" : "org.batfish.question.NodesQuestionPlugin$NodesAnswerElement",
       "nodes" : {
         "as1border1" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as1border1",
           "communityLists" : {
             "as1_community" : {
@@ -37,7 +38,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -49,6 +49,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -57,6 +60,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -75,6 +79,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -85,6 +92,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.0.1.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -104,6 +112,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -112,6 +123,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.12.11.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -131,6 +143,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -141,6 +156,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : true,
+              "ospfPointToPoint" : false,
               "prefix" : "1.1.1.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -234,6 +250,9 @@
                 }
               ]
             }
+          },
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "border"
@@ -993,6 +1012,9 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -1158,6 +1180,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "1.1.1.1"
               }
@@ -1165,6 +1188,7 @@
           }
         },
         "as1border2" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as1border2",
           "communityLists" : {
             "as1_community" : {
@@ -1208,7 +1232,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -1220,6 +1243,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -1228,6 +1254,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -1246,6 +1273,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -1254,6 +1284,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.13.22.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -1273,6 +1304,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -1283,6 +1317,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.0.2.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -1302,6 +1337,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -1310,6 +1348,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.14.22.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -1329,6 +1368,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -1339,6 +1381,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.2.2.2/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -1418,20 +1461,16 @@
                   "srcIps" : [
                     "3.0.1.0"
                   ]
-                },
-                {
-                  "action" : "ACCEPT",
-                  "dstIps" : [
-                    "255.255.255.0"
-                  ],
-                  "name" : "permit ip host 3.0.2.0 host 255.255.255.0",
-                  "negate" : false,
-                  "srcIps" : [
-                    "3.0.2.0"
-                  ]
                 }
               ]
             }
+          },
+          "ntpServers" : [
+            "18.18.18.18",
+            "23.23.23.23"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "border"
@@ -1479,11 +1518,6 @@
                   "action" : "ACCEPT",
                   "lengthRange" : "24-24",
                   "prefix" : "3.0.1.0/24"
-                },
-                {
-                  "action" : "ACCEPT",
-                  "lengthRange" : "24-24",
-                  "prefix" : "3.0.2.0/24"
                 }
               ]
             },
@@ -2212,6 +2246,19 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
+              "ntp" : {
+                "servers" : {
+                  "18.18.18.18" : {
+                    "name" : "18.18.18.18"
+                  },
+                  "23.23.23.23" : {
+                    "name" : "23.23.23.23"
+                  }
+                }
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -2363,6 +2410,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "1.2.2.2"
               }
@@ -2370,8 +2418,8 @@
           }
         },
         "as1core1" : {
-          "name" : "as1core1",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "as1core1",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -2383,6 +2431,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2391,6 +2442,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2409,6 +2461,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2419,6 +2474,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.0.2.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -2438,6 +2494,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2448,6 +2507,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.0.1.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -2467,6 +2527,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2477,6 +2540,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "1.10.1.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -2487,6 +2551,13 @@
               "type" : "LOOPBACK",
               "vrf" : "default"
             }
+          },
+          "loggingServers" : [
+            "1.1.1.1",
+            "2.2.2.2"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "core"
@@ -2625,6 +2696,17 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "hosts" : {
+                  "1.1.1.1" : {
+                    "name" : "1.1.1.1"
+                  },
+                  "2.2.2.2" : {
+                    "name" : "2.2.2.2"
+                  }
+                },
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -2738,6 +2820,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "1.10.1.1"
               }
@@ -2745,6 +2828,7 @@
           }
         },
         "as2border1" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as2border1",
           "communityLists" : {
             "as1_community" : {
@@ -2778,7 +2862,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -2790,6 +2873,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2798,6 +2884,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -2816,6 +2903,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "incomingFilter" : "OUTSIDE_TO_INSIDE",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -2825,6 +2915,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "outgoingFilter" : "INSIDE_TO_AS1",
               "prefix" : "10.12.11.2/24",
               "proxyArp" : true,
@@ -2845,6 +2936,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2855,6 +2949,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.11.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -2874,6 +2969,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2884,6 +2982,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.12.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -2903,6 +3002,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -2913,6 +3015,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.1.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -3044,6 +3147,13 @@
                 }
               ]
             }
+          },
+          "ntpServers" : [
+            "18.18.18.18",
+            "23.23.23.23"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "border"
@@ -3726,6 +3836,19 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
+              "ntp" : {
+                "servers" : {
+                  "18.18.18.18" : {
+                    "name" : "18.18.18.18"
+                  },
+                  "23.23.23.23" : {
+                    "name" : "23.23.23.23"
+                  }
+                }
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -3883,6 +4006,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "2.1.1.1"
               }
@@ -3890,6 +4014,7 @@
           }
         },
         "as2border2" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as2border2",
           "communityLists" : {
             "as1_community" : {
@@ -3923,7 +4048,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -3935,6 +4059,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -3943,6 +4070,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -3961,6 +4089,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "incomingFilter" : "OUTSIDE_TO_INSIDE",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -3970,6 +4101,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "outgoingFilter" : "INSIDE_TO_AS3",
               "prefix" : "10.23.21.2/24",
               "proxyArp" : true,
@@ -3990,6 +4122,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -4000,6 +4135,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.22.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -4019,6 +4155,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -4029,6 +4168,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.21.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -4048,6 +4188,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -4058,6 +4201,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.1.2/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -4178,6 +4322,12 @@
                 }
               ]
             }
+          },
+          "ntpServers" : [
+            "18.18.18.18"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "border"
@@ -4855,6 +5005,16 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
+              "ntp" : {
+                "servers" : {
+                  "18.18.18.18" : {
+                    "name" : "18.18.18.18"
+                  }
+                }
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -5012,6 +5172,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "2.1.1.2"
               }
@@ -5019,8 +5180,8 @@
           }
         },
         "as2core1" : {
-          "name" : "as2core1",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "as2core1",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -5032,6 +5193,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5040,6 +5204,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5058,6 +5223,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5068,6 +5236,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.11.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5087,6 +5256,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5097,6 +5269,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.21.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5116,6 +5289,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "incomingFilter" : "blocktelnet",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -5127,6 +5303,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.11.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5146,6 +5323,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet3/0"
+              ],
               "incomingFilter" : "blocktelnet",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -5157,6 +5337,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.12.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5176,6 +5357,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5186,6 +5370,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.2.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5231,6 +5416,13 @@
                 }
               ]
             }
+          },
+          "loggingServers" : [
+            "1.1.1.1",
+            "2.1.2.2"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "core"
@@ -5419,6 +5611,17 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "hosts" : {
+                  "1.1.1.1" : {
+                    "name" : "1.1.1.1"
+                  },
+                  "2.1.2.2" : {
+                    "name" : "2.1.2.2"
+                  }
+                },
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -5584,6 +5787,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "2.1.2.1"
               }
@@ -5591,8 +5795,8 @@
           }
         },
         "as2core2" : {
-          "name" : "as2core2",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "as2core2",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -5604,6 +5808,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5612,6 +5819,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -5630,6 +5838,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1800,
@@ -5640,6 +5851,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.22.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5659,6 +5871,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1600,
@@ -5669,6 +5884,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.12.12.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5688,6 +5904,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1700,
@@ -5698,6 +5917,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.22.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5717,6 +5937,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet3/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5727,6 +5950,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.21.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5746,6 +5970,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -5756,6 +5983,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.2.2/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -5766,6 +5994,13 @@
               "type" : "LOOPBACK",
               "vrf" : "default"
             }
+          },
+          "loggingServers" : [
+            "1.1.1.1",
+            "2.2.2.2"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "core"
@@ -5954,6 +6189,17 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "hosts" : {
+                  "1.1.1.1" : {
+                    "name" : "1.1.1.1"
+                  },
+                  "2.2.2.2" : {
+                    "name" : "2.2.2.2"
+                  }
+                },
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -6119,6 +6365,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "2.1.2.2"
               }
@@ -6126,6 +6373,7 @@
           }
         },
         "as2dept1" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as2dept1",
           "communityLists" : {
             "as2_community" : {
@@ -6139,7 +6387,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -6151,6 +6398,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -6159,6 +6409,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -6177,6 +6428,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -6185,6 +6439,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.34.101.4/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6204,6 +6459,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -6212,6 +6470,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.34.201.4/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6231,6 +6490,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "incomingFilter" : "RESTRICT_HOST_TRAFFIC_IN",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -6240,6 +6502,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.128.0.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6259,6 +6522,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet3/0"
+              ],
               "incomingFilter" : "RESTRICT_HOST_TRAFFIC_IN",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -6268,6 +6534,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.128.1.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6287,6 +6554,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -6295,6 +6565,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.1.2/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -6462,6 +6733,9 @@
                 }
               ]
             }
+          },
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "dept"
@@ -6863,6 +7137,9 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -6984,6 +7261,7 @@
           }
         },
         "as2dist1" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as2dist1",
           "communityLists" : {
             "dept_community" : {
@@ -6997,7 +7275,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -7009,6 +7286,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7017,6 +7297,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -7035,6 +7316,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7045,6 +7329,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.11.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7064,6 +7349,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7074,6 +7362,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.21.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7093,6 +7382,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7101,6 +7393,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.34.101.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7120,6 +7413,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7130,6 +7426,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.3.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7207,6 +7504,9 @@
                 }
               ]
             }
+          },
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "dist"
@@ -7524,6 +7824,9 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -7669,6 +7972,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "2.1.3.1"
               }
@@ -7676,6 +7980,7 @@
           }
         },
         "as2dist2" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as2dist2",
           "communityLists" : {
             "dept_community" : {
@@ -7689,7 +7994,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -7701,6 +8005,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7709,6 +8016,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -7727,6 +8035,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7737,6 +8048,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.22.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7756,6 +8068,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7766,6 +8081,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.23.12.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7785,6 +8101,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7793,6 +8112,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.34.201.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7812,6 +8132,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -7822,6 +8145,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "2.1.3.2/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -7899,6 +8223,9 @@
                 }
               ]
             }
+          },
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "dist"
@@ -8216,6 +8543,9 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -8361,6 +8691,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "2.1.3.2"
               }
@@ -8368,6 +8699,7 @@
           }
         },
         "as3border1" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as3border1",
           "communityLists" : {
             "as1_community" : {
@@ -8401,7 +8733,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -8413,6 +8744,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -8421,6 +8755,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -8439,6 +8774,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -8449,6 +8787,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.0.1.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -8468,6 +8807,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -8476,6 +8818,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.23.21.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -8495,6 +8838,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -8505,6 +8851,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.1.1.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -8598,6 +8945,13 @@
                 }
               ]
             }
+          },
+          "ntpServers" : [
+            "18.18.18.18",
+            "23.23.23.23"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "border"
@@ -9307,6 +9661,19 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
+              "ntp" : {
+                "servers" : {
+                  "18.18.18.18" : {
+                    "name" : "18.18.18.18"
+                  },
+                  "23.23.23.23" : {
+                    "name" : "23.23.23.23"
+                  }
+                }
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -9426,6 +9793,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "3.1.1.1"
               }
@@ -9433,6 +9801,7 @@
           }
         },
         "as3border2" : {
+          "configurationFormat" : "CISCO_IOS",
           "name" : "as3border2",
           "communityLists" : {
             "as1_community" : {
@@ -9466,7 +9835,6 @@
               "invertMatch" : false
             }
           },
-          "configurationFormat" : "CISCO_IOS",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -9478,6 +9846,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -9486,6 +9857,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -9504,6 +9876,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -9512,6 +9887,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "10.13.22.3/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -9531,6 +9907,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -9541,6 +9920,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.0.2.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -9560,6 +9940,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -9570,6 +9953,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.2.2.2/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -9663,6 +10047,13 @@
                 }
               ]
             }
+          },
+          "ntpServers" : [
+            "18.18.18.18",
+            "23.23.23.23"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "border"
@@ -10315,6 +10706,19 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "on" : true
+              },
+              "ntp" : {
+                "servers" : {
+                  "18.18.18.18" : {
+                    "name" : "18.18.18.18"
+                  },
+                  "23.23.23.23" : {
+                    "name" : "23.23.23.23"
+                  }
+                }
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -10434,6 +10838,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "3.2.2.2"
               }
@@ -10441,8 +10846,8 @@
           }
         },
         "as3core1" : {
-          "name" : "as3core1",
           "configurationFormat" : "CISCO_IOS",
+          "name" : "as3core1",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
@@ -10454,6 +10859,9 @@
               "active" : false,
               "autostate" : true,
               "bandwidth" : 1.0E7,
+              "declaredNames" : [
+                "Ethernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -10462,6 +10870,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "proxyArp" : true,
               "ripEnabled" : false,
               "ripPassive" : false,
@@ -10480,6 +10889,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet0/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -10490,6 +10902,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.0.2.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -10509,6 +10922,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet1/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -10519,6 +10935,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.0.1.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -10538,6 +10955,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet2/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -10546,6 +10966,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "90.90.90.1/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -10565,6 +10986,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "GigabitEthernet3/0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -10573,6 +10997,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "90.90.90.2/24",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -10592,6 +11017,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E12,
+              "declaredNames" : [
+                "Loopback0"
+              ],
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
               "mtu" : 1500,
@@ -10602,6 +11030,7 @@
               "ospfEnabled" : true,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "prefix" : "3.10.1.1/32",
               "proxyArp" : true,
               "ripEnabled" : false,
@@ -10612,6 +11041,13 @@
               "type" : "LOOPBACK",
               "vrf" : "default"
             }
+          },
+          "loggingServers" : [
+            "1.1.1.1",
+            "2.2.2.2"
+          ],
+          "roleDimensions" : {
+            "0" : "as"
           },
           "roles" : [
             "core"
@@ -10890,6 +11326,17 @@
                   "execTimeoutSeconds" : 0
                 }
               },
+              "logging" : {
+                "hosts" : {
+                  "1.1.1.1" : {
+                    "name" : "1.1.1.1"
+                  },
+                  "2.2.2.2" : {
+                    "name" : "2.2.2.2"
+                  }
+                },
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -11005,6 +11452,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "3.10.1.1"
               }
@@ -11012,8 +11460,8 @@
           }
         },
         "host1" : {
-          "name" : "host1",
           "configurationFormat" : "HOST",
+          "name" : "host1",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "HOST",
@@ -11027,6 +11475,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "eth0"
+              ],
               "incomingFilter" : "filter::INPUT",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -11036,6 +11487,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "outgoingFilter" : "filter::OUTPUT",
               "prefix" : "2.128.0.101/24",
               "ripEnabled" : false,
@@ -11181,6 +11633,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "host"
+          },
           "roles" : [
             "host"
           ],
@@ -11205,8 +11660,8 @@
           }
         },
         "host2" : {
-          "name" : "host2",
           "configurationFormat" : "HOST",
+          "name" : "host2",
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "HOST",
@@ -11220,6 +11675,9 @@
               ],
               "autostate" : true,
               "bandwidth" : 1.0E9,
+              "declaredNames" : [
+                "eth0"
+              ],
               "incomingFilter" : "filter::INPUT",
               "isisL1InterfaceMode" : "unset",
               "isisL2InterfaceMode" : "unset",
@@ -11229,6 +11687,7 @@
               "ospfEnabled" : false,
               "ospfHelloMultiplier" : 0,
               "ospfPassive" : false,
+              "ospfPointToPoint" : false,
               "outgoingFilter" : "filter::OUTPUT",
               "prefix" : "2.128.1.101/24",
               "ripEnabled" : false,
@@ -11370,6 +11829,9 @@
                 }
               ]
             }
+          },
+          "roleDimensions" : {
+            "0" : "host"
           },
           "roles" : [
             "host"

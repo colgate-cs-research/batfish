@@ -5,9 +5,11 @@ import static com.google.common.base.MoreObjects.firstNonNull;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableSortedSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import javax.annotation.Nonnull;
@@ -32,6 +34,8 @@ public class BgpRoute extends AbstractRoute {
 
     private RoutingProtocol _protocol;
 
+    private Ip _receivedFromIp;
+
     private boolean _receivedFromRouteReflectorClient;
 
     private RoutingProtocol _srcProtocol;
@@ -52,6 +56,9 @@ public class BgpRoute extends AbstractRoute {
       if (_originType == null) {
         throw new BatfishException("Missing originType");
       }
+      if (_receivedFromIp == null) {
+        throw new BatfishException("Missing receivedFromIp");
+      }
       return new BgpRoute(
           getNetwork(),
           getNextHopIp(),
@@ -65,13 +72,9 @@ public class BgpRoute extends AbstractRoute {
           _receivedFromRouteReflectorClient,
           _originType,
           _protocol,
+          _receivedFromIp,
           _srcProtocol,
           _weight);
-    }
-
-    @Override
-    protected Builder getThis() {
-      return this;
     }
 
     public List<SortedSet<Integer>> getAsPath() {
@@ -100,6 +103,11 @@ public class BgpRoute extends AbstractRoute {
 
     public RoutingProtocol getProtocol() {
       return _protocol;
+    }
+
+    @Override
+    protected Builder getThis() {
+      return this;
     }
 
     public int getWeight() {
@@ -141,6 +149,11 @@ public class BgpRoute extends AbstractRoute {
       return getThis();
     }
 
+    public Builder setReceivedFromIp(Ip receivedFromIp) {
+      _receivedFromIp = receivedFromIp;
+      return getThis();
+    }
+
     public Builder setReceivedFromRouteReflectorClient(boolean receivedFromRouteReflectorClient) {
       _receivedFromRouteReflectorClient = receivedFromRouteReflectorClient;
       return getThis();
@@ -157,13 +170,13 @@ public class BgpRoute extends AbstractRoute {
     }
   }
 
+  public static final int DEFAULT_LOCAL_PREFERENCE = 100;
+
   private static final String PROP_AS_PATH = "asPath";
 
   private static final String PROP_CLUSTER_LIST = "clusterList";
 
   private static final String PROP_COMMUNITIES = "communities";
-
-  public static final int DEFAULT_LOCAL_PREFERENCE = 100;
 
   private static final String PROP_LOCAL_PREFERENCE = "localPreference";
 
@@ -171,15 +184,17 @@ public class BgpRoute extends AbstractRoute {
 
   private static final String PROP_ORIGINATOR_IP = "originatorIp";
 
+  private static final String PROP_RECEIVED_FROM_IP = "receivedFromIp";
+
   private static final String PROP_RECEIVED_FROM_ROUTE_REFLECTOR_CLIENT =
       "receivedFromRouteReflectorClient";
-
-  /** */
-  private static final long serialVersionUID = 1L;
 
   private static final String PROP_SRC_PROTOCOL = "srcProtocol";
 
   private static final String PROP_WEIGHT = "weight";
+
+  /** */
+  private static final long serialVersionUID = 1L;
 
   private final int _admin;
 
@@ -200,6 +215,8 @@ public class BgpRoute extends AbstractRoute {
   private final OriginType _originType;
 
   private final RoutingProtocol _protocol;
+
+  private final Ip _receivedFromIp;
 
   private final boolean _receivedFromRouteReflectorClient;
 
@@ -222,19 +239,23 @@ public class BgpRoute extends AbstractRoute {
           boolean receivedFromRouteReflectorClient,
       @JsonProperty(PROP_ORIGIN_TYPE) OriginType originType,
       @JsonProperty(PROP_PROTOCOL) RoutingProtocol protocol,
+      @JsonProperty(PROP_RECEIVED_FROM_IP) Ip receivedFromIp,
       @JsonProperty(PROP_SRC_PROTOCOL) RoutingProtocol srcProtocol,
       @JsonProperty(PROP_WEIGHT) int weight) {
     super(network);
     _admin = admin;
     _asPath = asPath;
-    _clusterList = clusterList != null ? clusterList : new TreeSet<>();
-    _communities = communities != null ? communities : new TreeSet<>();
+    _clusterList =
+        clusterList == null ? Collections.emptySortedSet() : ImmutableSortedSet.copyOf(clusterList);
+    _communities =
+        communities == null ? Collections.emptySortedSet() : ImmutableSortedSet.copyOf(communities);
     _localPreference = localPreference;
     _med = med;
     _nextHopIp = firstNonNull(nextHopIp, Route.UNSET_ROUTE_NEXT_HOP_IP);
     _originatorIp = originatorIp;
     _originType = originType;
     _protocol = protocol;
+    _receivedFromIp = receivedFromIp;
     _receivedFromRouteReflectorClient = receivedFromRouteReflectorClient;
     _srcProtocol = srcProtocol;
     _weight = weight;
@@ -269,24 +290,19 @@ public class BgpRoute extends AbstractRoute {
     if (!_network.equals(other._network)) {
       return false;
     }
-    if (_nextHopIp == null) {
-      if (other._nextHopIp != null) {
-        return false;
-      }
-    } else if (!_nextHopIp.equals(other._nextHopIp)) {
+    if (!Objects.equals(_nextHopIp, other._nextHopIp)) {
       return false;
     }
     if (_originType != other._originType) {
       return false;
     }
-    if (_originatorIp == null) {
-      if (other._originatorIp != null) {
-        return false;
-      }
-    } else if (!_originatorIp.equals(other._originatorIp)) {
+    if (!Objects.equals(_originatorIp, other._originatorIp)) {
       return false;
     }
     if (_protocol != other._protocol) {
+      return false;
+    }
+    if (!_receivedFromIp.equals(other._receivedFromIp)) {
       return false;
     }
     if (_weight != other._weight) {
@@ -309,12 +325,12 @@ public class BgpRoute extends AbstractRoute {
 
   @JsonProperty(PROP_CLUSTER_LIST)
   public SortedSet<Long> getClusterList() {
-    return Collections.unmodifiableSortedSet(_clusterList);
+    return _clusterList;
   }
 
   @JsonProperty(PROP_COMMUNITIES)
   public SortedSet<Long> getCommunities() {
-    return Collections.unmodifiableSortedSet(_communities);
+    return _communities;
   }
 
   @JsonProperty(PROP_LOCAL_PREFERENCE)
@@ -360,6 +376,11 @@ public class BgpRoute extends AbstractRoute {
     return _protocol;
   }
 
+  @JsonProperty(PROP_RECEIVED_FROM_IP)
+  public Ip getReceivedFromIp() {
+    return _receivedFromIp;
+  }
+
   @JsonProperty(PROP_RECEIVED_FROM_ROUTE_REFLECTOR_CLIENT)
   public boolean getReceivedFromRouteReflectorClient() {
     return _receivedFromRouteReflectorClient;
@@ -395,6 +416,7 @@ public class BgpRoute extends AbstractRoute {
     result = prime * result + ((_originType == null) ? 0 : _originType.ordinal());
     result = prime * result + ((_originatorIp == null) ? 0 : _originatorIp.hashCode());
     result = prime * result + ((_protocol == null) ? 0 : _protocol.ordinal());
+    result = prime * result + ((_receivedFromIp == null) ? 0 : _receivedFromIp.hashCode());
     result = prime * result + _weight;
     return result;
   }
@@ -415,6 +437,8 @@ public class BgpRoute extends AbstractRoute {
         + _originatorIp
         + " originType:"
         + _originType
+        + " receivedFromIp:"
+        + _receivedFromIp
         + " srcProtocol:"
         + _srcProtocol
         + " weight:"
@@ -449,6 +473,10 @@ public class BgpRoute extends AbstractRoute {
       return ret;
     }
     ret = _originatorIp.compareTo(castRhs._originatorIp);
+    if (ret != 0) {
+      return ret;
+    }
+    ret = _receivedFromIp.compareTo(castRhs._receivedFromIp);
     if (ret != 0) {
       return ret;
     }

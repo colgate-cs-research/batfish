@@ -4,13 +4,16 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSortedSet;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import org.batfish.common.BatfishException;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
@@ -24,6 +27,12 @@ public final class Interface extends ComparableStructure<String> {
 
     private boolean _active;
 
+    private Double _bandwidth;
+
+    private boolean _blacklisted;
+
+    private IpAccessList _incomingFilter;
+
     private String _name;
 
     private OspfArea _ospfArea;
@@ -36,14 +45,19 @@ public final class Interface extends ComparableStructure<String> {
 
     private boolean _ospfPointToPoint;
 
+    private IpAccessList _outgoingFilter;
+
     private Configuration _owner;
 
-    private Prefix _prefix;
+    private List<SourceNat> _sourceNats;
+
+    private InterfaceAddress _address;
 
     private Vrf _vrf;
 
     Builder(NetworkFactory networkFactory) {
       super(networkFactory, Interface.class);
+      _sourceNats = ImmutableList.of();
     }
 
     @Override
@@ -51,22 +65,27 @@ public final class Interface extends ComparableStructure<String> {
       String name = _name != null ? _name : generateName();
       Interface iface = new Interface(name, _owner);
       iface.setActive(_active);
+      iface.setBandwidth(_bandwidth);
+      iface.setBlacklisted(_blacklisted);
+      iface.setIncomingFilter(_incomingFilter);
       iface.setOspfArea(_ospfArea);
       if (_ospfArea != null) {
-        _ospfArea.getInterfaces().put(name, iface);
+        _ospfArea.getInterfaces().add(name);
         iface.setOspfAreaName(_ospfArea.getName());
       }
       iface.setOspfCost(_ospfCost);
       iface.setOspfEnabled(_ospfEnabled);
       iface.setOspfPassive(_ospfPassive);
       iface.setOspfPointToPoint(_ospfPointToPoint);
+      iface.setOutgoingFilter(_outgoingFilter);
       iface.setOwner(_owner);
       if (_owner != null) {
         _owner.getInterfaces().put(name, iface);
       }
-      iface.setPrefix(_prefix);
-      if (_prefix != null) {
-        iface.getAllPrefixes().add(_prefix);
+      iface.setSourceNats(_sourceNats);
+      iface.setAddress(_address);
+      if (_address != null) {
+        iface.setAllAddresses(Collections.singleton(_address));
       }
       iface.setVrf(_vrf);
       if (_vrf != null) {
@@ -81,6 +100,21 @@ public final class Interface extends ComparableStructure<String> {
 
     public Builder setActive(boolean active) {
       _active = active;
+      return this;
+    }
+
+    public Builder setBandwidth(Double bandwidth) {
+      _bandwidth = bandwidth;
+      return this;
+    }
+
+    public Builder setBlacklisted(boolean blacklisted) {
+      _blacklisted = blacklisted;
+      return this;
+    }
+
+    public Builder setIncomingFilter(IpAccessList incomingFilter) {
+      _incomingFilter = incomingFilter;
       return this;
     }
 
@@ -114,13 +148,23 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
+    public Builder setOutgoingFilter(IpAccessList outgoingFilter) {
+      _outgoingFilter = outgoingFilter;
+      return this;
+    }
+
     public Builder setOwner(Configuration owner) {
       _owner = owner;
       return this;
     }
 
-    public Builder setPrefix(Prefix prefix) {
-      _prefix = prefix;
+    public Builder setSourceNats(List<SourceNat> sourceNats) {
+      _sourceNats = sourceNats;
+      return this;
+    }
+
+    public Builder setAddress(InterfaceAddress address) {
+      _address = address;
       return this;
     }
 
@@ -147,6 +191,8 @@ public final class Interface extends ComparableStructure<String> {
   private static final String PROP_AUTOSTATE = "autostate";
 
   private static final String PROP_BANDWIDTH = "bandwidth";
+
+  private static final String PROP_DECLARED_NAMES = "declaredNames";
 
   private static final String PROP_DESCRIPTION = "description";
 
@@ -269,6 +315,8 @@ public final class Interface extends ComparableStructure<String> {
       return InterfaceType.PHYSICAL;
     } else if (name.startsWith("Null")) {
       return InterfaceType.NULL;
+    } else if (name.startsWith("nve")) {
+      return InterfaceType.VLAN;
     } else if (name.startsWith("Port-Channel")) {
       return InterfaceType.AGGREGATED;
     } else if (name.startsWith("POS")) {
@@ -305,7 +353,7 @@ public final class Interface extends ComparableStructure<String> {
       case ALCATEL_AOS:
         return computeAosInteraceType(name);
 
-      case AWS_VPC:
+      case AWS:
         return computeAwsInterfaceType(name);
 
       case ARISTA:
@@ -373,13 +421,15 @@ public final class Interface extends ComparableStructure<String> {
 
   private List<SubRange> _allowedVlans;
 
-  private Set<Prefix> _allPrefixes;
+  private SortedSet<InterfaceAddress> _allAddresses;
 
   private boolean _autoState;
 
   private Double _bandwidth;
 
   private transient boolean _blacklisted;
+
+  private SortedSet<String> _declaredNames;
 
   private String _description;
 
@@ -427,7 +477,7 @@ public final class Interface extends ComparableStructure<String> {
 
   private Configuration _owner;
 
-  private Prefix _prefix;
+  private InterfaceAddress _address;
 
   private Boolean _proxyArp;
 
@@ -474,7 +524,8 @@ public final class Interface extends ComparableStructure<String> {
     _active = true;
     _autoState = true;
     _allowedVlans = new ArrayList<>();
-    _allPrefixes = new TreeSet<>();
+    _allAddresses = ImmutableSortedSet.of();
+    _declaredNames = ImmutableSortedSet.of();
     _dhcpRelayAddresses = new ArrayList<>();
     _interfaceType = InterfaceType.UNKNOWN;
     _mtu = DEFAULT_MTU;
@@ -484,6 +535,7 @@ public final class Interface extends ComparableStructure<String> {
     _switchportTrunkEncapsulation = SwitchportEncapsulationType.DOT1Q;
     _isisL1InterfaceMode = IsisInterfaceMode.UNSET;
     _isisL2InterfaceMode = IsisInterfaceMode.UNSET;
+    _sourceNats = Collections.emptyList();
     _vrfName = Configuration.DEFAULT_VRF_NAME;
     _vrrpGroups = new TreeMap<>();
 
@@ -517,7 +569,7 @@ public final class Interface extends ComparableStructure<String> {
     if (!this._allowedVlans.equals(other._allowedVlans)) {
       return false;
     }
-    if (!this._allPrefixes.equals(other._allPrefixes)) {
+    if (!this._allAddresses.equals(other._allAddresses)) {
       return false;
     }
     if (this._autoState != other._autoState) {
@@ -553,7 +605,7 @@ public final class Interface extends ComparableStructure<String> {
       return false;
     }
 
-    if (!Objects.equals(this._prefix, other._prefix)) {
+    if (!Objects.equals(this._address, other._address)) {
       return false;
     }
 
@@ -592,8 +644,8 @@ public final class Interface extends ComparableStructure<String> {
 
   @JsonProperty(PROP_ALL_PREFIXES)
   @JsonPropertyDescription("All IPV4 address/network assignments on this interface")
-  public Set<Prefix> getAllPrefixes() {
-    return _allPrefixes;
+  public Set<InterfaceAddress> getAllAddresses() {
+    return _allAddresses;
   }
 
   @JsonProperty(PROP_AUTOSTATE)
@@ -614,6 +666,11 @@ public final class Interface extends ComparableStructure<String> {
   @JsonIgnore
   public boolean getBlacklisted() {
     return _blacklisted;
+  }
+
+  @JsonProperty(PROP_DECLARED_NAMES)
+  public SortedSet<String> getDeclaredNames() {
+    return _declaredNames;
   }
 
   @JsonProperty(PROP_DESCRIPTION)
@@ -777,8 +834,8 @@ public final class Interface extends ComparableStructure<String> {
 
   @JsonProperty(PROP_PREFIX)
   @JsonPropertyDescription("The primary IPV4 address/network of this interface")
-  public Prefix getPrefix() {
-    return _prefix;
+  public InterfaceAddress getAddress() {
+    return _address;
   }
 
   @JsonPropertyDescription("Whether or not proxy-ARP is enabled on this interface.")
@@ -929,8 +986,8 @@ public final class Interface extends ComparableStructure<String> {
   }
 
   @JsonProperty(PROP_ALL_PREFIXES)
-  public void setAllPrefixes(Set<Prefix> allPrefixes) {
-    _allPrefixes = allPrefixes;
+  public void setAllAddresses(Iterable<InterfaceAddress> allAddresses) {
+    _allAddresses = ImmutableSortedSet.copyOf(allAddresses);
   }
 
   @JsonProperty(PROP_AUTOSTATE)
@@ -946,6 +1003,11 @@ public final class Interface extends ComparableStructure<String> {
   @JsonIgnore
   public void setBlacklisted(boolean blacklisted) {
     _blacklisted = blacklisted;
+  }
+
+  @JsonProperty(PROP_DECLARED_NAMES)
+  public void setDeclaredNames(SortedSet<String> declaredNames) {
+    _declaredNames = ImmutableSortedSet.copyOf(declaredNames);
   }
 
   @JsonProperty(PROP_DESCRIPTION)
@@ -1064,8 +1126,8 @@ public final class Interface extends ComparableStructure<String> {
   }
 
   @JsonProperty(PROP_PREFIX)
-  public void setPrefix(Prefix prefix) {
-    _prefix = prefix;
+  public void setAddress(InterfaceAddress address) {
+    _address = address;
   }
 
   public void setProxyArp(Boolean proxyArp) {
@@ -1149,7 +1211,7 @@ public final class Interface extends ComparableStructure<String> {
     JSONObject iface = new JSONObject();
     iface.put("node", _owner.getName());
     iface.put("name", _key);
-    iface.put(PROP_PREFIX, _prefix.toString());
+    iface.put(PROP_PREFIX, _address.toString());
     iface.put(PROP_INTERFACE_TYPE, _interfaceType.toString());
     return iface;
   }

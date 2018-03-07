@@ -25,7 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.UriBuilder;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
@@ -127,8 +127,7 @@ public class Main {
           1,
           new SimpleFileVisitor<Path>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               String filename = file.getFileName().toString();
               if (filename.endsWith(".json")) {
                 readQuestionTemplate(file, templates);
@@ -174,7 +173,7 @@ public class Main {
         _authorizer = FileAuthorizer.createFromSettings(settings);
         break;
       case database:
-        _authorizer = new DbAuthorizer();
+        _authorizer = DbAuthorizer.createFromSettings(settings);
         break;
       default:
         System.err.print(
@@ -185,7 +184,6 @@ public class Main {
   }
 
   private static void initPoolManager() {
-
     ResourceConfig rcPool =
         new ResourceConfig(PoolMgrService.class)
             .register(new JettisonFeature())
@@ -198,7 +196,7 @@ public class Main {
               .port(_settings.getServicePoolPort())
               .build();
 
-      _logger.info("Starting pool manager at " + poolMgrUri + "\n");
+      _logger.infof("Starting pool manager at %s\n", poolMgrUri);
 
       GrizzlyHttpServerFactory.createHttpServer(poolMgrUri, rcPool);
     } else {
@@ -207,7 +205,7 @@ public class Main {
               .port(_settings.getServicePoolPort())
               .build();
 
-      _logger.info("Starting pool manager at " + poolMgrUri + "\n");
+      _logger.infof("Starting pool manager at %s\n", poolMgrUri);
 
       CommonUtil.startSslServer(
           rcPool,
@@ -242,14 +240,14 @@ public class Main {
       URI workMgrUri =
           UriBuilder.fromUri("http://" + _settings.getWorkBindHost()).port(port).build();
 
-      _logger.info("Starting work manager " + serviceClass + " at " + workMgrUri + "\n");
+      _logger.infof("Starting work manager %s at %s\n", serviceClass, workMgrUri);
 
       GrizzlyHttpServerFactory.createHttpServer(workMgrUri, rcWork);
     } else {
       URI workMgrUri =
           UriBuilder.fromUri("https://" + _settings.getWorkBindHost()).port(port).build();
 
-      _logger.info("Starting work manager at " + workMgrUri + "\n");
+      _logger.infof("Starting work manager at %s\n", workMgrUri);
       CommonUtil.startSslServer(
           rcWork,
           workMgrUri,
@@ -266,7 +264,7 @@ public class Main {
   private static void initTracer() {
     GlobalTracer.register(
         new Configuration(
-                BfConsts.PROP_COORDINATOR_SERVICE,
+                _settings.getServiceName(),
                 new SamplerConfiguration(ConstSampler.TYPE, 1),
                 new ReporterConfiguration(
                     false,
@@ -344,7 +342,7 @@ public class Main {
         _logger.info("Still alive .... waiting for work to show up\n");
       }
     } catch (Exception ex) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(ex);
+      String stackTrace = ExceptionUtils.getStackTrace(ex);
       System.err.println(stackTrace);
     }
   }

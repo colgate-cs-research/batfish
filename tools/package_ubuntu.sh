@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-export BATFISH_SOURCED_SCRIPT="$BASH_SOURCE"
 export OLD_PWD="$PWD"
 
 set -e
@@ -17,19 +16,13 @@ architecture() {
    echo $ARCHITECTURE
 }
 
-ubuntu_version() {
-   head -n1 /etc/issue | cut -f2 -d' ' | cut -f1,2 -d'.'
-}
-
 install_z3() {
-   if [ "${UBUNTU_VERSION}" = "16.04" ]; then
-      echo "Building and installing z3 in $USR_P"
-      $BATFISH_TOOLS_PATH/install_z3_ubuntu_16.04.sh $USR_P
-   elif [ "${UBUNTU_VERSION}" = "14.04" ]; then
-      echo "Installing z3 in $USR_P"
-      $BATFISH_TOOLS_PATH/install_z3_ubuntu_14.04.sh $USR_P
+   if [ "${UBUNTU_VERSION}" = "14.04" -o \
+        "${UBUNTU_VERSION}" = "16.04" ]; then
+      echo "Building and installing z3 in ${USR_P}"
+      "${BATFISH_TOOLS_PATH}/install_z3_ubuntu.sh" "${USR_P}"
    else
-      echo "Unsupported Ubuntu version: $UBUNTU_VERSION"
+      echo "Unsupported Ubuntu version: ${UBUNTU_VERSION}"
       exit 1
    fi
 }
@@ -76,9 +69,10 @@ After=network.target auditd.service
 WantedBy=multi-user.target
 
 [Service]
+EnvironmentFile=$BATFISH_ENVFILE
 User=$BATFISH_USER
 Group=$BATFISH_USER
-ExecStart=/bin/bash -c '/usr/bin/java -DbatfishBatfishPropertiesPath=$BATFISH_PROPERTIES -cp $ALLINONE_JAR $BATFISH_MAIN_CLASS -logfile $BATFISH_LOG -servicemode -register true &>> $BATFISH_JAVA_LOG'
+ExecStart=/bin/bash -c '/usr/bin/java -DbatfishBatfishPropertiesPath=$BATFISH_PROPERTIES \${BATFISH_JAVA_ARGS} -cp $ALLINONE_JAR $BATFISH_MAIN_CLASS -logfile $BATFISH_LOG -servicemode -register true &>> $BATFISH_JAVA_LOG'
 PIDFile=$BATFISH_RUN_DIR/batfish.pid
 Restart=always
 EOF
@@ -93,9 +87,10 @@ After=network.target auditd.service
 WantedBy=multi-user.target
 
 [Service]
+EnvironmentFile=$COORDINATOR_ENVFILE
 User=$BATFISH_USER
 Group=$BATFISH_USER
-ExecStart=/bin/bash -c '/usr/bin/java -DbatfishCoordinatorPropertiesPath=$COORDINATOR_PROPERTIES -cp \$(cat $COORDINATOR_CLASSPATH):$ALLINONE_JAR $COORDINATOR_MAIN_CLASS -logfile $COORDINATOR_LOG -containerslocation $BATFISH_HOME &>> $COORDINATOR_JAVA_LOG'
+ExecStart=/bin/bash -c '/usr/bin/java -DbatfishCoordinatorPropertiesPath=$COORDINATOR_PROPERTIES \${COORDINATOR_JAVA_ARGS} -cp \$(cat $COORDINATOR_CLASSPATH):$ALLINONE_JAR $COORDINATOR_MAIN_CLASS -logfile $COORDINATOR_LOG -containerslocation $BATFISH_HOME &>> $COORDINATOR_JAVA_LOG'
 WorkingDirectory=$BATFISH_HOME
 PIDFile=$BATFISH_RUN_DIR/coordinator.pid
 Restart=always
@@ -111,7 +106,7 @@ stop on runlevel [!2345]
 
 respawn
 
-exec su -c "/bin/bash -c '/usr/bin/java -DbatfishBatfishPropertiesPath=$BATFISH_PROPERTIES -cp $ALLINONE_JAR $BATFISH_MAIN_CLASS -logfile $BATFISH_LOG -servicemode -register true &>> $BATFISH_JAVA_LOG'" $BATFISH_USER
+exec su -c "/bin/bash -c . $BATFISH_ENVFILE && '/usr/bin/java -DbatfishBatfishPropertiesPath=$BATFISH_PROPERTIES \${BATFISH_JAVA_ARGS} -cp $ALLINONE_JAR $BATFISH_MAIN_CLASS -logfile $BATFISH_LOG -servicemode -register true &>> $BATFISH_JAVA_LOG'" $BATFISH_USER
 EOF
 
    cat > $COORDINATOR_INIT_P <<EOF
@@ -124,7 +119,7 @@ stop on runlevel [!2345]
 
 respawn
 
-exec su -c "/bin/bash -c '/usr/bin/java -DbatfishCoordinatorPropertiesPath=$COORDINATOR_PROPERTIES -cp \$(cat $COORDINATOR_CLASSPATH):$ALLINONE_JAR $COORDINATOR_MAIN_CLASS -logfile $COORDINATOR_LOG -containerslocation $BATFISH_HOME &>> $COORDINATOR_JAVA_LOG'" $BATFISH_USER
+exec su -c "/bin/bash -c '. $COORDINATOR_ENVFILE && /usr/bin/java -DbatfishCoordinatorPropertiesPath=$COORDINATOR_PROPERTIES \${COORDINATOR_JAVA_ARGS} -cp \$(cat $COORDINATOR_CLASSPATH):$ALLINONE_JAR $COORDINATOR_MAIN_CLASS -logfile $COORDINATOR_LOG -containerslocation $BATFISH_HOME &>> $COORDINATOR_JAVA_LOG'" $BATFISH_USER
 EOF
    echo $BATFISH_INIT >> $CONFFILES_FILE
    echo $COORDINATOR_INIT >> $CONFFILES_FILE
@@ -139,12 +134,12 @@ package() {
    set -e
    BATFISH_MAIN_CLASS=org.batfish.main.Driver
    COORDINATOR_MAIN_CLASS=org.batfish.coordinator.Main
-   BATFISH_TOOLS_PATH="$(readlink -f $(dirname $BATFISH_SOURCED_SCRIPT))"
-   SCRIPT_NAME="$(basename $BATFISH_SOURCED_SCRIPT)"
+   BATFISH_TOOLS_PATH="$(cd $(dirname "${BASH_SOURCE}") && pwd)"
+   SCRIPT_NAME="$(basename "${BASH_SOURCE}")"
    BATFISH_PATH="$(readlink -f ${BATFISH_TOOLS_PATH}/..)"
    SECONDARY_VERSION=$(echo $BATFISH_VERSION | cut -d'.' -f1,2)
    ARCHITECTURE=$(architecture)
-   UBUNTU_VERSION=$(ubuntu_version)
+   UBUNTU_VERSION="$(lsb_release -rs)"
    VERSION="${BATFISH_VERSION}~ubuntu${UBUNTU_VERSION}"
    PACKAGE_NAME="batfish-${SECONDARY_VERSION}"
    DEB_NAME=${PACKAGE_NAME}_${VERSION}_${ARCHITECTURE}
@@ -175,6 +170,9 @@ package() {
    ALLINONE_PROPERTIES_SRC=$BATFISH_PATH/projects/allinone/target/classes/org/batfish/allinone/config/$ALLINONE_PROPERTIES_NAME
    ALLINONE_PROPERTIES=${CONF_DIR}/$ALLINONE_PROPERTIES_NAME
    ALLINONE_PROPERTIES_P=${PBASE}${ALLINONE_PROPERTIES}
+   BATFISH_ENVFILE_NAME=batfish_env
+   BATFISH_ENVFILE=${CONF_DIR}/${BATFISH_ENVFILE_NAME}
+   BATFISH_ENVFILE_P=${PBASE}${BATFISH_ENVFILE}
    BATFISH_PROPERTIES_NAME=batfish.properties
    BATFISH_PROPERTIES_SRC=$BATFISH_PATH/projects/batfish/target/classes/org/batfish/config/$BATFISH_PROPERTIES_NAME
    BATFISH_PROPERTIES=${CONF_DIR}/$BATFISH_PROPERTIES_NAME
@@ -183,6 +181,9 @@ package() {
    CLIENT_PROPERTIES_SRC=$BATFISH_PATH/projects/batfish-client/target/classes/org/batfish/client/config/$CLIENT_PROPERTIES_NAME
    CLIENT_PROPERTIES=${CONF_DIR}/$CLIENT_PROPERTIES_NAME
    CLIENT_PROPERTIES_P=${PBASE}${CLIENT_PROPERTIES}
+   COORDINATOR_ENVFILE_NAME=coordinator_env
+   COORDINATOR_ENVFILE=${CONF_DIR}/${COORDINATOR_ENVFILE_NAME}
+   COORDINATOR_ENVFILE_P=${PBASE}${COORDINATOR_ENVFILE}
    COORDINATOR_INIT=${INIT_DIR}/${COORDINATOR_INIT_NAME}
    COORDINATOR_INIT_P=${PBASE}${COORDINATOR_INIT}
    COORDINATOR_CLASSPATH_NAME=coordinator.classpath
@@ -234,6 +235,16 @@ package() {
    cp $COORDINATOR_PROPERTIES_SRC $COORDINATOR_PROPERTIES_P
 
    write_init_scripts
+
+  cat > $BATFISH_ENVFILE_P <<EOF
+#!/usr/bin/env bash
+BATFISH_JAVA_ARGS=
+EOF
+
+  cat > $COORDINATOR_ENVFILE_P <<EOF
+#!/usr/bin/env bash
+COORDINATOR_JAVA_ARGS=
+EOF
 
    cat > $CONTROL_FILE <<EOF
 Package: ${PACKAGE_NAME}
@@ -300,10 +311,16 @@ chown root:$BATFISH_USER $CONF_DIR
 chmod 0770 $CONF_DIR
 chown root:$BATFISH_USER $ALLINONE_PROPERTIES
 chmod 0660 $ALLINONE_PROPERTIES
+chown root:$BATFISH_USER $BATFISH_ENVFILE
+chmod 0660 $BATFISH_ENVFILE
 chown root:$BATFISH_USER $BATFISH_PROPERTIES
 chmod 0660 $BATFISH_PROPERTIES
 chown root:$BATFISH_USER $CLIENT_PROPERTIES
 chmod 0660 $CLIENT_PROPERTIES
+chown root:$BATFISH_USER $COORDINATOR_CLASSPATH
+chmod 0660 $COORDINATOR_CLASSPATH
+chown root:$BATFISH_USER $COORDINATOR_ENVFILE
+chmod 0660 $COORDINATOR_ENVFILE
 chown root:$BATFISH_USER $COORDINATOR_PROPERTIES
 chmod 0660 $COORDINATOR_PROPERTIES
 mkdir -p $BATFISH_LOG_DIR
@@ -331,8 +348,10 @@ EOF
 
    touch $COORDINATOR_CLASSPATH_P
    echo $ALLINONE_PROPERTIES >> $CONFFILES_FILE
+   echo $BATFISH_ENVFILE >> $CONFFILES_FILE
    echo $BATFISH_PROPERTIES >> $CONFFILES_FILE
    echo $CLIENT_PROPERTIES >> $CONFFILES_FILE
+   echo $COORDINATOR_ENVFILE >> $CONFFILES_FILE
    echo $COORDINATOR_PROPERTIES >> $CONFFILES_FILE
    install_z3
    find $PBASE -type d -exec chmod 0755 {} \;

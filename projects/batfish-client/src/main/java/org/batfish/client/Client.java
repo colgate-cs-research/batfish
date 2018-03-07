@@ -2,14 +2,13 @@ package org.batfish.client;
 
 import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import com.kjetland.jackson.jsonSchema.JsonSchemaGenerator;
 import com.uber.jaeger.Configuration.ReporterConfiguration;
 import com.uber.jaeger.Configuration.SamplerConfiguration;
@@ -51,12 +50,8 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import javax.annotation.Nullable;
-import jline.console.ConsoleReader;
-import jline.console.UserInterruptException;
-import jline.console.completer.Completer;
-import jline.console.history.FileHistory;
 import org.apache.commons.io.output.WriterOutputStream;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.client.answer.LoadQuestionAnswerElement;
 import org.batfish.client.config.Settings;
 import org.batfish.client.config.Settings.RunMode;
@@ -91,6 +86,7 @@ import org.batfish.datamodel.Protocol;
 import org.batfish.datamodel.SubRange;
 import org.batfish.datamodel.answers.Answer;
 import org.batfish.datamodel.collections.NodeInterfacePair;
+import org.batfish.datamodel.pojo.WorkStatus;
 import org.batfish.datamodel.questions.Question;
 import org.batfish.datamodel.questions.Question.InstanceData;
 import org.batfish.datamodel.questions.Question.InstanceData.Variable;
@@ -98,7 +94,20 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.codehaus.jettison.json.JSONTokener;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReader.Option;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
+import org.jline.reader.impl.completer.ArgumentCompleter;
+import org.jline.reader.impl.completer.NullCompleter;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
+import org.jline.utils.InfoCmp.Capability;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
+@SuppressWarnings("restriction")
 public class Client extends AbstractClient implements IClient {
 
   private static final Set<String> COMPARATORS =
@@ -383,14 +392,14 @@ public class Client extends AbstractClient implements IClient {
           throw new BatfishException(
               String.format("A Batfish %s must be a JSON string", expectedType.getName()));
         }
-        new Prefix(value.textValue());
+        Prefix.parse(value.textValue());
         break;
       case PREFIX_RANGE:
         if (!value.isTextual()) {
           throw new BatfishException(
               String.format("A Batfish %s must be a JSON string", expectedType.getName()));
         }
-        new PrefixRange(value.textValue());
+        PrefixRange.fromString(value.textValue());
         break;
       case QUESTION:
         // TODO: Implement
@@ -428,6 +437,8 @@ public class Client extends AbstractClient implements IClient {
 
   private Map<String, String> _additionalBatfishOptions;
 
+  private boolean _backgroundExecution = false;
+
   private final Map<String, String> _bfq;
 
   private String _currContainerName = null;
@@ -444,10 +455,12 @@ public class Client extends AbstractClient implements IClient {
 
   BatfishLogger _logger;
 
+  WorkItem _polledWorkItem = null;
+
   @SuppressWarnings("unused")
   private BfCoordPoolHelper _poolHelper;
 
-  private ConsoleReader _reader;
+  private LineReader _reader;
 
   private Settings _settings;
 
@@ -489,23 +502,21 @@ public class Client extends AbstractClient implements IClient {
         break;
       case interactive:
         try {
-          _reader = new ConsoleReader();
+          Terminal terminal = TerminalBuilder.builder().build();
+          _reader =
+              LineReaderBuilder.builder()
+                  .terminal(terminal)
+                  .completer(new ArgumentCompleter(new CommandCompleter(), new NullCompleter()))
+                  .build();
           Path historyPath = Paths.get(System.getenv(ENV_HOME), HISTORY_FILE);
           historyPath.toFile().createNewFile();
-          FileHistory history = new FileHistory(historyPath.toFile());
-          _reader.setHistory(history);
-          _reader.setPrompt("batfish> ");
-          _reader.setExpandEvents(false);
-          _reader.setHandleUserInterrupt(true);
+          _reader.setVariable(LineReader.HISTORY_FILE, historyPath.toAbsolutePath().toString());
+          _reader
+              .getTerminal()
+              .handle(org.jline.terminal.Terminal.Signal.INT, signal -> handleSigInt());
+          _reader.unsetOpt(Option.INSERT_TAB); // supports completion with nothing entered
 
-          List<Completer> completors = new LinkedList<>();
-          completors.add(new CommandCompleter());
-
-          for (Completer c : completors) {
-            _reader.addCompleter(c);
-          }
-
-          PrintWriter pWriter = new PrintWriter(_reader.getOutput(), true);
+          PrintWriter pWriter = new PrintWriter(_reader.getTerminal().output(), true);
           OutputStream os = new WriterOutputStream(pWriter);
           PrintStream ps = new PrintStream(os, true);
           _logger = new BatfishLogger(_settings.getLogLevel(), false, ps);
@@ -539,7 +550,6 @@ public class Client extends AbstractClient implements IClient {
 
   private boolean answer(
       String questionTemplateName, String paramsLine, boolean isDelta, FileWriter outWriter) {
-    String questionName = DEFAULT_QUESTION_PREFIX + "_" + UUID.randomUUID();
     String questionContentUnmodified = _bfq.get(questionTemplateName.toLowerCase());
     if (questionContentUnmodified == null) {
       throw new BatfishException("Invalid question template name: '" + questionTemplateName + "'");
@@ -551,9 +561,15 @@ public class Client extends AbstractClient implements IClient {
     } catch (JSONException e) {
       throw new BatfishException("Question content is not valid JSON", e);
     }
+    String questionName = DEFAULT_QUESTION_PREFIX + "_" + UUID.randomUUID();
+    if (parameters.containsKey("questionName")) {
+      questionName = parameters.get("questionName").asText();
+      parameters.remove("questionName");
+    }
     JSONObject instanceJson;
     try {
       instanceJson = questionJson.getJSONObject(BfConsts.PROP_INSTANCE);
+      instanceJson.put(BfConsts.PROP_INSTANCE_NAME, questionName);
     } catch (JSONException e) {
       throw new BatfishException("Question is missing instance data", e);
     }
@@ -579,7 +595,7 @@ public class Client extends AbstractClient implements IClient {
       throw new BatfishException("Could not process modified instance data", e);
     }
     String modifiedQuestionStr = questionJson.toString();
-    boolean questionJsonDifferential;
+    boolean questionJsonDifferential = false;
     // check whether question is valid modulo instance data
     try {
       questionJsonDifferential =
@@ -618,6 +634,7 @@ public class Client extends AbstractClient implements IClient {
             _currEnv,
             _currDeltaTestrig,
             _currDeltaEnv,
+            questionJsonDifferential,
             isDelta);
     return execute(wItemAs, outWriter);
   }
@@ -641,7 +658,8 @@ public class Client extends AbstractClient implements IClient {
     return answer(qTypeStr, paramsLine, delta, outWriter);
   }
 
-  private boolean answerFile(Path questionFile, boolean isDelta, FileWriter outWriter) {
+  private boolean answerFile(
+      Path questionFile, boolean isDifferential, boolean isDelta, FileWriter outWriter) {
 
     if (!Files.exists(questionFile)) {
       throw new BatfishException("Question file not found: " + questionFile);
@@ -672,6 +690,7 @@ public class Client extends AbstractClient implements IClient {
             _currEnv,
             _currDeltaTestrig,
             _currDeltaEnv,
+            isDifferential,
             isDelta);
 
     return execute(wItemAs, outWriter);
@@ -726,7 +745,8 @@ public class Client extends AbstractClient implements IClient {
     // if no exception is thrown, then the modifiedQuestionJson is good
     Path questionFile = createTempFile("question", modifiedQuestionJson);
     questionFile.toFile().deleteOnExit();
-    boolean result = answerFile(questionFile, isDelta, outWriter);
+    boolean result =
+        answerFile(questionFile, modifiedQuestion.getDifferential(), isDelta, outWriter);
     if (questionFile != null) {
       CommonUtil.deleteIfExists(questionFile);
     }
@@ -744,7 +764,7 @@ public class Client extends AbstractClient implements IClient {
     try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
       String line = null;
       while ((line = br.readLine()) != null) {
-        _logger.output(line + "\n");
+        _logger.outputf("%s\n", line);
       }
     }
 
@@ -764,7 +784,8 @@ public class Client extends AbstractClient implements IClient {
     if (!isValidArgument(options, parameters, 0, 0, 0, Command.CLEAR_SCREEN)) {
       return false;
     }
-    _reader.clearScreen();
+    _reader.getTerminal().puts(Capability.clear_screen);
+    _reader.getTerminal().flush();
     return false;
   }
 
@@ -787,6 +808,43 @@ public class Client extends AbstractClient implements IClient {
       throw new BatfishException("Failed to write content to temporary file", e);
     }
     return tempFilePath;
+  }
+
+  private boolean configureTemplate(
+      String[] words,
+      @Nullable FileWriter outWriter,
+      List<String> options,
+      List<String> parameters) {
+    if (!isValidArgument(
+        options, parameters, 0, 2, Integer.MAX_VALUE, Command.CONFIGURE_TEMPLATE)) {
+      return false;
+    }
+
+    String newTemplateName = parameters.get(0);
+    String oldTemplateName = parameters.get(1);
+    String paramsLine =
+        String.join(" ", Arrays.copyOfRange(words, 3 + options.size(), words.length));
+    Map<String, JsonNode> params = parseParams(paramsLine);
+    JsonNode exceptions = params.get("exceptions");
+    JsonNode assertion = params.get("assertion");
+
+    String oldTemplate = _bfq.get(oldTemplateName.toLowerCase());
+    if (oldTemplate == null) {
+      throw new BatfishException("Template not found: '" + oldTemplateName + "'");
+    }
+    if (!Sets.difference(params.keySet(), Sets.newHashSet("exceptions", "assertion")).isEmpty()) {
+      throw new BatfishException("Unknown parameter(s): " + params.keySet());
+    }
+
+    String newTemplate = _workHelper.configureTemplate(oldTemplate, exceptions, assertion);
+
+    if (newTemplate == null) {
+      return false;
+    }
+
+    _bfq.put(newTemplateName.toLowerCase(), newTemplate);
+    logOutput(outWriter, newTemplate);
+    return true;
   }
 
   private boolean delAnalysis(
@@ -923,115 +981,30 @@ public class Client extends AbstractClient implements IClient {
   }
 
   private boolean execute(WorkItem wItem, @Nullable FileWriter outWriter) {
-    _logger.info("work-id is " + wItem.getId() + "\n");
+    _logger.infof("work-id is %s\n", wItem.getId());
+    ActiveSpan activeSpan = GlobalTracer.get().activeSpan();
+    if (activeSpan != null) {
+      activeSpan.setTag("work-id", wItem.getId().toString());
+    }
     wItem.addRequestParam(BfConsts.ARG_LOG_LEVEL, _settings.getBatfishLogLevel());
     for (String option : _additionalBatfishOptions.keySet()) {
       wItem.addRequestParam(option, _additionalBatfishOptions.get(option));
     }
     boolean queueWorkResult = _workHelper.queueWork(wItem);
-    _logger.info("Queuing result: " + queueWorkResult + "\n");
+    _logger.infof("Queuing result: %s\n", queueWorkResult);
     if (!queueWorkResult) {
       return queueWorkResult;
     }
 
-    // Poll the work item until it finishes or fails.
-    Pair<WorkStatusCode, String> response = _workHelper.getWorkStatus(wItem.getId());
-    if (response == null) {
-      return false;
+    boolean result = true;
+
+    if (!_backgroundExecution) {
+      _polledWorkItem = wItem;
+      result = pollWorkAndGetAnswer(wItem, outWriter);
+      _polledWorkItem = null;
     }
 
-    WorkStatusCode status = response.getFirst();
-    Backoff backoff = Backoff.builder().withMaximumBackoff(Duration.ofSeconds(1)).build();
-    while (status != WorkStatusCode.TERMINATEDABNORMALLY
-        && status != WorkStatusCode.TERMINATEDNORMALLY
-        && status != WorkStatusCode.ASSIGNMENTERROR
-        && backoff.hasNext()) {
-      printWorkStatusResponse(response);
-      try {
-        Thread.sleep(backoff.nextBackoff().toMillis());
-      } catch (InterruptedException e) {
-        throw new BatfishException("Interrupted while waiting for work item to complete", e);
-      }
-      response = _workHelper.getWorkStatus(wItem.getId());
-      if (response == null) {
-        return false;
-      }
-      status = response.getFirst();
-    }
-    printWorkStatusResponse(response);
-
-    // get the answer
-    String ansFileName = wItem.getId() + BfConsts.SUFFIX_ANSWER_JSON_FILE;
-    String downloadedAnsFile =
-        _workHelper.getObject(wItem.getContainerName(), wItem.getTestrigName(), ansFileName);
-    if (downloadedAnsFile == null) {
-      _logger.errorf(
-          "Failed to get answer file %s. Fix batfish and remove the statement below this line\n",
-          ansFileName);
-      // return false;
-    } else {
-      String answerString = CommonUtil.readFile(Paths.get(downloadedAnsFile));
-
-      // Check if we need to make things pretty
-      // Don't if we are writing to FileWriter, because we need valid JSON in
-      // that case
-      String answerStringToPrint = answerString;
-      if (outWriter == null && _settings.getPrettyPrintAnswers()) {
-        ObjectMapper mapper = new BatfishObjectMapper(getCurrentClassLoader());
-        Answer answer;
-        try {
-          answer = mapper.readValue(answerString, Answer.class);
-        } catch (IOException e) {
-          throw new BatfishException(
-              "Response does not appear to be valid JSON representation of "
-                  + Answer.class.getSimpleName(),
-              e);
-        }
-        answerStringToPrint = answer.prettyPrint();
-      }
-
-      logOutput(outWriter, answerStringToPrint);
-
-      // tests serialization/deserialization when running in debug mode
-      if (_logger.getLogLevel() >= BatfishLogger.LEVEL_DEBUG) {
-        try {
-          ObjectMapper mapper = new BatfishObjectMapper(getCurrentClassLoader());
-          Answer answer = mapper.readValue(answerString, Answer.class);
-
-          String newAnswerString = mapper.writeValueAsString(answer);
-          JsonNode tree = mapper.readTree(answerString);
-          JsonNode newTree = mapper.readTree(newAnswerString);
-          if (!CommonUtil.checkJsonEqual(tree, newTree)) {
-            // if (!tree.equals(newTree)) {
-            _logger.errorf(
-                "Original and recovered Json are different. Recovered = %s\n", newAnswerString);
-          }
-        } catch (Exception e) {
-          _logger.outputf("Could NOT deserialize Json to Answer: %s\n", e.getMessage());
-        }
-      }
-    }
-    // get and print the log when in debugging mode
-    if (_logger.getLogLevel() >= BatfishLogger.LEVEL_DEBUG) {
-      _logger.output("---------------- Service Log --------------\n");
-      String logFileName = wItem.getId() + BfConsts.SUFFIX_LOG_FILE;
-      String downloadedFileStr =
-          _workHelper.getObject(wItem.getContainerName(), wItem.getTestrigName(), logFileName);
-
-      if (downloadedFileStr == null) {
-        _logger.errorf("Failed to get log file %s\n", logFileName);
-        return false;
-      } else {
-        Path downloadedFile = Paths.get(downloadedFileStr);
-        CommonUtil.outputFileLines(downloadedFile, _logger::output);
-      }
-    }
-    if (response.getFirst() == WorkStatusCode.TERMINATEDNORMALLY) {
-      return true;
-    } else {
-      // _logger.errorf("WorkItem failed: %s", wItem);
-      return false;
-    }
+    return result;
   }
 
   private boolean exit(List<String> options, List<String> parameters) {
@@ -1091,14 +1064,13 @@ public class Client extends AbstractClient implements IClient {
       // schemaGenNew.generateJsonSchema(SchemaTest.Parent.class);
       // _logger.output(mapper.writeValueAsString(schemaNew2));
     } catch (Exception e) {
-      _logger.errorf("Could not generate data model: " + e.getMessage());
+      _logger.errorf("Could not generate data model: %s", e.getMessage());
       e.printStackTrace();
     }
   }
 
   private boolean generateDataplane(
-      @Nullable FileWriter outWriter, List<String> options, List<String> parameters)
-      throws Exception {
+      @Nullable FileWriter outWriter, List<String> options, List<String> parameters) {
     if (!isValidArgument(options, parameters, 0, 0, 0, Command.GEN_DP)) {
       return false;
     }
@@ -1114,8 +1086,7 @@ public class Client extends AbstractClient implements IClient {
   }
 
   private boolean generateDeltaDataplane(
-      @Nullable FileWriter outWriter, List<String> options, List<String> parameters)
-      throws Exception {
+      @Nullable FileWriter outWriter, List<String> options, List<String> parameters) {
     if (!isValidArgument(options, parameters, 0, 0, 0, Command.GEN_DELTA_DP)) {
       return false;
     }
@@ -1160,8 +1131,7 @@ public class Client extends AbstractClient implements IClient {
       @Nullable FileWriter outWriter,
       List<String> options,
       List<String> parameters,
-      boolean delta)
-      throws Exception {
+      boolean delta) {
     Command command = delta ? Command.GET_DELTA : Command.GET;
     if (!isValidArgument(options, parameters, 0, 1, Integer.MAX_VALUE, command)) {
       return false;
@@ -1330,7 +1300,7 @@ public class Client extends AbstractClient implements IClient {
     String configName = parameters.get(2);
     String configContent = _workHelper.getConFiguration(containerName, testrigName, configName);
     if (configContent != null) {
-      _logger.output(configContent + "\n");
+      _logger.outputf("%s\n", configContent);
       return true;
     }
     return false;
@@ -1461,8 +1431,40 @@ public class Client extends AbstractClient implements IClient {
     return true;
   }
 
+  private boolean getWorkStatus(
+      @Nullable FileWriter outWriter, List<String> options, List<String> parameters) {
+    if (!isValidArgument(options, parameters, 0, 1, 1, Command.GET_WORK_STATUS)) {
+      return false;
+    }
+
+    UUID workId = UUID.fromString(parameters.get(0));
+
+    Pair<WorkStatusCode, String> response = _workHelper.getWorkStatus(workId);
+    if (response == null) {
+      return false;
+    }
+
+    printWorkStatusResponse(response, true);
+
+    logOutput(outWriter, "status: " + response.getFirst());
+
+    return true;
+  }
+
   public Settings getSettings() {
     return _settings;
+  }
+
+  public void handleSigInt() {
+    _logger.info("Got SIGINT\n");
+    WorkItem wItem = _polledWorkItem;
+    if (wItem != null) {
+      _logger.outputf("Killing %s\n", wItem.getId());
+      boolean result = _workHelper.killWork(_polledWorkItem.getId());
+      _logger.outputf("Result of killing %s: %s\n", wItem.getId(), result);
+    } else {
+      _logger.output("No work being polled\n");
+    }
   }
 
   private boolean help(List<String> options, List<String> parameters) {
@@ -1598,18 +1600,10 @@ public class Client extends AbstractClient implements IClient {
     _logger.infof("to %s->%s\n", _currDeltaTestrig, _currDeltaEnv);
     _logger.output("\n");
 
-    WorkItem wItemGenDdp =
-        WorkItemBuilder.getWorkItemCompileDeltaEnvironment(
-            _currContainerName, _currDeltaTestrig, _currEnv, _currDeltaEnv);
-    if (!execute(wItemGenDdp, outWriter)) {
-      return false;
-    }
-
-    WorkItem wItemValidateEnvironment =
-        WorkItemBuilder.getWorkItemValidateEnvironment(
+    WorkItem wItemProcessEnv =
+        WorkItemBuilder.getWorkItemProcessEnvironment(
             _currContainerName, _currDeltaTestrig, _currDeltaEnv);
-
-    if (!execute(wItemValidateEnvironment, outWriter)) {
+    if (!execute(wItemProcessEnv, outWriter)) {
       return false;
     }
 
@@ -1746,8 +1740,10 @@ public class Client extends AbstractClient implements IClient {
   }
 
   private boolean initTestrig(
-      @Nullable FileWriter outWriter, List<String> options, List<String> parameters, boolean delta)
-      throws Exception {
+      @Nullable FileWriter outWriter,
+      List<String> options,
+      List<String> parameters,
+      boolean delta) {
     Command command = delta ? Command.INIT_DELTA_TESTRIG : Command.INIT_TESTRIG;
     if (!isValidArgument(options, parameters, 1, 1, 2, command)) {
       return false;
@@ -1788,8 +1784,7 @@ public class Client extends AbstractClient implements IClient {
 
     if (!autoAnalyze) {
       _logger.output("Parsing now.\n");
-      WorkItem wItemParse =
-          WorkItemBuilder.getWorkItemParse(_currContainerName, testrigName, false);
+      WorkItem wItemParse = WorkItemBuilder.getWorkItemParse(_currContainerName, testrigName);
 
       if (!execute(wItemParse, outWriter)) {
         unsetTestrig(delta);
@@ -1813,7 +1808,7 @@ public class Client extends AbstractClient implements IClient {
   private void initTracer() {
     GlobalTracer.register(
         new com.uber.jaeger.Configuration(
-                BfConsts.PROP_CLIENT_SERVICE,
+                _settings.getServiceName(),
                 new SamplerConfiguration(ConstSampler.TYPE, 1),
                 new ReporterConfiguration(
                     false,
@@ -1888,6 +1883,16 @@ public class Client extends AbstractClient implements IClient {
     return true;
   }
 
+  private boolean killWork(List<String> options, List<String> parameters) {
+    if (!isValidArgument(options, parameters, 0, 1, 1, Command.KILL_WORK)) {
+      return false;
+    }
+    UUID workId = UUID.fromString(parameters.get(0));
+    boolean killed = _workHelper.killWork(workId);
+    _logger.outputf("Killed: %s\n", killed);
+    return killed;
+  }
+
   private boolean listAnalyses(
       @Nullable FileWriter outWriter, List<String> options, List<String> parameters) {
     if (!isValidArgument(options, parameters, 0, 0, 0, Command.LIST_ANALYSES)) {
@@ -1957,6 +1962,19 @@ public class Client extends AbstractClient implements IClient {
     return true;
   }
 
+  private boolean listIncompleteWork(List<String> options, List<String> parameters) {
+    if (!isValidArgument(options, parameters, 0, 0, 0, Command.LIST_ENVIRONMENTS)) {
+      return false;
+    }
+    if (!isSetContainer(true)) {
+      return false;
+    }
+    List<WorkStatus> workList = _workHelper.listIncompleteWork(_currContainerName);
+    _logger.outputf("Incomplete works: %s\n", workList);
+
+    return true;
+  }
+
   private boolean listQuestions(List<String> options, List<String> parameters) {
     if (!isValidArgument(options, parameters, 0, 0, 0, Command.LIST_QUESTIONS)) {
       return false;
@@ -1971,15 +1989,36 @@ public class Client extends AbstractClient implements IClient {
 
   private boolean listTestrigs(
       @Nullable FileWriter outWriter, List<String> options, List<String> parameters) {
-    if (!isValidArgument(options, parameters, 0, 0, 0, Command.LIST_TESTRIGS)) {
+    if (!isValidArgument(options, parameters, 1, 0, 0, Command.LIST_TESTRIGS)) {
       return false;
     }
 
-    Map<String, String> testrigs = _workHelper.listTestrigs(_currContainerName);
-    if (testrigs != null) {
-      for (String testrigName : testrigs.keySet()) {
-        logOutput(
-            outWriter, String.format("Testrig: %s\n%s\n", testrigName, testrigs.get(testrigName)));
+    boolean showMetadata = true;
+    if (options.size() == 1) {
+      if (options.get(0).equals("-nometadata")) {
+        showMetadata = false;
+      } else {
+        _logger.errorf("Unknown option: %s\n", options.get(0));
+        printUsage(Command.LIST_TESTRIGS);
+        return false;
+      }
+    }
+
+    JSONArray testrigArray = _workHelper.listTestrigs(_currContainerName);
+    if (testrigArray != null) {
+      for (int index = 0; index < testrigArray.length(); index++) {
+        try {
+          JSONObject jObjTestrig = testrigArray.getJSONObject(index);
+          String name = jObjTestrig.getString(CoordConsts.SVC_KEY_TESTRIG_NAME);
+          String info = jObjTestrig.getString(CoordConsts.SVC_KEY_TESTRIG_INFO);
+          logOutput(outWriter, String.format("Testrig: %s\n%s\n", name, info));
+          if (showMetadata) {
+            String metadata = jObjTestrig.getString(CoordConsts.SVC_KEY_TESTRIG_METADATA);
+            logOutput(outWriter, String.format("TestrigMetadata: %s\n", metadata));
+          }
+        } catch (JSONException e) {
+          throw new BatfishException("Unexpected packaging of testrig data", e);
+        }
       }
     }
     return true;
@@ -2132,8 +2171,7 @@ public class Client extends AbstractClient implements IClient {
           1,
           new SimpleFileVisitor<Path>() {
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               String filename = file.getFileName().toString();
               if (filename.endsWith(".json")) {
                 jsonQuestionFiles.add(file);
@@ -2248,6 +2286,119 @@ public class Client extends AbstractClient implements IClient {
     }
   }
 
+  private boolean pollWork(
+      @Nullable FileWriter outWriter, List<String> options, List<String> parameters) {
+    if (!isValidArgument(options, parameters, 0, 1, 1, Command.POLL_WORK)) {
+      return false;
+    }
+    UUID workId = UUID.fromString(parameters.get(0));
+    return pollWork(workId, outWriter);
+  }
+
+  private boolean pollWork(UUID wItemId, @Nullable FileWriter outWriter) {
+
+    Pair<WorkStatusCode, String> response;
+    try (ActiveSpan workStatusSpan =
+        GlobalTracer.get().buildSpan("Waiting for work status").startActive()) {
+      assert workStatusSpan != null; // avoid unused warning
+      // Poll the work item until it finishes or fails.
+      response = _workHelper.getWorkStatus(wItemId);
+      if (response == null) {
+        return false;
+      }
+
+      WorkStatusCode status = response.getFirst();
+      Backoff backoff = Backoff.builder().withMaximumBackoff(Duration.ofSeconds(1)).build();
+      while (!status.isTerminated() && backoff.hasNext()) {
+        printWorkStatusResponse(response, false);
+        try {
+          Thread.sleep(backoff.nextBackoff().toMillis());
+        } catch (InterruptedException e) {
+          throw new BatfishException("Interrupted while waiting for work item to complete", e);
+        }
+        response = _workHelper.getWorkStatus(wItemId);
+        if (response == null) {
+          return false;
+        }
+        status = response.getFirst();
+      }
+      printWorkStatusResponse(response, false);
+    }
+    return true;
+  }
+
+  private boolean pollWorkAndGetAnswer(WorkItem wItem, @Nullable FileWriter outWriter) {
+
+    boolean pollResult = pollWork(wItem.getId(), outWriter);
+    if (!pollResult) {
+      return false;
+    }
+    // get the answer
+    String ansFileName = wItem.getId() + BfConsts.SUFFIX_ANSWER_JSON_FILE;
+    String downloadedAnsFile =
+        _workHelper.getObject(wItem.getContainerName(), wItem.getTestrigName(), ansFileName);
+    if (downloadedAnsFile == null) {
+      _logger.errorf("Failed to get answer file %s. (Was work killed?)\n", ansFileName);
+    } else {
+      String answerString = CommonUtil.readFile(Paths.get(downloadedAnsFile));
+
+      // Check if we need to make things pretty
+      // Don't if we are writing to FileWriter, because we need valid JSON in
+      // that case
+      String answerStringToPrint = answerString;
+      if (outWriter == null && _settings.getPrettyPrintAnswers()) {
+        ObjectMapper mapper = new BatfishObjectMapper(getCurrentClassLoader());
+        Answer answer;
+        try {
+          answer = mapper.readValue(answerString, Answer.class);
+        } catch (IOException e) {
+          throw new BatfishException(
+              "Response does not appear to be valid JSON representation of "
+                  + Answer.class.getSimpleName(),
+              e);
+        }
+        answerStringToPrint = answer.prettyPrint();
+      }
+
+      logOutput(outWriter, answerStringToPrint);
+
+      // tests serialization/deserialization when running in debug mode
+      if (_logger.getLogLevel() >= BatfishLogger.LEVEL_DEBUG) {
+        try {
+          ObjectMapper mapper = new BatfishObjectMapper(getCurrentClassLoader());
+          Answer answer = mapper.readValue(answerString, Answer.class);
+
+          String newAnswerString = mapper.writeValueAsString(answer);
+          JsonNode tree = mapper.readTree(answerString);
+          JsonNode newTree = mapper.readTree(newAnswerString);
+          if (!CommonUtil.checkJsonEqual(tree, newTree)) {
+            // if (!tree.equals(newTree)) {
+            _logger.errorf(
+                "Original and recovered Json are different. Recovered = %s\n", newAnswerString);
+          }
+        } catch (Exception e) {
+          _logger.outputf("Could NOT deserialize Json to Answer: %s\n", e.getMessage());
+        }
+      }
+    }
+    // get and print the log when in debugging mode
+    if (_logger.getLogLevel() >= BatfishLogger.LEVEL_DEBUG) {
+      _logger.output("---------------- Service Log --------------\n");
+      String logFileName = wItem.getId() + BfConsts.SUFFIX_LOG_FILE;
+      String downloadedFileStr =
+          _workHelper.getObject(wItem.getContainerName(), wItem.getTestrigName(), logFileName);
+
+      if (downloadedFileStr == null) {
+        _logger.errorf("Failed to get log file %s\n", logFileName);
+        return false;
+      } else {
+        Path downloadedFile = Paths.get(downloadedFileStr);
+        CommonUtil.outputFileLines(downloadedFile, _logger::output);
+      }
+    }
+    return true;
+  }
+
   private void printUsage() {
     for (Command cmd : Command.getUsageMap().keySet()) {
       printUsage(cmd);
@@ -2259,11 +2410,12 @@ public class Client extends AbstractClient implements IClient {
     _logger.outputf("%s %s\n\t%s\n\n", command.commandName(), usage.getFirst(), usage.getSecond());
   }
 
-  private void printWorkStatusResponse(Pair<WorkStatusCode, String> response) {
+  private void printWorkStatusResponse(
+      Pair<WorkStatusCode, String> response, boolean unconditionalPrint) {
 
-    if (_logger.getLogLevel() >= BatfishLogger.LEVEL_INFO) {
+    if (unconditionalPrint || _logger.getLogLevel() >= BatfishLogger.LEVEL_INFO) {
       WorkStatusCode status = response.getFirst();
-      _logger.infof("status: %s\n", status);
+      _logger.outputf("status: %s\n", status);
 
       BatfishObjectMapper mapper = new BatfishObjectMapper();
       Task task;
@@ -2275,7 +2427,7 @@ public class Client extends AbstractClient implements IClient {
       }
 
       if (task == null) {
-        _logger.infof(".... no task information\n");
+        _logger.outputf(".... no task information\n");
         return;
       }
 
@@ -2284,17 +2436,14 @@ public class Client extends AbstractClient implements IClient {
       // when log level is INFO, we only print the last batch
       // else print all
       for (int i = 0; i < batches.size(); i++) {
-        if (i == batches.size() - 1
-            || status == WorkStatusCode.TERMINATEDNORMALLY
-            || status == WorkStatusCode.TERMINATEDABNORMALLY) {
-          _logger.infof(".... %s\n", batches.get(i));
+        if (i == batches.size() - 1 || status.isTerminated()) {
+          _logger.outputf(".... %s\n", batches.get(i));
         } else {
           _logger.debugf(".... %s\n", batches.get(i));
         }
       }
-      if (status == WorkStatusCode.TERMINATEDNORMALLY
-          || status == WorkStatusCode.TERMINATEDABNORMALLY) {
-        _logger.infof(".... %s: %s\n", task.getTerminated(), status);
+      if (status.isTerminated()) {
+        _logger.outputf(".... %s: %s\n", task.getTerminated(), status);
       }
     }
   }
@@ -2304,7 +2453,7 @@ public class Client extends AbstractClient implements IClient {
     if (line.length() == 0 || line.startsWith("#")) {
       return true;
     }
-    _logger.debug("Doing command: " + line + "\n");
+    _logger.debugf("Doing command: %s\n", line);
     String[] words = line.split("\\s+");
     if (words.length > 0 && !validCommandUsage(words)) {
       return false;
@@ -2355,6 +2504,8 @@ public class Client extends AbstractClient implements IClient {
         return checkApiKey(options, parameters);
       case CLEAR_SCREEN:
         return clearScreen(options, parameters);
+      case CONFIGURE_TEMPLATE:
+        return configureTemplate(words, outWriter, options, parameters);
       case DEL_ANALYSIS:
         return delAnalysis(outWriter, options, parameters);
       case DEL_ANALYSIS_QUESTIONS:
@@ -2405,6 +2556,8 @@ public class Client extends AbstractClient implements IClient {
         return getQuestion(options, parameters);
       case GET_QUESTION_TEMPLATES:
         return getQuestionTemplates(options, parameters);
+      case GET_WORK_STATUS:
+        return getWorkStatus(outWriter, options, parameters);
       case HELP:
         return help(options, parameters);
       case INIT_ANALYSIS:
@@ -2417,18 +2570,24 @@ public class Client extends AbstractClient implements IClient {
         return initEnvironment(words, outWriter, options, parameters);
       case INIT_TESTRIG:
         return initTestrig(outWriter, options, parameters, false);
+      case KILL_WORK:
+        return killWork(options, parameters);
       case LIST_ANALYSES:
         return listAnalyses(outWriter, options, parameters);
       case LIST_CONTAINERS:
         return listContainers(options, parameters);
       case LIST_ENVIRONMENTS:
         return listEnvironments(options, parameters);
+      case LIST_INCOMPLETE_WORK:
+        return listIncompleteWork(options, parameters);
       case LIST_QUESTIONS:
         return listQuestions(options, parameters);
       case LIST_TESTRIGS:
         return listTestrigs(outWriter, options, parameters);
       case LOAD_QUESTIONS:
         return loadQuestions(outWriter, options, parameters, _bfq);
+      case POLL_WORK:
+        return pollWork(outWriter, options, parameters);
       case PROMPT:
         return prompt(options, parameters);
       case PWD:
@@ -2443,6 +2602,8 @@ public class Client extends AbstractClient implements IClient {
         return runAnalysis(outWriter, options, parameters, false, true);
       case REINIT_TESTRIG:
         return reinitTestrig(outWriter, options, parameters, false);
+      case SET_BACKGROUND_EXECUCTION:
+        return setBackgroundExecution(options, parameters);
       case SET_BATFISH_LOGLEVEL:
         return setBatfishLogLevel(options, parameters);
       case SET_CONTAINER:
@@ -2451,6 +2612,8 @@ public class Client extends AbstractClient implements IClient {
         return setDeltaEnv(options, parameters);
       case SET_ENV:
         return setEnv(options, parameters);
+      case SET_FIXED_WORKITEM_ID:
+        return setFixedWorkItemId(options, parameters);
       case SET_DELTA_TESTRIG:
         return setDeltaTestrig(options, parameters);
       case SET_LOGLEVEL:
@@ -2491,7 +2654,7 @@ public class Client extends AbstractClient implements IClient {
         return exit(options, parameters);
 
       default:
-        _logger.error("Unsupported command " + words[0] + "\n");
+        _logger.errorf("Unsupported command %s\n", words[0]);
         _logger.error("Type 'help' to see the list of valid commands\n");
         return false;
     }
@@ -2523,7 +2686,7 @@ public class Client extends AbstractClient implements IClient {
       return false;
     }
     final String dir = System.getProperty("user.dir");
-    _logger.output("working directory = " + dir + "\n");
+    _logger.outputf("working directory = %s\n", dir);
     return true;
   }
 
@@ -2541,8 +2704,10 @@ public class Client extends AbstractClient implements IClient {
   }
 
   private boolean reinitTestrig(
-      @Nullable FileWriter outWriter, List<String> options, List<String> parameters, boolean delta)
-      throws Exception {
+      @Nullable FileWriter outWriter,
+      List<String> options,
+      List<String> parameters,
+      boolean delta) {
     Command command = delta ? Command.REINIT_DELTA_TESTRIG : Command.REINIT_TESTRIG;
     if (!isValidArgument(options, parameters, 0, 0, 0, command)) {
       return false;
@@ -2556,7 +2721,7 @@ public class Client extends AbstractClient implements IClient {
       testrig = _currDeltaTestrig;
     }
 
-    WorkItem wItemParse = WorkItemBuilder.getWorkItemParse(_currContainerName, testrig, delta);
+    WorkItem wItemParse = WorkItemBuilder.getWorkItemParse(_currContainerName, testrig);
 
     if (!execute(wItemParse, outWriter)) {
       return false;
@@ -2566,11 +2731,11 @@ public class Client extends AbstractClient implements IClient {
   }
 
   public void run(List<String> initialCommands) {
-    loadPlugins();
-    initHelpers();
     if (_settings.getTracingEnable() && !GlobalTracer.isRegistered()) {
       initTracer();
     }
+    loadPlugins();
+    initHelpers();
     _logger.debugf(
         "Will use coordinator at %s://%s\n",
         (_settings.getSslDisable()) ? "http" : "https", _settings.getCoordinatorHost());
@@ -2673,10 +2838,12 @@ public class Client extends AbstractClient implements IClient {
   }
 
   private void runInteractive() {
+    SignalHandler handler = signal -> _logger.debugf("Client: Ignoring signal: %s\n", signal);
+    Signal.handle(new Signal("INT"), handler);
     try {
       while (!_exit) {
         try {
-          String rawLine = _reader.readLine();
+          String rawLine = _reader.readLine("batfish> ");
           if (rawLine == null) {
             break;
           }
@@ -2685,12 +2852,13 @@ public class Client extends AbstractClient implements IClient {
           continue;
         }
       }
+    } catch (EndOfFileException e) {
+      // ignored
     } catch (Throwable t) {
       t.printStackTrace();
     } finally {
-      FileHistory history = (FileHistory) _reader.getHistory();
       try {
-        history.flush();
+        _reader.getHistory().save();
       } catch (IOException e) {
         e.printStackTrace();
       }
@@ -2708,6 +2876,15 @@ public class Client extends AbstractClient implements IClient {
     }
   }
 
+  private boolean setBackgroundExecution(List<String> options, List<String> parameters) {
+    if (!isValidArgument(options, parameters, 0, 1, 1, Command.SET_BACKGROUND_EXECUCTION)) {
+      return false;
+    }
+    _backgroundExecution = Boolean.valueOf(parameters.get(0));
+    _logger.outputf("Changed background execution to %s\n", _backgroundExecution);
+    return true;
+  }
+
   private boolean setBatfishLogLevel(List<String> options, List<String> parameters) {
     if (!isValidArgument(options, parameters, 0, 1, 1, Command.SET_BATFISH_LOGLEVEL)) {
       return false;
@@ -2718,7 +2895,7 @@ public class Client extends AbstractClient implements IClient {
       return false;
     }
     _settings.setBatfishLogLevel(logLevelStr);
-    _logger.output("Changed batfish loglevel to " + logLevelStr + "\n");
+    _logger.outputf("Changed batfish loglevel to %s\n", logLevelStr);
     return true;
   }
 
@@ -2766,6 +2943,16 @@ public class Client extends AbstractClient implements IClient {
     return true;
   }
 
+  private boolean setFixedWorkItemId(List<String> options, List<String> parameters) {
+    if (!isValidArgument(options, parameters, 0, 1, 1, Command.SET_FIXED_WORKITEM_ID)) {
+      return false;
+    }
+    UUID uuid = UUID.fromString(parameters.get(0));
+    WorkItem.setFixedUuid(uuid);
+    _logger.outputf("Fixed WorkItem UUID to %s\n", uuid);
+    return true;
+  }
+
   private boolean setLogLevel(List<String> options, List<String> parameters) {
     if (!isValidArgument(options, parameters, 0, 1, 1, Command.SET_LOGLEVEL)) {
       return false;
@@ -2777,7 +2964,7 @@ public class Client extends AbstractClient implements IClient {
     }
     _logger.setLogLevel(logLevelStr);
     _settings.setLogLevel(logLevelStr);
-    _logger.output("Changed client loglevel to " + logLevelStr + "\n");
+    _logger.outputf("Changed client loglevel to %s\n", logLevelStr);
     return true;
   }
 
@@ -2788,7 +2975,7 @@ public class Client extends AbstractClient implements IClient {
     String ppStr = parameters.get(0).toLowerCase();
     boolean prettyPrint = Boolean.parseBoolean(ppStr);
     _settings.setPrettyPrintAnswers(prettyPrint);
-    _logger.output("Set pretty printing answers to " + ppStr + "\n");
+    _logger.outputf("Set pretty printing answers to %s\n", ppStr);
     return true;
   }
 
@@ -2947,10 +3134,8 @@ public class Client extends AbstractClient implements IClient {
     } catch (JSONException | IOException e) {
       _logger.errorf(
           "Failed to parse parameters. "
-              + "(Are all key-value pairs separated by commas? Are all "
-              + "values strings?)\n"
-              + e
-              + "\n");
+              + "(Are all key-value pairs separated by commas? Are all values strings?)\n%s\n",
+          e);
       return false;
     }
 
@@ -3005,7 +3190,7 @@ public class Client extends AbstractClient implements IClient {
         try {
           Answer testAnswer = mapper.readValue(testOutput, Answer.class);
           testAnswerString = mapper.writeValueAsString(testAnswer);
-        } catch (JsonParseException | UnrecognizedPropertyException e) {
+        } catch (JsonProcessingException e) {
           // not all outputs of process command are of Answer.class type
           // in that case, we use the exact string as initialized above for
           // comparison
@@ -3022,7 +3207,7 @@ public class Client extends AbstractClient implements IClient {
           try {
             referenceAnswer = mapper.readValue(referenceOutput, Answer.class);
             referenceAnswerString = mapper.writeValueAsString(referenceAnswer);
-          } catch (JsonParseException | UnrecognizedPropertyException e) {
+          } catch (JsonProcessingException e) {
             // not all outputs of process command are of Answer.class type
             // in that case, we use the exact string as initialized above
             // for comparison
@@ -3037,7 +3222,8 @@ public class Client extends AbstractClient implements IClient {
           }
         }
       } catch (Exception e) {
-        _logger.error("Exception in comparing test results: " + ExceptionUtils.getStackTrace(e));
+        _logger.errorf(
+            "Exception in comparing test results: %s\n", ExceptionUtils.getStackTrace(e));
       }
     } else if (failingTest) {
       testPassed = !testCommandSucceeded;

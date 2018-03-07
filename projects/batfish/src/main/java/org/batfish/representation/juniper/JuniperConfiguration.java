@@ -1,5 +1,6 @@
 package org.batfish.representation.juniper;
 
+import com.google.common.collect.ImmutableSortedSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -27,6 +28,7 @@ import org.batfish.datamodel.BgpProcess;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.IkeProposal;
+import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.InterfaceType;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpAccessList;
@@ -38,6 +40,7 @@ import org.batfish.datamodel.IsoAddress;
 import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.MultipathEquivalentAsPathMatchMode;
 import org.batfish.datamodel.OriginType;
+import org.batfish.datamodel.OspfArea;
 import org.batfish.datamodel.OspfMetricType;
 import org.batfish.datamodel.OspfProcess;
 import org.batfish.datamodel.Prefix;
@@ -295,6 +298,15 @@ public final class JuniperConfiguration extends VendorConfiguration {
       BgpNeighbor neighbor = new BgpNeighbor(ip, _c);
       neighbor.setVrf(vrfName);
 
+      // route reflection
+      Ip declaredClusterId = ig.getClusterId();
+      if (declaredClusterId != null) {
+        neighbor.setRouteReflectorClient(true);
+        neighbor.setClusterId(declaredClusterId.asLong());
+      } else {
+        neighbor.setClusterId(routerId.asLong());
+      }
+
       // multipath multiple-as
       boolean currentGroupMultipathMultipleAs = ig.getMultipathMultipleAs();
       if (multipathMultipleAsSet && currentGroupMultipathMultipleAs != multipathMultipleAs) {
@@ -484,33 +496,33 @@ public final class JuniperConfiguration extends VendorConfiguration {
       neighbor.setSendCommunity(true);
 
       // inherit update-source
-      Ip localAddress = ig.getLocalAddress();
-      if (localAddress == null) {
+      Ip localIp = ig.getLocalAddress();
+      if (localIp == null) {
         // assign the ip of the interface that is likely connected to this
         // peer
         outerloop:
         for (org.batfish.datamodel.Interface iface : vrf.getInterfaces().values()) {
-          for (Prefix prefix : iface.getAllPrefixes()) {
-            if (prefix.contains(ip)) {
-              localAddress = prefix.getAddress();
+          for (InterfaceAddress address : iface.getAllAddresses()) {
+            if (address.getPrefix().contains(ip)) {
+              localIp = address.getIp();
               break outerloop;
             }
           }
         }
       }
-      if (localAddress == null && _defaultAddressSelection) {
+      if (localIp == null && _defaultAddressSelection) {
         initFirstLoopbackInterface();
         if (_lo0 != null) {
-          Prefix lo0Unit0Prefix = _lo0.getPrimaryPrefix();
-          if (lo0Unit0Prefix != null) {
-            localAddress = lo0Unit0Prefix.getAddress();
+          InterfaceAddress lo0Unit0Address = _lo0.getPrimaryAddress();
+          if (lo0Unit0Address != null) {
+            localIp = lo0Unit0Address.getIp();
           }
         }
       }
-      if (localAddress == null && ip.valid()) {
+      if (localIp == null && ip.valid()) {
         _w.redFlag("Could not determine local ip for bgp peering with neighbor ip: " + ip);
       } else {
-        neighbor.setLocalIp(localAddress);
+        neighbor.setLocalIp(localIp);
       }
       if (neighbor.getGroup() == null || !_unreferencedBgpGroups.containsKey(neighbor.getGroup())) {
         proc.getNeighbors().put(neighbor.getPrefix(), neighbor);
@@ -598,14 +610,8 @@ public final class JuniperConfiguration extends VendorConfiguration {
               }
             });
     // areas
-    Map<Long, org.batfish.datamodel.OspfArea> newAreas = newProc.getAreas();
-    for (Entry<Ip, OspfArea> e : routingInstance.getOspfAreas().entrySet()) {
-      Ip areaIp = e.getKey();
-      long areaLong = areaIp.asLong();
-      // OspfArea area = e.getValue();
-      org.batfish.datamodel.OspfArea newArea = new org.batfish.datamodel.OspfArea(areaLong);
-      newAreas.put(areaLong, newArea);
-    }
+    Map<Long, OspfArea> newAreas = newProc.getAreas();
+    newAreas.putAll(routingInstance.getOspfAreas());
     // place interfaces into areas
     for (Entry<String, Interface> e : routingInstance.getInterfaces().entrySet()) {
       String name = e.getKey();
@@ -795,7 +801,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
           }
         }
       }
-    } else if (_lo0.getPrimaryPrefix() == null) {
+    } else if (_lo0.getPrimaryAddress() == null) {
       Pattern q = Pattern.compile("lo[0-9][0-9]*\\.[0-9][0-9]*");
       for (Interface iface : _defaultRoutingInstance.getInterfaces().values()) {
         for (Interface unit : iface.getUnits().values()) {
@@ -832,27 +838,38 @@ public final class JuniperConfiguration extends VendorConfiguration {
   }
 
   private void placeInterfaceIntoArea(
-      Map<Long, org.batfish.datamodel.OspfArea> newAreas,
-      String name,
-      Interface iface,
-      String vrfName) {
+      Map<Long, OspfArea> newAreas, String name, Interface iface, String vrfName) {
     Vrf vrf = _c.getVrfs().get(vrfName);
     org.batfish.datamodel.Interface newIface = vrf.getInterfaces().get(name);
     Ip ospfArea = iface.getOspfActiveArea();
     boolean setCost = false;
     if (ospfArea != null) {
-      setCost = true;
-      long ospfAreaLong = ospfArea.asLong();
-      org.batfish.datamodel.OspfArea newArea = newAreas.get(ospfAreaLong);
-      newArea.getInterfaces().put(name, newIface);
-      newIface.setOspfArea(newArea);
-      newIface.setOspfEnabled(true);
+      if (newIface.getAddress() == null) {
+        _w.redFlag(
+            String.format(
+                "Cannot assign interface %s to be active in area %s because it has no IP address.",
+                name, ospfArea));
+      } else {
+        setCost = true;
+        long ospfAreaLong = ospfArea.asLong();
+        OspfArea newArea = newAreas.get(ospfAreaLong);
+        newArea.getInterfaces().add(name);
+        newIface.setOspfArea(newArea);
+        newIface.setOspfEnabled(true);
+      }
     }
     for (Ip passiveArea : iface.getOspfPassiveAreas()) {
+      if (newIface.getAddress() == null) {
+        _w.redFlag(
+            String.format(
+                "Cannot assign interface %s to be passive in area %s because it has no IP address.",
+                name, passiveArea));
+        continue;
+      }
       setCost = true;
       long ospfAreaLong = passiveArea.asLong();
-      org.batfish.datamodel.OspfArea newArea = newAreas.get(ospfAreaLong);
-      newArea.getInterfaces().put(name, newIface);
+      OspfArea newArea = newAreas.get(ospfAreaLong);
+      newArea.getInterfaces().add(name);
       newIface.setOspfEnabled(true);
       newIface.setOspfPassive(true);
     }
@@ -940,7 +957,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
     RouteFilterList rfList = new RouteFilterList(rflName);
     rfList.addLine(
         new org.batfish.datamodel.RouteFilterLine(
-            LineAction.ACCEPT, prefix, new SubRange(prefixLength + 1, 32)));
+            LineAction.ACCEPT, prefix, new SubRange(prefixLength + 1, Prefix.MAX_PREFIX_LENGTH)));
     org.batfish.datamodel.GeneratedRoute.Builder newRoute =
         new org.batfish.datamodel.GeneratedRoute.Builder();
     newRoute.setNetwork(prefix);
@@ -1029,7 +1046,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
 
     // address
     newIkeGateway.setAddress(oldIkeGateway.getAddress());
-    newIkeGateway.setLocalAddress(oldIkeGateway.getLocalAddress());
+    newIkeGateway.setLocalIp(oldIkeGateway.getLocalAddress());
 
     // external interface
     Interface oldExternalInterface = oldIkeGateway.getExternalInterface();
@@ -1106,6 +1123,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
   private org.batfish.datamodel.Interface toInterface(Interface iface) {
     String name = iface.getName();
     org.batfish.datamodel.Interface newIface = new org.batfish.datamodel.Interface(name, _c);
+    newIface.setDeclaredNames(ImmutableSortedSet.of(name));
     Integer mtu = iface.getMtu();
     if (mtu != null) {
       newIface.setMtu(mtu);
@@ -1191,23 +1209,23 @@ public final class JuniperConfiguration extends VendorConfiguration {
       }
     }
 
-    // Prefix primaryPrefix = iface.getPrimaryPrefix();
-    // Set<Prefix> allPrefixes = iface.getAllPrefixes();
+    // Prefix primaryPrefix = iface.getPrimaryAddress();
+    // Set<Prefix> allPrefixes = iface.getAllAddresses();
     // if (primaryPrefix != null) {
-    // newIface.setPrefix(primaryPrefix);
+    // newIface.setAddress(primaryPrefix);
     // }
     // else {
     // if (!allPrefixes.isEmpty()) {
     // Prefix firstOfAllPrefixes = allPrefixes.toArray(new Prefix[] {})[0];
-    // newIface.setPrefix(firstOfAllPrefixes);
+    // newIface.setAddress(firstOfAllPrefixes);
     // }
     // }
-    // newIface.getAllPrefixes().addAll(allPrefixes);
+    // newIface.getAllAddresses().addAll(allPrefixes);
 
-    if (iface.getPrimaryPrefix() != null) {
-      newIface.setPrefix(iface.getPrimaryPrefix());
+    if (iface.getPrimaryAddress() != null) {
+      newIface.setAddress(iface.getPrimaryAddress());
     }
-    newIface.getAllPrefixes().addAll(iface.getAllPrefixes());
+    newIface.setAllAddresses(iface.getAllAddresses());
     newIface.setActive(iface.getActive());
     newIface.setAccessVlan(iface.getAccessVlan());
     newIface.setNativeVlan(iface.getNativeVlan());
@@ -1420,7 +1438,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
     // if (from instanceof FwFromDestinationAddress) {
     // FwFromDestinationAddress fromDestinationAddress =
     // (FwFromDestinationAddress) from;
-    // Prefix destinationPrefix = fromDestinationAddress.getPrefix();
+    // Prefix destinationPrefix = fromDestinationAddress.getIp();
     // destinationPrefixes.add(destinationPrefix);
     // }
     // if (from instanceof FwFromDestinationPort) {
@@ -1432,7 +1450,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
     // }
     // else if (from instanceof FwFromSourceAddress) {
     // FwFromSourceAddress fromSourceAddress = (FwFromSourceAddress) from;
-    // Prefix sourcePrefix = fromSourceAddress.getPrefix();
+    // Prefix sourcePrefix = fromSourceAddress.getIp();
     // sourcePrefixes.add(sourcePrefix);
     // }
     // if (from instanceof FwFromSourcePort) {
@@ -1481,7 +1499,7 @@ public final class JuniperConfiguration extends VendorConfiguration {
     // if (!nextPrefixes.isEmpty()) {
     // List<Ip> nextHopIps = new ArrayList<>();
     // for (Prefix nextPrefix : nextPrefixes) {
-    // nextHopIps.add(nextPrefix.getAddress());
+    // nextHopIps.add(nextPrefix.getIp());
     // int prefixLength = nextPrefix.getPrefixLength();
     // if (prefixLength != 32) {
     // _w.redFlag(
@@ -1619,8 +1637,8 @@ public final class JuniperConfiguration extends VendorConfiguration {
     _c = new Configuration(hostname, _vendor);
     _c.setAuthenticationKeyChains(convertAuthenticationKeyChains(_authenticationKeyChains));
     _c.setRoles(_roles);
-    _c.setDomainName(_defaultRoutingInstance.getDomainName());
     _c.setDnsServers(_dnsServers);
+    _c.setDomainName(_defaultRoutingInstance.getDomainName());
     _c.setLoggingServers(_syslogHosts);
     _c.setNtpServers(_ntpServers);
     _c.setTacacsServers(_tacplusServers);
@@ -1769,10 +1787,10 @@ public final class JuniperConfiguration extends VendorConfiguration {
       if (loopback0 != null) {
         Interface loopback0unit0 = loopback0.getUnits().get(FIRST_LOOPBACK_INTERFACE_NAME + ".0");
         if (loopback0unit0 != null) {
-          Prefix prefix = loopback0unit0.getPrimaryPrefix();
-          if (prefix != null) {
+          InterfaceAddress address = loopback0unit0.getPrimaryAddress();
+          if (address != null) {
             // now we should set router-id
-            Ip routerId = prefix.getAddress();
+            Ip routerId = address.getIp();
             _defaultRoutingInstance.setRouterId(routerId);
           }
         }

@@ -8,7 +8,8 @@
     "class" : "org.batfish.question.OutliersQuestionPlugin$OutliersQuestion",
     "differential" : false,
     "hypothesis" : "sameServers",
-    "nodeRegex" : ".*"
+    "nodeRegex" : ".*",
+    "verbose" : false
   },
   "status" : "SUCCESS",
   "summary" : {

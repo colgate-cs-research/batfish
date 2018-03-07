@@ -2,20 +2,18 @@ package org.batfish.question;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
 import org.batfish.common.Answerer;
-import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
-import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.NodeRoleSpecifier;
 import org.batfish.datamodel.answers.AnswerElement;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 import org.batfish.role.InferRoles;
 
@@ -34,7 +32,7 @@ public class InferRolesQuestionPlugin extends QuestionPlugin {
 
     private NodeRoleSpecifier _roleSpecifier;
 
-    private List<String> _allNodes;
+    private Set<String> _allNodes;
 
     private int _allNodesCount;
 
@@ -79,7 +77,7 @@ public class InferRolesQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_ALL_NODES)
-    public void setAllNodes(List<String> allNodes) {
+    public void setAllNodes(Set<String> allNodes) {
       _allNodes = allNodes;
     }
 
@@ -91,32 +89,6 @@ public class InferRolesQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_MATCHING_NODES_COUNT)
     public void setMatchingNodesCount(int matchingNodesCount) {
       _matchingNodesCount = matchingNodesCount;
-    }
-  }
-
-  // Node names are parsed into a sequence of alphanumeric strings and
-  // delimiters (strings of non-alphanumeric characters).
-  public enum InferRolesCharClass {
-    ALPHANUMERIC,
-    DELIMITER;
-
-    public static InferRolesCharClass charToCharClass(char c) {
-      if (Character.isAlphabetic(c) || Character.isDigit(c)) {
-        return InferRolesCharClass.ALPHANUMERIC;
-      } else {
-        return InferRolesCharClass.DELIMITER;
-      }
-    }
-
-    public String tokenToRegex(String s) {
-      switch (this) {
-        case ALPHANUMERIC:
-          return "\\p{Alnum}+";
-        case DELIMITER:
-          return Pattern.quote(s);
-        default:
-          throw new BatfishException("this case should be unreachable");
-      }
     }
   }
 
@@ -134,8 +106,7 @@ public class InferRolesQuestionPlugin extends QuestionPlugin {
 
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
       // collect relevant nodes in a list.
-      List<String> nodes =
-          CommonUtil.getMatchingStrings(question.getNodeRegex(), configurations.keySet());
+      Set<String> nodes = question.getNodeRegex().getMatchingNodes(configurations);
 
       int allNodesCount = nodes.size();
 
@@ -171,10 +142,10 @@ public class InferRolesQuestionPlugin extends QuestionPlugin {
 
     private static final String PROP_NODE_REGEX = "nodeRegex";
 
-    private String _nodeRegex;
+    private NodesSpecifier _nodeRegex;
 
     public InferRolesQuestion() {
-      _nodeRegex = ".*";
+      _nodeRegex = NodesSpecifier.ALL;
     }
 
     @Override
@@ -188,12 +159,12 @@ public class InferRolesQuestionPlugin extends QuestionPlugin {
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public String getNodeRegex() {
+    public NodesSpecifier getNodeRegex() {
       return _nodeRegex;
     }
 
     @JsonProperty(PROP_NODE_REGEX)
-    public void setNodeRegex(String regex) {
+    public void setNodeRegex(NodesSpecifier regex) {
       _nodeRegex = regex;
     }
   }
