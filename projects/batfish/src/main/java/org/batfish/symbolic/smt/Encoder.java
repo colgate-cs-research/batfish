@@ -87,7 +87,7 @@ public class Encoder {
    * @param graph The network graph
    */
   Encoder(Settings settings, Graph graph, HeaderQuestion q) {
-    this(settings, null, graph, q, null, null, null, 0, -1);
+    this(settings, null, graph, q, null, null, null, 0);
   }
 
   /**
@@ -105,8 +105,7 @@ public class Encoder {
         e.getCtx(),
         e.getSolver(),
         e.getAllVariables(),
-        e.getId() + 1,
-        -1);
+        e.getId() + 1);
   }
 
   /**
@@ -117,13 +116,9 @@ public class Encoder {
    * @param q A header question
    */
   Encoder(Encoder e, Graph g, HeaderQuestion q) {
-    this(e._settings, e, g, q, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1, -1);
+    this(e._settings, e, g, q, e.getCtx(), e.getSolver(), e.getAllVariables(), e.getId() + 1);
   }
 
-  Encoder(Graph graph, HeaderQuestion q, int numIters){
-    this(null, graph, q, null, null, null, 0,numIters);
-    System.out.println("WOOHOO!! " + numIters);
-  }
   /**
    * Create an encoder object while possibly reusing the partial encoding of another encoder. mkIf
    * the context and solver are null, then a new encoder is created. Otherwise the old encoder is
@@ -137,8 +132,7 @@ public class Encoder {
       @Nullable Context ctx,
       @Nullable Solver solver,
       @Nullable Map<String, Expr> vars,
-      int id,
-      int numIters) {
+      int id) {
     _settings = settings;
     _graph = graph;
     _previousEncoder = enc;
@@ -147,7 +141,7 @@ public class Encoder {
     _question = q;
     _slices = new HashMap<>();
     _sliceReachability = new HashMap<>();
-    _numIters = numIters;
+    _numIters = _settings.getNumIters();
 
     HashMap<String, String> cfg = new HashMap<>();
 

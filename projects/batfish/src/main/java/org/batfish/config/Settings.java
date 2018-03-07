@@ -515,10 +515,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
 
-  private TestrigSettings _activeTestrigSettings;
-
-  private String _analysisName;
-
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -987,7 +983,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
   }
 
   public Integer getNumIters(){
-    return _numIters;
+    return _config.getInt(ARG_NUM_ITERS_FAULTLOC);
   }
 
   private void initConfigDefaults() {
