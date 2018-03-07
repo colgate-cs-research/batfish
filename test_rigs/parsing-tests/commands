@@ -4,6 +4,7 @@ add-batfish-option ppt
 add-batfish-option verboseparse
 add-batfish-option haltonconverterror
 add-batfish-option haltonparseerror
+add-batfish-option disableunrecognized
 
 #dc-as-reuse
 test test_rigs/parsing-tests/dc-as-reuse.ref init-testrig test_rigs/dc-as-reuse
@@ -39,3 +40,4 @@ test test_rigs/parsing-tests/srx-testbed.ref init-testrig test_rigs/srx-testbed
 #unit-tests
 test test_rigs/parsing-tests/unit-tests.ref init-testrig test_rigs/unit-tests
 test test_rigs/parsing-tests/unit-tests-undefined.ref get undefinedreferences
+test test_rigs/parsing-tests/unit-tests-unused.ref get unusedstructures

@@ -1,5 +1,7 @@
 package org.batfish.coordinator;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
@@ -27,7 +29,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.commons.io.FileExistsException;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.Container;
@@ -35,6 +37,7 @@ import org.batfish.common.CoordConsts;
 import org.batfish.common.Version;
 import org.batfish.common.WorkItem;
 import org.batfish.common.util.BatfishObjectMapper;
+import org.batfish.coordinator.AnalysisMetadataMgr.AnalysisType;
 import org.batfish.coordinator.WorkDetails.WorkType;
 import org.batfish.coordinator.WorkQueueMgr.QueueType;
 import org.batfish.coordinator.config.Settings;
@@ -73,7 +76,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_API_KEY) String apiKey,
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion) {
     try {
-      _logger.info("WMS:checkApiKey " + apiKey + "\n");
+      _logger.infof("WMS:checkApiKey %s\n", apiKey);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -82,11 +85,11 @@ public class WorkMgrService {
       boolean valid = Main.getAuthorizer().isValidWorkApiKey(apiKey);
       return successResponse(new JSONObject().put(CoordConsts.SVC_KEY_API_KEY, valid));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:checkApiKey exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:checkApiKey exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:checkApiKey exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:checkApiKey exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -189,11 +192,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "successfully configured analysis"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:configureAnalysis exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:configureAnalysis exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:configureAnalysis exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:configureAnalysis exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -239,11 +242,11 @@ public class WorkMgrService {
           new JSONObject()
               .put(CoordConsts.SVC_KEY_QUESTION, mapper.writeValueAsString(outputQuestion)));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:getWorkStatus exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:getWorkStatus exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getWorkStatus exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getWorkStatus exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -267,7 +270,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
       @FormDataParam(CoordConsts.SVC_KEY_ANALYSIS_NAME) String analysisName) {
     try {
-      _logger.info("WMS:delAnalysis " + apiKey + " " + containerName + " " + analysisName + "\n");
+      _logger.infof("WMS:delAnalysis %s %s %s", apiKey, containerName, analysisName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -283,11 +286,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "successfully configured analysis"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:delAnalysis exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:delAnalysis exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:delAnalysis exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:delAnalysis exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -308,7 +311,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName) {
     try {
-      _logger.info("WMS:delContainer " + containerName + "\n");
+      _logger.infof("WMS:delContainer %s\n", containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -323,11 +326,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", status));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:delContainer exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:delContainer exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:delContainer exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:delContainer exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -352,7 +355,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_ENV_NAME) String envName,
       @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName) {
     try {
-      _logger.info("WMS:delEnvironment " + containerName + "\n");
+      _logger.infof("WMS:delEnvironment %s\n", containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -369,11 +372,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "true"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:delEnvironment exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:delEnvironment exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:delEnvironment exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:delEnvironment exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -396,7 +399,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
       @FormDataParam(CoordConsts.SVC_KEY_QUESTION_NAME) String questionName) {
     try {
-      _logger.info("WMS:delQuestion " + containerName + "\n");
+      _logger.infof("WMS:delQuestion %s\n", containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -412,11 +415,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "true"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:delQuestion exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:delQuestion exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:delQuestion exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:delQuestion exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -439,7 +442,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
       @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName) {
     try {
-      _logger.info("WMS:delTestrig " + containerName + "\n");
+      _logger.infof("WMS:delTestrig %s\n", containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -455,11 +458,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "true"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:delTestrig exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:delTestrig exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:delTestrig exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:delTestrig exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -534,11 +537,11 @@ public class WorkMgrService {
 
       return successResponse(response.put(CoordConsts.SVC_KEY_ANSWERS, answersStr));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:getAnalysisAnswers exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:getAnalysisAnswers exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getAnalsysisAnswers exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getAnalsysisAnswers exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -610,11 +613,11 @@ public class WorkMgrService {
 
       return successResponse(new JSONObject().put(CoordConsts.SVC_KEY_ANSWER, answer));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:getAnswer exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:getAnswer exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getAnswer exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getAnswer exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -642,7 +645,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName,
       @FormDataParam(CoordConsts.SVC_KEY_CONFIGURATION_NAME) String configName) {
     try {
-      _logger.info("WMS:getConfiguration " + containerName + "\n");
+      _logger.infof("WMS:getConfiguration %s\n", containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -677,8 +680,8 @@ public class WorkMgrService {
           .type(MediaType.TEXT_PLAIN)
           .build();
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getConfiguration exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getConfiguration exception: %s", stackTrace);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(e.getCause())
           .type(MediaType.TEXT_PLAIN)
@@ -704,7 +707,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName) {
     try {
-      _logger.info("WMS:getContainer " + containerName + "\n");
+      _logger.infof("WMS:getContainer %s\n", containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -740,8 +743,8 @@ public class WorkMgrService {
           .type(MediaType.TEXT_PLAIN)
           .build();
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getContainer exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getContainer exception: %s", stackTrace);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(e.getCause())
           .type(MediaType.TEXT_PLAIN)
@@ -761,8 +764,8 @@ public class WorkMgrService {
 
       return successResponse(map);
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getInfo exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getInfo exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -787,7 +790,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName,
       @FormDataParam(CoordConsts.SVC_KEY_OBJECT_NAME) String objectName) {
     try {
-      _logger.info("WMS:getObject " + testrigName + " --> " + objectName + "\n");
+      _logger.infof("WMS:getObject %s --> %s\n", testrigName, objectName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -820,8 +823,8 @@ public class WorkMgrService {
           .type(MediaType.TEXT_PLAIN)
           .build();
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getObject exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getObject exception: %s", stackTrace);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(e.getCause())
           .type(MediaType.TEXT_PLAIN)
@@ -830,11 +833,38 @@ public class WorkMgrService {
   }
 
   @POST
+  @Path(CoordConsts.SVC_RSC_GET_PARSING_RESULTS)
+  @Produces(MediaType.APPLICATION_JSON)
+  public JSONArray getParsingResults(
+      @FormDataParam(CoordConsts.SVC_KEY_API_KEY) String apiKey,
+      @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
+      @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
+      @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName) {
+    try {
+      _logger.infof("WMS:getParsingResults %s %s %s\n", apiKey, containerName, testrigName);
+      checkStringParam(apiKey, "API key");
+      checkStringParam(clientVersion, "Client version");
+      checkStringParam(containerName, "Container name");
+      checkStringParam(testrigName, "Testrig name");
+
+      checkApiKeyValidity(apiKey);
+      checkClientVersion(clientVersion);
+      checkContainerAccessibility(apiKey, containerName);
+
+      return successResponse(Main.getWorkMgr().getParsingResults(containerName, testrigName));
+    } catch (Exception e) {
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getParsingResults exception: %s", stackTrace);
+      return failureResponse(e.getMessage());
+    }
+  }
+
+  @POST
   @Path(CoordConsts.SVC_RSC_GET_QUESTION_TEMPLATES)
   @Produces(MediaType.APPLICATION_JSON)
   public JSONArray getQuestionTemplates(@FormDataParam(CoordConsts.SVC_KEY_API_KEY) String apiKey) {
     try {
-      _logger.info("WMS:getQuestionTemplates " + apiKey + "\n");
+      _logger.infof("WMS:getQuestionTemplates %s\n", apiKey);
 
       checkStringParam(apiKey, "API key");
 
@@ -849,8 +879,8 @@ public class WorkMgrService {
             new JSONObject().put(CoordConsts.SVC_KEY_QUESTION_LIST, questionTemplates));
       }
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getQuestionTemplates exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getQuestionTemplates exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -865,8 +895,8 @@ public class WorkMgrService {
       retObject.put("service-version", Version.getVersion());
       return successResponse(retObject);
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getStatus exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getStatus exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -887,7 +917,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_WORKID) String workId) {
     try {
-      _logger.info("WMS:getWorkStatus " + workId + "\n");
+      _logger.infof("WMS:getWorkStatus %s\n", workId);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -913,11 +943,11 @@ public class WorkMgrService {
               .put(CoordConsts.SVC_KEY_WORKSTATUS, work.getStatus().toString())
               .put(CoordConsts.SVC_KEY_TASKSTATUS, taskStr));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:getWorkStatus exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:getWorkStatus exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:getWorkStatus exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:getWorkStatus exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -960,11 +990,11 @@ public class WorkMgrService {
       return successResponse(
           new JSONObject().put(CoordConsts.SVC_KEY_CONTAINER_NAME, outputContainerName));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:initContainer exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:initContainer exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:initContainer exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:initContainer exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -985,7 +1015,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_WORKID) String workId) {
     try {
-      _logger.info("WMS:killWork " + workId + "\n");
+      _logger.infof("WMS:killWork %s\n", workId);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1006,11 +1036,11 @@ public class WorkMgrService {
 
       return successResponse(new JSONObject().put(CoordConsts.SVC_KEY_RESULT, killed));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:killWork exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:killWork exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:killWork exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:killWork exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1021,8 +1051,8 @@ public class WorkMgrService {
    * @param apiKey The API key of the client
    * @param clientVersion The version of the client
    * @param containerName The name of the container whose analyses are to be listed
-   * @param suggested Optional Boolean indicating which analyses to list: true = only suggested
-   *     analyses, false = only user's analyses, null = all analyses
+   * @param analysisType Optional enum {@link AnalysisType} indicating which analyses to list,
+   *     keeping null equivalent to {@link AnalysisType#ALL} for backward compatibility
    * @return TODO: document JSON response
    */
   @POST
@@ -1032,9 +1062,9 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_API_KEY) String apiKey,
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
-      @Nullable @FormDataParam(CoordConsts.SVC_KEY_SUGGESTED) Boolean suggested) {
+      @Nullable @FormDataParam(CoordConsts.SVC_KEY_ANALYSIS_TYPE) AnalysisType analysisType) {
     try {
-      _logger.info("WMS:listAnalyses " + apiKey + " " + containerName + "\n");
+      _logger.infof("WMS:listAnalyses %s %s\n", apiKey, containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1046,7 +1076,8 @@ public class WorkMgrService {
 
       JSONObject retObject = new JSONObject();
 
-      for (String analysisName : Main.getWorkMgr().listAnalyses(containerName, suggested)) {
+      analysisType = firstNonNull(analysisType, AnalysisType.USER);
+      for (String analysisName : Main.getWorkMgr().listAnalyses(containerName, analysisType)) {
 
         JSONObject analysisJson = new JSONObject();
 
@@ -1063,11 +1094,11 @@ public class WorkMgrService {
 
       return successResponse(new JSONObject().put(CoordConsts.SVC_KEY_ANALYSIS_LIST, retObject));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:listAnalyses exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:listAnalyses exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:listAnalyses exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:listAnalyses exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1086,7 +1117,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_API_KEY) String apiKey,
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion) {
     try {
-      _logger.info("WMS:listContainers " + apiKey + "\n");
+      _logger.infof("WMS:listContainers %s\n", apiKey);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1103,11 +1134,11 @@ public class WorkMgrService {
       return successResponse(
           new JSONObject().put(CoordConsts.SVC_KEY_CONTAINER_LIST, new JSONArray(containerList)));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:listContainers exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:listContainers exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:listContainers exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:listContainers exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1130,7 +1161,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
       @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName) {
     try {
-      _logger.info("WMS:listEnvironments " + apiKey + " " + containerName + "\n");
+      _logger.infof("WMS:listEnvironments %s %s\n", apiKey, containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1148,11 +1179,11 @@ public class WorkMgrService {
           new JSONObject()
               .put(CoordConsts.SVC_KEY_ENVIRONMENT_LIST, new JSONArray(environmentList)));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:listEnvironments exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:listEnvironments exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:listEnvironments exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:listEnvironments exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1177,7 +1208,7 @@ public class WorkMgrService {
       @Nullable @FormDataParam(CoordConsts.SVC_KEY_TESTRIG_NAME) String testrigName, /* optional */
       @Nullable @FormDataParam(CoordConsts.SVC_KEY_WORK_TYPE) WorkType workType /* optional */) {
     try {
-      _logger.info("WMS:listIncompleteWork " + apiKey + " " + containerName + "\n");
+      _logger.infof("WMS:listIncompleteWork %s %s\n", apiKey, containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1202,11 +1233,11 @@ public class WorkMgrService {
       return successResponse(
           new JSONObject().put(CoordConsts.SVC_KEY_WORK_LIST, mapper.writeValueAsString(workList)));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:listIncompleteWork exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:listIncompleteWork exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:listIncompleteWork exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:listIncompleteWork exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1217,6 +1248,7 @@ public class WorkMgrService {
    * @param apiKey The API key of the client
    * @param clientVersion The version of the client
    * @param containerName The name of the container in which the testrig and questions reside
+   * @param verbose The flag to show all questions, including internal ones
    * @return TODO: document JSON response
    */
   @POST
@@ -1225,9 +1257,10 @@ public class WorkMgrService {
   public JSONArray listQuestions(
       @FormDataParam(CoordConsts.SVC_KEY_API_KEY) String apiKey,
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
-      @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName) {
+      @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName,
+      @FormDataParam(CoordConsts.SVC_KEY_VERBOSE) boolean verbose) {
     try {
-      _logger.info("WMS:listQuestions " + apiKey + " " + containerName + "\n");
+      _logger.infof("WMS:listQuestions %s %s\n", apiKey, containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1239,7 +1272,7 @@ public class WorkMgrService {
 
       JSONObject retObject = new JSONObject();
 
-      for (String questionName : Main.getWorkMgr().listQuestions(containerName)) {
+      for (String questionName : Main.getWorkMgr().listQuestions(containerName, verbose)) {
         String questionText = Main.getWorkMgr().getQuestion(containerName, questionName);
 
         retObject.put(questionName, new JSONObject(questionText));
@@ -1247,11 +1280,11 @@ public class WorkMgrService {
 
       return successResponse(new JSONObject().put(CoordConsts.SVC_KEY_QUESTION_LIST, retObject));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:listQuestions exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:listQuestions exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:listQuestions exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:listQuestions exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1272,7 +1305,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_CONTAINER_NAME) String containerName) {
     try {
-      _logger.info("WMS:listTestrigs " + apiKey + " " + containerName + "\n");
+      _logger.infof("WMS:listTestrigs %s %s\n", apiKey, containerName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1306,11 +1339,11 @@ public class WorkMgrService {
         | FileNotFoundException
         | IllegalArgumentException
         | AccessControlException e) {
-      _logger.error("WMS:listTestrigs exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:listTestrigs exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:listTestrigs exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:listTestrigs exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1356,11 +1389,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "successfully uploaded custom object"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:putObject exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:putObject exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:putObject exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:putObject exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1381,7 +1414,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_VERSION) String clientVersion,
       @FormDataParam(CoordConsts.SVC_KEY_WORKITEM) String workItemStr) {
     try {
-      _logger.info("WMS:queueWork " + apiKey + " " + workItemStr + "\n");
+      _logger.infof("WMS:queueWork %s %s\n", apiKey, workItemStr);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1404,11 +1437,11 @@ public class WorkMgrService {
 
       return successResponse(new JSONObject().put("result", result));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:queueWork exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:queueWork exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:queueWork exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:queueWork exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1449,11 +1482,11 @@ public class WorkMgrService {
 
       return successResponse(new JSONObject().put("numCommits", numCommits));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:syncTestrigsSyncNow exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:syncTestrigsSyncNow exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:syncTestrigsSyncNow exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:syncTestrigsSyncNow exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1504,11 +1537,11 @@ public class WorkMgrService {
         | FileNotFoundException
         | IllegalArgumentException
         | AccessControlException e) {
-      _logger.error("WMS:syncTestrigsUpdateSettings exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:syncTestrigsUpdateSettings exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:syncTestrigsUpdateSettings exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:syncTestrigsUpdateSettings exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1530,8 +1563,8 @@ public class WorkMgrService {
       // .allow("OPTIONS")
       // .build();
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:test exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:test exception: %s", stackTrace);
       // return Response.serverError().build();
       return "got error";
     }
@@ -1582,11 +1615,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "successfully uploaded environment"));
 
     } catch (BatfishException e) {
-      _logger.error("WMS:uploadEnvironment exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:uploadEnvironment exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:uploadEnvironment exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:uploadEnvironment exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1633,11 +1666,11 @@ public class WorkMgrService {
       return successResponse(new JSONObject().put("result", "successfully uploaded question"));
 
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:uploadQuestion exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:uploadQuestion exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:uploadQuestion exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:uploadQuestion exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }
@@ -1664,7 +1697,7 @@ public class WorkMgrService {
       @FormDataParam(CoordConsts.SVC_KEY_ZIPFILE) InputStream fileStream,
       @FormDataParam(CoordConsts.SVC_KEY_AUTO_ANALYZE_TESTRIG) String autoAnalyzeStr) {
     try {
-      _logger.info("WMS:uploadTestrig " + apiKey + " " + containerName + " " + testrigName + "\n");
+      _logger.infof("WMS:uploadTestrig %s %s %s\n", apiKey, containerName, testrigName);
 
       checkStringParam(apiKey, "API key");
       checkStringParam(clientVersion, "Client version");
@@ -1686,11 +1719,11 @@ public class WorkMgrService {
           testrigName, containerName, apiKey);
       return successResponse(new JSONObject().put("result", "successfully uploaded testrig"));
     } catch (IllegalArgumentException | AccessControlException e) {
-      _logger.error("WMS:uploadTestrig exception: " + e.getMessage() + "\n");
+      _logger.errorf("WMS:uploadTestrig exception: %s\n", e.getMessage());
       return failureResponse(e.getMessage());
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getFullStackTrace(e);
-      _logger.error("WMS:uploadTestrig exception: " + stackTrace);
+      String stackTrace = ExceptionUtils.getStackTrace(e);
+      _logger.errorf("WMS:uploadTestrig exception: %s", stackTrace);
       return failureResponse(e.getMessage());
     }
   }

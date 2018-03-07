@@ -347,6 +347,9 @@
                   "18.18.18.18",
                   "23.23.23.23"
                 ],
+                "roleDimensions" : {
+                  "0" : "as"
+                },
                 "roles" : [
                   "border"
                 ],
@@ -1028,6 +1031,9 @@
                         "execTimeoutSeconds" : 0
                       }
                     },
+                    "logging" : {
+                      "on" : true
+                    },
                     "ntp" : {
                       "servers" : {
                         "18.18.18.18" : {
@@ -1195,6 +1201,7 @@
                         }
                       },
                       "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                      "processId" : "1",
                       "referenceBandwidth" : 1.0E8,
                       "routerId" : "2.1.1.1"
                     }

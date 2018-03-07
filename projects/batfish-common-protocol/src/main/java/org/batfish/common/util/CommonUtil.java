@@ -1,11 +1,13 @@
 package org.batfish.common.util;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
 import com.google.common.hash.Hashing;
+import com.google.errorprone.annotations.MustBeClosed;
 import io.opentracing.contrib.jaxrs2.client.ClientTracingFeature;
 import io.opentracing.util.GlobalTracer;
 import java.io.BufferedReader;
@@ -63,7 +65,7 @@ import javax.ws.rs.client.ClientBuilder;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BfConsts;
 import org.batfish.common.Pair;
@@ -205,40 +207,52 @@ public class CommonUtil {
 
   public static Map<Ip, Set<String>> computeIpOwners(
       Map<String, Configuration> configurations, boolean excludeInactive) {
+    return computeIpOwners(
+        excludeInactive,
+        configurations
+            .entrySet()
+            .stream()
+            .collect(
+                ImmutableMap.toImmutableMap(Entry::getKey, e -> e.getValue().getInterfaces())));
+  }
+
+  public static Map<Ip, Set<String>> computeIpOwners(
+      boolean excludeInactive, Map<String, Map<String, Interface>> enabledInterfaces) {
     // TODO: confirm VRFs are handled correctly
     Map<Ip, Set<String>> ipOwners = new HashMap<>();
     Map<Pair<InterfaceAddress, Integer>, Set<Interface>> vrrpGroups = new HashMap<>();
-    configurations.forEach(
-        (hostname, c) -> {
-          for (Interface i : c.getInterfaces().values()) {
-            if (i.getActive() || (!excludeInactive && i.getBlacklisted())) {
-              // collect vrrp info
-              i.getVrrpGroups()
-                  .forEach(
-                      (groupNum, vrrpGroup) -> {
-                        InterfaceAddress address = vrrpGroup.getVirtualAddress();
-                        if (address == null) {
-                          // This Vlan Interface has invalid configuration. The VRRP has no source
-                          // IP address that would be used for VRRP election. This interface could
-                          // never win the election, so is not a candidate.
-                          return;
-                        }
-                        Pair<InterfaceAddress, Integer> key = new Pair<>(address, groupNum);
-                        Set<Interface> candidates =
-                            vrrpGroups.computeIfAbsent(
-                                key, k -> Collections.newSetFromMap(new IdentityHashMap<>()));
-                        candidates.add(i);
-                      });
-              // collect prefixes
-              i.getAllAddresses()
-                  .stream()
-                  .map(InterfaceAddress::getIp)
-                  .forEach(
-                      ip -> {
-                        Set<String> owners = ipOwners.computeIfAbsent(ip, k -> new HashSet<>());
-                        owners.add(hostname);
-                      });
+    enabledInterfaces.forEach(
+        (hostname, currentEnabledInterfaces) -> {
+          for (Interface i : currentEnabledInterfaces.values()) {
+            if (!i.getActive() && (excludeInactive || !i.getBlacklisted())) {
+              continue;
             }
+            // collect vrrp info
+            i.getVrrpGroups()
+                .forEach(
+                    (groupNum, vrrpGroup) -> {
+                      InterfaceAddress address = vrrpGroup.getVirtualAddress();
+                      if (address == null) {
+                        // This Vlan Interface has invalid configuration. The VRRP has no source
+                        // IP address that would be used for VRRP election. This interface could
+                        // never win the election, so is not a candidate.
+                        return;
+                      }
+                      Pair<InterfaceAddress, Integer> key = new Pair<>(address, groupNum);
+                      Set<Interface> candidates =
+                          vrrpGroups.computeIfAbsent(
+                              key, k -> Collections.newSetFromMap(new IdentityHashMap<>()));
+                      candidates.add(i);
+                    });
+            // collect prefixes
+            i.getAllAddresses()
+                .stream()
+                .map(InterfaceAddress::getIp)
+                .forEach(
+                    ip -> {
+                      Set<String> owners = ipOwners.computeIfAbsent(ip, k -> new HashSet<>());
+                      owners.add(hostname);
+                    });
           }
         });
     vrrpGroups.forEach(
@@ -712,9 +726,11 @@ public class CommonUtil {
           for (Entry<Long, OspfArea> e3 : proc.getAreas().entrySet()) {
             long areaNum = e3.getKey();
             OspfArea area = e3.getValue();
-            for (Entry<String, Interface> e4 : area.getInterfaces().entrySet()) {
-              String ifaceName = e4.getKey();
-              Interface iface = e4.getValue();
+            for (String ifaceName : area.getInterfaces()) {
+              Interface iface = c.getInterfaces().get(ifaceName);
+              if (iface.getOspfPassive()) {
+                continue;
+              }
               SortedSet<Edge> ifaceEdges =
                   topology.getInterfaceEdges().get(new NodeInterfacePair(hostname, ifaceName));
               boolean hasNeighbor = false;
@@ -726,6 +742,9 @@ public class CommonUtil {
                     String remoteIfaceName = edge.getInt2();
                     Configuration remoteNode = configurations.get(remoteHostname);
                     Interface remoteIface = remoteNode.getInterfaces().get(remoteIfaceName);
+                    if (remoteIface.getOspfPassive()) {
+                      continue;
+                    }
                     Vrf remoteVrf = remoteIface.getVrf();
                     String remoteVrfName = remoteVrf.getName();
                     OspfProcess remoteProc = remoteVrf.getOspfProcess();
@@ -735,7 +754,7 @@ public class CommonUtil {
                       }
                       OspfArea remoteArea = remoteProc.getAreas().get(areaNum);
                       if (remoteArea != null
-                          && remoteArea.getInterfaceNames().contains(remoteIfaceName)) {
+                          && remoteArea.getInterfaces().contains(remoteIfaceName)) {
                         Ip remoteIp = remoteIface.getAddress().getIp();
                         Pair<Ip, Ip> localKey = new Pair<>(localIp, remoteIp);
                         OspfNeighbor neighbor = proc.getOspfNeighbors().get(localKey);
@@ -856,7 +875,7 @@ public class CommonUtil {
   }
 
   public static boolean isLoopback(String interfaceName) {
-    return interfaceName.startsWith("Loopback") || interfaceName.startsWith("lo");
+    return interfaceName.toLowerCase().startsWith("lo");
   }
 
   public static boolean isNullInterface(String ifaceName) {
@@ -868,6 +887,7 @@ public class CommonUtil {
     return collection == null || collection.isEmpty();
   }
 
+  @MustBeClosed
   public static Stream<Path> list(Path configsPath) {
     try {
       return Files.list(configsPath);
@@ -880,12 +900,6 @@ public class CommonUtil {
     Long upper = l >> 16;
     Long lower = l & 0xFFFF;
     return upper + ":" + lower;
-  }
-
-  /** Returns a hex {@link String} representation of the MD5 hash digest of the input string. */
-  @SuppressWarnings("deprecation") // md5 is deprecated, but used deliberately.
-  public static String md5Digest(String saltedSecret) {
-    return Hashing.md5().hashString(saltedSecret, StandardCharsets.UTF_8).toString();
   }
 
   public static void moveByCopy(Path srcPath, Path dstPath) {

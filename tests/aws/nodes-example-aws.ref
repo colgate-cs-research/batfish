@@ -9,6 +9,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "es-domain-subnet-1641fa70" : {
               "name" : "es-domain-subnet-1641fa70",
@@ -91,6 +92,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "es"
+          },
           "roles" : [
             "es-domain"
           ],
@@ -134,6 +138,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "vpc-f8fad69d" : {
               "name" : "vpc-f8fad69d",
@@ -162,6 +167,9 @@
               "type" : "VPN",
               "vrf" : "default"
             }
+          },
+          "roleDimensions" : {
+            "0" : "igw"
           },
           "roles" : [
             "igw-068fee63"
@@ -196,6 +204,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "vpc-b390fad5" : {
               "name" : "vpc-b390fad5",
@@ -224,6 +233,9 @@
               "type" : "VPN",
               "vrf" : "default"
             }
+          },
+          "roleDimensions" : {
+            "0" : "igw"
           },
           "roles" : [
             "igw-9b93ddfc"
@@ -258,6 +270,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "vpc-925131f4" : {
               "name" : "vpc-925131f4",
@@ -286,6 +299,9 @@
               "type" : "VPN",
               "vrf" : "default"
             }
+          },
+          "roleDimensions" : {
+            "0" : "igw"
           },
           "roles" : [
             "igw-fac5839d"
@@ -1418,6 +1434,9 @@
                   ]
                 }
               },
+              "logging" : {
+                "on" : true
+              },
               "services" : {
                 "timestamps" : {
                   "enabled" : true,
@@ -1682,6 +1701,7 @@
                   }
                 },
                 "exportPolicy" : "~OSPF_EXPORT_POLICY:default~",
+                "processId" : "1",
                 "referenceBandwidth" : 1.0E8,
                 "routerId" : "10.10.255.8"
               },
@@ -1720,6 +1740,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-073b8061" : {
               "name" : "subnet-073b8061",
@@ -1810,6 +1831,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-073b8061"
           ],
@@ -1846,6 +1870,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-1641fa70" : {
               "name" : "subnet-1641fa70",
@@ -1936,6 +1961,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-1641fa70"
           ],
@@ -1972,6 +2000,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-1f315846" : {
               "name" : "subnet-1f315846",
@@ -2071,6 +2100,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-1f315846"
           ],
@@ -2107,6 +2139,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-30398256" : {
               "name" : "subnet-30398256",
@@ -2197,6 +2230,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-30398256"
           ],
@@ -2233,6 +2269,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-62f14104" : {
               "name" : "subnet-62f14104",
@@ -2323,6 +2360,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-62f14104"
           ],
@@ -2359,6 +2399,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-7044ff16" : {
               "name" : "subnet-7044ff16",
@@ -2449,6 +2490,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-7044ff16"
           ],
@@ -2485,6 +2529,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-8d0cbdeb" : {
               "name" : "subnet-8d0cbdeb",
@@ -2575,6 +2620,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-8d0cbdeb"
           ],
@@ -2611,6 +2659,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-9c8adceb" : {
               "name" : "subnet-9c8adceb",
@@ -2710,6 +2759,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-9c8adceb"
           ],
@@ -2746,6 +2798,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-d9cafabc" : {
               "name" : "subnet-d9cafabc",
@@ -2845,6 +2898,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-d9cafabc"
           ],
@@ -2881,6 +2937,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "subnet-f73a8191" : {
               "name" : "subnet-f73a8191",
@@ -2971,6 +3028,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "subnet"
+          },
           "roles" : [
             "subnet-f73a8191"
           ],
@@ -3007,6 +3067,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "test-rds-subnet-1641fa70" : {
               "name" : "test-rds-subnet-1641fa70",
@@ -3062,6 +3123,9 @@
               ]
             }
           },
+          "roleDimensions" : {
+            "0" : "test"
+          },
           "roles" : [
             "test-rds"
           ],
@@ -3096,6 +3160,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
+          "domainName" : "aws",
           "ikeGateways" : {
             "vpn-ba2e34a8-1" : {
               "name" : "vpn-ba2e34a8-1",
@@ -3330,6 +3395,9 @@
               "ikeGateway" : "vpn-ba2e34a8-2",
               "ipsecPolicy" : "vpn-ba2e34a8-2"
             }
+          },
+          "roleDimensions" : {
+            "0" : "vgw"
           },
           "roles" : [
             "vgw-81fd279f"
@@ -3590,6 +3658,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "ROUTER",
+          "domainName" : "aws",
           "interfaces" : {
             "vgw-81fd279f" : {
               "name" : "vgw-81fd279f",
@@ -3618,6 +3687,9 @@
               "type" : "VPN",
               "vrf" : "default"
             }
+          },
+          "roleDimensions" : {
+            "0" : "vpc"
           },
           "roles" : [
             "vpc-815775e7"
@@ -3699,6 +3771,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "igw-fac5839d" : {
               "name" : "igw-fac5839d",
@@ -3782,6 +3855,9 @@
               "vrf" : "default"
             }
           },
+          "roleDimensions" : {
+            "0" : "vpc"
+          },
           "roles" : [
             "vpc-925131f4"
           ],
@@ -3834,6 +3910,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "igw-9b93ddfc" : {
               "name" : "igw-9b93ddfc",
@@ -3998,6 +4075,9 @@
               "vrf" : "default"
             }
           },
+          "roleDimensions" : {
+            "0" : "vpc"
+          },
           "roles" : [
             "vpc-b390fad5"
           ],
@@ -4077,6 +4157,7 @@
           "defaultCrossZoneAction" : "ACCEPT",
           "defaultInboundAction" : "ACCEPT",
           "deviceType" : "SWITCH",
+          "domainName" : "aws",
           "interfaces" : {
             "igw-068fee63" : {
               "name" : "igw-068fee63",
@@ -4186,6 +4267,9 @@
               "type" : "PHYSICAL",
               "vrf" : "default"
             }
+          },
+          "roleDimensions" : {
+            "0" : "vpc"
           },
           "roles" : [
             "vpc-f8fad69d"

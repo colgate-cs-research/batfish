@@ -1,6 +1,5 @@
 package org.batfish.symbolic.bdd;
 
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -12,6 +11,7 @@ import net.sf.javabdd.BDDFactory;
 import net.sf.javabdd.BDDPairing;
 import net.sf.javabdd.JFactory;
 import org.batfish.common.BatfishException;
+import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.Prefix;
 
 /**
@@ -86,8 +86,6 @@ public class BDDPacket {
     int numVars = factory.varNum();
     int numNeeded = 32 * 2 + 16 * 2 + 8 * 3 + 8;
     if (numVars < numNeeded) {
-      System.out.println("Num current: " + numVars);
-      System.out.println("Num needed: " + numNeeded);
       factory.setVarNum(numNeeded);
     }
 
@@ -397,13 +395,13 @@ public class BDDPacket {
 
   public BDD restrict(BDD bdd, Prefix pfx) {
     int len = pfx.getPrefixLength();
-    BitSet bits = pfx.getStartIp().getAddressBits();
+    long bits = pfx.getStartIp().asLong();
     int[] vars = new int[len];
     BDD[] vals = new BDD[len];
     pairing.reset();
     for (int i = 0; i < len; i++) {
       int var = _dstIp.getBitvec()[i].var(); // dstIpIndex + i;
-      BDD subst = bits.get(i) ? factory.one() : factory.zero();
+      BDD subst = Ip.getBitAtPosition(bits, i) ? factory.one() : factory.zero();
       vars[i] = var;
       vals[i] = subst;
     }

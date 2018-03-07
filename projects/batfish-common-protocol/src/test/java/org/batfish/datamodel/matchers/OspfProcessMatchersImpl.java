@@ -12,9 +12,23 @@ import org.hamcrest.Matcher;
 
 final class OspfProcessMatchersImpl {
 
+  static final class HasArea extends FeatureMatcher<OspfProcess, OspfArea> {
+    private final long _id;
+
+    HasArea(long id, @Nonnull Matcher<? super OspfArea> subMatcher) {
+      super(subMatcher, "An OSPF process with area " + id + ":", "area " + id);
+      _id = id;
+    }
+
+    @Override
+    protected OspfArea featureValueOf(OspfProcess actual) {
+      return actual.getAreas().get(_id);
+    }
+  }
+
   static final class HasAreas extends FeatureMatcher<OspfProcess, Map<Long, OspfArea>> {
     HasAreas(@Nonnull Matcher<? super Map<Long, OspfArea>> subMatcher) {
-      super(subMatcher, "areas", "areas");
+      super(subMatcher, "An OSPF process with areas:", "areas");
     }
 
     @Override
@@ -26,7 +40,7 @@ final class OspfProcessMatchersImpl {
   static final class HasOspfNeighbors
       extends FeatureMatcher<OspfProcess, Map<Pair<Ip, Ip>, OspfNeighbor>> {
     HasOspfNeighbors(@Nonnull Matcher<? super Map<Pair<Ip, Ip>, OspfNeighbor>> subMatcher) {
-      super(subMatcher, "OspfProcess with ospfNeighbors", "ospfNeighbors");
+      super(subMatcher, "An OSPF process with ospfNeighbors:", "ospfNeighbors");
     }
 
     @Override

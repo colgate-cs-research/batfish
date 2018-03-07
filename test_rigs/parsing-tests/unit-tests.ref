@@ -1945,6 +1945,12 @@
             "        HELPER_ADDRESS:'helper-address'  <== mode:DEFAULT_MODE",
             "        IP_ADDRESS:'5.5.5.5'  <== mode:DEFAULT_MODE",
             "        NEWLINE:'\\n'  <== mode:DEFAULT_MODE)",
+            "      (if_ip_vrf_forwarding",
+            "        VRF:'vrf'  <== mode:DEFAULT_MODE",
+            "        FORWARDING:'forwarding'  <== mode:DEFAULT_MODE",
+            "        (variable",
+            "          MGMT:'mgmt'  <== mode:DEFAULT_MODE)",
+            "        NEWLINE:'\\n'  <== mode:DEFAULT_MODE)",
             "      (if_vrrp",
             "        VRRP:'vrrp'  <== mode:DEFAULT_MODE",
             "        DEC:'1'  <== mode:DEFAULT_MODE",
@@ -12178,6 +12184,37 @@
             "  (stanza",
             "    (s_aaa",
             "      AAA:'aaa'  <== mode:DEFAULT_MODE",
+            "      (aaa_accounting",
+            "        ACCOUNTING:'accounting'  <== mode:DEFAULT_MODE",
+            "        (aaa_accounting_update",
+            "          UPDATE:'update'  <== mode:DEFAULT_MODE",
+            "          NEWINFO:'newinfo'  <== mode:DEFAULT_MODE",
+            "          DEC:'30'  <== mode:DEFAULT_MODE",
+            "          NEWLINE:'\\n'  <== mode:DEFAULT_MODE))))",
+            "  (stanza",
+            "    (s_aaa",
+            "      AAA:'aaa'  <== mode:DEFAULT_MODE",
+            "      (aaa_accounting",
+            "        ACCOUNTING:'accounting'  <== mode:DEFAULT_MODE",
+            "        (aaa_accounting_update",
+            "          UPDATE:'update'  <== mode:DEFAULT_MODE",
+            "          PERIODIC:'periodic'  <== mode:DEFAULT_MODE",
+            "          DEC:'30'  <== mode:DEFAULT_MODE",
+            "          NEWLINE:'\\n'  <== mode:DEFAULT_MODE))))",
+            "  (stanza",
+            "    (s_aaa",
+            "      AAA:'aaa'  <== mode:DEFAULT_MODE",
+            "      (aaa_accounting",
+            "        ACCOUNTING:'accounting'  <== mode:DEFAULT_MODE",
+            "        (aaa_accounting_update",
+            "          UPDATE:'update'  <== mode:DEFAULT_MODE",
+            "          NEWINFO:'newinfo'  <== mode:DEFAULT_MODE",
+            "          PERIODIC:'periodic'  <== mode:DEFAULT_MODE",
+            "          DEC:'30'  <== mode:DEFAULT_MODE",
+            "          NEWLINE:'\\n'  <== mode:DEFAULT_MODE))))",
+            "  (stanza",
+            "    (s_aaa",
+            "      AAA:'aaa'  <== mode:DEFAULT_MODE",
             "      (aaa_authentication",
             "        AUTHENTICATION:'authentication'  <== mode:DEFAULT_MODE",
             "        (aaa_authentication_banner",
@@ -13308,7 +13345,34 @@
             "          (bgp_tail",
             "            (null_bgp_tail",
             "              DISABLE_CONNECTED_CHECK:'disable-connected-check'  <== mode:DEFAULT_MODE",
-            "              NEWLINE:'\\n'  <== mode:DEFAULT_MODE))))))",
+            "              NEWLINE:'\\n'  <== mode:DEFAULT_MODE))))",
+            "      (router_bgp_stanza_tail",
+            "        (address_family_rb_stanza",
+            "          (address_family_header",
+            "            ADDRESS_FAMILY:'address-family'  <== mode:DEFAULT_MODE",
+            "            (bgp_address_family",
+            "              IPV6:'ipv6'  <== mode:DEFAULT_MODE",
+            "              UNICAST:'unicast'  <== mode:DEFAULT_MODE)",
+            "            NEWLINE:'\\n'  <== mode:DEFAULT_MODE)",
+            "          (bgp_tail",
+            "            (redistribute_ospfv3_bgp_tail",
+            "              REDISTRIBUTE:'redistribute'  <== mode:DEFAULT_MODE",
+            "              OSPFV3:'ospfv3'  <== mode:DEFAULT_MODE",
+            "              DEC:'1'  <== mode:DEFAULT_MODE",
+            "              ROUTE_MAP:'route-map'  <== mode:DEFAULT_MODE",
+            "              (variable",
+            "                VARIABLE:'ospfv3_map'  <== mode:M_RouteMap)",
+            "              NEWLINE:'\\n'  <== mode:DEFAULT_MODE))",
+            "          (address_family_footer)))))",
+            "  (stanza",
+            "    (route_map_stanza",
+            "      ROUTE_MAP:'route-map'  <== mode:DEFAULT_MODE",
+            "      (variable",
+            "        VARIABLE:'ospfv3_map'  <== mode:M_RouteMap)",
+            "      (access_list_action",
+            "        PERMIT:'permit'  <== mode:DEFAULT_MODE)",
+            "      DEC:'10'  <== mode:DEFAULT_MODE",
+            "      NEWLINE:'\\n'  <== mode:DEFAULT_MODE))",
             "  EOF:<EOF>  <== mode:DEFAULT_MODE)"
           ]
         },
@@ -32058,6 +32122,13 @@
             "          NEWLINE:'\\n'  <== mode:DEFAULT_MODE))",
             "      (if_vrrp",
             "        VRRP:'vrrp'  <== mode:DEFAULT_MODE",
+            "        DEC:'1234'  <== mode:DEFAULT_MODE",
+            "        (ifvrrp_ipv6",
+            "          IPV6:'ipv6'  <== mode:DEFAULT_MODE",
+            "          IPV6_ADDRESS:'::1'  <== mode:DEFAULT_MODE",
+            "          NEWLINE:'\\n'  <== mode:DEFAULT_MODE))",
+            "      (if_vrrp",
+            "        VRRP:'vrrp'  <== mode:DEFAULT_MODE",
             "        DEC:'123'  <== mode:DEFAULT_MODE",
             "        (ifvrrp_preempt",
             "          PREEMPT:'preempt'  <== mode:DEFAULT_MODE",
@@ -48029,7 +48100,7 @@
           ]
         }
       },
-      "version" : "0.34.0",
+      "version" : "0.35.0",
       "warnings" : {
         "bgp_address_family" : {
           "Red flags" : {
@@ -48534,12 +48605,12 @@
           "interface" : {
             "GigabitEthernet0/0/0/19" : {
               "router vrrp interface" : [
-                15
+                16
               ]
             },
             "ManagementEthernet0/RSP1/CPU0/0" : {
               "router vrrp interface" : [
-                27
+                28
               ]
             }
           }
@@ -49493,7 +49564,7 @@
           }
         }
       },
-      "version" : "0.34.0",
+      "version" : "0.35.0",
       "warnings" : {
         "address_family" : {
           "Red flags" : {
@@ -49531,6 +49602,13 @@
             "1" : "MISCELLANEOUS: Could not determine update source for BGP neighbor: '1.2.1.2'",
             "2" : "MISCELLANEOUS: Could not determine update source for BGP neighbor: '1.2.1.3'",
             "3" : "MISCELLANEOUS: Could not determine update source for BGP neighbor: '1.2.1.1'"
+          }
+        },
+        "juniper-ospf" : {
+          "Red flags" : {
+            "1" : "MISCELLANEOUS: Cannot assign interface xe-0/0/1.0 to be active in area 0.1.2.3 because it has no IP address.",
+            "2" : "MISCELLANEOUS: Cannot assign interface xe-0/0/20.0 to be active in area 0.1.2.3 because it has no IP address.",
+            "3" : "MISCELLANEOUS: Cannot assign interface xe-0/0/21.0 to be passive in area 0.1.2.3 because it has no IP address."
           }
         },
         "juniper-tcpflags" : {

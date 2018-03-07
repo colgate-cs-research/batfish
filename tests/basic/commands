@@ -12,19 +12,17 @@ test tests/basic/genDp-delta.ref generate-delta-dataplane
 test tests/basic/topology.ref get-object testrig_pojo_topology
 test tests/basic/aclReachability.ref get aclReachability
 test tests/basic/assert.ref get assert assertions=[{"assertion":"(eq 15 (pathsize '$.nodes[*]'))"},{"assertion":"(eq 0 (pathsize '$.nodes[\"as1border\"]'))"},{"assertion":"(not (eq 0 (pathsize '$.nodes[\"as1border1\"]')))"}, {"assertion":"(eq (pathsize '$.nodes[*].aaaSettings.newModel') (pathsize '$.nodes[*].aaaSettings[?(@.newModel == true)]'))"}]
-test tests/basic/bgpSessionCheck.ref get bgpSessionCheck
+test tests/basic/bgpSessionStatus.ref get bgpsessionstatus type="ebgp.*", status="missing.*"
 test tests/basic/compareSameName.ref get compareSameName
 test tests/basic/error.ref -error get error
-test tests/basic/ipsecVpnCheck.ref get ipsecVpnCheck
 test tests/basic/isisLoopbacks.ref get isisLoopbacks
 test tests/basic/neighbors.ref get neighbors neighborTypes=["ebgp","ibgp","ospf","lan"]
 test tests/basic/roleNeighbors.ref get neighbors neighborTypes=["ebgp","ibgp","ospf","lan"], style="role"
 test tests/basic/nodes-summary.ref get nodes summary=true
 test tests/basic/nodes.ref get nodes summary=false
 test tests/basic/nodes-diff.ref get nodes summary=false, differential=true
-test tests/basic/ospfLoopbacks.ref get ospfLoopbacks
 test tests/basic/ospfSessionCheck.ref get ospfsessioncheck
-test tests/basic/pairwiseVpnConnectivity.ref get pairwiseVpnConnectivity
+test tests/basic/ospfStatus.ref get ospfstatus interfacesSpecifier="Loopback.*", status=".*passive"
 test tests/basic/roles.ref get roles
 test tests/basic/roles2.ref get roles inferred=true
 test tests/basic/routes.ref get routes
@@ -35,6 +33,7 @@ test tests/basic/traceroute-2-1.ref get traceroute ingressNode="host2", dst="1.0
 test tests/basic/multipath-host1.ref get reachability type="multipath", ingressNodeRegex="host1", srcIps=["2.128.0.0"], dstIps=["3.0.1.2"], ipProtocols=["TCP"], srcPorts=[0], dstPorts=[0]
 test tests/basic/multipath-host2.ref get reachability type="multipath", ingressNodeRegex="host2", srcIps=["2.128.0.0"], dstIps=["1.0.1.1"], ipProtocols=["UDP"], srcPorts=[0], dstPorts=[0]
 test tests/basic/undefinedReferences.ref get undefinedReferences
+test tests/basic/bgpAsnUse.ref get bgpasnuse minCount=2
 test tests/basic/uniqueIpAssignments.ref get uniqueIpAssignments
 test tests/basic/unusedStructures.ref get unusedStructures
 test tests/basic/bgpadvertisements.ref get bgpadvertisements nodeRegex = "as2border2"
@@ -77,7 +76,8 @@ test tests/basic/nodes-unit-tests.ref get nodes summary=false
 # iptables
 test tests/basic/example-iptables-init.ref init-testrig test_rigs/example-iptables
 test tests/basic/example-iptables-reachability.ref get reachability ingressNodeRegex="z1-.*", dstIps=["10.0.4.20","10.0.4.21"], srcIps=["10.0.3.0/24"], actions=["DROP"]
-test tests/basic/example-iptables-transit.ref get reachability notIngressNodeRegex="z1-.*", dstIps=["10.0.3.0/24"], notDstIps=["10.0.3.1"], notTransitNodes=["z1-firewall"], actions=["ACCEPT"]
+# TODO fix notTransitNodes #993
+# test tests/basic/example-iptables-transit.ref get reachability notIngressNodeRegex="z1-.*", dstIps=["10.0.3.0/24"], notDstIps=["10.0.3.1"], notTransitNodes=["z1-firewall"], actions=["ACCEPT"]
 test tests/basic/example-iptables-protection.ref get reachability notIngressNodeRegex="z1-.*", dstIps=["10.0.3.20","10.0.3.21"], notSrcIps=["10.0.3.0/24", "10.0.4.0/24"], notIpProtocols=["OSPF"], actions=["ACCEPT"]
 
 # z3 timeout - 1 millisecond

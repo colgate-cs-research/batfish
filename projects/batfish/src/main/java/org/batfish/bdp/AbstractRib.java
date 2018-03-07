@@ -1,9 +1,9 @@
 package org.batfish.bdp;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -15,8 +15,10 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import javax.annotation.Nullable;
 import org.batfish.datamodel.AbstractRoute;
-import org.batfish.datamodel.IRib;
+import org.batfish.datamodel.GenericRib;
 import org.batfish.datamodel.Ip;
+import org.batfish.datamodel.IpSpace;
+import org.batfish.datamodel.IpWildcard;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.collections.MultiSet;
 import org.batfish.datamodel.collections.TreeMultiSet;
@@ -29,7 +31,15 @@ import org.batfish.datamodel.collections.TreeMultiSet;
  * @param <R> Type of route that this RIB will be storing. Required for properly comparing route
  *     preferences.
  */
-public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
+public abstract class AbstractRib<R extends AbstractRoute> implements GenericRib<R> {
+
+  public final Map<Prefix, IpSpace> getMatchingIps() {
+    return _tree.getMatchingIps();
+  }
+
+  public final IpSpace getRoutableIps() {
+    return _tree.getRoutableIps();
+  }
 
   /**
    * Used to store the routes, supports longest prefix match operation.
@@ -42,21 +52,33 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
 
     private static final long serialVersionUID = 1L;
 
-    private RibTreeNode _root;
+    RibTreeNode _root;
 
     RibTree() {
       _root = new RibTreeNode(Prefix.ZERO);
     }
 
+    public Map<Prefix, IpSpace> getMatchingIps() {
+      ImmutableMap.Builder<Prefix, IpSpace> builder = ImmutableMap.builder();
+      _root.addMatchingIps(builder);
+      return builder.build();
+    }
+
+    IpSpace getRoutableIps() {
+      IpSpace.Builder builder = IpSpace.builder();
+      _root.addRoutableIps(builder);
+      return builder.build();
+    }
+
     boolean containsRoute(R route) {
       Prefix prefix = route.getNetwork();
       int prefixLength = prefix.getPrefixLength();
-      BitSet bits = prefix.getStartIp().getAddressBits();
+      long bits = prefix.getStartIp().asLong();
       return _root.containsRoute(route, bits, prefixLength, 0);
     }
 
     Set<R> getLongestPrefixMatch(Ip address) {
-      BitSet addressBits = address.getAddressBits();
+      long addressBits = address.asLong();
       return _root.getLongestPrefixMatch(address, addressBits, 0);
     }
 
@@ -69,7 +91,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
     boolean mergeRoute(R route) {
       Prefix prefix = route.getNetwork();
       int prefixLength = prefix.getPrefixLength();
-      BitSet bits = prefix.getStartIp().getAddressBits();
+      long bits = prefix.getStartIp().asLong();
       return _root.mergeRoute(route, bits, prefixLength, 0);
     }
 
@@ -87,17 +109,63 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
 
     private static final long serialVersionUID = 1L;
 
-    private RibTreeNode _left;
+    RibTreeNode _left;
 
-    private Prefix _prefix;
+    Prefix _prefix;
 
-    private RibTreeNode _right;
+    RibTreeNode _right;
 
-    private Set<R> _routes;
+    Set<R> _routes;
 
     RibTreeNode(Prefix prefix) {
       _routes = Collections.emptySet();
       _prefix = prefix;
+    }
+
+    public void addMatchingIps(ImmutableMap.Builder<Prefix, IpSpace> builder) {
+      if (_left != null) {
+        _left.addMatchingIps(builder);
+      }
+      if (_right != null) {
+        _right.addMatchingIps(builder);
+      }
+      if (!_routes.isEmpty()) {
+        IpSpace.Builder matchingIps = IpSpace.builder();
+        if (_left != null) {
+          _left.excludeRoutableIps(matchingIps);
+        }
+        if (_right != null) {
+          _right.excludeRoutableIps(matchingIps);
+        }
+        matchingIps.including(new IpWildcard(_prefix));
+        builder.put(_prefix, matchingIps.build());
+      }
+    }
+
+    public void addRoutableIps(IpSpace.Builder builder) {
+      if (!_routes.isEmpty()) {
+        builder.including(new IpWildcard(_prefix));
+      } else {
+        if (_left != null) {
+          _left.addRoutableIps(builder);
+        }
+        if (_right != null) {
+          _right.addRoutableIps(builder);
+        }
+      }
+    }
+
+    public void excludeRoutableIps(IpSpace.Builder builder) {
+      if (!_routes.isEmpty()) {
+        builder.excluding(new IpWildcard(_prefix));
+      } else {
+        if (_left != null) {
+          _left.excludeRoutableIps(builder);
+        }
+        if (_right != null) {
+          _right.excludeRoutableIps(builder);
+        }
+      }
     }
 
     void collectRoutes(Set<R> routes) {
@@ -114,17 +182,17 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
      * Check if the route exists in our subtree
      *
      * @param route route in question
-     * @param bits route's IP address represented as a BitSet
+     * @param bits route's IP address represented as a long
      * @param prefixLength route's prefix length
      * @param firstUnmatchedBitIndex how far into the address have we matched
      * @return true if the route is in the subtree
      */
-    boolean containsRoute(R route, BitSet bits, int prefixLength, int firstUnmatchedBitIndex) {
+    boolean containsRoute(R route, long bits, int prefixLength, int firstUnmatchedBitIndex) {
       // If prefix lengths match, this is the node where such route would be stored.
       if (prefixLength == _prefix.getPrefixLength()) {
         return _routes.contains(route);
       }
-      boolean currentBit = bits.get(firstUnmatchedBitIndex);
+      boolean currentBit = Ip.getBitAtPosition(bits, firstUnmatchedBitIndex);
 
       /*
        * If prefixes don't match exactly, look at the current bit. That determines whether we look
@@ -167,7 +235,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
      *     (tail-recursion way of keeping track how deep we are).
      * @return a set of routes
      */
-    Set<R> getLongestPrefixMatch(Ip address, BitSet bits, int index) {
+    Set<R> getLongestPrefixMatch(Ip address, long bits, int index) {
       // Get the list of routes stored in our node that contain the IP address
       Set<R> longestPrefixMatches = getLongestPrefixMatch(address);
       // If we reached the max prefix length (e.g., 32 for for IPv4) then return routes
@@ -177,7 +245,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
       }
 
       // Examine the bit at the given index
-      boolean currentBit = bits.get(index);
+      boolean currentBit = Ip.getBitAtPosition(bits, index);
       RibTreeNode child;
 
       // the current bit is 1, go right recursively
@@ -215,7 +283,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
      *
      * @param parent node that we are trying to merge a route into
      * @param route the route to merge
-     * @param routeBits the bitSet representation of the route's IP address
+     * @param routeBits the long representation of the route's IP address
      * @param prefixLength the route's prefix length
      * @param firstUnmatchedBitIndex the index of the first bit in the route's prefix that we
      *     haven't checked yet
@@ -225,7 +293,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
     boolean mergeHelper(
         RibTreeNode parent,
         R route,
-        BitSet routeBits,
+        long routeBits,
         int prefixLength,
         int firstUnmatchedBitIndex,
         boolean rightBranch) {
@@ -252,7 +320,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
       Prefix nodePrefix = node._prefix;
       int nodePrefixLength = nodePrefix.getPrefixLength();
       Ip nodeAddress = nodePrefix.getStartIp();
-      BitSet nodeAddressBits = nodeAddress.getAddressBits();
+      long nodeAddressBits = nodeAddress.asLong();
       int nextUnmatchedBit;
       // Set up two "pointers" as we scan through the route's and the node's prefixes
       boolean currentAddressBit = false;
@@ -268,8 +336,8 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
       for (nextUnmatchedBit = firstUnmatchedBitIndex + 1;
           nextUnmatchedBit < nodePrefixLength && nextUnmatchedBit < prefixLength;
           nextUnmatchedBit++) {
-        currentAddressBit = routeBits.get(nextUnmatchedBit);
-        currentNodeAddressBit = nodeAddressBits.get(nextUnmatchedBit);
+        currentAddressBit = Ip.getBitAtPosition(routeBits, nextUnmatchedBit);
+        currentNodeAddressBit = Ip.getBitAtPosition(nodeAddressBits, nextUnmatchedBit);
         if (currentNodeAddressBit != currentAddressBit) {
           break;
         }
@@ -289,7 +357,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
        * the newly created node.
        */
       if (nextUnmatchedBit == prefixLength) {
-        currentNodeAddressBit = nodeAddressBits.get(nextUnmatchedBit);
+        currentNodeAddressBit = Ip.getBitAtPosition(nodeAddressBits, nextUnmatchedBit);
         RibTreeNode oldNode = node;
         node = new RibTreeNode(route.getNetwork());
         node._routes = Collections.singleton(route);
@@ -320,8 +388,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
       return true;
     }
 
-    boolean mergeRoute(
-        R route, BitSet routeBits, int routePrefixLength, int firstUnmatchedBitIndex) {
+    boolean mergeRoute(R route, long routeBits, int routePrefixLength, int firstUnmatchedBitIndex) {
       /*
        * We have reached the node where a route should be inserted, because:
        * 1) the prefix length of this node matches the prefix length of the route exactly, and
@@ -367,7 +434,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
        * The prefix match is not exact, do some extra insertion logic.
        * Current bit determines which side of the tree to go down (1 = right, 0 = left)
        */
-      boolean currentBit = routeBits.get(firstUnmatchedBitIndex);
+      boolean currentBit = Ip.getBitAtPosition(routeBits, firstUnmatchedBitIndex);
       return mergeHelper(
           this, route, routeBits, routePrefixLength, firstUnmatchedBitIndex, currentBit);
     }
@@ -392,7 +459,7 @@ public abstract class AbstractRib<R extends AbstractRoute> implements IRib<R> {
 
   protected VirtualRouter _owner;
 
-  private RibTree _tree;
+  RibTree _tree;
 
   private Set<R> _allRoutes;
 

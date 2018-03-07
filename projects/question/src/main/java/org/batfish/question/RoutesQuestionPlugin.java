@@ -281,11 +281,12 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
             SortedSet<AbstractRoute> routes = e2.getValue();
             for (AbstractRoute route : routes) {
               String diffSymbol = null;
-              if (_added.contains(route)) {
-                diffSymbol = addedSymbol;
-              } else if (_removed.contains(route)) {
-                diffSymbol = removedSymbol;
-              }
+              // TODO(https://github.com/batfish/batfish/issues/719)
+              // if (_added.contains(route)) {
+              //   diffSymbol = addedSymbol;
+              // } else if (_removed.contains(route)) {
+              //   diffSymbol = removedSymbol;
+              // }
               String diffStr = diffSymbol != null ? diffSymbol + " " : "";
               String routeStr = route.fullString();
               String newStr = String.format("%s%s\n", diffStr, routeStr);
@@ -330,7 +331,6 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
   }
 
   public static class RoutesAnswerer extends Answerer {
-
     public RoutesAnswerer(Question question, IBatfish batfish) {
       super(question, batfish);
     }
@@ -369,7 +369,7 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
       }
       if (!question._fromEnvironment) {
         SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> routesByHostname =
-            _batfish.getRoutes();
+            _batfish.getRoutes(question.getUseCompression());
         Map<String, Configuration> configurations = _batfish.loadConfigurations();
         Map<Ip, String> ipOwnersSimple = CommonUtil.computeIpOwnersSimple(configurations, true);
         batfishAnswerElement =
@@ -440,6 +440,8 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
     private static final String PROP_PROTOCOLS = "protocols";
 
+    private static final String PROP_USE_COMPRESSION = "useCompression";
+
     private boolean _againstEnvironment;
 
     private boolean _detail;
@@ -452,10 +454,13 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
     private SortedSet<RoutingProtocol> _protocols;
 
+    private boolean _useCompression;
+
     public RoutesQuestion() {
       _nodeRegex = NodesSpecifier.ALL;
       _prefixSpace = new PrefixSpace();
       _protocols = new TreeSet<>();
+      _useCompression = false;
     }
 
     @JsonProperty(PROP_AGAINST_ENVIRONMENT)
@@ -476,6 +481,11 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_FROM_ENVIRONMENT)
     public boolean getFromEnvironment() {
       return _fromEnvironment;
+    }
+
+    @JsonProperty(PROP_USE_COMPRESSION)
+    public boolean getUseCompression() {
+      return _useCompression;
     }
 
     @Override
@@ -526,6 +536,11 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_PROTOCOLS)
     public void setProtocols(SortedSet<RoutingProtocol> protocols) {
       _protocols = protocols;
+    }
+
+    @JsonProperty(PROP_USE_COMPRESSION)
+    public void setUseCompression(boolean useCompression) {
+      _useCompression = useCompression;
     }
   }
 

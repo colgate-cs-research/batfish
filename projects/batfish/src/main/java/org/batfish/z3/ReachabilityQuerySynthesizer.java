@@ -1,39 +1,39 @@
 package org.batfish.z3;
 
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Z3Exception;
-import java.util.ArrayList;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.ForwardingAction;
 import org.batfish.datamodel.HeaderSpace;
-import org.batfish.z3.node.AcceptExpr;
-import org.batfish.z3.node.AndExpr;
-import org.batfish.z3.node.BooleanExpr;
-import org.batfish.z3.node.DebugExpr;
-import org.batfish.z3.node.DropAclExpr;
-import org.batfish.z3.node.DropAclInExpr;
-import org.batfish.z3.node.DropAclOutExpr;
-import org.batfish.z3.node.DropExpr;
-import org.batfish.z3.node.DropNoRouteExpr;
-import org.batfish.z3.node.DropNullRouteExpr;
-import org.batfish.z3.node.NodeAcceptExpr;
-import org.batfish.z3.node.NodeDropAclExpr;
-import org.batfish.z3.node.NodeDropAclInExpr;
-import org.batfish.z3.node.NodeDropAclOutExpr;
-import org.batfish.z3.node.NodeDropExpr;
-import org.batfish.z3.node.NodeDropNoRouteExpr;
-import org.batfish.z3.node.NodeDropNullRouteExpr;
-import org.batfish.z3.node.NodeTransitExpr;
-import org.batfish.z3.node.NotExpr;
-import org.batfish.z3.node.OrExpr;
-import org.batfish.z3.node.OriginateVrfExpr;
-import org.batfish.z3.node.QueryExpr;
-import org.batfish.z3.node.QueryRelationExpr;
-import org.batfish.z3.node.RuleExpr;
-import org.batfish.z3.node.SaneExpr;
+import org.batfish.z3.expr.AndExpr;
+import org.batfish.z3.expr.BasicRuleStatement;
+import org.batfish.z3.expr.BasicStateExpr;
+import org.batfish.z3.expr.BooleanExpr;
+import org.batfish.z3.expr.CurrentIsOriginalExpr;
+import org.batfish.z3.expr.HeaderSpaceMatchExpr;
+import org.batfish.z3.expr.QueryStatement;
+import org.batfish.z3.expr.RuleStatement;
+import org.batfish.z3.expr.SaneExpr;
+import org.batfish.z3.state.Accept;
+import org.batfish.z3.state.Debug;
+import org.batfish.z3.state.Drop;
+import org.batfish.z3.state.DropAcl;
+import org.batfish.z3.state.DropAclIn;
+import org.batfish.z3.state.DropAclOut;
+import org.batfish.z3.state.DropNoRoute;
+import org.batfish.z3.state.DropNullRoute;
+import org.batfish.z3.state.NodeAccept;
+import org.batfish.z3.state.NodeDrop;
+import org.batfish.z3.state.NodeDropAcl;
+import org.batfish.z3.state.NodeDropAclIn;
+import org.batfish.z3.state.NodeDropAclOut;
+import org.batfish.z3.state.NodeDropNoRoute;
+import org.batfish.z3.state.NodeDropNullRoute;
+import org.batfish.z3.state.OriginateVrf;
+import org.batfish.z3.state.Query;
 
 public class ReachabilityQuerySynthesizer extends BaseQuerySynthesizer {
 
@@ -45,9 +45,11 @@ public class ReachabilityQuerySynthesizer extends BaseQuerySynthesizer {
 
   private Map<String, Set<String>> _ingressNodeVrfs;
 
-  private Set<String> _transitNodes;
-
+  @SuppressWarnings("unused")
   private Set<String> _notTransitNodes;
+
+  @SuppressWarnings("unused")
+  private Set<String> _transitNodes;
 
   public ReachabilityQuerySynthesizer(
       Set<ForwardingAction> actions,
@@ -65,103 +67,93 @@ public class ReachabilityQuerySynthesizer extends BaseQuerySynthesizer {
   }
 
   @Override
-  public NodProgram getNodProgram(NodProgram baseProgram) throws Z3Exception {
-    NodProgram program = new NodProgram(baseProgram.getContext());
-
-    // create rules for injecting symbolic packets into ingress node(s)
-    List<RuleExpr> originateRules = new ArrayList<>();
-    for (String ingressNode : _ingressNodeVrfs.keySet()) {
-      for (String ingressVrf : _ingressNodeVrfs.get(ingressNode)) {
-        OriginateVrfExpr originate = new OriginateVrfExpr(ingressNode, ingressVrf);
-        RuleExpr originateRule = new RuleExpr(originate);
-        originateRules.add(originateRule);
-      }
-    }
-
-    AndExpr queryConditions = new AndExpr();
+  public ReachabilityProgram getReachabilityProgram(SynthesizerInput input) {
+    ImmutableList.Builder<BooleanExpr> queryConditionsBuilder = ImmutableList.builder();
 
     // create query condition for action at final node(s)
-    OrExpr finalActions = new OrExpr();
+    ImmutableList.Builder<BasicStateExpr> finalActions = ImmutableList.builder();
+    ImmutableList.Builder<BasicStateExpr> queryPreconditionPreTransformationStatesBuilder =
+        ImmutableList.builder();
     for (ForwardingAction action : _actions) {
       switch (action) {
         case ACCEPT:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeAcceptExpr accept = new NodeAcceptExpr(finalNode);
-              finalActions.addDisjunct(accept);
+              BasicStateExpr accept = new NodeAccept(finalNode);
+              finalActions.add(accept);
             }
           } else {
-            finalActions.addDisjunct(AcceptExpr.INSTANCE);
+            finalActions.add(Accept.INSTANCE);
           }
           break;
 
         case DEBUG:
-          finalActions.addDisjunct(DebugExpr.INSTANCE);
+          finalActions.add(Debug.INSTANCE);
           break;
 
         case DROP:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeDropExpr drop = new NodeDropExpr(finalNode);
-              finalActions.addDisjunct(drop);
+              BasicStateExpr drop = new NodeDrop(finalNode);
+              finalActions.add(drop);
             }
           } else {
-            finalActions.addDisjunct(DropExpr.INSTANCE);
+            finalActions.add(Drop.INSTANCE);
           }
           break;
 
         case DROP_ACL:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeDropAclExpr drop = new NodeDropAclExpr(finalNode);
-              finalActions.addDisjunct(drop);
+              BasicStateExpr drop = new NodeDropAcl(finalNode);
+              finalActions.add(drop);
             }
           } else {
-            finalActions.addDisjunct(DropAclExpr.INSTANCE);
+            finalActions.add(DropAcl.INSTANCE);
           }
           break;
 
         case DROP_ACL_IN:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeDropAclInExpr drop = new NodeDropAclInExpr(finalNode);
-              finalActions.addDisjunct(drop);
+              BasicStateExpr drop = new NodeDropAclIn(finalNode);
+              finalActions.add(drop);
             }
           } else {
-            finalActions.addDisjunct(DropAclInExpr.INSTANCE);
+            finalActions.add(DropAclIn.INSTANCE);
           }
           break;
 
         case DROP_ACL_OUT:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeDropAclOutExpr drop = new NodeDropAclOutExpr(finalNode);
-              finalActions.addDisjunct(drop);
+              BasicStateExpr drop = new NodeDropAclOut(finalNode);
+              finalActions.add(drop);
             }
           } else {
-            finalActions.addDisjunct(DropAclOutExpr.INSTANCE);
+            finalActions.add(DropAclOut.INSTANCE);
           }
           break;
 
         case DROP_NO_ROUTE:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeDropNoRouteExpr drop = new NodeDropNoRouteExpr(finalNode);
-              finalActions.addDisjunct(drop);
+              BasicStateExpr drop = new NodeDropNoRoute(finalNode);
+              finalActions.add(drop);
             }
           } else {
-            finalActions.addDisjunct(DropNoRouteExpr.INSTANCE);
+            finalActions.add(DropNoRoute.INSTANCE);
           }
           break;
 
         case DROP_NULL_ROUTE:
           if (_finalNodes.size() > 0) {
             for (String finalNode : _finalNodes) {
-              NodeDropNullRouteExpr drop = new NodeDropNullRouteExpr(finalNode);
-              finalActions.addDisjunct(drop);
+              BasicStateExpr drop = new NodeDropNullRoute(finalNode);
+              finalActions.add(drop);
             }
           } else {
-            finalActions.addDisjunct(DropNullRouteExpr.INSTANCE);
+            finalActions.add(DropNullRoute.INSTANCE);
           }
           break;
 
@@ -170,34 +162,41 @@ public class ReachabilityQuerySynthesizer extends BaseQuerySynthesizer {
           throw new BatfishException("unsupported action");
       }
     }
-    queryConditions.addConjunct(finalActions);
-    queryConditions.addConjunct(SaneExpr.INSTANCE);
 
-    // check transit constraints (unordered)
-    NodeTransitExpr transitExpr = null;
-    for (String nodeName : _transitNodes) {
-      transitExpr = new NodeTransitExpr(nodeName);
-      queryConditions.addConjunct(transitExpr);
+    ImmutableList.Builder<RuleStatement> rules = ImmutableList.builder();
+    // create rules for injecting symbolic packets into ingress node(s)
+    for (String ingressNode : _ingressNodeVrfs.keySet()) {
+      for (String ingressVrf : _ingressNodeVrfs.get(ingressNode)) {
+        rules.add(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        CurrentIsOriginalExpr.INSTANCE,
+                        new HeaderSpaceMatchExpr(_headerSpace),
+                        SaneExpr.INSTANCE)),
+                new OriginateVrf(ingressNode, ingressVrf)));
+      }
     }
-    for (String nodeName : _notTransitNodes) {
-      transitExpr = new NodeTransitExpr(nodeName);
-      queryConditions.addConjunct(new NotExpr(transitExpr));
-    }
-
-    // add headerSpace constraints
-    BooleanExpr matchHeaderSpace = Synthesizer.matchHeaderSpace(_headerSpace);
-    queryConditions.addConjunct(matchHeaderSpace);
-
-    RuleExpr queryRule = new RuleExpr(queryConditions, QueryRelationExpr.INSTANCE);
-    List<BoolExpr> rules = program.getRules();
-    for (RuleExpr originateRule : originateRules) {
-      BoolExpr originateBoolExpr = originateRule.toBoolExpr(baseProgram);
-      rules.add(originateBoolExpr);
-    }
-    rules.add(queryRule.toBoolExpr(baseProgram));
-    QueryExpr query = new QueryExpr(QueryRelationExpr.INSTANCE);
-    BoolExpr queryBoolExpr = query.toBoolExpr(baseProgram);
-    program.getQueries().add(queryBoolExpr);
-    return program;
+    List<BasicStateExpr> queryPreconditionPreTransformationStates =
+        queryPreconditionPreTransformationStatesBuilder.build();
+    BooleanExpr queryConditions = new AndExpr(queryConditionsBuilder.build());
+    finalActions
+        .build()
+        .stream()
+        .map(
+            finalAction ->
+                new BasicRuleStatement(
+                    queryConditions,
+                    ImmutableSet.<BasicStateExpr>builder()
+                        .add(finalAction)
+                        .addAll(queryPreconditionPreTransformationStates)
+                        .build(),
+                    Query.INSTANCE))
+        .forEach(rules::add);
+    return ReachabilityProgram.builder()
+        .setInput(input)
+        .setQueries(ImmutableList.of(new QueryStatement(Query.INSTANCE)))
+        .setRules(rules.build())
+        .build();
   }
 }

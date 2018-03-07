@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.batfish</groupId>
     <artifactId>batfish-parent</artifactId>
-    <version>0.34.0</version>
+    <version>0.35.0</version>
   </parent>
 
   <artifactId>batfish-common-protocol</artifactId>
@@ -34,8 +34,10 @@
               </goals>
               <configuration>
                 <ignoredUnusedDeclaredDependencies>
-                  <ignoredUnusedDeclaredDependency>commons-beanutils:commons-beanutils</ignoredUnusedDeclaredDependency>
-                  <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14</ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>commons-beanutils:commons-beanutils
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14
+                  </ignoredUnusedDeclaredDependency>
                 </ignoredUnusedDeclaredDependencies>
               </configuration>
             </execution>
@@ -123,7 +125,12 @@
       <artifactId>jackson-databind</artifactId>
     </dependency>
 
-   <dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-guava</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jdk8</artifactId>
     </dependency>
@@ -134,13 +141,18 @@
     </dependency>
 
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
     </dependency>
 
     <dependency>
-      <groupId>com.google.code.findbugs</groupId>
-      <artifactId>jsr305</artifactId>
+      <groupId>com.google.errorprone</groupId>
+      <artifactId>error_prone_annotations</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
     </dependency>
 
     <dependency>
@@ -172,11 +184,6 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
     </dependency>
 
     <dependency>
@@ -212,6 +219,11 @@
     <dependency>
       <groupId>org.antlr</groupId>
       <artifactId>antlr4-runtime</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
     </dependency>
 
     <dependency>

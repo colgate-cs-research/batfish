@@ -1,16 +1,23 @@
 package org.batfish.grammar.flatjuniper;
 
+import static org.batfish.datamodel.matchers.ConfigurationMatchers.hasDefaultVrf;
+import static org.batfish.datamodel.matchers.ConfigurationMatchers.hasInterface;
+import static org.batfish.datamodel.matchers.InterfaceMatchers.isOspfPassive;
 import static org.batfish.datamodel.matchers.OspfAreaSummaryMatchers.hasMetric;
 import static org.batfish.datamodel.matchers.OspfAreaSummaryMatchers.isAdvertised;
+import static org.batfish.datamodel.matchers.OspfProcessMatchers.hasArea;
+import static org.batfish.datamodel.matchers.VrfMatchers.hasOspfProcess;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
-import java.util.SortedMap;
+import java.util.Map;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.config.Settings;
@@ -21,6 +28,7 @@ import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.MultipathEquivalentAsPathMatchMode;
 import org.batfish.datamodel.OspfAreaSummary;
 import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.matchers.OspfAreaMatchers;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Flat_juniper_configurationContext;
 import org.batfish.main.Batfish;
 import org.batfish.main.BatfishTestUtils;
@@ -49,6 +57,8 @@ public class FlatJuniperGrammarTest {
     }
   }
 
+  private static final String TESTCONFIGS_PREFIX = "org/batfish/grammar/juniper/testconfigs/";
+
   private static String TESTRIGS_PREFIX = "org/batfish/grammar/juniper/testrigs/";
 
   private static HasClusterId hasClusterId(long expectedClusterId) {
@@ -58,6 +68,17 @@ public class FlatJuniperGrammarTest {
   @Rule public TemporaryFolder _folder = new TemporaryFolder();
 
   @Rule public ExpectedException _thrown = ExpectedException.none();
+
+  private Configuration parseConfig(String hostname) throws IOException {
+    return parseTextConfigs(hostname).get(hostname);
+  }
+
+  private Map<String, Configuration> parseTextConfigs(String... configurationNames)
+      throws IOException {
+    String[] names =
+        Arrays.stream(configurationNames).map(s -> TESTCONFIGS_PREFIX + s).toArray(String[]::new);
+    return BatfishTestUtils.parseTextConfigs(_folder, names);
+  }
 
   @Test
   public void testBgpClusterId() throws IOException {
@@ -73,8 +94,7 @@ public class FlatJuniperGrammarTest {
                 .setConfigurationText(TESTRIGS_PREFIX + testrigName, configurationNames)
                 .build(),
             _folder);
-    SortedMap<String, Configuration> configurations;
-    configurations = batfish.loadConfigurations();
+    Map<String, Configuration> configurations = batfish.loadConfigurations();
 
     Configuration rr = configurations.get(configName);
     BgpProcess proc = rr.getDefaultVrf().getBgpProcess();
@@ -99,7 +119,7 @@ public class FlatJuniperGrammarTest {
                 .setConfigurationText(TESTRIGS_PREFIX + testrigName, configurationNames)
                 .build(),
             _folder);
-    SortedMap<String, Configuration> configurations = batfish.loadConfigurations();
+    Map<String, Configuration> configurations = batfish.loadConfigurations();
     MultipathEquivalentAsPathMatchMode multipleAsDisabled =
         configurations
             .get("multiple_as_disabled")
@@ -151,6 +171,46 @@ public class FlatJuniperGrammarTest {
             .get(Prefix.parse("10.0.0.0/16"));
     assertThat(summary, isAdvertised());
     assertThat(summary, hasMetric(nullValue()));
+  }
+
+  @Test
+  public void testOspfInterfaceAreaAssignment() throws IOException {
+    Configuration c = parseConfig("ospfInterfaceAreaAssignment");
+
+    /* Properly configured interfaces should be present in respective areas. */
+    assertThat(c, hasInterface("xe-0/0/0.0", isOspfPassive(equalTo(false))));
+    assertThat(
+        c,
+        hasDefaultVrf(
+            hasOspfProcess(hasArea(0L, OspfAreaMatchers.hasInterfaces(hasItem("xe-0/0/0.0"))))));
+
+    assertThat(c, hasInterface("xe-0/0/0.1", isOspfPassive()));
+    assertThat(
+        c,
+        hasDefaultVrf(
+            hasOspfProcess(hasArea(0L, OspfAreaMatchers.hasInterfaces(hasItem("xe-0/0/0.1"))))));
+    assertThat(
+        c,
+        hasDefaultVrf(
+            hasOspfProcess(hasArea(1L, OspfAreaMatchers.hasInterfaces(hasItem("xe-0/0/0.1"))))));
+
+    /* The following interfaces should be absent since they have no IP addresses assigned. */
+    assertThat(
+        c,
+        hasDefaultVrf(
+            hasOspfProcess(
+                hasArea(0L, OspfAreaMatchers.hasInterfaces(not(hasItem("xe-0/0/0.2")))))));
+
+    assertThat(
+        c,
+        hasDefaultVrf(
+            hasOspfProcess(
+                hasArea(0L, OspfAreaMatchers.hasInterfaces(not(hasItem("xe-0/0/0.3")))))));
+    assertThat(
+        c,
+        hasDefaultVrf(
+            hasOspfProcess(
+                hasArea(1L, OspfAreaMatchers.hasInterfaces(not(hasItem("xe-0/0/0.3")))))));
   }
 
   @Test

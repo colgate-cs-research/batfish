@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedSet;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +27,12 @@ public final class Interface extends ComparableStructure<String> {
 
     private boolean _active;
 
+    private Double _bandwidth;
+
+    private boolean _blacklisted;
+
+    private IpAccessList _incomingFilter;
+
     private String _name;
 
     private OspfArea _ospfArea;
@@ -38,7 +45,11 @@ public final class Interface extends ComparableStructure<String> {
 
     private boolean _ospfPointToPoint;
 
+    private IpAccessList _outgoingFilter;
+
     private Configuration _owner;
+
+    private List<SourceNat> _sourceNats;
 
     private InterfaceAddress _address;
 
@@ -46,6 +57,7 @@ public final class Interface extends ComparableStructure<String> {
 
     Builder(NetworkFactory networkFactory) {
       super(networkFactory, Interface.class);
+      _sourceNats = ImmutableList.of();
     }
 
     @Override
@@ -53,19 +65,24 @@ public final class Interface extends ComparableStructure<String> {
       String name = _name != null ? _name : generateName();
       Interface iface = new Interface(name, _owner);
       iface.setActive(_active);
+      iface.setBandwidth(_bandwidth);
+      iface.setBlacklisted(_blacklisted);
+      iface.setIncomingFilter(_incomingFilter);
       iface.setOspfArea(_ospfArea);
       if (_ospfArea != null) {
-        _ospfArea.getInterfaces().put(name, iface);
+        _ospfArea.getInterfaces().add(name);
         iface.setOspfAreaName(_ospfArea.getName());
       }
       iface.setOspfCost(_ospfCost);
       iface.setOspfEnabled(_ospfEnabled);
       iface.setOspfPassive(_ospfPassive);
       iface.setOspfPointToPoint(_ospfPointToPoint);
+      iface.setOutgoingFilter(_outgoingFilter);
       iface.setOwner(_owner);
       if (_owner != null) {
         _owner.getInterfaces().put(name, iface);
       }
+      iface.setSourceNats(_sourceNats);
       iface.setAddress(_address);
       if (_address != null) {
         iface.setAllAddresses(Collections.singleton(_address));
@@ -83,6 +100,21 @@ public final class Interface extends ComparableStructure<String> {
 
     public Builder setActive(boolean active) {
       _active = active;
+      return this;
+    }
+
+    public Builder setBandwidth(Double bandwidth) {
+      _bandwidth = bandwidth;
+      return this;
+    }
+
+    public Builder setBlacklisted(boolean blacklisted) {
+      _blacklisted = blacklisted;
+      return this;
+    }
+
+    public Builder setIncomingFilter(IpAccessList incomingFilter) {
+      _incomingFilter = incomingFilter;
       return this;
     }
 
@@ -116,8 +148,18 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
+    public Builder setOutgoingFilter(IpAccessList outgoingFilter) {
+      _outgoingFilter = outgoingFilter;
+      return this;
+    }
+
     public Builder setOwner(Configuration owner) {
       _owner = owner;
+      return this;
+    }
+
+    public Builder setSourceNats(List<SourceNat> sourceNats) {
+      _sourceNats = sourceNats;
       return this;
     }
 
