@@ -869,6 +869,21 @@ public class Encoder {
                       + unsatVarsMap.get(e.toString()));
             }
           }
+
+          //Print out predicates not in the UnsatCore.
+          System.out.println("Predicates not in the unsatCore");
+          Expr[] unsatCore  = _solver.getUnsatCore();
+          HashSet<String> unsatCoreStrings = new HashSet<>();
+          for (int i =0;i<unsatCore.length;i++){
+            unsatCoreStrings.add(unsatCore[i].toString());
+          }
+
+          for (String e:unsatcoreLabelsMap.keySet()){
+            if (!unsatCoreStrings.contains(e)){
+              System.out.println(e + " : " +  unsatcoreLabelsMap.get(e) + " : "
+                        + unsatVarsMap.get(e));
+            }
+          }
           break;
         }
         if (s == Status.UNKNOWN) {
