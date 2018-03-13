@@ -515,6 +515,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
 
+  private static final String ARG_INVERT_SAT_FORMULA_FAULTLOC = "invertSat";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -986,6 +988,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getInt(ARG_NUM_ITERS_FAULTLOC);
   }
 
+  public boolean shouldInvertSatFormula() { return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC); }
+
   private void initConfigDefaults() {
     setDefaultProperty(BfConsts.ARG_ANALYSIS_NAME, null);
     setDefaultProperty(BfConsts.ARG_ANSWER_JSON_PATH, null);
@@ -1077,6 +1081,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(BfConsts.COMMAND_REPORT, false);
     setDefaultProperty(BfConsts.COMMAND_VALIDATE_ENVIRONMENT, false);
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
+    setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
   }
@@ -1360,6 +1365,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(
         BfConsts.COMMAND_VALIDATE_ENVIRONMENT, "validate an environment that has been initialized");
 
+    addBooleanOption(ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
+
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
     addOption(ARG_Z3_TIMEOUT, "set a timeout (in milliseconds) for Z3 queries", "z3timeout");
 
@@ -1471,6 +1478,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.ARG_UNRECOGNIZED_AS_RED_FLAG);
     getBooleanOptionValue(BfConsts.COMMAND_VALIDATE_ENVIRONMENT);
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
+    getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);
     getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);
