@@ -1370,6 +1370,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
   }
 
   public void parseCommandLine(String[] args) {
+
+
     initCommandLine(args);
     _config.setProperty(CAN_EXECUTE, true);
 
@@ -1471,6 +1473,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);
+    getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);
   }
 
   public void setActiveTestrigSettings(TestrigSettings activeTestrigSettings) {
