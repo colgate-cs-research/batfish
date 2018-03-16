@@ -38,8 +38,8 @@ class UnsatCore {
     _trackingNum = 0;
   }
 
-  void track(Solver solver, Context ctx, BoolExpr be, String label){
-    String name = "Pred" + _trackingNum;// + "(label:" +label+ ")";
+  void track(Solver solver, Context ctx, BoolExpr be, String label) {
+    String name = "Pred" + _trackingNum; // + "(label:" +label+ ")";
     _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
     _trackingVars.put(name, be);
@@ -49,6 +49,7 @@ class UnsatCore {
       solver.add(be);
     }
   }
+
   void track(Solver solver, Context ctx, BoolExpr be) {
     track(solver, ctx, be, "");
   }
@@ -61,5 +62,7 @@ class UnsatCore {
     return _trackingVars;
   }
 
-  Map<String, String> getTrackingLabels() {return _trackingLabels;}
+  Map<String, String> getTrackingLabels() {
+    return _trackingLabels;
+  }
 }

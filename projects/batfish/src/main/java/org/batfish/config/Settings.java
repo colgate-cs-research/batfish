@@ -984,11 +984,13 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getString(ARG_DATAPLANE_ENGINE_NAME);
   }
 
-  public Integer getNumIters(){
+  public Integer getNumIters() {
     return _config.getInt(ARG_NUM_ITERS_FAULTLOC);
   }
 
-  public boolean shouldInvertSatFormula() { return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC); }
+  public boolean shouldInvertSatFormula() {
+    return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC);
+  }
 
   private void initConfigDefaults() {
     setDefaultProperty(BfConsts.ARG_ANALYSIS_NAME, null);
@@ -1365,7 +1367,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(
         BfConsts.COMMAND_VALIDATE_ENVIRONMENT, "validate an environment that has been initialized");
 
-    addBooleanOption(ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
+    addBooleanOption(
+        ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
 
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
     addOption(ARG_Z3_TIMEOUT, "set a timeout (in milliseconds) for Z3 queries", "z3timeout");
@@ -1377,7 +1380,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
   }
 
   public void parseCommandLine(String[] args) {
-
 
     initCommandLine(args);
     _config.setProperty(CAN_EXECUTE, true);

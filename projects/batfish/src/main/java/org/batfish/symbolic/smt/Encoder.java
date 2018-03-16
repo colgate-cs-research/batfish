@@ -9,7 +9,6 @@ import com.microsoft.z3.Model;
 import com.microsoft.z3.Solver;
 import com.microsoft.z3.Status;
 import com.microsoft.z3.Tactic;
-
 import java.util.*;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
@@ -399,9 +398,8 @@ public class Encoder {
     _unsatCore.track(_solver, _ctx, e);
   }
 
-  void add(BoolExpr e, String caller){
+  void add(BoolExpr e, String caller) {
     _unsatCore.track(_solver, _ctx, e, caller);
-
   }
 
   /*
@@ -452,7 +450,7 @@ public class Encoder {
    * Add the relevant variables in the counterexample to
    * display to the user in a human-readable fashion
    */
-  private HashMap<String,String> buildCounterExample(
+  private HashMap<String, String> buildCounterExample(
       Encoder enc,
       Model m,
       SortedMap<String, String> model,
@@ -464,20 +462,20 @@ public class Encoder {
 
     System.out.println("buildCounterExample() called.");
     SortedMap<Expr, String> valuation = new TreeMap<>();
-    HashMap<String, String> counterExampleState= new HashMap<>();
+    HashMap<String, String> counterExampleState = new HashMap<>();
     // If user asks for the full model
     for (Entry<String, Expr> entry : _allVariables.entrySet()) {
 
       String name = entry.getKey();
       Expr e = entry.getValue();
       Expr val = m.evaluate(e, true);
-      if (!val.equals(e)) { //excluding constants in the model.
+      if (!val.equals(e)) { // excluding constants in the model.
         String s = val.toString();
-        if (_question.getFullModel()){
+        if (_question.getFullModel()) {
           model.put(name, s);
         }
         valuation.put(e, s);
-       counterExampleState.put(name, s);
+        counterExampleState.put(name, s);
         additionalConstraints.put(e, val);
       }
     }
@@ -485,9 +483,9 @@ public class Encoder {
     System.out.println("Counter Example: Values assigned to variables -> ");
     ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
     Collections.sort(sortedKeys);
-//    for (String i: sortedKeys){
-//      System.out.println(i + ": "  + counterExampleState.get(i));
-//    }
+    //    for (String i: sortedKeys){
+    //      System.out.println(i + ": "  + counterExampleState.get(i));
+    //    }
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -721,8 +719,7 @@ public class Encoder {
     return mkAnd(acc1, acc2);
   }
 
-
-  //temp testing variables
+  // temp testing variables
   private SortedMap<Expr, Expr> filterdConstraints;
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
@@ -787,43 +784,56 @@ public class Encoder {
         SortedSet<String> fwdModel = new TreeSet<>();
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
-        SortedMap<Expr,Expr> additionalConstraints = new TreeMap<>();
-        HashMap<String, String> ce = buildCounterExample(this, m, model, packetModel,
-              fwdModel, envModel, failures, additionalConstraints);
-        if (numCounterexamples==0) {
+        SortedMap<Expr, Expr> additionalConstraints = new TreeMap<>();
+        HashMap<String, String> ce =
+            buildCounterExample(
+                this, m, model, packetModel, fwdModel, envModel, failures, additionalConstraints);
+        if (numCounterexamples == 0) {
           for (String key : ce.keySet()) {
-            //first values assigned to counter-example variables...
+            // first values assigned to counter-example variables...
             variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
           }
-        }else{
-          for (String varName : ce.keySet()){
+        } else {
+          for (String varName : ce.keySet()) {
             variableHistoryMap.get(varName).add(ce.get(varName));
           }
         }
         if (_previousEncoder != null) {
-          ce = buildCounterExample(
-              _previousEncoder, m, model, packetModel,
-              fwdModel, envModel, failures, additionalConstraints);
-          for (String varName : ce.keySet()){
+          ce =
+              buildCounterExample(
+                  _previousEncoder,
+                  m,
+                  model,
+                  packetModel,
+                  fwdModel,
+                  envModel,
+                  failures,
+                  additionalConstraints);
+          for (String varName : ce.keySet()) {
             variableHistoryMap.get(varName).add(ce.get(varName));
           }
         }
 
-        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
-        //TODO: need to print each result information.. Need to go from a VerificationResult object to an AnswerElement object in order get the summary
-        //TODO: REMOVE THE FOLLOWING LINE >
-        for (IpWildcard ip : _question.getSrcIps()){
+        result =
+            new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
+        // TODO: need to print each result information.. Need to go from a VerificationResult object
+        // to an AnswerElement object in order get the summary
+        // TODO: REMOVE THE FOLLOWING LINE >
+        for (IpWildcard ip : _question.getSrcIps()) {
           System.out.println(result.prettyPrint(ip.toString()));
         }
         numCounterexamples++;
 
         // Generate multiple counter examples
         if (_numIters > 1) {
-          SortedSet<Expr> packetVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars(); //should be added to solver during the first iteration.
-          SortedSet<BoolExpr> newEqs= new TreeSet<BoolExpr>();
+          SortedSet<Expr> packetVars =
+              this.getMainSlice()
+                  .getSymbolicPacket()
+                  .getSymbolicPacketVars(); // should be added to solver during the first iteration.
+          SortedSet<BoolExpr> newEqs = new TreeSet<BoolExpr>();
 
-        //this is the counterexample. the 15 data plane packet variables need to be set
-          if (numCounterexamples==1) {
+          // this is the counterexample. the 15 data plane packet variables need to be set
+          if (numCounterexamples == 1) {
             for (Expr e : packetVars) {
               if (additionalConstraints.containsKey(e)) {
                 newEqs.add(_ctx.mkEq(e, additionalConstraints.get(e)));
@@ -835,7 +845,7 @@ public class Encoder {
           }
 
           newEqs.clear();
-          for (Expr var:additionalConstraints.keySet()){
+          for (Expr var : additionalConstraints.keySet()) {
             if (!packetVars.contains(var))
               newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
           }
@@ -845,43 +855,42 @@ public class Encoder {
 
         // Find the smallest possible counterexample
         if (_question.getMinimize()) {
-            BoolExpr blocking = environmentBlockingClause(m);
-            add(blocking, UnsatCore.ENVIRONMENT);
+          BoolExpr blocking = environmentBlockingClause(m);
+          add(blocking, UnsatCore.ENVIRONMENT);
         }
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
           System.out.println("Now unsatisfiable. Unsat core");
-          System.out.println("Size of UnsatCore : " 
-                  + _solver.getUnsatCore().length);
-          for (Expr e:_solver.getUnsatCore()){
+          System.out.println("Size of UnsatCore : " + _solver.getUnsatCore().length);
+          for (Expr e : _solver.getUnsatCore()) {
             String label = unsatcoreLabelsMap.get(e.toString());
             // Only consider constraints we can change
             if (!(label.equals(UnsatCore.FAILED)
-                    || label.equals(UnsatCore.ENVIRONMENT)
-                    || label.equals(UnsatCore.BEST_OVERALL)
-                    || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-                    || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-                    || label.equals(UnsatCore.CONTROL_FORWARDING)
-                    || label.equals(UnsatCore.POLICY)
-                    || label.equals(UnsatCore.BOUND))) {
-              System.out.println(e.toString() + ":" + label + " : " 
-                      + unsatVarsMap.get(e.toString()));
+                || label.equals(UnsatCore.ENVIRONMENT)
+                || label.equals(UnsatCore.BEST_OVERALL)
+                || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+                || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+                || label.equals(UnsatCore.CONTROL_FORWARDING)
+                || label.equals(UnsatCore.POLICY)
+                || label.equals(UnsatCore.BOUND))) {
+              System.out.println(
+                  e.toString() + ":" + label + " : " + unsatVarsMap.get(e.toString()));
             }
           }
 
-          //Print out predicates not in the UnsatCore.
+          // Print out predicates not in the UnsatCore.
           System.out.println("Predicates not in the unsatCore");
-          Expr[] unsatCore  = _solver.getUnsatCore();
+          Expr[] unsatCore = _solver.getUnsatCore();
           HashSet<String> unsatCoreStrings = new HashSet<>();
-          for (int i =0;i<unsatCore.length;i++){
+          for (int i = 0; i < unsatCore.length; i++) {
             unsatCoreStrings.add(unsatCore[i].toString());
           }
 
-          for (String e:unsatcoreLabelsMap.keySet()){
-            if (!unsatCoreStrings.contains(e)){
-              System.out.println(e + " : " +  unsatcoreLabelsMap.get(e) + " : "
-                        + unsatVarsMap.get(e));
+          for (String e : unsatcoreLabelsMap.keySet()) {
+            if (!unsatCoreStrings.contains(e)) {
+              System.out.println(
+                  e + " : " + unsatcoreLabelsMap.get(e) + " : " + unsatVarsMap.get(e));
             }
           }
           break;
@@ -889,21 +898,19 @@ public class Encoder {
         if (s == Status.UNKNOWN) {
           throw new BatfishException("ERROR: satisfiability unknown");
         }
-      } while(_question.getMinimize() || numCounterexamples < _numIters);
+      } while (_question.getMinimize() || numCounterexamples < _numIters);
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
 
-      System.out.println("Generated " + numCounterexamples +" counterexamples");
-
+      System.out.println("Generated " + numCounterexamples + " counterexamples");
 
       System.out.println("Changes in Model Variables");
-      for (String variableName: variableNames) {
+      for (String variableName : variableNames) {
         if (variableHistoryMap.get(variableName).size() <= 1) {
-          System.out.println(variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
+          System.out.println(
+              variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
         }
       }
-
-
 
       return new Tuple<>(result, m);
     }
@@ -994,7 +1001,7 @@ public class Encoder {
     this._question = question;
   }
 
-  //add constraints to the encoder.
+  // add constraints to the encoder.
   public void addVariables(Map<String, Expr> addedConstraints) {
     _allVariables.putAll(addedConstraints);
   }

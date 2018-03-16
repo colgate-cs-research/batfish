@@ -6,7 +6,7 @@ jdk:
 
 install: ./.travis/install.sh
 script:
-  - .travis/fix_java_format.sh && .travis/build.sh
+  - .travis/build.sh
 
 
 # Cache the Maven dependencies installed.

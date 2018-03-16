@@ -1,11 +1,10 @@
 package org.batfish.symbolic.smt;
 
-import com.microsoft.z3.Expr;
 import com.microsoft.z3.ArithExpr;
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Context;
-
+import com.microsoft.z3.Expr;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -87,7 +86,7 @@ class SymbolicPacket {
         _ctx.mkEq(this.getTcpUrg(), other.getTcpUrg()));
   }
 
-  SortedSet<Expr> getSymbolicPacketVars(){
+  SortedSet<Expr> getSymbolicPacketVars() {
     SortedSet<Expr> packetVars = new TreeSet<Expr>();
     packetVars.add(_dstIp);
     packetVars.add(_srcIp);

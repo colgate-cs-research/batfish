@@ -176,7 +176,6 @@ public class Settings extends BaseSettings {
     addBooleanOption(ARG_TRACING_ENABLE, "enable tracing");
 
     addBooleanOption(ARG_VERSION, "print the version number of the code and exit");
-
   }
 
   private void parseCommandLine(String[] args) {
