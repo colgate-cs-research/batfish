@@ -25,3 +25,6 @@ before_cache:
   - rm -rf $HOME/.m2/repository/com/microsoft/z3/z3/
   - rm -rf $HOME/.m2/repository/net/sf/javabdd/bdd/
   - rm -rf $HOME/.m2/repository/org/batfish
+
+notifications:
+    slack: colgatenetresearch:9fESg2lKlNnZwusFv4UqLf56
