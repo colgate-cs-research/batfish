@@ -14,6 +14,10 @@ trap 'kill -9 $(pgrep -g $$ | grep -v $$) >& /dev/null' EXIT SIGINT SIGTERM
 # Build batfish and run the Maven unit tests.
 batfish_test_all || exit 1
 
+# Run faultloc examples
+echo -e "\n  ..... Running faultloc examples"
+allinone -cmdfile test_rigs/faultloc-examples/commands
+
 # Configure arguments for allinone throughout later runs.
 export ALLINONE_JAVA_ARGS="-enableassertions -DbatfishCoordinatorPropertiesPath=${BATFISH_ROOT}/.travis/travis_coordinator.properties"
 
