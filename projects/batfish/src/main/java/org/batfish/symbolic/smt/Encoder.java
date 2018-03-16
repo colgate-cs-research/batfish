@@ -905,6 +905,7 @@ public class Encoder {
                     || label.equals(UnsatCore.BOUND))) {
                     System.out.println(e.toString() + ": " + label + ": " 
                             + unsatVarsMap.get(e));
+                }
             }
           }
           System.out.println("==========================================");
