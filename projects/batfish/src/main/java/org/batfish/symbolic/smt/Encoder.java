@@ -863,6 +863,8 @@ public class Encoder {
         if (s == Status.UNSATISFIABLE) {
           System.out.println("Now unsatisfiable. Unsat core");
           System.out.println("Size of UnsatCore : " + _solver.getUnsatCore().length);
+          System.out.println("\nPredicates in the unsatCore:");
+          System.out.println("==========================================");
           for (Expr e : _solver.getUnsatCore()) {
             String label = unsatcoreLabelsMap.get(e.toString());
             // Only consider constraints we can change
@@ -874,13 +876,15 @@ public class Encoder {
                 || label.equals(UnsatCore.CONTROL_FORWARDING)
                 || label.equals(UnsatCore.POLICY)
                 || label.equals(UnsatCore.BOUND))) {
-              System.out.println(
-                  e.toString() + ":" + label + " : " + unsatVarsMap.get(e.toString()));
+              System.out.println(e.toString() + ": " + label + ": " 
+                      + unsatVarsMap.get(e.toString()));
             }
           }
+          System.out.println("==========================================");
 
           // Print out predicates not in the UnsatCore.
-          System.out.println("Predicates not in the unsatCore");
+          System.out.println("\nPredicates not in the unsatCore:");
+          System.out.println("==========================================");
           Expr[] unsatCore = _solver.getUnsatCore();
           HashSet<String> unsatCoreStrings = new HashSet<>();
           for (int i = 0; i < unsatCore.length; i++) {
@@ -889,10 +893,21 @@ public class Encoder {
 
           for (String e : unsatcoreLabelsMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
-              System.out.println(
-                  e + " : " + unsatcoreLabelsMap.get(e) + " : " + unsatVarsMap.get(e));
+                String label = unsatcoreLabelsMap.get(e.toString());
+                // Only consider constraints we can change
+                if (!(label.equals(UnsatCore.FAILED)
+                    || label.equals(UnsatCore.ENVIRONMENT)
+                    || label.equals(UnsatCore.BEST_OVERALL)
+                    || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+                    || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+                    || label.equals(UnsatCore.CONTROL_FORWARDING)
+                    || label.equals(UnsatCore.POLICY)
+                    || label.equals(UnsatCore.BOUND))) {
+                    System.out.println(e.toString() + ": " + label + ": " 
+                            + unsatVarsMap.get(e));
             }
           }
+          System.out.println("==========================================");
           break;
         }
         if (s == Status.UNKNOWN) {
