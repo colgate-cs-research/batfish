@@ -21,7 +21,6 @@ class UnsatCore {
   private Map<String, String> _trackingLabels;
 
   private int _trackingNum;
-  private boolean _shouldNegateFormula;
 
   protected static final String BOUND = "bound";
   protected static final String FAILED = "failed";
@@ -32,8 +31,7 @@ class UnsatCore {
   protected static final String CONTROL_FORWARDING = "controlForwarding";
   protected static final String POLICY = "policy";
 
-  UnsatCore(boolean doTrack, boolean shouldNegateFormula) {
-    _shouldNegateFormula = shouldNegateFormula;
+  UnsatCore(boolean doTrack) {
     _doTrack = doTrack;
     _trackingLabels = new HashMap<>();
     _trackingVars = new HashMap<>();
@@ -44,9 +42,6 @@ class UnsatCore {
     String name = "Pred" + _trackingNum; // + "(label:" +label+ ")";
     _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
-    if (_shouldNegateFormula){
-      be = ctx.mkNot(be);
-    }
     _trackingVars.put(name, be);
     if (_doTrack) {
       solver.assertAndTrack(be, ctx.mkBoolConst(name));

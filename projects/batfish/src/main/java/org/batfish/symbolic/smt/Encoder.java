@@ -79,6 +79,8 @@ public class Encoder {
 
   private Integer _numIters;
 
+  private boolean _shouldInvertFormula;
+
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
    *
@@ -140,7 +142,9 @@ public class Encoder {
     _question = q;
     _slices = new HashMap<>();
     _sliceReachability = new HashMap<>();
+
     _numIters = _settings.getNumIters();
+    _shouldInvertFormula =_settings.shouldInvertSatFormula();
 
     HashMap<String, String> cfg = new HashMap<>();
 
@@ -483,9 +487,7 @@ public class Encoder {
     System.out.println("Counter Example: Values assigned to variables -> ");
     ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
     Collections.sort(sortedKeys);
-    //    for (String i: sortedKeys){
-    //      System.out.println(i + ": "  + counterExampleState.get(i));
-    //    }
+
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -744,7 +746,17 @@ public class Encoder {
     HashMap<String, Set<String>> variableHistoryMap = new HashMap<>();
 
     long start = System.currentTimeMillis();
+
+    if (_shouldInvertFormula) { //create a new solver with negated formula
+      System.out.println("Inverting boolean formula");
+      BoolExpr[] assertions = _solver.getAssertions();
+      BoolExpr negFormula = _ctx.mkAnd(assertions);
+      negFormula = _ctx.mkNot(negFormula);
+      _solver.reset();
+      _solver.add(negFormula);
+    }
     Status status = _solver.check();
+
     long time = System.currentTimeMillis() - start;
 
     VerificationStats stats = null;
@@ -859,6 +871,14 @@ public class Encoder {
           add(blocking, UnsatCore.ENVIRONMENT);
         }
 
+        if (_shouldInvertFormula) { //create a new solver with negated formula
+          System.out.println("Inverting boolean formula (in loop)");
+          BoolExpr[] assertions = _solver.getAssertions();
+          BoolExpr negFormula = _ctx.mkAnd(assertions);
+          negFormula = _ctx.mkNot(negFormula);
+          _solver.reset();
+          _solver.add(negFormula);
+        }
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
           System.out.println("Now unsatisfiable. Unsat core");
