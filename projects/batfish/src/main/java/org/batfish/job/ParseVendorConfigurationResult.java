@@ -2,6 +2,8 @@ package org.batfish.job;
 
 import java.nio.file.Path;
 import java.util.Map;
+
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BatfishLogger.BatfishLoggerHistory;
@@ -25,6 +27,8 @@ public class ParseVendorConfigurationResult
 
   private Warnings _warnings;
 
+  private ParserRuleContext _parserRuleContext;
+
   public ParseVendorConfigurationResult(
       long elapsedTime, BatfishLoggerHistory history, Path file, Throwable failureCause) {
     super(elapsedTime, history, failureCause);
@@ -44,6 +48,24 @@ public class ParseVendorConfigurationResult
     _parseTree = parseTree;
     _vc = vc;
     _warnings = warnings;
+    // parse status is determined from other fields
+    _status = null;
+  }
+
+  public ParseVendorConfigurationResult(
+          long elapsedTime,
+          BatfishLoggerHistory history,
+          Path file,
+          VendorConfiguration vc,
+          Warnings warnings,
+          ParseTreeSentences parseTree,
+          ParserRuleContext parserRuleContext) {
+    super(elapsedTime, history);
+    _file = file;
+    _parseTree = parseTree;
+    _vc = vc;
+    _warnings = warnings;
+    _parserRuleContext = parserRuleContext;
     // parse status is determined from other fields
     _status = null;
   }
@@ -120,6 +142,14 @@ public class ParseVendorConfigurationResult
 
   public VendorConfiguration getVendorConfiguration() {
     return _vc;
+  }
+
+  public ParseTreeSentences getParseTree() {
+    return _parseTree;
+  }
+
+  public ParserRuleContext getParserRuleContext() {
+    return _parserRuleContext;
   }
 
   @Override

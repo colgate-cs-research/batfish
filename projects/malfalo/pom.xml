@@ -26,7 +26,7 @@
                             <configuration>
                                 <ignoredUnusedDeclaredDependencies>
                                     <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14</ignoredUnusedDeclaredDependency>
-                                    <ignoredUnusedDeclaredDependency>org.batfish:question</ignoredUnusedDeclaredDependency>
+                                    <ignoredUnusedDeclaredDependency>org.batfish:batfish-client</ignoredUnusedDeclaredDependency>
                                 </ignoredUnusedDeclaredDependencies>
                             </configuration>
                         </execution>
@@ -87,6 +87,15 @@
         <dependency>
             <groupId>org.batfish</groupId>
             <artifactId>batfish-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.batfish</groupId>
+            <artifactId>batfish-common-protocol</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
         </dependency>
     </dependencies>
 </project>

@@ -356,6 +356,6 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
     }
     elapsedTime = System.currentTimeMillis() - startTime;
     return new ParseVendorConfigurationResult(
-        elapsedTime, _logger.getHistory(), _file, vc, _warnings, _ptSentences);
+        elapsedTime, _logger.getHistory(), _file, vc, _warnings, _ptSentences,tree);
   }
 }
