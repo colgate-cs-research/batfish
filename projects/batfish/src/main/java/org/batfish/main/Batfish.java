@@ -364,7 +364,7 @@ public class Batfish extends PluginConsumer implements IBatfish {
    *
    * <p>This method follows all symbolic links.
    */
-  static List<Path> listAllFiles(Path configsPath) {
+  public static List<Path> listAllFiles(Path configsPath) {
     List<Path> configFilePaths;
     try (Stream<Path> allFiles = Files.walk(configsPath, FileVisitOption.FOLLOW_LINKS)) {
       configFilePaths =

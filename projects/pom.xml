@@ -794,5 +794,6 @@
     <module>build-tools</module>
     <module>coordinator</module>
     <module>question</module>
+    <module>malfalo</module>
   </modules>
 </project>
