@@ -6,4 +6,16 @@ import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
 public enum LineAction {
   ACCEPT,
   REJECT;
+
+  @Override
+  public String toString() {
+    switch (this){
+      case ACCEPT:
+        return "permit";
+      case REJECT:
+        return "deny";
+      default:
+        throw new IllegalArgumentException();
+    }
+  }
 }
