@@ -6,11 +6,14 @@ public class Settings {
     public static final int TEST = 1;
     public static final int CLASSIFY=2;
     public static final int PLAY=3;
+    public static final int GENERATE_DATA=4;
 
     private String trainDir;
     private String testDir;
     private String classifyDir;
     private String playDir;
+    private String genDataDir;
+
     private int commandType;
 
     public Settings(String[] args){
@@ -36,6 +39,10 @@ public class Settings {
             case "-play":
                 commandType = PLAY;
                 playDir = args[1];
+                break;
+            case "-genDataDir":
+                commandType = GENERATE_DATA;
+                genDataDir = args[1];
                 break;
             default:
                 System.out.println("Use : -train [TRAIN_DIR]" +
@@ -64,6 +71,10 @@ public class Settings {
 
     public String getPlayDir(){
         return playDir;
+    }
+
+    public String getGenDataDir(){
+        return genDataDir;
     }
 
 }
