@@ -30,6 +30,8 @@ class UnsatCore {
   protected static final String CHOICE_PER_PROTOCOL = "choicePerProtocol";
   protected static final String CONTROL_FORWARDING = "controlForwarding";
   protected static final String POLICY = "policy";
+  protected static final String UNUSED_DEFAULT_VALUE = "addUnusedDefaultValueConstraints";
+  protected static final String HISTORY_CONSTRAINTS = "addHistoryConstraints";
 
   UnsatCore(boolean doTrack) {
     _doTrack = doTrack;

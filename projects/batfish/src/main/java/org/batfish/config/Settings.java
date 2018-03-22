@@ -1,24 +1,19 @@
 package org.batfish.config;
 
 import com.google.common.collect.ImmutableList;
+import org.batfish.bdp.BdpSettings;
+import org.batfish.common.*;
+import org.batfish.common.util.CommonUtil;
+import org.batfish.datamodel.Ip;
+import org.batfish.grammar.GrammarSettings;
+import org.batfish.main.Driver.RunMode;
+
+import javax.annotation.Nullable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import org.batfish.bdp.BdpSettings;
-import org.batfish.common.BaseSettings;
-import org.batfish.common.BatfishLogger;
-import org.batfish.common.BfConsts;
-import org.batfish.common.CoordConsts;
-import org.batfish.common.PedanticBatfishException;
-import org.batfish.common.RedFlagBatfishException;
-import org.batfish.common.UnimplementedBatfishException;
-import org.batfish.common.util.CommonUtil;
-import org.batfish.datamodel.Ip;
-import org.batfish.grammar.GrammarSettings;
-import org.batfish.main.Driver.RunMode;
 
 public final class Settings extends BaseSettings implements BdpSettings, GrammarSettings {
 
@@ -517,6 +512,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_INVERT_SAT_FORMULA_FAULTLOC = "invertSat";
 
+  private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
+
+  private static final String ARG_PRINT_UNSAT_CORE = "printUnsatCore";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -992,6 +991,14 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC);
   }
 
+  public boolean shouldPrintUnsatCore(){
+    return _config.getBoolean(ARG_PRINT_UNSAT_CORE);
+  }
+
+  public boolean shouldPrintCounterExampleDiffs(){
+    return _config.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
+  }
+
   private void initConfigDefaults() {
     setDefaultProperty(BfConsts.ARG_ANALYSIS_NAME, null);
     setDefaultProperty(BfConsts.ARG_ANSWER_JSON_PATH, null);
@@ -1084,6 +1091,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(BfConsts.COMMAND_VALIDATE_ENVIRONMENT, false);
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
     setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
+    setDefaultProperty(ARG_PRINT_UNSAT_CORE, false);
+    setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
   }
@@ -1370,6 +1379,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(
         ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
 
+    addBooleanOption(ARG_PRINT_UNSAT_CORE, "print predicates in the UnsatCore");
+
+    addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
+
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
     addOption(ARG_Z3_TIMEOUT, "set a timeout (in milliseconds) for Z3 queries", "z3timeout");
 
@@ -1481,6 +1494,9 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.COMMAND_VALIDATE_ENVIRONMENT);
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
     getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
+    getBooleanOptionValue(ARG_PRINT_UNSAT_CORE);
+    getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
+
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);
     getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);

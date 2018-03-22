@@ -2411,7 +2411,7 @@ class EncoderSlice {
         Protocol proto = getProtocols().get(router).get(0);
         add(
             mkImplies(vars.getPermitted(), vars.getProtocolHistory().checkIfValue(proto)),
-            "addHistoryConstraints()");
+            "addHistoryConstraints");
       }
     }
   }
@@ -2430,62 +2430,62 @@ class EncoderSlice {
       if (vars.getAdminDist() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getAdminDist(), zero)),
-            "addUnusedDefaultValueConstraints():adminDist");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getMed() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getMed(), zero)),
-            "addUnusedDefaultValueConstraints():med");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getLocalPref() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getLocalPref(), zero)),
-            "addUnusedDefaultValueConstraints():localPref");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getPrefixLength() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getPrefixLength(), zero)),
-            "addUnusedDefaultValueConstraints():prefixLength");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getMetric() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getMetric(), zero)),
-            "addUnusedDefaultValueConstraints():metric");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getOspfArea() != null) {
         add(
             mkImplies(notPermitted, vars.getOspfArea().isDefaultValue()),
-            "addUnusedDefaultValueConstraints():ospfArea");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getOspfType() != null) {
         add(
             mkImplies(notPermitted, vars.getOspfType().isDefaultValue()),
-            "addUnusedDefaultValueConstraints():ospfType");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getProtocolHistory() != null) {
         add(
             mkImplies(notPermitted, vars.getProtocolHistory().isDefaultValue()),
-            "addUnusedDefaultValueConstraints():protocolHistory");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getBgpInternal() != null) {
         add(
             mkImplies(notPermitted, mkNot(vars.getBgpInternal())),
-            "addUnusedDefaultValueConstraints():bgpInternal");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getClientId() != null) {
         add(
             mkImplies(notPermitted, vars.getClientId().isDefaultValue()),
-            "addUnusedDefaultValueConstraints():clientId");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getIgpMetric() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getIgpMetric(), zero)),
-            "addUnusedDefaultValueConstraints():igpMetric");
+            "addUnusedDefaultValueConstraints");
       }
       if (vars.getRouterId() != null) {
         add(
             mkImplies(notPermitted, mkEq(vars.getRouterId(), zero)),
-            "addUnusedDefaultValueConstraints():routerId");
+            "addUnusedDefaultValueConstraints");
       }
       vars.getCommunities().forEach((cvar, e) -> add(mkImplies(notPermitted, mkNot(e))));
     }
@@ -2547,7 +2547,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getDstIp(), ipWildcard);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getSrcIps().size() > 0) {
@@ -2556,7 +2556,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
         acc = mkOr(acc, bound);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getNotSrcIps().size() > 0) {
@@ -2565,7 +2565,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getSrcOrDstIps().size() > 0) {
@@ -2575,7 +2575,7 @@ class EncoderSlice {
         BoolExpr bound2 = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
         acc = mkOr(acc, bound1, bound2);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getDstPorts().size() > 0) {
@@ -2584,7 +2584,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getNotDstPorts().size() > 0) {
@@ -2593,7 +2593,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getSrcPorts().size() > 0) {
@@ -2602,7 +2602,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getNotSrcPorts().size() > 0) {
@@ -2611,7 +2611,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getSrcOrDstPorts().size() > 0) {
@@ -2621,7 +2621,7 @@ class EncoderSlice {
         BoolExpr bound2 = subRangeBound(_symbolicPacket.getSrcPort(), subRange);
         acc = mkOr(acc, bound1, bound2);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getIcmpTypes().size() > 0) {
@@ -2630,7 +2630,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpType(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getNotIcmpTypes().size() > 0) {
@@ -2639,7 +2639,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpType(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getIcmpCodes().size() > 0) {
@@ -2648,7 +2648,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpCode(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getNotIcmpCodes().size() > 0) {
@@ -2657,7 +2657,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpCode(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getIpProtocols().size() > 0) {
@@ -2666,7 +2666,7 @@ class EncoderSlice {
         BoolExpr bound = mkEq(_symbolicPacket.getIpProtocol(), mkInt(ipProtocol.number()));
         acc = mkOr(acc, bound);
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     if (_headerSpace.getNotIpProtocols().size() > 0) {
@@ -2675,7 +2675,7 @@ class EncoderSlice {
         BoolExpr bound = mkEq(_symbolicPacket.getIpProtocol(), mkInt(ipProtocol.number()));
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, "addUnusedDefaultValueConstraints()");
+      add(acc, "addUnusedDefaultValueConstraints");
     }
 
     // TODO: need to implement fragment offsets, Ecns, states, etc

@@ -81,6 +81,10 @@ public class Encoder {
 
   private boolean _shouldInvertFormula;
 
+  private boolean _shouldPrintUnsatCore;
+
+  private boolean _shouldPrintCounterExampleChanges;
+
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
    *
@@ -145,6 +149,9 @@ public class Encoder {
 
     _numIters = _settings.getNumIters();
     _shouldInvertFormula =_settings.shouldInvertSatFormula();
+    _shouldPrintUnsatCore = _settings.shouldPrintUnsatCore();
+    _shouldPrintCounterExampleChanges = _settings.shouldPrintCounterExampleDiffs();
+
 
     HashMap<String, String> cfg = new HashMap<>();
 
@@ -464,7 +471,6 @@ public class Encoder {
       SortedSet<String> failures,
       SortedMap<Expr, Expr> additionalConstraints) {
 
-    System.out.println("buildCounterExample() called.");
     SortedMap<Expr, String> valuation = new TreeMap<>();
     HashMap<String, String> counterExampleState = new HashMap<>();
     // If user asks for the full model
@@ -484,7 +490,6 @@ public class Encoder {
       }
     }
 
-    System.out.println("Counter Example: Values assigned to variables -> ");
     ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
     Collections.sort(sortedKeys);
 
@@ -881,27 +886,28 @@ public class Encoder {
         }
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
-          System.out.println("Now unsatisfiable. Unsat core");
-          System.out.println("Size of UnsatCore : " + _solver.getUnsatCore().length);
-          System.out.println("\nPredicates in the unsatCore:");
-          System.out.println("==========================================");
-          for (Expr e : _solver.getUnsatCore()) {
-            String label = unsatcoreLabelsMap.get(e.toString());
-            // Only consider constraints we can change
-            if (!(label.equals(UnsatCore.FAILED)
-                || label.equals(UnsatCore.ENVIRONMENT)
-                || label.equals(UnsatCore.BEST_OVERALL)
-                || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-                || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-                || label.equals(UnsatCore.CONTROL_FORWARDING)
-                || label.equals(UnsatCore.POLICY)
-                || label.equals(UnsatCore.BOUND))) {
-              System.out.println(e.toString() + ": " + label + ": " 
-                      + unsatVarsMap.get(e.toString()));
+          System.out.println("Solver Status : Unsatisfiable");
+          if (_shouldPrintUnsatCore) {
+            System.out.println("Size of UnsatCore : " + _solver.getUnsatCore().length);
+            System.out.println("\nPredicates in the unsatCore:");
+            System.out.println("==========================================");
+            for (Expr e : _solver.getUnsatCore()) {
+              String label = unsatcoreLabelsMap.get(e.toString());
+              // Only consider constraints we can change
+              if (!(label.equals(UnsatCore.FAILED)
+                      || label.equals(UnsatCore.ENVIRONMENT)
+                      || label.equals(UnsatCore.BEST_OVERALL)
+                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+                      || label.equals(UnsatCore.CONTROL_FORWARDING)
+                      || label.equals(UnsatCore.POLICY)
+                      || label.equals(UnsatCore.BOUND))) {
+                System.out.println(e.toString() + ": " + label + ": "
+                        + unsatVarsMap.get(e.toString()));
+              }
             }
+            System.out.println("==========================================");
           }
-          System.out.println("==========================================");
-
           // Print out predicates not in the UnsatCore.
           System.out.println("\nPredicates not in the unsatCore:");
           System.out.println("==========================================");
@@ -922,8 +928,10 @@ public class Encoder {
                     || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
                     || label.equals(UnsatCore.CONTROL_FORWARDING)
                     || label.equals(UnsatCore.POLICY)
-                    || label.equals(UnsatCore.BOUND))) {
-                    System.out.println(e.toString() + ": " + label + ": " 
+                    || label.equals(UnsatCore.BOUND)
+                    || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
+                    || label.equals(UnsatCore.HISTORY_CONSTRAINTS))) {
+                  System.out.println(e.toString() + ": " + label + ": "
                             + unsatVarsMap.get(e));
                 }
             }
@@ -940,11 +948,13 @@ public class Encoder {
 
       System.out.println("Generated " + numCounterexamples + " counterexamples");
 
-      System.out.println("Changes in Model Variables");
-      for (String variableName : variableNames) {
-        if (variableHistoryMap.get(variableName).size() <= 1) {
-          System.out.println(
-              variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
+      if (_shouldPrintCounterExampleChanges) {
+        System.out.println("Changes in Model Variables");
+        for (String variableName : variableNames) {
+//          if (variableHistoryMap.get(variableName).size() <= 1) {
+            System.out.println(
+                    variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
+//          }
         }
       }
 
