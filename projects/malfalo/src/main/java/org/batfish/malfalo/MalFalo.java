@@ -3,7 +3,6 @@ package org.batfish.malfalo;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.TokenSource;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.apache.http.impl.client.StandardHttpRequestRetryHandler;
 import org.batfish.common.ParseTreeSentences;
 import org.batfish.common.Warnings;
 import org.batfish.common.util.CommonUtil;
@@ -15,6 +14,7 @@ import org.batfish.main.Batfish;
 
 import org.batfish.malfalo.config.Settings;
 import org.batfish.malfalo.configuration.ConfigurationFile;
+import org.batfish.malfalo.modifier.ConfigModifier;
 import org.batfish.representation.cisco.CiscoConfiguration;
 import org.batfish.representation.cisco.StandardAccessList;
 import org.batfish.representation.cisco.StandardAccessListLine;
@@ -84,6 +84,11 @@ public class MalFalo {
         }
 
         ConfigurationFile cfg = _configurationFileMap.entrySet().iterator().next().getValue();
+        ConfigModifier configModifier = new ConfigModifier(cfg);
+        configModifier.exploreAST();
+
+
+        if (true) return;
         Map<String, StandardAccessList> acls =
                 ((CiscoConfiguration) cfg.getVendorConfiguration()).getStandardAcls();
         for (Map.Entry<String, StandardAccessList>  entry :acls.entrySet()){
@@ -96,6 +101,8 @@ public class MalFalo {
             }
 
         }
+
+
     }
 
     //Playing around with using batfish functionality that look useful at this point (March)

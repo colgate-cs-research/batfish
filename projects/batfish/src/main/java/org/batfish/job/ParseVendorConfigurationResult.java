@@ -11,6 +11,7 @@ import org.batfish.common.ParseTreeSentences;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.answers.ParseStatus;
 import org.batfish.datamodel.answers.ParseVendorConfigurationAnswerElement;
+import org.batfish.grammar.BatfishCombinedParser;
 import org.batfish.vendor.VendorConfiguration;
 
 public class ParseVendorConfigurationResult
@@ -28,6 +29,8 @@ public class ParseVendorConfigurationResult
   private Warnings _warnings;
 
   private ParserRuleContext _parserRuleContext;
+
+  private BatfishCombinedParser<?,?> _parser;
 
   public ParseVendorConfigurationResult(
       long elapsedTime, BatfishLoggerHistory history, Path file, Throwable failureCause) {
@@ -59,13 +62,15 @@ public class ParseVendorConfigurationResult
           VendorConfiguration vc,
           Warnings warnings,
           ParseTreeSentences parseTree,
-          ParserRuleContext parserRuleContext) {
+          ParserRuleContext parserRuleContext,
+          BatfishCombinedParser<?,?> parser) {
     super(elapsedTime, history);
     _file = file;
     _parseTree = parseTree;
     _vc = vc;
     _warnings = warnings;
     _parserRuleContext = parserRuleContext;
+    _parser=parser;
     // parse status is determined from other fields
     _status = null;
   }
@@ -150,6 +155,10 @@ public class ParseVendorConfigurationResult
 
   public ParserRuleContext getParserRuleContext() {
     return _parserRuleContext;
+  }
+
+  public BatfishCombinedParser<?, ?> getParser() {
+    return _parser;
   }
 
   @Override
