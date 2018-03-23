@@ -7,9 +7,11 @@ import org.batfish.grammar.cisco.CiscoParser;
 import org.batfish.grammar.cisco.CiscoParserBaseListener;
 import org.batfish.representation.cisco.CiscoConfiguration;
 import org.batfish.representation.cisco.Interface;
+import org.batfish.representation.cisco.StandardAccessList;
 
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class CiscoConfigParseTreeListener extends CiscoParserBaseListener {
 
@@ -17,6 +19,8 @@ public class CiscoConfigParseTreeListener extends CiscoParserBaseListener {
     private Vocabulary _vocabulary;
     private CiscoConfiguration _ciscoConfiguration;
     private Map<String, Interface> _interfaces;
+    private Map<String, Integer> _interfaceLineNumberMap;
+    private Map<String, StandardAccessList> _acls;
     private String _hostName;
 
     public CiscoConfigParseTreeListener(ConfigurationFile cfg){
@@ -24,8 +28,16 @@ public class CiscoConfigParseTreeListener extends CiscoParserBaseListener {
         _hostName = _config.getVendorConfiguration().getHostname();
         _ciscoConfiguration = (CiscoConfiguration)_config.getVendorConfiguration();
         _interfaces = _ciscoConfiguration.getInterfaces();
+        _acls = _ciscoConfiguration.getStandardAcls();
         _vocabulary = _config.getLexerVocabulary();
+        _interfaceLineNumberMap = new TreeMap<>();
         printInterfaces();
+    }
+
+    public Map<String Integer>
+
+    public Map<String, java.lang.Integer> getInterfaceLinesMap() {
+        return _interfaceLineNumberMap;
     }
 
     private void printInterfaces(){
@@ -55,11 +67,12 @@ public class CiscoConfigParseTreeListener extends CiscoParserBaseListener {
     public void enterS_interface(CiscoParser.S_interfaceContext ctx) {
         track(ctx, "interface stanza (Enter)" + ctx.iname.getText() + " Line : "
          +ctx.getStart().getLine());
+        _interfaceLineNumberMap.put(ctx.iname.getText(), ctx.getStart().getLine());
     }
 
     @Override
     public void enterStandard_access_list_stanza(CiscoParser.Standard_access_list_stanzaContext ctx) {
-        track(ctx, "standard acl stanza (ENTER)");
+        track(ctx, "standard acl stanza (ENTER)" + ctx.name + ctx.num );
     }
 
     //

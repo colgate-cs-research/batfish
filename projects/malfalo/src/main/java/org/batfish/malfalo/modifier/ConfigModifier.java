@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 
 /** Builder patter**/
@@ -21,7 +22,6 @@ public class ConfigModifier {
 
     public ConfigModifier(ConfigurationFile config){
         _config = config;
-
         _modifiedDestination = Paths.get(config.getCfgFile().getParentFile().getAbsolutePath());
     }
 
@@ -32,6 +32,8 @@ public class ConfigModifier {
         CiscoConfigParseTreeListener listener = new CiscoConfigParseTreeListener(_config);
         ParseTreeWalker walker = new ParseTreeWalker();
         walker.walk(listener,_config.getParserRuleContext());
+
+        Map<String, Integer> ifaceLineNumMap = listener.getInterfaceLinesMap();
 
     }
 
