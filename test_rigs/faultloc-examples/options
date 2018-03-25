@@ -1,1 +1,2 @@
-add-batfish-option numIters 8
+add-batfish-option numIters 20
+add-batfish-option printUnsatCore
