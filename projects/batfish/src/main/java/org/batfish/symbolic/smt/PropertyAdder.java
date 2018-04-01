@@ -1,19 +1,16 @@
 package org.batfish.symbolic.smt;
 
-import com.microsoft.z3.ArithExpr;
-import com.microsoft.z3.BitVecExpr;
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.Expr;
-import com.microsoft.z3.Solver;
+import com.microsoft.z3.*;
+import javafx.util.Pair;
+import org.batfish.symbolic.Graph;
+import org.batfish.symbolic.GraphEdge;
+import org.batfish.symbolic.Protocol;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.batfish.symbolic.Graph;
-import org.batfish.symbolic.GraphEdge;
-import org.batfish.symbolic.Protocol;
 
 /**
  * Instruments the network model with additional information that is useful for checking other
@@ -163,7 +160,7 @@ class PropertyAdder {
    * Also instruments reachability, but to a destination router
    * rather than a destination port.
    */
-  Map<String, BoolExpr> instrumentReachability(String router) {
+  Pair<Map<String, ArithExpr>,Map<String, BoolExpr>> instrumentReachability(String router) {
     Context ctx = _encoderSlice.getCtx();
     Solver solver = _encoderSlice.getSolver();
     Map<String, BoolExpr> reachableVars = new HashMap<>();
@@ -184,7 +181,7 @@ class PropertyAdder {
       }
     }
 
-    return reachableVars;
+    return new Pair<Map<String, ArithExpr>,Map<String, BoolExpr>>(idVars, reachableVars);
   }
 
   // Potentially useful in the future to optimize reachability when we know

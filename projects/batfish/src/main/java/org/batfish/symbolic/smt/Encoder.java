@@ -12,6 +12,7 @@ import com.microsoft.z3.Tactic;
 import java.util.*;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
+
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 import org.batfish.config.Settings;
@@ -60,6 +61,7 @@ public class Encoder {
   private Map<String, EncoderSlice> _slices;
 
   private Map<String, Map<String, BoolExpr>> _sliceReachability;
+
 
   private Encoder _previousEncoder;
 
@@ -146,7 +148,6 @@ public class Encoder {
     _question = q;
     _slices = new HashMap<>();
     _sliceReachability = new HashMap<>();
-
     _numIters = _settings.getNumIters();
     _shouldInvertFormula =_settings.shouldInvertSatFormula();
     _shouldPrintUnsatCore = _settings.shouldPrintUnsatCore();
@@ -282,8 +283,8 @@ public class Encoder {
           _slices.put(sliceName, slice);
 
           PropertyAdder pa = new PropertyAdder(slice);
-          Map<String, BoolExpr> reachVars = pa.instrumentReachability(router);
-          _sliceReachability.put(router, reachVars);
+          javafx.util.Pair<Map<String, ArithExpr>, Map<String, BoolExpr>> reachVars = pa.instrumentReachability(router);
+          _sliceReachability.put(router, reachVars.getValue());
         }
       }
     }
@@ -469,7 +470,8 @@ public class Encoder {
       SortedSet<String> fwdModel,
       SortedMap<String, SortedMap<String, String>> envModel,
       SortedSet<String> failures,
-      SortedMap<Expr, Expr> additionalConstraints) {
+      SortedMap<Expr, Expr> additionalConstraints,
+      SortedMap<Expr, Expr> staticConstraints) {
 
     SortedMap<Expr, String> valuation = new TreeMap<>();
     HashMap<String, String> counterExampleState = new HashMap<>();
@@ -486,9 +488,15 @@ public class Encoder {
         }
         valuation.put(e, s);
         counterExampleState.put(name, s);
-        additionalConstraints.put(e, val);
+        if (name.contains("reachable-id")){ //this fixes issue with bgp-acls
+          staticConstraints.put(e, val);
+        }else{
+          additionalConstraints.put(e, val);
+        }
       }
     }
+
+
 
     ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
     Collections.sort(sortedKeys);
@@ -726,8 +734,6 @@ public class Encoder {
     return mkAnd(acc1, acc2);
   }
 
-  // temp testing variables
-  private SortedMap<Expr, Expr> filterdConstraints;
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -794,6 +800,17 @@ public class Encoder {
 
       Model m;
       int numCounterexamples = 0;
+
+      SortedSet<Expr> staticVars =
+              this.getMainSlice()
+                      .getSymbolicPacket()
+                      .getSymbolicPacketVars(); // should be added to solver during the first iteration.
+
+
+      SortedSet<BoolExpr> newEqs = new TreeSet<BoolExpr>();
+
+
+
       do {
         m = _solver.getModel();
         SortedMap<String, String> model = new TreeMap<>();
@@ -802,9 +819,10 @@ public class Encoder {
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
         SortedMap<Expr, Expr> additionalConstraints = new TreeMap<>();
+        SortedMap<Expr, Expr> moreStaticConstraints = new TreeMap<>();
         HashMap<String, String> ce =
             buildCounterExample(
-                this, m, model, packetModel, fwdModel, envModel, failures, additionalConstraints);
+                this, m, model, packetModel, fwdModel, envModel, failures, additionalConstraints,moreStaticConstraints);
         if (numCounterexamples == 0) {
           for (String key : ce.keySet()) {
             // first values assigned to counter-example variables...
@@ -825,7 +843,8 @@ public class Encoder {
                   fwdModel,
                   envModel,
                   failures,
-                  additionalConstraints);
+                  additionalConstraints,
+                  moreStaticConstraints);
           for (String varName : ce.keySet()) {
             variableHistoryMap.get(varName).add(ce.get(varName));
           }
@@ -835,25 +854,20 @@ public class Encoder {
             new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
         // TODO: need to print each result information.. Need to go from a VerificationResult object
         // to an AnswerElement object in order get the summary
-        // TODO: REMOVE THE FOLLOWING LINE >
-        for (IpWildcard ip : _question.getSrcIps()) {
-          System.out.println(result.prettyPrint(ip.toString()));
-        }
         numCounterexamples++;
 
         // Generate multiple counter examples
         if (_numIters > 1) {
-          SortedSet<Expr> packetVars =
-              this.getMainSlice()
-                  .getSymbolicPacket()
-                  .getSymbolicPacketVars(); // should be added to solver during the first iteration.
-          SortedSet<BoolExpr> newEqs = new TreeSet<BoolExpr>();
+
 
           // this is the counterexample. the 15 data plane packet variables need to be set
           if (numCounterexamples == 1) {
-            for (Expr e : packetVars) {
+            staticVars.addAll(moreStaticConstraints.keySet());
+            for (Expr e : staticVars) {
               if (additionalConstraints.containsKey(e)) {
                 newEqs.add(_ctx.mkEq(e, additionalConstraints.get(e)));
+              }else{
+                newEqs.add(_ctx.mkEq(e, moreStaticConstraints.get(e)));
               }
             }
 
@@ -863,7 +877,7 @@ public class Encoder {
 
           newEqs.clear();
           for (Expr var : additionalConstraints.keySet()) {
-            if (!packetVars.contains(var))
+            if (!staticVars.contains(var))
               newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
           }
           BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
