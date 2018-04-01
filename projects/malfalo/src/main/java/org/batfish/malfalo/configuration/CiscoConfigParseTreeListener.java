@@ -34,7 +34,6 @@ public class CiscoConfigParseTreeListener extends CiscoParserBaseListener {
         printInterfaces();
     }
 
-    public Map<String Integer>
 
     public Map<String, java.lang.Integer> getInterfaceLinesMap() {
         return _interfaceLineNumberMap;

@@ -38,8 +38,7 @@ public class ConfigModifier {
     }
 
     //trying things out (to create lots of configuration files.)
-    public void addLineTest(String line){
-        System.out.println(_config.toString() + " " + line);
+    public void addLineTest(){
         System.out.println(_modifiedDestination.toString());
         //want to start by adding a line at the start of the file
         //and creating a new file, with the finish() method.

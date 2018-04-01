@@ -86,6 +86,7 @@ public class MalFalo {
         ConfigurationFile cfg = _configurationFileMap.entrySet().iterator().next().getValue();
         ConfigModifier configModifier = new ConfigModifier(cfg);
         configModifier.exploreAST();
+        configModifier.addLineTest();
 
 
         if (true) return;
