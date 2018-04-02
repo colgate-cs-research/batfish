@@ -14,6 +14,7 @@ import org.batfish.symbolic.CommunityVar;
 import org.batfish.symbolic.CommunityVar.Type;
 import org.batfish.symbolic.IDeepCopy;
 import org.batfish.symbolic.Protocol;
+import java.util.Arrays;
 
 /**
  * A symbolic record of control plane message attributes. Attributes are specialized based on the
@@ -66,6 +67,8 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
   private SymbolicEnum<Protocol> _protocolHistory;
 
   private Map<CommunityVar, BoolExpr> _communities;
+
+  public Map<String, BoolExpr> slicesMap = new HashMap<String, BoolExpr>();
 
   SymbolicRoute(String name, Protocol proto) {
     _name = name;
@@ -163,7 +166,8 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
       _localPref = (modelLp ? ctx.mkIntConst(_name + "_localPref") : null);
       _adminDist = (modelAd ? ctx.mkIntConst(_name + "_adminDist") : null);
       _med = (opts.getKeepMed() ? ctx.mkIntConst(_name + "_med") : null);
-      _bgpInternal = (modelIbgp ? ctx.mkBoolConst(_name + "_bgpInternal") : null);
+      //_bgpInternal = (modelIbgp ? ctx.mkBoolConst(_name + "_bgpInternal") : null);
+      _bgpInternal = (modelIbgp ? mkBoolConstant(ctx, _name + "_bgpInternal") : null);
       _igpMetric = (modelIbgp ? ctx.mkIntConst(_name + "_igpMetric") : null);
 
       if (hasOspf && opts.getKeepOspfType()) {
@@ -201,7 +205,8 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
       _localPref = (modelLp ? ctx.mkIntConst(_name + "_localPref") : null);
       _adminDist = (modelAd ? ctx.mkIntConst(_name + "_adminDist") : null);
       _med = (opts.getKeepMed() ? ctx.mkIntConst(_name + "_med") : null);
-      _bgpInternal = (modelIbgp ? ctx.mkBoolConst(_name + "_bgpInternal") : null);
+      //_bgpInternal = (modelIbgp ? ctx.mkBoolConst(_name + "_bgpInternal") : null);
+      _bgpInternal = (modelIbgp ? mkBoolConstant(ctx, _name + "_bgpInternal") : null);
       _igpMetric =
           ((_isBest && modelIbgp) || (isAbstract && !_isExport)
               ? ctx.mkIntConst(_name + "_igpMetric")
@@ -230,7 +235,8 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
     }
 
     _prefixLength = ctx.mkIntConst(_name + "_prefixLength");
-    _permitted = ctx.mkBoolConst(_name + "_permitted");
+    //_permitted = ctx.mkBoolConst(_name + "_permitted");
+    _permitted = mkBoolConstant(ctx, _name + "_permitted");
 
     _communities = new HashMap<>();
     boolean usesBgp = (proto.isBgp() || (hasBgp && proto.isBest()));
@@ -245,7 +251,8 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
         if (cvar.getType() == CommunityVar.Type.OTHER) {
           s = s + "_OTHER";
         }
-        BoolExpr var = ctx.mkBoolConst(_name + "_community_" + s);
+        //BoolExpr var = ctx.mkBoolConst(_name + "_community_" + s);
+        BoolExpr var = mkBoolConstant(ctx, _name + "_community_" + s);
         _communities.put(cvar, var);
       }
     }
@@ -475,5 +482,13 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
   @Override
   public SymbolicRoute deepCopy() {
     return new SymbolicRoute(this);
+  }
+
+  public BoolExpr mkBoolConstant(Context ctx, String input) {
+    System.out.println(input);
+    BoolExpr output = ctx.mkBoolConst(input);
+    slicesMap.put(input, output);
+    //System.out.println(Arrays.asList(slicesMap));
+    return output;
   }
 }

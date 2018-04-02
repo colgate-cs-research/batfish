@@ -3,6 +3,7 @@ package org.batfish.z3.expr.visitors;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.util.List;
+import java.util.Arrays;
 import org.batfish.z3.expr.AndExpr;
 import org.batfish.z3.expr.BasicRuleStatement;
 import org.batfish.z3.expr.BasicStateExpr;
@@ -38,6 +39,9 @@ public class ExprPrinter implements ExprVisitor, VoidStatementVisitor {
   public static String print(Expr expr) {
     ExprPrinter printer = new ExprPrinter();
     expr.accept(printer);
+    List<Expr> list = Arrays.asList(expr);
+    //System.out.println("printCollapsedComplexExpr");
+    //printer.printCollapsedComplexExpr(list);
     return printer._sb.toString();
   }
 

@@ -46,6 +46,8 @@ import org.batfish.symbolic.Protocol;
 import org.batfish.symbolic.collections.Table2;
 import org.batfish.symbolic.utils.PrefixUtils;
 
+import java.util.Arrays;
+
 /**
  * A class responsible for building a symbolic encoding of the network for a particular packet. The
  * encoding is heavily specialized based on the PolicyQuotient class, and what optimizations it
@@ -77,11 +79,13 @@ class EncoderSlice {
 
   private Table2<String, GraphEdge, BoolExpr> _forwardsAcross;
 
-  private List<SymbolicRoute> _allSymbolicRoutes;
+  public List<SymbolicRoute> _allSymbolicRoutes;
 
   private Map<String, SymbolicRoute> _ospfRedistributed;
 
   private Table2<String, Protocol, Set<Prefix>> _originatedNetworks;
+
+  public Map<String, BoolExpr> slicesMap = new HashMap<String, BoolExpr>();
 
   /**
    * Create a new encoding slice
@@ -202,6 +206,10 @@ class EncoderSlice {
 
   // Symbolic equality
   BoolExpr mkEq(Expr e1, Expr e2) {
+    //System.out.println("making expression");
+    //System.out.println(e1.toString()); //THIS DOES NOTHING
+    //System.out.println(e2);
+    //System.out.println(ExprPrinter.print(e1));
     return getCtx().mkEq(e1, e2);
   }
 
@@ -282,7 +290,8 @@ class EncoderSlice {
                   "OUTBOUND",
                   outbound.getName());
 
-          BoolExpr outAcl = getCtx().mkBoolConst(outName);
+          //BoolExpr outAcl = getCtx().mkBoolConst(outName);
+          BoolExpr outAcl = mkBoolConstant(outName);
           BoolExpr outAclFunc = computeACL(outbound);
           add(mkEq(outAcl, outAclFunc), "initAclFunctions():outbound");
           _outboundAcls.put(ge, outAcl);
@@ -295,7 +304,8 @@ class EncoderSlice {
                   "%d_%s_%s_%s_%s_%s",
                   _encoder.getId(), _sliceName, router, i.getName(), "INBOUND", inbound.getName());
 
-          BoolExpr inAcl = getCtx().mkBoolConst(inName);
+          //BoolExpr inAcl = getCtx().mkBoolConst(inName);
+          BoolExpr inAcl = mkBoolConstant(inName);
           BoolExpr inAclFunc = computeACL(inbound);
           add(mkEq(inAcl, inAclFunc), "initAclFunctions():inbound");
           _inboundAcls.put(ge, inAcl);
@@ -490,7 +500,8 @@ class EncoderSlice {
         map.put(proto, edgeMap);
         for (LogicalEdge e : collectAllImportLogicalEdges(router, conf, proto)) {
           String chName = e.getSymbolicRecord().getName() + "_choice";
-          BoolExpr choiceVar = getCtx().mkBoolConst(chName);
+          //BoolExpr choiceVar = getCtx().mkBoolConst(chName);
+          BoolExpr choiceVar = mkBoolConstant(chName);
           getAllVariables().put(choiceVar.toString(), choiceVar);
           edgeMap.put(e, choiceVar);
         }
@@ -510,7 +521,8 @@ class EncoderSlice {
         String iface = edge.getStart().getName();
         String cName =
             _encoder.getId() + "_" + _sliceName + "CONTROL-FORWARDING_" + router + "_" + iface;
-        BoolExpr cForward = getCtx().mkBoolConst(cName);
+        //BoolExpr cForward = getCtx().mkBoolConst(cName);
+        BoolExpr cForward = mkBoolConstant(cName);
         getAllVariables().put(cForward.toString(), cForward);
         _symbolicDecisions.getControlForwarding().put(router, edge, cForward);
 
@@ -518,7 +530,8 @@ class EncoderSlice {
         if (!edge.isAbstract()) {
           String dName =
               _encoder.getId() + "_" + _sliceName + "DATA-FORWARDING_" + router + "_" + iface;
-          BoolExpr dForward = getCtx().mkBoolConst(dName);
+          //BoolExpr dForward = getCtx().mkBoolConst(dName);
+          BoolExpr dForward = mkBoolConstant(dName);
           getAllVariables().put(dForward.toString(), dForward);
           _symbolicDecisions.getDataForwarding().put(router, edge, dForward);
         }
@@ -2800,5 +2813,13 @@ class EncoderSlice {
 
   Table2<String, Protocol, Set<Prefix>> getOriginatedNetworks() {
     return _originatedNetworks;
+  }
+
+  public BoolExpr mkBoolConstant(String input) {
+    System.out.println(input);
+    BoolExpr output = getCtx().mkBoolConst(input);
+    slicesMap.put(input, output);
+    //System.out.println(Arrays.asList(slicesMap));
+    return output;
   }
 }

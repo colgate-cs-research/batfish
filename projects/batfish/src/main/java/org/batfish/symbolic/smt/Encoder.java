@@ -402,6 +402,11 @@ public class Encoder {
 
   // Symblic equality of expressions
   BoolExpr mkEq(Expr e1, Expr e2) {
+    //System.out.println("Making expressions");
+    String exp1 = e1.toString();
+    //System.out.println(exp1);
+    //System.out.println(e1.toString()); THIS DOES NOTHING
+    //System.out.println(e2);
     return getCtx().mkEq(e1, e2);
   }
 
@@ -741,10 +746,30 @@ public class Encoder {
    * @return A VerificationResult indicating the status of the check.
    */
   public Tuple<VerificationResult, Model> verify() {
+    //Map<String, BoolExpr> slicesMap = 
 
     Map<String, BoolExpr> unsatVarsMap = _unsatCore.getTrackingVars();
+    System.out.println("printing unsatVars Map");
+    Arrays.toString(unsatVarsMap.entrySet().toArray());
     Map<String, String> unsatcoreLabelsMap = _unsatCore.getTrackingLabels();
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
+    System.out.println("printing slices Map");
+    List<String>EncoderSliceStr = new ArrayList<String>();
+    List<String>SymbolicRouteStr = new ArrayList<String>();
+    for (EncoderSlice slice: _slices.values()){
+      for (String key: slice.slicesMap.keySet()){
+        EncoderSliceStr.add(key);
+      }
+      for (SymbolicRoute route: slice._allSymbolicRoutes){
+        for (String key: route.slicesMap.keySet()){
+          SymbolicRouteStr.add(key);
+        }
+      }
+    }
+    System.out.println(EncoderSliceStr);
+    System.out.println(SymbolicRouteStr);
+
+    //Arrays.toString(mainSlice.slicesMap.entrySet().toArray());
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
