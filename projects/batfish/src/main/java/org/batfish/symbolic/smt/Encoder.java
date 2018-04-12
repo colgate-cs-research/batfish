@@ -739,6 +739,36 @@ public class Encoder {
     return mkAnd(acc1, acc2);
   }
 
+  public List<String> findPredicateAssignment(Expr expr){
+    List<String> result = new ArrayList<String>();
+    Expr[] args = expr.getArgs();
+    if (expr.isITE() == true){
+      result.addAll(findPredicateAssignment(args[1]));
+      result.addAll(findPredicateAssignment(args[2]));
+    }
+    else if (expr.isAnd() == true || expr.isOr() == true){
+      for (Expr exp: args){
+        result.addAll(findPredicateAssignment(exp));
+      }
+    }
+    else if (expr.isEq() == true){
+      if (args[0].getArgs().length > 1) {
+        // this should work but just gives an empty when recursing back
+        result.addAll(findPredicateAssignment(args[0]));
+      }
+      else{
+        result.add(args[0].toString()); 
+        // currently have assigned to -- need to get args[1] for referenced
+        //look at constants in the args[1] equals
+        return result;
+      }
+    }
+    else if (expr.isImplies() == true) {
+      result.addAll(findPredicateAssignment(args[0]));
+      result.addAll(findPredicateAssignment(args[1]));
+    }
+    return result;
+  }
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -769,7 +799,22 @@ public class Encoder {
     System.out.println(EncoderSliceStr);
     System.out.println(SymbolicRouteStr);
 
-    //Arrays.toString(mainSlice.slicesMap.entrySet().toArray());
+    //Map<Expr, List<Expr> output = new HashMap<Expr, List<Expr>>();
+
+    //Map<Expr, List<Expr> assignedTo = new HashMap<Expr, List<Expr>>();
+    //variableName = List<predicate> -- assignedTo[varname] (args[0]) = append(value)
+    //Map<Expr, List<Expr> referencedTo = new HashMap<Expr, List<Expr>>();
+    //predicate = List<referenced> -- referencedTo[value] = List<referenced> ([args1])
+
+    for (Map.Entry<String,BoolExpr> entry : unsatVarsMap.entrySet()) {
+      String key = entry.getKey();
+      BoolExpr value = entry.getValue();
+      //System.out.println(value);
+      //System.out.println("finding predicate assignment");
+      List<String> assignments = findPredicateAssignment(value);
+      //System.out.println("printing predicate result");
+      //System.out.println(Arrays.toString(assignments.toArray()));
+    }
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
