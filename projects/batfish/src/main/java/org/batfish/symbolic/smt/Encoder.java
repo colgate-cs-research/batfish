@@ -739,6 +739,7 @@ public class Encoder {
     return mkAnd(acc1, acc2);
   }
 
+  //gives a list where first index is assinged to and second index is referenced to etc....
   public List<String> findPredicateAssignment(Expr expr){
     List<String> result = new ArrayList<String>();
     Expr[] args = expr.getArgs();
@@ -757,9 +758,17 @@ public class Encoder {
         result.addAll(findPredicateAssignment(args[0]));
       }
       else{
-        result.add(args[0].toString()); 
-        // currently have assigned to -- need to get args[1] for referenced
-        //look at constants in the args[1] equals
+        //System.out.println(expr);
+        result.add(args[0].toString());
+        if (args[1].getArgs().length > 1){
+          result.add("expression");
+        }
+        else if (Character.isDigit(args[1].toString().charAt(0)) == true){
+          result.add("numerical value");
+        }
+        else{
+          result.add(args[1].toString()); 
+        }
         return result;
       }
     }
@@ -769,6 +778,44 @@ public class Encoder {
     }
     return result;
   }
+
+  public void buildPredicateMaps(Map<String, List<String>> overall, Map<String, List<String>> assignedTo, Map<String, List<String>> referencedTo, Map<String, BoolExpr> unsatVarsMap){
+    for (Map.Entry<String,BoolExpr> entry : unsatVarsMap.entrySet()) {
+      String key = entry.getKey();
+      BoolExpr value = entry.getValue();
+      //System.out.println("finding predicate assignment");
+      //if (key.equals("Pred117")){
+      List<String> assignments = findPredicateAssignment(value);
+      Arrays.toString(assignments.toArray());
+      overall.put(key,assignments);
+      for (int i =0; i< assignments.size(); i+=2){
+        String assigned = assignments.get(i);
+        String referenced = assignments.get(i+1);
+        if (!assignedTo.containsKey(assigned)){
+          List<String> output = new ArrayList<String>();
+          output.add(referenced);
+          assignedTo.put(assigned,output);
+        }
+        else{
+          List<String> temp = assignedTo.get(assigned);
+          temp.add(referenced);
+          assignedTo.put(assigned,temp);
+        }
+        if (!referencedTo.containsKey(referenced)){
+          List<String> output = new ArrayList<String>();
+          output.add(assigned);
+          referencedTo.put(referenced,output);
+        }
+        else{
+          List<String> temp = referencedTo.get(referenced);
+          temp.add(referenced);
+          referencedTo.put(referenced,temp);
+        }
+      }
+      //} 
+    }
+  }
+
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -799,22 +846,24 @@ public class Encoder {
     System.out.println(EncoderSliceStr);
     System.out.println(SymbolicRouteStr);
 
-    //Map<Expr, List<Expr> output = new HashMap<Expr, List<Expr>>();
 
-    //Map<Expr, List<Expr> assignedTo = new HashMap<Expr, List<Expr>>();
-    //variableName = List<predicate> -- assignedTo[varname] (args[0]) = append(value)
-    //Map<Expr, List<Expr> referencedTo = new HashMap<Expr, List<Expr>>();
-    //predicate = List<referenced> -- referencedTo[value] = List<referenced> ([args1])
+    Map<String, List<String>> overall = new HashMap<String, List<String>>();
+    //assigned to is at 0, referenced to is at 1 etc.
+    Map<String, List<String>> assignedTo = new HashMap<String, List<String>>();
+    Map<String, List<String>> referencedTo = new HashMap<String, List<String>>();
 
-    for (Map.Entry<String,BoolExpr> entry : unsatVarsMap.entrySet()) {
-      String key = entry.getKey();
-      BoolExpr value = entry.getValue();
-      //System.out.println(value);
-      //System.out.println("finding predicate assignment");
-      List<String> assignments = findPredicateAssignment(value);
-      //System.out.println("printing predicate result");
-      //System.out.println(Arrays.toString(assignments.toArray()));
-    }
+    buildPredicateMaps(overall, assignedTo, referencedTo, unsatVarsMap);
+    
+    System.out.println("printing assigned map"); //odd entry are assigned to and even entry are referenced to
+    for (Map.Entry<String, List<String>> entry : assignedTo.entrySet()) {
+      String k = entry.getKey();
+      List<String> val = entry.getValue();
+      System.out.println(k);
+      for (String str: val){
+        System.out.print(str + ", ");
+      }
+      System.out.println();
+    } 
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
