@@ -740,8 +740,9 @@ public class Encoder {
   }
 
   //gives a list where first index is assinged to and second index is referenced to etc....
-  public List<String> findPredicateAssignment(Expr expr){
-    List<String> result = new ArrayList<String>();
+  //CONVERT TO BOOL EXPRESSIONS! 
+  public List<Expr> findPredicateAssignment(Expr expr){
+    List<Expr> result = new ArrayList<Expr>();
     Expr[] args = expr.getArgs();
     if (expr.isITE() == true){
       result.addAll(findPredicateAssignment(args[1]));
@@ -758,16 +759,12 @@ public class Encoder {
         result.addAll(findPredicateAssignment(args[0]));
       }
       else{
-        //System.out.println(expr);
-        result.add(args[0].toString());
+        result.add(args[0]);
         if (args[1].getArgs().length > 1){
-          result.add("expression");
-        }
-        else if (Character.isDigit(args[1].toString().charAt(0)) == true){
-          result.add("numerical value");
+          result.add(mkTrue());
         }
         else{
-          result.add(args[1].toString()); 
+          result.add(args[1]); 
         }
         return result;
       }
@@ -779,37 +776,36 @@ public class Encoder {
     return result;
   }
 
-  public void buildPredicateMaps(Map<String, List<String>> overall, Map<String, List<String>> assignedTo, Map<String, List<String>> referencedTo, Map<String, BoolExpr> unsatVarsMap){
+  public void buildPredicateMaps(Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo, Map<String, BoolExpr> unsatVarsMap){
     for (Map.Entry<String,BoolExpr> entry : unsatVarsMap.entrySet()) {
       String key = entry.getKey();
       BoolExpr value = entry.getValue();
       //System.out.println("finding predicate assignment");
       //if (key.equals("Pred117")){
-      List<String> assignments = findPredicateAssignment(value);
-      Arrays.toString(assignments.toArray());
-      overall.put(key,assignments);
+      List<Expr> assignments = findPredicateAssignment(value);
+      //Arrays.toString(assignments.toArray());
       for (int i =0; i< assignments.size(); i+=2){
-        String assigned = assignments.get(i);
-        String referenced = assignments.get(i+1);
+        Expr assigned = assignments.get(i);
+        Expr referenced = assignments.get(i+1);
         if (!assignedTo.containsKey(assigned)){
           List<String> output = new ArrayList<String>();
-          output.add(referenced);
+          output.add(key);
           assignedTo.put(assigned,output);
         }
         else{
           List<String> temp = assignedTo.get(assigned);
-          temp.add(referenced);
+          temp.add(key);
           assignedTo.put(assigned,temp);
         }
-        if (!referencedTo.containsKey(referenced)){
-          List<String> output = new ArrayList<String>();
-          output.add(assigned);
-          referencedTo.put(referenced,output);
+        if (!referencedTo.containsKey(key)){
+          List<Expr> output = new ArrayList<Expr>();
+          output.add(referenced);
+          referencedTo.put(key,output);
         }
         else{
-          List<String> temp = referencedTo.get(referenced);
+          List<Expr> temp = referencedTo.get(key);
           temp.add(referenced);
-          referencedTo.put(referenced,temp);
+          referencedTo.put(key,temp);
         }
       }
       //} 
@@ -845,24 +841,36 @@ public class Encoder {
     }
     System.out.println(EncoderSliceStr);
     System.out.println(SymbolicRouteStr);
-
-
-    Map<String, List<String>> overall = new HashMap<String, List<String>>();
-    //assigned to is at 0, referenced to is at 1 etc.
-    Map<String, List<String>> assignedTo = new HashMap<String, List<String>>();
-    Map<String, List<String>> referencedTo = new HashMap<String, List<String>>();
-
-    buildPredicateMaps(overall, assignedTo, referencedTo, unsatVarsMap);
     
-    System.out.println("printing assigned map"); //odd entry are assigned to and even entry are referenced to
-    for (Map.Entry<String, List<String>> entry : assignedTo.entrySet()) {
-      String k = entry.getKey();
+    //from list of B see if it gets assignedTo -- B: pred220
+    Map<Expr, List<String>>   assignedTo = new HashMap<Expr, List<String>>();
+
+    // this should be predname : list of referenced to, pred221 : List of B
+    Map<String, List<Expr>> referencedTo = new HashMap<String, List<Expr>>();
+
+    buildPredicateMaps(assignedTo, referencedTo, unsatVarsMap);
+    
+    System.out.println("printing assignedTo map"); //odd entry are assigned to and even entry are referenced to
+    for (Map.Entry<Expr, List<String>> entry : assignedTo.entrySet()) {
+      Expr k = entry.getKey();
       List<String> val = entry.getValue();
       System.out.println(k);
       for (String str: val){
         System.out.print(str + ", ");
       }
       System.out.println();
+    } 
+    System.out.println("printing referencedTo map"); //odd entry are assigned to and even entry are referenced to
+    for (Map.Entry<String, List<Expr>> entry : referencedTo.entrySet()) {
+      String k = entry.getKey();
+      List<Expr> val = entry.getValue();
+      if (!val.get(0).equals("numerical value")){
+        System.out.println(k);
+        for (Expr exp: val){
+          System.out.print(exp + ", ");
+        }
+        System.out.println();
+      }
     } 
 
     int numVariables = _allVariables.size();
@@ -1049,6 +1057,18 @@ public class Encoder {
           for (int i = 0; i < unsatCore.length; i++) {
             unsatCoreStrings.add(unsatCore[i].toString());
           }
+
+          // LOOP THROUGH UnsatCore line 1064
+
+          //processed = [] -- will contain every single pred not in the unsat core and that it influences unsatcore
+          // loop through unsatcore -- add to a workliest 
+          //while worklist not empty:
+          //pred = pop
+          // check if already processed if so move to next pred
+          //retvars = referenced.get(pred)
+          //for var: retvars
+            //worklist.add(assigned.get(var))
+          //processed.append(pred)
 
           for (String e : unsatcoreLabelsMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
