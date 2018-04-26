@@ -1221,6 +1221,7 @@ public class Encoder {
    * network. This should be called prior to calling the <b>verify method</b>
    */
   void computeEncoding() {
+    
     if (_graph.hasStaticRouteWithDynamicNextHop()) {
       throw new BatfishException(
           "Cannot encode a network that has a static route with a dynamic next hop");
