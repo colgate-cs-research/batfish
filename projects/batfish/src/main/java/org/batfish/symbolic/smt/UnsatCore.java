@@ -52,7 +52,7 @@ class UnsatCore {
     }
   }
 
-  void track(Solver solver, Context ctx, BoolExpr be) {
+  void  track(Solver solver, Context ctx, BoolExpr be) {
     track(solver, ctx, be, "");
   }
 

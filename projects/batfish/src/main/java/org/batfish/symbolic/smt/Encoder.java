@@ -9,6 +9,8 @@ import com.microsoft.z3.Model;
 import com.microsoft.z3.Solver;
 import com.microsoft.z3.Status;
 import com.microsoft.z3.Tactic;
+import com.microsoft.z3.AST;
+
 import java.util.*;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
@@ -963,7 +965,7 @@ public class Encoder {
     } else {
       VerificationResult result;
 
-      Model m;
+      Model m =null;
       int numCounterexamples = 0;
 
       SortedSet<Expr> staticVars =
@@ -975,7 +977,7 @@ public class Encoder {
       SortedSet<BoolExpr> newEqs = new TreeSet<BoolExpr>();
 
 
-
+      BoolExpr andPcktVars = mkTrue();
       do {
         m = _solver.getModel();
         SortedMap<String, String> model = new TreeMap<>();
@@ -1036,8 +1038,8 @@ public class Encoder {
               }
             }
 
-            BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-            _solver.add(andPcktVars);
+            andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+            _unsatCore.track(_solver, _ctx,andPcktVars, "Packet Variables");
           }
 
           newEqs.clear();
@@ -1046,7 +1048,7 @@ public class Encoder {
               newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
           }
           BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-          _solver.add(_ctx.mkNot(andAllEq));
+          _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
         }
 
         // Find the smallest possible counterexample
@@ -1063,9 +1065,102 @@ public class Encoder {
           _solver.reset();
           _solver.add(negFormula);
         }
+
+        Set<BoolExpr> coll = new HashSet<BoolExpr>();
+        coll.addAll(_unsatCore.getTrackingVars().values());
+
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
-          System.out.println("Solver Status : Unsatisfiable");
+          Solver nSolver = _ctx.mkSolver();
+
+
+          BoolExpr[] solverAssertions = _solver.getUnsatCore();
+          for (int i =0;i<solverAssertions.length;i++){
+            solverAssertions[i] = mkNot(unsatVarsMap.get(solverAssertions[i].toString()));
+          }
+          nSolver.add(solverAssertions);
+          /* Replacing implications with consequents */
+//          BoolExpr[] solverAssertions = _solver.getAssertions();
+//
+//          for (int i =0;i<solverAssertions.length;i++){
+//            BoolExpr be = solverAssertions[i];
+//            if (be.isImplies()){
+//              solverAssertions[i] =  (BoolExpr) be.getArgs()[1];
+//            }
+//          }
+//          nSolver.add(solverAssertions); //Modified assertions added to solver.
+
+
+          Set<Integer> extra = new HashSet<>(); //tracking noncore assertions
+          Set<BoolExpr> extraPredicates = new HashSet<>();
+
+          BoolExpr currentPred;
+          for (int j = 0; j < solverAssertions.length; j++){
+            currentPred =  solverAssertions[j];
+            solverAssertions[j] = mkTrue(); //Equivalent of removing the assertion
+            nSolver.reset();
+            nSolver.add(solverAssertions);
+            if (nSolver.check()==Status.UNSATISFIABLE) {
+              extra.add(j);
+              extraPredicates.add(currentPred);
+            }else {
+              solverAssertions[j] = currentPred;
+            }
+          }
+
+          int predId = 0;
+          int minCoreSize = solverAssertions.length - extra.size();
+          BoolExpr[] minimalCore = new BoolExpr[minCoreSize];
+          for (int k=0;k<solverAssertions.length;k++){
+            if (!extra.contains(k)){
+              minimalCore[predId] = solverAssertions[k];
+              predId++;
+            }
+          }
+
+          System.out.println("=========================================");
+
+          nSolver.reset();
+          nSolver.add(minimalCore);
+          System.out.println("First " + nSolver.check());
+
+
+          System.out.println("\nPredicates not in the unsatCore:");
+          System.out.println("==========================================");
+          Expr[] unsatCore = _solver.getUnsatCore();
+
+          HashSet<String> unsatCoreStrings = new HashSet<>();
+          for (int i = 0; i < unsatCore.length; i++) {
+            unsatCoreStrings.add(unsatCore[i].toString());
+          }
+
+          for (String e : unsatcoreLabelsMap.keySet()) {
+            if (!unsatCoreStrings.contains(e)) {
+              String label = unsatcoreLabelsMap.get(e.toString());
+              // Only consider constraints we can change
+              if (!(label.equals(UnsatCore.FAILED)
+                      || label.equals(UnsatCore.ENVIRONMENT)
+                      || label.equals(UnsatCore.BEST_OVERALL)
+                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+                      || label.equals(UnsatCore.CONTROL_FORWARDING)
+                      || label.equals(UnsatCore.POLICY)
+                      || label.equals(UnsatCore.BOUND)
+                      || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
+                      || label.equals(UnsatCore.HISTORY_CONSTRAINTS))) {
+                System.out.println(e.toString() + ": " + label + ": "
+                        + unsatVarsMap.get(e));
+              }
+            }
+          }
+
+          for (BoolExpr extraPred : extraPredicates){
+            System.out.println(extraPred);
+          }
+
+
+
+          System.out.println("==========================================");
           if (_shouldPrintUnsatCore) {
             System.out.println("Size of UnsatCore : " + _solver.getUnsatCore().length);
             System.out.println("\nPredicates in the unsatCore:");
@@ -1081,20 +1176,17 @@ public class Encoder {
                       || label.equals(UnsatCore.CONTROL_FORWARDING)
                       || label.equals(UnsatCore.POLICY)
                       || label.equals(UnsatCore.BOUND))) {
-                System.out.println(e.toString() + ": " + label + ": "
-                        + unsatVarsMap.get(e.toString()));
+                System.out.println(e.toString() + ": " + label);// + ": " + unsatVarsMap.get(e.toString()));
+
               }
             }
             System.out.println("==========================================");
-          }
-          // Print out predicates not in the UnsatCore.
-          System.out.println("\nPredicates not in the unsatCore:");
-          System.out.println("==========================================");
-          Expr[] unsatCore = _solver.getUnsatCore();
-          HashSet<String> unsatCoreStrings = new HashSet<>();
-          for (int i = 0; i < unsatCore.length; i++) {
-            unsatCoreStrings.add(unsatCore[i].toString());
-          }
+            System.out.println("\nSolver Assertions");
+            System.out.println("Count " + _solver.getNumAssertions());
+            BoolExpr[] unsatCorePredicates = _solver.getUnsatCore();
+            System.out.println("==========================================");
+            System.out.println("Size of Original Unsatcore" + unsatCorePredicates.length);
+            System.out.println("Minimizing Unsat Core...\n");
 
           //build not unsatCor!!!! USE COMMENTS!! PUT A FOR LINE
           // Expr[] notUnsatCore = new ArrayList<Expr>();
@@ -1103,10 +1195,9 @@ public class Encoder {
           // }
           //do above down below
           for (String e : unsatcoreLabelsMap.keySet()) {
-            if (!unsatCoreStrings.contains(e)) {
-                String label = unsatcoreLabelsMap.get(e.toString());
-                // Only consider constraints we can change
-                if (!(label.equals(UnsatCore.FAILED)
+            String label = unsatcoreLabelsMap.get(e.toString());
+              // Only consider constraints we can change
+            if (!(label.equals(UnsatCore.FAILED)
                     || label.equals(UnsatCore.ENVIRONMENT)
                     || label.equals(UnsatCore.BEST_OVERALL)
                     || label.equals(UnsatCore.BEST_PER_PROTOCOL)
@@ -1116,13 +1207,20 @@ public class Encoder {
                     || label.equals(UnsatCore.BOUND)
                     || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
                     || label.equals(UnsatCore.HISTORY_CONSTRAINTS))) {
-                  System.out.println(e.toString() + ": " + label + ": "
-                            + unsatVarsMap.get(e));
-                }
-                //dump out of notunsatCore if above condition is true
+              System.out.println(e.toString() + ": " + label + ": "
+                      + unsatVarsMap.get(e));
             }
           }
-          System.out.println("==========================================");
+        
+            //making labels for unsat core tracking :
+            BoolExpr[] ps = new BoolExpr[unsatCorePredicates.length];
+            for (int i = 0; i < unsatCorePredicates.length; i++) {
+              ps[i] = _ctx.mkBoolConst("UCorePred" + i);
+            }
+
+
+            System.out.println("==========================================");
+          }
           //use notUnsatCore
           checkPreds(unsatCore, assignedTo, referencedTo);
           break;
@@ -1155,6 +1253,7 @@ public class Encoder {
    * network. This should be called prior to calling the <b>verify method</b>
    */
   void computeEncoding() {
+    
     if (_graph.hasStaticRouteWithDynamicNextHop()) {
       throw new BatfishException(
           "Cannot encode a network that has a static route with a dynamic next hop");
