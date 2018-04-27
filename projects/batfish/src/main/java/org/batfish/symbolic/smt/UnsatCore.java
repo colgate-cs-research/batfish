@@ -53,7 +53,7 @@ class UnsatCore {
   }
 
   void  track(Solver solver, Context ctx, BoolExpr be) {
-    track(solver, ctx, be, "");
+    track(solver, ctx, be, "[UNLABELED]");
   }
 
   boolean getDoTrack() {

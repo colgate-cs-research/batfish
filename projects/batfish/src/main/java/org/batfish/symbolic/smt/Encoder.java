@@ -14,6 +14,7 @@ import com.microsoft.z3.AST;
 import java.util.*;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
+import javax.print.DocFlavor;
 
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
@@ -53,7 +54,7 @@ public class Encoder {
   static final Boolean ENABLE_DEBUGGING = false;
   static final String MAIN_SLICE_NAME = "SLICE-MAIN_";
   private static final boolean ENABLE_UNSAT_CORE = true;
-  private static final Boolean ENABLE_BENCHMARKING = false;
+
   private int _encodingId;
 
   private boolean _modelIgp;
@@ -63,7 +64,6 @@ public class Encoder {
   private Map<String, EncoderSlice> _slices;
 
   private Map<String, Map<String, BoolExpr>> _sliceReachability;
-
 
   private Encoder _previousEncoder;
 
@@ -81,7 +81,7 @@ public class Encoder {
 
   private Settings _settings;
 
-  private Integer _numIters;
+  private int _numIters;
 
   private boolean _shouldInvertFormula;
 
@@ -107,14 +107,14 @@ public class Encoder {
    */
   Encoder(Encoder e, Graph g) {
     this(
-        e._settings,
-        e,
-        g,
-        e._question,
-        e.getCtx(),
-        e.getSolver(),
-        e.getAllVariables(),
-        e.getId() + 1);
+            e._settings,
+            e,
+            g,
+            e._question,
+            e.getCtx(),
+            e.getSolver(),
+            e.getAllVariables(),
+            e.getId() + 1);
   }
 
   /**
@@ -134,14 +134,14 @@ public class Encoder {
    * used.
    */
   private Encoder(
-      Settings settings,
-      @Nullable Encoder enc,
-      Graph graph,
-      HeaderQuestion q,
-      @Nullable Context ctx,
-      @Nullable Solver solver,
-      @Nullable Map<String, Expr> vars,
-      int id) {
+          Settings settings,
+          @Nullable Encoder enc,
+          Graph graph,
+          HeaderQuestion q,
+          @Nullable Context ctx,
+          @Nullable Solver solver,
+          @Nullable Map<String, Expr> vars,
+          int id) {
     _settings = settings;
     _graph = graph;
     _previousEncoder = enc;
@@ -179,7 +179,6 @@ public class Encoder {
         Tactic t5 = _ctx.mkTactic("smt");
         Tactic t = _ctx.then(t1, t2, t3, t4, t5);
         _solver = _ctx.mkSolver(t);
-        // System.out.println("Help: \n" + _solver.getHelp());
       }
     } else {
       _solver = solver;
@@ -470,15 +469,15 @@ public class Encoder {
    * display to the user in a human-readable fashion
    */
   private HashMap<String, String> buildCounterExample(
-      Encoder enc,
-      Model m,
-      SortedMap<String, String> model,
-      SortedMap<String, String> packetModel,
-      SortedSet<String> fwdModel,
-      SortedMap<String, SortedMap<String, String>> envModel,
-      SortedSet<String> failures,
-      SortedMap<Expr, Expr> additionalConstraints,
-      SortedMap<Expr, Expr> staticConstraints) {
+          Encoder enc,
+          Model m,
+          SortedMap<String, String> model,
+          SortedMap<String, String> packetModel,
+          SortedSet<String> fwdModel,
+          SortedMap<String, SortedMap<String, String>> envModel,
+          SortedSet<String> failures,
+          SortedMap<Expr, Expr> variableAssignments,
+          SortedMap<Expr, Expr> staticConstraints) {
 
     SortedMap<Expr, String> valuation = new TreeMap<>();
     HashMap<String, String> counterExampleState = new HashMap<>();
@@ -498,7 +497,7 @@ public class Encoder {
         if (name.contains("reachable-id")){ //this fixes issue with bgp-acls
           staticConstraints.put(e, val);
         }else{
-          additionalConstraints.put(e, val);
+          variableAssignments.put(e, val);
         }
       }
     }
@@ -579,7 +578,7 @@ public class Encoder {
 
     for (EncoderSlice slice : enc.getSlices().values()) {
       for (Entry<LogicalEdge, SymbolicRoute> entry2 :
-          slice.getLogicalGraph().getEnvironmentVars().entrySet()) {
+              slice.getLogicalGraph().getEnvironmentVars().entrySet()) {
         LogicalEdge lge = entry2.getKey();
         SymbolicRoute r = entry2.getValue();
         if ("true".equals(valuation.get(r.getPermitted()))) {
@@ -654,51 +653,51 @@ public class Encoder {
 
     // Forwarding Model
     enc.getMainSlice()
-        .getSymbolicDecisions()
-        .getDataForwarding()
-        .forEach(
-            (router, edge, e) -> {
-              String s = valuation.get(e);
-              if ("true".equals(s)) {
-                SymbolicRoute r =
-                    enc.getMainSlice().getSymbolicDecisions().getBestNeighbor().get(router);
-                if (r.getProtocolHistory() != null) {
-                  Protocol proto;
-                  List<Protocol> allProtocols = enc.getMainSlice().getProtocols().get(router);
-                  if (allProtocols.size() == 1) {
-                    proto = allProtocols.get(0);
-                  } else {
-                    s = valuation.get(r.getProtocolHistory().getBitVec());
-                    int i = Integer.parseInt(s);
-                    proto = r.getProtocolHistory().value(i);
-                  }
-                  fwdModel.add(edge + " (" + proto.name() + ")");
-                } else {
-                  fwdModel.add(edge.toString());
-                }
-              }
-            });
+            .getSymbolicDecisions()
+            .getDataForwarding()
+            .forEach(
+                    (router, edge, e) -> {
+                      String s = valuation.get(e);
+                      if ("true".equals(s)) {
+                        SymbolicRoute r =
+                                enc.getMainSlice().getSymbolicDecisions().getBestNeighbor().get(router);
+                        if (r.getProtocolHistory() != null) {
+                          Protocol proto;
+                          List<Protocol> allProtocols = enc.getMainSlice().getProtocols().get(router);
+                          if (allProtocols.size() == 1) {
+                            proto = allProtocols.get(0);
+                          } else {
+                            s = valuation.get(r.getProtocolHistory().getBitVec());
+                            int i = Integer.parseInt(s);
+                            proto = r.getProtocolHistory().value(i);
+                          }
+                          fwdModel.add(edge + " (" + proto.name() + ")");
+                        } else {
+                          fwdModel.add(edge.toString());
+                        }
+                      }
+                    });
 
     _symbolicFailures
-        .getFailedInternalLinks()
-        .forEach(
-            (x, y, e) -> {
-              String s = valuation.get(e);
-              if ("1".equals(s)) {
-                String pair = (x.compareTo(y) < 0 ? x + "," + y : y + "," + x);
-                failures.add("link(" + pair + ")");
-              }
-            });
+            .getFailedInternalLinks()
+            .forEach(
+                    (x, y, e) -> {
+                      String s = valuation.get(e);
+                      if ("1".equals(s)) {
+                        String pair = (x.compareTo(y) < 0 ? x + "," + y : y + "," + x);
+                        failures.add("link(" + pair + ")");
+                      }
+                    });
 
     _symbolicFailures
-        .getFailedEdgeLinks()
-        .forEach(
-            (ge, e) -> {
-              String s = valuation.get(e);
-              if ("1".equals(s)) {
-                failures.add("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")");
-              }
-            });
+            .getFailedEdgeLinks()
+            .forEach(
+                    (ge, e) -> {
+                      String s = valuation.get(e);
+                      if ("1".equals(s)) {
+                        failures.add("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")");
+                      }
+                    });
 
     return counterExampleState;
   }
@@ -741,7 +740,8 @@ public class Encoder {
     return mkAnd(acc1, acc2);
   }
 
-  //gives a list where first index is assinged to and second index is referenced to etc.... 
+  //gives a list where first index is assinged to and second index is referenced to etc....
+  //CONVERT TO BOOL EXPRESSIONS!
   public List<Expr> findPredicateAssignment(Expr expr){
     List<Expr> result = new ArrayList<Expr>();
     Expr[] args = expr.getArgs();
@@ -765,7 +765,7 @@ public class Encoder {
           result.add(mkTrue());
         }
         else{
-          result.add(args[1]); 
+          result.add(args[1]);
         }
         return result;
       }
@@ -781,15 +781,13 @@ public class Encoder {
     for (Map.Entry<String,BoolExpr> entry : unsatVarsMap.entrySet()) {
       String key = entry.getKey();
       BoolExpr value = entry.getValue();
-      //System.out.println("finding predicate assignment");
-      //if (key.equals("Pred117")){
+
       List<Expr> assignments = findPredicateAssignment(value);
-      //Arrays.toString(assignments.toArray());
       for (int i =0; i< assignments.size(); i+=2){
         Expr assigned = assignments.get(i);
         Expr referenced = assignments.get(i+1);
         if (!assignedTo.containsKey(assigned)){
-          List<String> output = new ArrayList<String>();
+          List<String> output = new ArrayList<>();
           output.add(key);
           assignedTo.put(assigned,output);
         }
@@ -799,7 +797,7 @@ public class Encoder {
           assignedTo.put(assigned,temp);
         }
         if (!referencedTo.containsKey(key)){
-          List<Expr> output = new ArrayList<Expr>();
+          List<Expr> output = new ArrayList<>();
           output.add(referenced);
           referencedTo.put(key,output);
         }
@@ -809,31 +807,119 @@ public class Encoder {
           referencedTo.put(key,temp);
         }
       }
-      //} 
     }
   }
+
+
+  /*
+   * Print Slices Map ...
+   */
+  private void printSlicesMap(){
+    System.out.println("Printing slices Map");
+    List<String> encoderSliceStr = new ArrayList<>();
+    List<String> symbolicRouteStr = new ArrayList<>();
+    for (EncoderSlice slice: _slices.values()){
+      for (String key: slice.slicesMap.keySet()){
+        encoderSliceStr.add(key);
+      }
+      for (SymbolicRoute route: slice._allSymbolicRoutes){
+        for (String key: route.slicesMap.keySet()){
+          symbolicRouteStr.add(key);
+        }
+      }
+    }
+    System.out.println(encoderSliceStr);
+    System.out.println(symbolicRouteStr);
+  }
+
+  private void negateSolverAssertions(){
+    BoolExpr[] assertions = _solver.getAssertions();
+    BoolExpr negFormula = _ctx.mkAnd(assertions);
+    negFormula = _ctx.mkNot(negFormula);
+    _solver.reset();
+    _solver.add(negFormula);
+  }
+
+  private void addStaticConstraints(Set<Expr> staticVars,
+                                    Map<Expr, Expr> nonStaticVariableAssignments,
+                                    Map<Expr, Expr> staticVariableAssignments
+  ){
+    SortedSet<BoolExpr> newEqs = new TreeSet<>();
+    staticVars.addAll(staticVariableAssignments.keySet());
+    for (Expr e : staticVars) {
+      if (nonStaticVariableAssignments.containsKey(e)) {
+        newEqs.add(_ctx.mkEq(e, nonStaticVariableAssignments.get(e)));
+      }else{
+        newEqs.add(_ctx.mkEq(e, staticVariableAssignments.get(e)));
+      }
+    }
+
+    BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+    _unsatCore.track(_solver, _ctx,andPcktVars, "Packet Variables");
+  }
+
+  private void addCounterExampleConstraints(Set<Expr> staticVars,
+                                            Map<Expr, Expr> nonStaticVariableAssignments){
+    SortedSet<BoolExpr> newEqs = new TreeSet<>();
+
+    for (Expr var : nonStaticVariableAssignments.keySet()) {
+      if (!staticVars.contains(var))
+        newEqs.add(_ctx.mkEq(var, nonStaticVariableAssignments.get(var)));
+    }
+    BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+    _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
+  }
+
+  private void minimizeUnsatCore(Map<String, BoolExpr> predicatesNameToExprMap,
+                                 Map<String, BoolExpr> minCorePredNameToExprMap){
+    Solver minSolver = _ctx.mkSolver();
+
+    BoolExpr[] origUnsatCore = _solver.getUnsatCore();
+    String[] unsatPredicateNames = new String[origUnsatCore.length];
+
+    for (int i =0;i<origUnsatCore.length;i++){
+      // Each predicate in the unsat core is a label. (eg:- Pred22)
+      String predName = origUnsatCore[i].toString();
+      unsatPredicateNames[i] = predName;
+      origUnsatCore[i] = mkNot(predicatesNameToExprMap.get(predName));//Obtaining Expr and negating it.
+    }
+    minSolver.add(origUnsatCore); //Adding the ORIGINAL UnsatCore.
+
+    Set<Integer> noncoreAssertionsIdxList = new HashSet<>(); //tracking noncore assertions
+
+    BoolExpr currentPred;
+    for (int j = 0; j < origUnsatCore.length; j++){
+      currentPred =  origUnsatCore[j];
+      origUnsatCore[j] = mkTrue(); //Equivalent of removing the assertion
+      minSolver.reset();
+      minSolver.add(origUnsatCore);
+      if (minSolver.check()==Status.UNSATISFIABLE) {
+        noncoreAssertionsIdxList.add(j);
+      }else {
+        origUnsatCore[j] = currentPred;
+      }
+    }
+
+    for (int k=0;k<origUnsatCore.length;k++){
+      if (!noncoreAssertionsIdxList.contains(k)){
+        minCorePredNameToExprMap.put(unsatPredicateNames[k], origUnsatCore[k]);
+      }
+    }
+  }
+
+
   public void checkPreds(Expr[] unsatCore, Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
     List<String> worklist = new ArrayList<String>();
     for (Expr exp: unsatCore){
       worklist.add(exp.toString());
     }
-    // System.out.println(" Printing worklist");
-    // for (String str: worklist){
-    //   System.out.print(str + ", ");
-    // }
-    // System.out.println("");
 
     List<String> processed = new ArrayList<String>();
     while (worklist.size() > 0){
       String currentPred = worklist.remove(0);
-      //System.out.println(currentPred);
       if (!processed.contains(currentPred)){
-        //System.out.println("in if conditional");
         try{
           List<Expr> refVars = referencedTo.get(currentPred);
-          // for (Expr exp: refVars){
-          //   System.out.print(exp.toString() + ", ");
-          // }
           for (Expr exp: refVars){
             for (String pred: assignedTo.get(exp)){
               if (!processed.contains(pred)){
@@ -852,6 +938,8 @@ public class Encoder {
     }
     System.out.println("");
   }
+
+
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -859,62 +947,25 @@ public class Encoder {
    * @return A VerificationResult indicating the status of the check.
    */
   public Tuple<VerificationResult, Model> verify() {
-    //Map<String, BoolExpr> slicesMap = 
 
-    Map<String, BoolExpr> unsatVarsMap = _unsatCore.getTrackingVars();
-    System.out.println("printing unsatVars Map");
-    Arrays.toString(unsatVarsMap.entrySet().toArray());
-    Map<String, String> unsatcoreLabelsMap = _unsatCore.getTrackingLabels();
-    EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
-    System.out.println("printing slices Map");
-    List<String>EncoderSliceStr = new ArrayList<String>();
-    List<String>SymbolicRouteStr = new ArrayList<String>();
-    for (EncoderSlice slice: _slices.values()){
-      for (String key: slice.slicesMap.keySet()){
-        EncoderSliceStr.add(key);
-      }
-      for (SymbolicRoute route: slice._allSymbolicRoutes){
-        for (String key: route.slicesMap.keySet()){
-          SymbolicRouteStr.add(key);
-        }
-      }
-    }
-    System.out.println(EncoderSliceStr);
-    System.out.println(SymbolicRouteStr);
-    
+    Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
+    Map<String, String> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
+
+    printSlicesMap();
+
     //from list of B see if it gets assignedTo -- B: pred220
     Map<Expr, List<String>>   assignedTo = new HashMap<Expr, List<String>>();
 
     // this should be predname : list of referenced to, pred221 : List of B
     Map<String, List<Expr>> referencedTo = new HashMap<String, List<Expr>>();
 
-    buildPredicateMaps(assignedTo, referencedTo, unsatVarsMap);
-    
-    // System.out.println("printing assignedTo map"); //odd entry are assigned to and even entry are referenced to
-    // for (Map.Entry<Expr, List<String>> entry : assignedTo.entrySet()) {
-    //   Expr k = entry.getKey();
-    //   List<String> val = entry.getValue();
-    //   System.out.println(k);
-    //   for (String str: val){
-    //     System.out.print(str + ", ");
-    //   }
-    //   System.out.println();
-    // } 
-    // System.out.println("printing referencedTo map"); //odd entry are assigned to and even entry are referenced to
-    // for (Map.Entry<String, List<Expr>> entry : referencedTo.entrySet()) {
-    //   String k = entry.getKey();
-    //   List<Expr> val = entry.getValue();
-    //   if (!val.get(0).equals("numerical value")){
-    //     System.out.println(k);
-    //     for (Expr exp: val){
-    //       System.out.print(exp + ", ");
-    //     }
-    //     System.out.println();
-    //   }
-    // } 
+    buildPredicateMaps(assignedTo, referencedTo, predicatesNameToExprMap);
+
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
+
+    EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
     int numNodes = mainSlice.getGraph().getConfigurations().size();
     int numEdges = 0;
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
@@ -926,13 +977,9 @@ public class Encoder {
     long start = System.currentTimeMillis();
 
     if (_shouldInvertFormula) { //create a new solver with negated formula
-      System.out.println("Inverting boolean formula");
-      BoolExpr[] assertions = _solver.getAssertions();
-      BoolExpr negFormula = _ctx.mkAnd(assertions);
-      negFormula = _ctx.mkNot(negFormula);
-      _solver.reset();
-      _solver.add(negFormula);
+      negateSolverAssertions();
     }
+
     Status status = _solver.check();
 
     long time = System.currentTimeMillis() - start;
@@ -964,8 +1011,7 @@ public class Encoder {
       throw new BatfishException("ERROR: satisfiability unknown");
     } else {
       VerificationResult result;
-
-      Model m =null;
+      Model m;
       int numCounterexamples = 0;
 
       SortedSet<Expr> staticVars =
@@ -974,10 +1020,7 @@ public class Encoder {
                       .getSymbolicPacketVars(); // should be added to solver during the first iteration.
 
 
-      SortedSet<BoolExpr> newEqs = new TreeSet<BoolExpr>();
 
-
-      BoolExpr andPcktVars = mkTrue();
       do {
         m = _solver.getModel();
         SortedMap<String, String> model = new TreeMap<>();
@@ -985,11 +1028,15 @@ public class Encoder {
         SortedSet<String> fwdModel = new TreeSet<>();
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
-        SortedMap<Expr, Expr> additionalConstraints = new TreeMap<>();
-        SortedMap<Expr, Expr> moreStaticConstraints = new TreeMap<>();
+
+
+        SortedMap<Expr, Expr> nonStaticVariableAssignments = new TreeMap<>();
+        SortedMap<Expr, Expr> staticVariableAssignments = new TreeMap<>();
         HashMap<String, String> ce =
-            buildCounterExample(
-                this, m, model, packetModel, fwdModel, envModel, failures, additionalConstraints,moreStaticConstraints);
+                buildCounterExample(
+                        this, m, model, packetModel, fwdModel, envModel, failures, nonStaticVariableAssignments,staticVariableAssignments);
+
+        /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 0) {
           for (String key : ce.keySet()) {
             // first values assigned to counter-example variables...
@@ -1000,55 +1047,34 @@ public class Encoder {
             variableHistoryMap.get(varName).add(ce.get(varName));
           }
         }
+
         if (_previousEncoder != null) {
           ce =
-              buildCounterExample(
-                  _previousEncoder,
-                  m,
-                  model,
-                  packetModel,
-                  fwdModel,
-                  envModel,
-                  failures,
-                  additionalConstraints,
-                  moreStaticConstraints);
+                  buildCounterExample(
+                          _previousEncoder,
+                          m,
+                          model,
+                          packetModel,
+                          fwdModel,
+                          envModel,
+                          failures,
+                          nonStaticVariableAssignments,
+                          staticVariableAssignments);
           for (String varName : ce.keySet()) {
             variableHistoryMap.get(varName).add(ce.get(varName));
           }
         }
 
-        result =
-            new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
-        // TODO: need to print each result information.. Need to go from a VerificationResult object
-        // to an AnswerElement object in order get the summary
+        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
+
         numCounterexamples++;
 
-        // Generate multiple counter examples
         if (_numIters > 1) {
-
-
-          // this is the counterexample. the 15 data plane packet variables need to be set
+          // the 15 data plane packet variables + other static variables (eg:- reachable_id) need to be fixed.
           if (numCounterexamples == 1) {
-            staticVars.addAll(moreStaticConstraints.keySet());
-            for (Expr e : staticVars) {
-              if (additionalConstraints.containsKey(e)) {
-                newEqs.add(_ctx.mkEq(e, additionalConstraints.get(e)));
-              }else{
-                newEqs.add(_ctx.mkEq(e, moreStaticConstraints.get(e)));
-              }
-            }
-
-            andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-            _unsatCore.track(_solver, _ctx,andPcktVars, "Packet Variables");
+            addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
           }
-
-          newEqs.clear();
-          for (Expr var : additionalConstraints.keySet()) {
-            if (!staticVars.contains(var))
-              newEqs.add(_ctx.mkEq(var, additionalConstraints.get(var)));
-          }
-          BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-          _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
+          addCounterExampleConstraints(staticVars, nonStaticVariableAssignments);
         }
 
         // Find the smallest possible counterexample
@@ -1058,85 +1084,22 @@ public class Encoder {
         }
 
         if (_shouldInvertFormula) { //create a new solver with negated formula
-          System.out.println("Inverting boolean formula (in loop)");
-          BoolExpr[] assertions = _solver.getAssertions();
-          BoolExpr negFormula = _ctx.mkAnd(assertions);
-          negFormula = _ctx.mkNot(negFormula);
-          _solver.reset();
-          _solver.add(negFormula);
+          negateSolverAssertions();
         }
-
-        Set<BoolExpr> coll = new HashSet<BoolExpr>();
-        coll.addAll(_unsatCore.getTrackingVars().values());
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
-          Solver nSolver = _ctx.mkSolver();
+          Map<String, BoolExpr> minCorePredNameToExprMap = new TreeMap<>();
 
-
-          BoolExpr[] solverAssertions = _solver.getUnsatCore();
-          for (int i =0;i<solverAssertions.length;i++){
-            solverAssertions[i] = mkNot(unsatVarsMap.get(solverAssertions[i].toString()));
-          }
-          nSolver.add(solverAssertions);
-          /* Replacing implications with consequents */
-//          BoolExpr[] solverAssertions = _solver.getAssertions();
-//
-//          for (int i =0;i<solverAssertions.length;i++){
-//            BoolExpr be = solverAssertions[i];
-//            if (be.isImplies()){
-//              solverAssertions[i] =  (BoolExpr) be.getArgs()[1];
-//            }
-//          }
-//          nSolver.add(solverAssertions); //Modified assertions added to solver.
-
-
-          Set<Integer> extra = new HashSet<>(); //tracking noncore assertions
-          Set<BoolExpr> extraPredicates = new HashSet<>();
-
-          BoolExpr currentPred;
-          for (int j = 0; j < solverAssertions.length; j++){
-            currentPred =  solverAssertions[j];
-            solverAssertions[j] = mkTrue(); //Equivalent of removing the assertion
-            nSolver.reset();
-            nSolver.add(solverAssertions);
-            if (nSolver.check()==Status.UNSATISFIABLE) {
-              extra.add(j);
-              extraPredicates.add(currentPred);
-            }else {
-              solverAssertions[j] = currentPred;
-            }
-          }
-
-          int predId = 0;
-          int minCoreSize = solverAssertions.length - extra.size();
-          BoolExpr[] minimalCore = new BoolExpr[minCoreSize];
-          for (int k=0;k<solverAssertions.length;k++){
-            if (!extra.contains(k)){
-              minimalCore[predId] = solverAssertions[k];
-              predId++;
-            }
-          }
+          minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
 
           System.out.println("=========================================");
-
-          nSolver.reset();
-          nSolver.add(minimalCore);
-          System.out.println("First " + nSolver.check());
-
-
           System.out.println("\nPredicates not in the unsatCore:");
-          System.out.println("==========================================");
-          Expr[] unsatCore = _solver.getUnsatCore();
 
-          HashSet<String> unsatCoreStrings = new HashSet<>();
-          for (int i = 0; i < unsatCore.length; i++) {
-            unsatCoreStrings.add(unsatCore[i].toString());
-          }
-
-          for (String e : unsatcoreLabelsMap.keySet()) {
+          Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
+          for (String e : predicatesNameToLabelMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
-              String label = unsatcoreLabelsMap.get(e.toString());
+              String label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
               if (!(label.equals(UnsatCore.FAILED)
                       || label.equals(UnsatCore.ENVIRONMENT)
@@ -1149,24 +1112,19 @@ public class Encoder {
                       || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
                       || label.equals(UnsatCore.HISTORY_CONSTRAINTS))) {
                 System.out.println(e.toString() + ": " + label + ": "
-                        + unsatVarsMap.get(e));
+                        + predicatesNameToExprMap.get(e));
               }
             }
           }
 
-          for (BoolExpr extraPred : extraPredicates){
-            System.out.println(extraPred);
-          }
-
-
-
           System.out.println("==========================================");
+
           if (_shouldPrintUnsatCore) {
-            System.out.println("Size of UnsatCore : " + _solver.getUnsatCore().length);
+            System.out.println("Size of (Minimized) UnsatCore : " + minCorePredNameToExprMap.size());
             System.out.println("\nPredicates in the unsatCore:");
             System.out.println("==========================================");
-            for (Expr e : _solver.getUnsatCore()) {
-              String label = unsatcoreLabelsMap.get(e.toString());
+            for (String e : minCorePredNameToExprMap.keySet()) {
+              String label = predicatesNameToLabelMap.get(e);
               // Only consider constraints we can change
               if (!(label.equals(UnsatCore.FAILED)
                       || label.equals(UnsatCore.ENVIRONMENT)
@@ -1176,53 +1134,12 @@ public class Encoder {
                       || label.equals(UnsatCore.CONTROL_FORWARDING)
                       || label.equals(UnsatCore.POLICY)
                       || label.equals(UnsatCore.BOUND))) {
-                System.out.println(e.toString() + ": " + label);// + ": " + unsatVarsMap.get(e.toString()));
-
+                System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
               }
             }
             System.out.println("==========================================");
-            System.out.println("\nSolver Assertions");
-            System.out.println("Count " + _solver.getNumAssertions());
-            BoolExpr[] unsatCorePredicates = _solver.getUnsatCore();
-            System.out.println("==========================================");
-            System.out.println("Size of Original Unsatcore" + unsatCorePredicates.length);
-            System.out.println("Minimizing Unsat Core...\n");
-
-          //build not unsatCor!!!! USE COMMENTS!! PUT A FOR LINE
-          // Expr[] notUnsatCore = new ArrayList<Expr>();
-          // for unsatVarsMap.entrySet(){
-          //   // in unsatvarsmap but not in unsatcore
-          // }
-          //do above down below
-          for (String e : unsatcoreLabelsMap.keySet()) {
-            String label = unsatcoreLabelsMap.get(e.toString());
-              // Only consider constraints we can change
-            if (!(label.equals(UnsatCore.FAILED)
-                    || label.equals(UnsatCore.ENVIRONMENT)
-                    || label.equals(UnsatCore.BEST_OVERALL)
-                    || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-                    || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-                    || label.equals(UnsatCore.CONTROL_FORWARDING)
-                    || label.equals(UnsatCore.POLICY)
-                    || label.equals(UnsatCore.BOUND)
-                    || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
-                    || label.equals(UnsatCore.HISTORY_CONSTRAINTS))) {
-              System.out.println(e.toString() + ": " + label + ": "
-                      + unsatVarsMap.get(e));
-            }
           }
-        
-            //making labels for unsat core tracking :
-            BoolExpr[] ps = new BoolExpr[unsatCorePredicates.length];
-            for (int i = 0; i < unsatCorePredicates.length; i++) {
-              ps[i] = _ctx.mkBoolConst("UCorePred" + i);
-            }
-
-
-            System.out.println("==========================================");
-          }
-          //use notUnsatCore
-          checkPreds(unsatCore, assignedTo, referencedTo);
+          checkPreds(_solver.getUnsatCore(), assignedTo, referencedTo);
           break;
         }
         if (s == Status.UNKNOWN) {
@@ -1237,10 +1154,8 @@ public class Encoder {
       if (_shouldPrintCounterExampleChanges) {
         System.out.println("Changes in Model Variables");
         for (String variableName : variableNames) {
-//          if (variableHistoryMap.get(variableName).size() <= 1) {
-            System.out.println(
-                    variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
-//          }
+          System.out.println(
+                  variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
         }
       }
 
@@ -1253,10 +1168,10 @@ public class Encoder {
    * network. This should be called prior to calling the <b>verify method</b>
    */
   void computeEncoding() {
-    
+
     if (_graph.hasStaticRouteWithDynamicNextHop()) {
       throw new BatfishException(
-          "Cannot encode a network that has a static route with a dynamic next hop");
+              "Cannot encode a network that has a static route with a dynamic next hop");
     }
     addFailedConstraints(_question.getFailures());
     getMainSlice().computeEncoding();
