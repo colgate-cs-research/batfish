@@ -739,8 +739,7 @@ public class Encoder {
     return mkAnd(acc1, acc2);
   }
 
-  //gives a list where first index is assinged to and second index is referenced to etc....
-  //CONVERT TO BOOL EXPRESSIONS! 
+  //gives a list where first index is assinged to and second index is referenced to etc.... 
   public List<Expr> findPredicateAssignment(Expr expr){
     List<Expr> result = new ArrayList<Expr>();
     Expr[] args = expr.getArgs();
@@ -811,7 +810,46 @@ public class Encoder {
       //} 
     }
   }
+  public void checkPreds(Expr[] unsatCore, Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
+    List<String> worklist = new ArrayList<String>();
+    for (Expr exp: unsatCore){
+      worklist.add(exp.toString());
+    }
+    // System.out.println(" Printing worklist");
+    // for (String str: worklist){
+    //   System.out.print(str + ", ");
+    // }
+    // System.out.println("");
 
+    List<String> processed = new ArrayList<String>();
+    while (worklist.size() > 0){
+      String currentPred = worklist.remove(0);
+      //System.out.println(currentPred);
+      if (!processed.contains(currentPred)){
+        //System.out.println("in if conditional");
+        try{
+          List<Expr> refVars = referencedTo.get(currentPred);
+          // for (Expr exp: refVars){
+          //   System.out.print(exp.toString() + ", ");
+          // }
+          for (Expr exp: refVars){
+            for (String pred: assignedTo.get(exp)){
+              if (!processed.contains(pred)){
+                worklist.add(pred);
+              }
+            }
+          }
+        }
+        catch (Exception e){} // for assigned values that aren't expressions
+        processed.add(currentPred);
+      }
+    }
+    System.out.println(" Printing processed"); //in one of these processed expressions, this is where something went wrong, FAULT LOCALISATION
+    for (String str: processed){
+      System.out.print(str + ", ");
+    }
+    System.out.println("");
+  }
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -850,28 +888,28 @@ public class Encoder {
 
     buildPredicateMaps(assignedTo, referencedTo, unsatVarsMap);
     
-    System.out.println("printing assignedTo map"); //odd entry are assigned to and even entry are referenced to
-    for (Map.Entry<Expr, List<String>> entry : assignedTo.entrySet()) {
-      Expr k = entry.getKey();
-      List<String> val = entry.getValue();
-      System.out.println(k);
-      for (String str: val){
-        System.out.print(str + ", ");
-      }
-      System.out.println();
-    } 
-    System.out.println("printing referencedTo map"); //odd entry are assigned to and even entry are referenced to
-    for (Map.Entry<String, List<Expr>> entry : referencedTo.entrySet()) {
-      String k = entry.getKey();
-      List<Expr> val = entry.getValue();
-      if (!val.get(0).equals("numerical value")){
-        System.out.println(k);
-        for (Expr exp: val){
-          System.out.print(exp + ", ");
-        }
-        System.out.println();
-      }
-    } 
+    // System.out.println("printing assignedTo map"); //odd entry are assigned to and even entry are referenced to
+    // for (Map.Entry<Expr, List<String>> entry : assignedTo.entrySet()) {
+    //   Expr k = entry.getKey();
+    //   List<String> val = entry.getValue();
+    //   System.out.println(k);
+    //   for (String str: val){
+    //     System.out.print(str + ", ");
+    //   }
+    //   System.out.println();
+    // } 
+    // System.out.println("printing referencedTo map"); //odd entry are assigned to and even entry are referenced to
+    // for (Map.Entry<String, List<Expr>> entry : referencedTo.entrySet()) {
+    //   String k = entry.getKey();
+    //   List<Expr> val = entry.getValue();
+    //   if (!val.get(0).equals("numerical value")){
+    //     System.out.println(k);
+    //     for (Expr exp: val){
+    //       System.out.print(exp + ", ");
+    //     }
+    //     System.out.println();
+    //   }
+    // } 
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
@@ -1058,18 +1096,12 @@ public class Encoder {
             unsatCoreStrings.add(unsatCore[i].toString());
           }
 
-          // LOOP THROUGH UnsatCore line 1064
-
-          //processed = [] -- will contain every single pred not in the unsat core and that it influences unsatcore
-          // loop through unsatcore -- add to a workliest 
-          //while worklist not empty:
-          //pred = pop
-          // check if already processed if so move to next pred
-          //retvars = referenced.get(pred)
-          //for var: retvars
-            //worklist.add(assigned.get(var))
-          //processed.append(pred)
-
+          //build not unsatCor!!!! USE COMMENTS!! PUT A FOR LINE
+          // Expr[] notUnsatCore = new ArrayList<Expr>();
+          // for unsatVarsMap.entrySet(){
+          //   // in unsatvarsmap but not in unsatcore
+          // }
+          //do above down below
           for (String e : unsatcoreLabelsMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
                 String label = unsatcoreLabelsMap.get(e.toString());
@@ -1087,9 +1119,12 @@ public class Encoder {
                   System.out.println(e.toString() + ": " + label + ": "
                             + unsatVarsMap.get(e));
                 }
+                //dump out of notunsatCore if above condition is true
             }
           }
           System.out.println("==========================================");
+          //use notUnsatCore
+          checkPreds(unsatCore, assignedTo, referencedTo);
           break;
         }
         if (s == Status.UNKNOWN) {
