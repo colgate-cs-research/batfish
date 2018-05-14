@@ -1,39 +1,18 @@
 package org.batfish.symbolic.smt;
 
-import com.microsoft.z3.ArithExpr;
-import com.microsoft.z3.BitVecExpr;
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.Expr;
-import com.microsoft.z3.Model;
-import com.microsoft.z3.Solver;
-import com.microsoft.z3.Status;
-import com.microsoft.z3.Tactic;
-import com.microsoft.z3.AST;
-
-import java.util.*;
-import java.util.Map.Entry;
-import javax.annotation.Nullable;
-import javax.print.DocFlavor;
-
+import com.microsoft.z3.*;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 import org.batfish.config.Settings;
-import org.batfish.datamodel.BgpNeighbor;
-import org.batfish.datamodel.HeaderSpace;
-import org.batfish.datamodel.Interface;
-import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.IpProtocol;
-import org.batfish.datamodel.IpWildcard;
-import org.batfish.datamodel.Prefix;
-import org.batfish.datamodel.SubRange;
+import org.batfish.datamodel.*;
 import org.batfish.datamodel.questions.smt.HeaderQuestion;
-import org.batfish.symbolic.CommunityVar;
-import org.batfish.symbolic.Graph;
-import org.batfish.symbolic.GraphEdge;
-import org.batfish.symbolic.OspfType;
+import org.batfish.symbolic.*;
 import org.batfish.symbolic.Protocol;
 import org.batfish.symbolic.utils.Tuple;
+
+import javax.annotation.Nullable;
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * A class responsible for building a symbolic encoding of the entire network. The encoder does this
@@ -797,7 +776,8 @@ public class Encoder {
           assignedTo.put(assigned,temp);
         }
         if (!referencedTo.containsKey(key)){
-          List<Expr> output = new ArrayList<>();
+          List<Expr> output =
+                  new ArrayList<>();
           output.add(referenced);
           referencedTo.put(key,output);
         }
@@ -832,6 +812,9 @@ public class Encoder {
     System.out.println(symbolicRouteStr);
   }
 
+  /*
+   * Negates boolean formula being asserted by the solver object.
+   */
   private void negateSolverAssertions(){
     BoolExpr[] assertions = _solver.getAssertions();
     BoolExpr negFormula = _ctx.mkAnd(assertions);
@@ -840,6 +823,14 @@ public class Encoder {
     _solver.add(negFormula);
   }
 
+
+  /*
+   * Adds solver constraints that need not be varied for fault localization,
+   * like Packet variables.
+   * @param staticVars Symbolic Packet variables from the main slice.
+   * @param nonStaticVariableAssignments All variables in model except reachable_id
+   * @param staticVariableAssignments reachable_id (since we force this value to be constant)
+   */
   private void addStaticConstraints(Set<Expr> staticVars,
                                     Map<Expr, Expr> nonStaticVariableAssignments,
                                     Map<Expr, Expr> staticVariableAssignments
@@ -858,6 +849,13 @@ public class Encoder {
     _unsatCore.track(_solver, _ctx,andPcktVars, "Packet Variables");
   }
 
+
+  /*
+   * Adds constraints from a counter-example (satisfying solution) to the solver
+   * after each call to solver.check() that returns SATISFIABLE.
+   * @param staticVars Symbolic Packet variables from the main slice.
+   * @param nonStaticVariableAssignments All variables in model except reachable_id
+   */
   private void addCounterExampleConstraints(Set<Expr> staticVars,
                                             Map<Expr, Expr> nonStaticVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
@@ -870,6 +868,18 @@ public class Encoder {
     _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
   }
 
+
+  /*
+   * Removes predicates from the solver that do not determine satisfiability
+   * to produce a `minimal` UnsatCore. Here, we check if removing a predicate
+   * from an unsatisfiable boolean formula makes it satisfiable and append it
+   * to a growing UnsatCore if this change makes the formula satisfiable.
+   *
+   * @param predicatesNameToExprMap Map from predicate name strings (eg:- Pred22)
+   * to Z3 BoolExpr objects corresponding to the predicate.
+   * @param minCorePredNameToExprMap Map from only the predicates present in the
+   * computed minimal UnsatCore to Z3 BoolExpr objects.
+   */
   private void minimizeUnsatCore(Map<String, BoolExpr> predicatesNameToExprMap,
                                  Map<String, BoolExpr> minCorePredNameToExprMap){
     Solver minSolver = _ctx.mkSolver();
