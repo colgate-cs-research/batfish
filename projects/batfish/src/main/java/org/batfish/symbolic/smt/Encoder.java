@@ -1039,7 +1039,6 @@ public class Encoder {
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
         SortedSet<String> failures = new TreeSet<>();
 
-
         SortedMap<Expr, Expr> nonStaticVariableAssignments = new TreeMap<>();
         SortedMap<Expr, Expr> staticVariableAssignments = new TreeMap<>();
         HashMap<String, String> ce =
@@ -1135,17 +1134,17 @@ public class Encoder {
             System.out.println("==========================================");
             for (String e : minCorePredNameToExprMap.keySet()) {
               String label = predicatesNameToLabelMap.get(e);
-              // Only consider constraints we can change
-              if (!(label.equals(UnsatCore.FAILED)
-                      || label.equals(UnsatCore.ENVIRONMENT)
-                      || label.equals(UnsatCore.BEST_OVERALL)
-                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-                      || label.equals(UnsatCore.CONTROL_FORWARDING)
-                      || label.equals(UnsatCore.POLICY)
-                      || label.equals(UnsatCore.BOUND))) {
+//              // Only consider constraints we can change
+//              if (!(label.equals(UnsatCore.FAILED)
+//                      || label.equals(UnsatCore.ENVIRONMENT)
+//                      || label.equals(UnsatCore.BEST_OVERALL)
+//                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+//                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+//                      || label.equals(UnsatCore.CONTROL_FORWARDING)
+//                      || label.equals(UnsatCore.POLICY)
+//                      || label.equals(UnsatCore.BOUND))) {
                 System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
-              }
+//              }
             }
             System.out.println("==========================================");
           }
