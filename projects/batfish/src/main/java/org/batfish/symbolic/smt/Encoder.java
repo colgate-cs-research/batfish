@@ -862,10 +862,11 @@ public class Encoder {
 
     for (Expr var : nonStaticVariableAssignments.keySet()) {
       if (!staticVars.contains(var))
-        newEqs.add(_ctx.mkEq(var, nonStaticVariableAssignments.get(var)));
+//        newEqs.add(_ctx.mkEq(var, nonStaticVariableAssignments.get(var)));
+        _unsatCore.track(_solver, _ctx, _ctx.mkNot(_ctx.mkEq(var, nonStaticVariableAssignments.get(var))), "CounterExample");
     }
-    BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
+//    BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+//    _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
   }
 
 
