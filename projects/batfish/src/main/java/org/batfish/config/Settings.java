@@ -512,6 +512,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_INVERT_SAT_FORMULA_FAULTLOC = "invertSat";
 
+  private static final String ARG_RENEGATE_PROPERTY_OF_INTEREST = "renegateProperty";
+
   private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
 
   private static final String ARG_PRINT_UNSAT_CORE = "printUnsatCore";
@@ -991,6 +993,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC);
   }
 
+  public boolean shouldRenegatePropertyOfInterest(){
+    return _config.getBoolean(ARG_RENEGATE_PROPERTY_OF_INTEREST);
+  }
+
   public boolean shouldPrintUnsatCore(){
     return _config.getBoolean(ARG_PRINT_UNSAT_CORE);
   }
@@ -1091,6 +1097,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(BfConsts.COMMAND_VALIDATE_ENVIRONMENT, false);
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
     setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
+    setDefaultProperty(ARG_RENEGATE_PROPERTY_OF_INTEREST, false);
     setDefaultProperty(ARG_PRINT_UNSAT_CORE, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
@@ -1379,6 +1386,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(
         ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
 
+    addBooleanOption(ARG_RENEGATE_PROPERTY_OF_INTEREST, "renegate property being checked by Minesweeper");
+
     addBooleanOption(ARG_PRINT_UNSAT_CORE, "print predicates in the UnsatCore");
 
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
@@ -1494,6 +1503,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.COMMAND_VALIDATE_ENVIRONMENT);
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
     getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
+    getBooleanOptionValue(ARG_RENEGATE_PROPERTY_OF_INTEREST);
     getBooleanOptionValue(ARG_PRINT_UNSAT_CORE);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
 
