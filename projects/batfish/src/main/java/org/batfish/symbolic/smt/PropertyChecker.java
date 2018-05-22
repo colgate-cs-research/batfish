@@ -466,7 +466,11 @@ public class PropertyChecker {
                     }
                     allProp = enc.mkAnd(allProp, r);
                   }
-                  enc.add(enc.mkNot(allProp));
+                  if (!_settings.shouldRenegatePropertyOfInterest()) { //faultloc option to not invert property of interest
+                    enc.add(enc.mkNot(allProp));
+                  }else{
+                    System.out.println("PropertyChecker : Leaving property uninverted");
+                  }
                 }
 
                 addFailureConstraints(enc, destPorts, failOptions);
