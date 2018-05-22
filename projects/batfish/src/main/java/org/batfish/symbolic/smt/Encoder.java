@@ -791,7 +791,7 @@ public class Encoder {
   }
 
 
-  /*
+  /**
    * Print Slices Map ...
    */
   private void printSlicesMap(){
@@ -812,7 +812,7 @@ public class Encoder {
     System.out.println(symbolicRouteStr);
   }
 
-  /*
+  /**
    * Negates boolean formula being asserted by the solver object.
    */
   private void negateSolverAssertions(){
@@ -824,7 +824,7 @@ public class Encoder {
   }
 
 
-  /*
+  /**
    * Adds solver constraints that need not be varied for fault localization,
    * like Packet variables.
    * @param staticVars Symbolic Packet variables from the main slice.
@@ -850,7 +850,7 @@ public class Encoder {
   }
 
 
-  /*
+  /**
    * Adds constraints from a counter-example (satisfying solution) to the solver
    * after each call to solver.check() that returns SATISFIABLE.
    * @param staticVars Symbolic Packet variables from the main slice.
@@ -860,16 +860,26 @@ public class Encoder {
                                             Map<Expr, Expr> nonStaticVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
 
+    StringBuilder builder = new StringBuilder();
     for (Expr var : nonStaticVariableAssignments.keySet()) {
       if (!staticVars.contains(var))
         newEqs.add(_ctx.mkEq(var, nonStaticVariableAssignments.get(var)));
+//        System.out.println("CE " + var + " : " + nonStaticVariableAssignments.get(var));
+        builder.append(var + " && ");
     }
+//    System.out.println(builder.toString());
     BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
     _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
   }
 
+    /**Once a counterexample is obtained such that the formula is UNSAT,
+     * There must be a minimal subset of satisfying assignments in the
+     * counterexample to be unsatisfiable.
+     *
+     * The following method iteratively adds the COUNTER EXAMPLE CONSTRAINTS
+     */
 
-  /*
+  /**
    * Removes predicates from the solver that do not determine satisfiability
    * to produce a `minimal` UnsatCore. Here, we check if removing a predicate
    * from an unsatisfiable boolean formula makes it satisfiable and append it
@@ -961,7 +971,7 @@ public class Encoder {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, String> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
 
-    printSlicesMap();
+//    printSlicesMap();
 
     //from list of B see if it gets assignedTo -- B: pred220
     Map<Expr, List<String>>   assignedTo = new HashMap<Expr, List<String>>();
@@ -1148,7 +1158,7 @@ public class Encoder {
             }
             System.out.println("==========================================");
           }
-          checkPreds(_solver.getUnsatCore(), assignedTo, referencedTo);
+//          checkPreds(_solver.getUnsatCore(), assignedTo, referencedTo);
           break;
         }
         if (s == Status.UNKNOWN) {

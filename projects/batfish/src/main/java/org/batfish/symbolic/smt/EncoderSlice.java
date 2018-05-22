@@ -2816,10 +2816,8 @@ class EncoderSlice {
   }
 
   public BoolExpr mkBoolConstant(String input) {
-    System.out.println(input);
     BoolExpr output = getCtx().mkBoolConst(input);
     slicesMap.put(input, output);
-    //System.out.println(Arrays.asList(slicesMap));
     return output;
   }
 }
