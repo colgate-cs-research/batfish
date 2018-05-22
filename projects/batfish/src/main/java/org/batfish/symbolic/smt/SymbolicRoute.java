@@ -485,10 +485,8 @@ public class SymbolicRoute implements IDeepCopy<SymbolicRoute> {
   }
 
   public BoolExpr mkBoolConstant(Context ctx, String input) {
-    System.out.println(input);
     BoolExpr output = ctx.mkBoolConst(input);
     slicesMap.put(input, output);
-    //System.out.println(Arrays.asList(slicesMap));
     return output;
   }
 }
