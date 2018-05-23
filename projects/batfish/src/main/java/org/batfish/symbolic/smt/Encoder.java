@@ -756,13 +756,13 @@ public class Encoder {
     return result;
   }
 
-  public void buildPredicateMaps(Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo, Map<String, BoolExpr> unsatVarsMap){
-    for (Map.Entry<String,BoolExpr> entry : unsatVarsMap.entrySet()) {
+  public void buildPredicateMaps(Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo, Map<String, BoolExpr> predicatesToExprMap){
+    for (Map.Entry<String,BoolExpr> entry : predicatesToExprMap.entrySet()) {
       String key = entry.getKey();
       BoolExpr value = entry.getValue();
 
       List<Expr> assignments = findPredicateAssignment(value);
-      for (int i =0; i< assignments.size(); i+=2){
+      for (int i =0; i<assignments.size(); i+=2){
         Expr assigned = assignments.get(i);
         Expr referenced = assignments.get(i+1);
         if (!assignedTo.containsKey(assigned)){
@@ -892,6 +892,7 @@ public class Encoder {
    */
   private void minimizeUnsatCore(Map<String, BoolExpr> predicatesNameToExprMap,
                                  Map<String, BoolExpr> minCorePredNameToExprMap){
+
     Solver minSolver = _ctx.mkSolver();
 
     BoolExpr[] origUnsatCore = _solver.getUnsatCore();
@@ -908,15 +909,17 @@ public class Encoder {
     Set<Integer> noncoreAssertionsIdxList = new HashSet<>(); //tracking noncore assertions
 
     BoolExpr currentPred;
-    for (int j = 0; j < origUnsatCore.length; j++){
-      currentPred =  origUnsatCore[j];
-      origUnsatCore[j] = mkTrue(); //Equivalent of removing the assertion
-      minSolver.reset();
-      minSolver.add(origUnsatCore);
-      if (minSolver.check()==Status.UNSATISFIABLE) {
-        noncoreAssertionsIdxList.add(j);
-      }else {
-        origUnsatCore[j] = currentPred;
+    if (_settings.shouldForgoUnsatCoreMinimization()){
+      for (int j = 0; j < origUnsatCore.length; j++){
+        currentPred =  origUnsatCore[j];
+        origUnsatCore[j] = mkTrue(); //Equivalent of removing the assertion
+        minSolver.reset();
+        minSolver.add(origUnsatCore);
+        if (minSolver.check()==Status.UNSATISFIABLE) {
+          noncoreAssertionsIdxList.add(j);
+        }else {
+          origUnsatCore[j] = currentPred;
+        }
       }
     }
 
@@ -925,16 +928,19 @@ public class Encoder {
         minCorePredNameToExprMap.put(unsatPredicateNames[k], origUnsatCore[k]);
       }
     }
+
+    System.out.printf("Minimizing UNSATCore : \n Number of predicates in original UnsatCore: %d",origUnsatCore.length);
+
   }
 
 
   public void checkPreds(Expr[] unsatCore, Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
-    List<String> worklist = new ArrayList<String>();
+    List<String> worklist = new ArrayList<>();
     for (Expr exp: unsatCore){
       worklist.add(exp.toString());
     }
 
-    List<String> processed = new ArrayList<String>();
+    List<String> processed = new ArrayList<>();
     while (worklist.size() > 0){
       String currentPred = worklist.remove(0);
       if (!processed.contains(currentPred)){
@@ -956,9 +962,8 @@ public class Encoder {
     for (String str: processed){
       System.out.print(str + ", ");
     }
-    System.out.println("");
+    System.out.println();
   }
-
 
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
@@ -971,13 +976,13 @@ public class Encoder {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, String> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
 
-//    printSlicesMap();
+    //printSlicesMap();
 
     //from list of B see if it gets assignedTo -- B: pred220
-    Map<Expr, List<String>>   assignedTo = new HashMap<Expr, List<String>>();
+    Map<Expr, List<String>>   assignedTo = new HashMap<>();
 
     // this should be predname : list of referenced to, pred221 : List of B
-    Map<String, List<Expr>> referencedTo = new HashMap<String, List<Expr>>();
+    Map<String, List<Expr>> referencedTo = new HashMap<>();
 
     buildPredicateMaps(assignedTo, referencedTo, predicatesNameToExprMap);
 
@@ -1024,12 +1029,15 @@ public class Encoder {
       stats.setMinSolverTime(time);
     }
 
+
+
     if (status == Status.UNSATISFIABLE) {
       VerificationResult res = new VerificationResult(true, null, null, null, null, null, stats);
       return new Tuple<>(res, null);
     } else if (status == Status.UNKNOWN) {
       throw new BatfishException("ERROR: satisfiability unknown");
     } else {
+      System.out.println("Solver.check() -> SATISFIABLE");
       VerificationResult result;
       Model m;
       int numCounterexamples = 0;
@@ -1144,21 +1152,22 @@ public class Encoder {
             System.out.println("==========================================");
             for (String e : minCorePredNameToExprMap.keySet()) {
               String label = predicatesNameToLabelMap.get(e);
-//              // Only consider constraints we can change
-//              if (!(label.equals(UnsatCore.FAILED)
-//                      || label.equals(UnsatCore.ENVIRONMENT)
-//                      || label.equals(UnsatCore.BEST_OVERALL)
-//                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-//                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-//                      || label.equals(UnsatCore.CONTROL_FORWARDING)
-//                      || label.equals(UnsatCore.POLICY)
-//                      || label.equals(UnsatCore.BOUND))) {
+              if (!_settings.shouldRemoveUnsatCoreFilters() && (!(label.equals(UnsatCore.FAILED)
+                      || label.equals(UnsatCore.ENVIRONMENT)
+                      || label.equals(UnsatCore.BEST_OVERALL)
+                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
+                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
+                      || label.equals(UnsatCore.CONTROL_FORWARDING)
+                      || label.equals(UnsatCore.POLICY)
+                      || label.equals(UnsatCore.BOUND)
+                      || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
+                      || label.equals(UnsatCore.HISTORY_CONSTRAINTS)))) {
                 System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
-//              }
+              }
+
             }
             System.out.println("==========================================");
           }
-//          checkPreds(_solver.getUnsatCore(), assignedTo, referencedTo);
           break;
         }
         if (s == Status.UNKNOWN) {

@@ -518,6 +518,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_PRINT_UNSAT_CORE = "printUnsatCore";
 
+  private static final String ARG_NO_FILTER_UNSAT_CORE = "noFilterUnsatCore";
+
+  private static final String ARG_FORGO_UNSAT_CORE_MINIMIZATION = "forgoMinimization";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -1001,6 +1005,14 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_PRINT_UNSAT_CORE);
   }
 
+  public boolean shouldRemoveUnsatCoreFilters(){
+    return _config.getBoolean(ARG_NO_FILTER_UNSAT_CORE);
+  }
+
+  public boolean shouldForgoUnsatCoreMinimization(){
+    return _config.getBoolean(ARG_FORGO_UNSAT_CORE_MINIMIZATION);
+  }
+
   public boolean shouldPrintCounterExampleDiffs(){
     return _config.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
   }
@@ -1099,6 +1111,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
     setDefaultProperty(ARG_RENEGATE_PROPERTY_OF_INTEREST, false);
     setDefaultProperty(ARG_PRINT_UNSAT_CORE, false);
+    setDefaultProperty(ARG_NO_FILTER_UNSAT_CORE, false);
+    setDefaultProperty(ARG_FORGO_UNSAT_CORE_MINIMIZATION, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
@@ -1390,6 +1404,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(ARG_PRINT_UNSAT_CORE, "print predicates in the UnsatCore");
 
+    addBooleanOption(ARG_NO_FILTER_UNSAT_CORE, "remove filters from UnsatCore printout");
+
+    addBooleanOption(ARG_FORGO_UNSAT_CORE_MINIMIZATION, "omit minimization of unsat core");
+
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
@@ -1505,6 +1523,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
     getBooleanOptionValue(ARG_RENEGATE_PROPERTY_OF_INTEREST);
     getBooleanOptionValue(ARG_PRINT_UNSAT_CORE);
+    getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
+    getBooleanOptionValue(ARG_FORGO_UNSAT_CORE_MINIMIZATION);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
 
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
