@@ -5,6 +5,7 @@ import com.microsoft.z3.Context;
 import com.microsoft.z3.Solver;
 import java.util.HashMap;
 import java.util.Map;
+import org.batfish.symbolic.smt.PredicateLabel.labels;
 
 /**
  * A wrapper class that simplifies adding variables to the network model. mkIf debugging is enabled,
@@ -18,7 +19,7 @@ class UnsatCore {
   private boolean _doTrack;
 
   private Map<String, BoolExpr> _trackingVars;
-  private Map<String, String> _trackingLabels;
+  private Map<String, PredicateLabel> _trackingLabels;
 
   private int _trackingNum;
 
@@ -40,7 +41,7 @@ class UnsatCore {
     _trackingNum = 0;
   }
 
-  void track(Solver solver, Context ctx, BoolExpr be, String label) {
+  void track(Solver solver, Context ctx, BoolExpr be, PredicateLabel label) {
     String name = "Pred" + _trackingNum; // + "(label:" +label+ ")";
     _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
@@ -53,7 +54,8 @@ class UnsatCore {
   }
 
   void  track(Solver solver, Context ctx, BoolExpr be) {
-    track(solver, ctx, be, "[UNLABELED]");
+    PredicateLabel label = new PredicateLabel(labels.unlabeled);
+    track(solver, ctx, be, label);
   }
 
   boolean getDoTrack() {
@@ -64,7 +66,7 @@ class UnsatCore {
     return _trackingVars;
   }
 
-  Map<String, String> getTrackingLabels() {
+  Map<String, PredicateLabel> getTrackingLabels() {
     return _trackingLabels;
   }
 }

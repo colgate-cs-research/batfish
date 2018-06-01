@@ -55,6 +55,7 @@ import org.batfish.symbolic.answers.SmtManyAnswerElement;
 import org.batfish.symbolic.answers.SmtOneAnswerElement;
 import org.batfish.symbolic.answers.SmtReachabilityAnswerElement;
 import org.batfish.symbolic.collections.Table2;
+import org.batfish.symbolic.smt.PredicateLabel.labels;
 import org.batfish.symbolic.utils.PathRegexes;
 import org.batfish.symbolic.utils.PatternUtils;
 import org.batfish.symbolic.utils.TriFunction;
@@ -202,10 +203,11 @@ public class PropertyChecker {
     Graph graph = enc.getMainSlice().getGraph();
     for (List<GraphEdge> edges : graph.getEdgeMap().values()) {
       for (GraphEdge ge : edges) {
+        PredicateLabel label=new PredicateLabel(labels.failed);
         ArithExpr f = enc.getSymbolicFailures().getFailedVariable(ge);
         assert f != null;
         if (!failSet.contains(ge)) {
-          enc.add(enc.mkEq(f, enc.mkInt(0)), UnsatCore.FAILED);
+          enc.add(enc.mkEq(f, enc.mkInt(0)), label);
         } else if (dstPorts.contains(ge)) {
           // Don't fail an interface if it is for the destination ip we are considering
           // Otherwise, any failure can trivially make equivalence false
@@ -213,7 +215,7 @@ public class PropertyChecker {
           BitVecExpr dstIp = enc.getMainSlice().getSymbolicPacket().getDstIp();
           BoolExpr relevant = enc.getMainSlice().isRelevantFor(pfx, dstIp);
           BoolExpr notFailed = enc.mkEq(f, enc.mkInt(0));
-          enc.add(enc.mkImplies(relevant, notFailed), UnsatCore.FAILED);
+          enc.add(enc.mkImplies(relevant, notFailed), label);
         }
       }
     }
@@ -222,17 +224,18 @@ public class PropertyChecker {
   private void addEnvironmentConstraints(Encoder enc, EnvironmentType t) {
     LogicalGraph lg = enc.getMainSlice().getLogicalGraph();
     Context ctx = enc.getCtx();
+    PredicateLabel label=new PredicateLabel(labels.environment);
     switch (t) {
       case ANY:
         break;
       case NONE:
         for (SymbolicRoute vars : lg.getEnvironmentVars().values()) {
-          enc.add(ctx.mkNot(vars.getPermitted()), UnsatCore.ENVIRONMENT);
+          enc.add(ctx.mkNot(vars.getPermitted()), label);
         }
         break;
       case SANE:
         for (SymbolicRoute vars : lg.getEnvironmentVars().values()) {
-          enc.add(ctx.mkLe(vars.getMetric(), ctx.mkInt(50)), UnsatCore.ENVIRONMENT);
+          enc.add(ctx.mkLe(vars.getMetric(), ctx.mkInt(50)), label);
         }
         break;
       default:
@@ -607,7 +610,8 @@ public class PropertyChecker {
             lens.add(lenVars.get(router));
           }
           BoolExpr allEqual = PropertyAdder.allEqual(enc.getCtx(), lens);
-          enc.add(enc.mkNot(allEqual), UnsatCore.POLICY);
+          PredicateLabel label=new PredicateLabel(labels.policy);
+          enc.add(enc.mkNot(allEqual), label);
           for (Entry<String, ArithExpr> entry : lenVars.entrySet()) {
             String name = entry.getKey();
             BoolExpr b = srcRouters.contains(name) ? allEqual : enc.mkTrue();
@@ -762,8 +766,8 @@ public class PropertyChecker {
       }
       someBlackHole = ctx.mkOr(someBlackHole, ctx.mkAnd(isFwdTo, doesNotFwd));
     }
-
-    enc.add(someBlackHole, UnsatCore.POLICY);
+    PredicateLabel label=new PredicateLabel(labels.policy);
+    enc.add(someBlackHole, label);
     VerificationResult result = enc.verify().getFirst();
     return new SmtOneAnswerElement(result);
   }
@@ -808,8 +812,8 @@ public class PropertyChecker {
       }
       acc = enc.mkOr(acc, enc.mkNot(enc.mkImplies(reach, all)));
     }
-
-    enc.add(acc, UnsatCore.POLICY);
+    PredicateLabel label=new PredicateLabel(labels.policy);
+    enc.add(acc, label);
     VerificationResult res = enc.verify().getFirst();
     return new SmtOneAnswerElement(res);
   }
@@ -860,7 +864,8 @@ public class PropertyChecker {
       BoolExpr hasLoop = pa.instrumentLoop(router);
       someLoop = ctx.mkOr(someLoop, hasLoop);
     }
-    enc.add(someLoop, UnsatCore.POLICY);
+    PredicateLabel label=new PredicateLabel(labels.policy);
+    enc.add(someLoop, label);
 
     VerificationResult result = enc.verify().getFirst();
     return new SmtOneAnswerElement(result);

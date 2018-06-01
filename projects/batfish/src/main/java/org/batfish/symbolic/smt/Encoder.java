@@ -8,6 +8,7 @@ import org.batfish.datamodel.*;
 import org.batfish.datamodel.questions.smt.HeaderQuestion;
 import org.batfish.symbolic.*;
 import org.batfish.symbolic.Protocol;
+import org.batfish.symbolic.smt.PredicateLabel.labels;
 import org.batfish.symbolic.utils.Tuple;
 
 import javax.annotation.Nullable;
@@ -395,7 +396,7 @@ public class Encoder {
     _unsatCore.track(_solver, _ctx, e);
   }
 
-  void add(BoolExpr e, String caller) {
+  void add(BoolExpr e, PredicateLabel caller) {
     _unsatCore.track(_solver, _ctx, e, caller);
   }
 
@@ -414,19 +415,21 @@ public class Encoder {
     Set<ArithExpr> vars = new HashSet<>();
     getSymbolicFailures().getFailedInternalLinks().forEach((router, peer, var) -> vars.add(var));
     getSymbolicFailures().getFailedEdgeLinks().forEach((ge, var) -> vars.add(var));
+    PredicateLabel label=new PredicateLabel(labels.failed);
 
     ArithExpr sum = mkInt(0);
     for (ArithExpr var : vars) {
       sum = mkSum(sum, var);
-      add(mkGe(var, mkInt(0)), UnsatCore.FAILED);
-      add(mkLe(var, mkInt(1)), UnsatCore.FAILED);
+
+      add(mkGe(var, mkInt(0)), label);
+      add(mkLe(var, mkInt(1)), label);
     }
     if (k == 0) {
       for (ArithExpr var : vars) {
-        add(mkEq(var, mkInt(0)), UnsatCore.FAILED);
+        add(mkEq(var, mkInt(0)), label);
       }
     } else {
-      add(mkLe(sum, mkInt(k)), UnsatCore.FAILED);
+      add(mkLe(sum, mkInt(k)), label);
     }
   }
 
@@ -837,6 +840,7 @@ public class Encoder {
   ){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
     staticVars.addAll(staticVariableAssignments.keySet());
+    PredicateLabel label=new PredicateLabel(labels.packetvariables);
     for (Expr e : staticVars) {
       if (nonStaticVariableAssignments.containsKey(e)) {
         newEqs.add(_ctx.mkEq(e, nonStaticVariableAssignments.get(e)));
@@ -846,7 +850,7 @@ public class Encoder {
     }
 
     BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _unsatCore.track(_solver, _ctx,andPcktVars, "Packet Variables");
+    _unsatCore.track(_solver, _ctx,andPcktVars, label);
   }
 
 
@@ -859,7 +863,7 @@ public class Encoder {
   private void addCounterExampleConstraints(Set<Expr> staticVars,
                                             Map<Expr, Expr> nonStaticVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
-
+    PredicateLabel label=new PredicateLabel(labels.counterexampleconstraint);
     StringBuilder builder = new StringBuilder();
     for (Expr var : nonStaticVariableAssignments.keySet()) {
       if (!staticVars.contains(var))
@@ -869,7 +873,7 @@ public class Encoder {
     }
 //    System.out.println(builder.toString());
     BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),"counterexample constraint");
+    _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),label);
   }
 
     /**Once a counterexample is obtained such that the formula is UNSAT,
@@ -974,7 +978,7 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
 
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
-    Map<String, String> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
+    Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
 
     //printSlicesMap();
 
@@ -1106,8 +1110,9 @@ public class Encoder {
 
         // Find the smallest possible counterexample
         if (_question.getMinimize()) {
+          PredicateLabel newlabel=new PredicateLabel(labels.environment);
           BoolExpr blocking = environmentBlockingClause(m);
-          add(blocking, UnsatCore.ENVIRONMENT);
+          add(blocking, newlabel);
         }
 
         if (_shouldInvertFormula) { //create a new solver with negated formula
@@ -1126,18 +1131,18 @@ public class Encoder {
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
           for (String e : predicatesNameToLabelMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
-              String label = predicatesNameToLabelMap.get(e.toString());
+              PredicateLabel label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
-              if (!(label.equals(UnsatCore.FAILED)
-                      || label.equals(UnsatCore.ENVIRONMENT)
-                      || label.equals(UnsatCore.BEST_OVERALL)
-                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-                      || label.equals(UnsatCore.CONTROL_FORWARDING)
-                      || label.equals(UnsatCore.POLICY)
-                      || label.equals(UnsatCore.BOUND)
-                      || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
-                      || label.equals(UnsatCore.HISTORY_CONSTRAINTS))) {
+              if (!(label.gettype()==labels.failed)
+                      || (label.gettype()==labels.environment)
+                      || (label.gettype()==labels.bestOverall)
+                      || (label.gettype()==labels.bestperprotocal)
+                      || (label.gettype()==labels.choiceperprotocal)
+                      || (label.gettype()==labels.controlForwarding)
+                      || (label.gettype()==labels.policy)
+                      || (label.gettype()==labels.bound)
+                      || (label.gettype()==labels.unuseddefaultvalue)
+                      || (label.gettype()==labels.historyconstraints)) {
                 System.out.println(e.toString() + ": " + label + ": "
                         + predicatesNameToExprMap.get(e));
               }
@@ -1151,17 +1156,17 @@ public class Encoder {
             System.out.println("\nPredicates in the unsatCore:");
             System.out.println("==========================================");
             for (String e : minCorePredNameToExprMap.keySet()) {
-              String label = predicatesNameToLabelMap.get(e);
-              if (!_settings.shouldRemoveUnsatCoreFilters() && (!(label.equals(UnsatCore.FAILED)
-                      || label.equals(UnsatCore.ENVIRONMENT)
-                      || label.equals(UnsatCore.BEST_OVERALL)
-                      || label.equals(UnsatCore.BEST_PER_PROTOCOL)
-                      || label.equals(UnsatCore.CHOICE_PER_PROTOCOL)
-                      || label.equals(UnsatCore.CONTROL_FORWARDING)
-                      || label.equals(UnsatCore.POLICY)
-                      || label.equals(UnsatCore.BOUND)
-                      || label.equals(UnsatCore.UNUSED_DEFAULT_VALUE)
-                      || label.equals(UnsatCore.HISTORY_CONSTRAINTS)))) {
+              PredicateLabel label = predicatesNameToLabelMap.get(e);
+              if (!_settings.shouldRemoveUnsatCoreFilters() && (!(label.gettype()==(labels.failed)
+                      || label.gettype()==(labels.environment)
+                      || label.gettype()==(labels.bestOverall)
+                      || label.gettype()==(labels.bestperprotocal)
+                      || label.gettype()==(labels.choiceperprotocal)
+                      || label.gettype()==(labels.controlForwarding)
+                      || label.gettype()==(labels.policy)
+                      || label.gettype()==(labels.bound)
+                      || label.gettype()==(labels.unuseddefaultvalue)
+                      || label.gettype()==(labels.historyconstraints)))) {
                 System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
               }
 
