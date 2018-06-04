@@ -40,6 +40,8 @@ public class PredicateLabel{
   
   private Interface intface;
   
+  private String intface_String;
+  
   public PredicateLabel(labels type) {
     this.type=type;
     this.device=null;
@@ -58,8 +60,28 @@ public class PredicateLabel{
     this.intface=face;
   }
   
+  public PredicateLabel(labels type, String device, String face) {
+    this.type=type;
+    this.device=device;
+    this.intface_String=face;
+  }
+  
   public String toString() {
-    return type+" "+device+" "+intface;
+    if (intface_String==null)
+      return type+" "+device+" "+intface;
+    else 
+      return type+" "+device+" "+intface_String;
+  }
+  public void Settype(labels s) {
+    this.type=s;
+  }
+  
+  public void Setdevice(String s) {
+    this.device=s;
+  }
+  
+  public void Setinterface(String s) {
+    this.intface_String=s;
   }
   
   public labels gettype() {

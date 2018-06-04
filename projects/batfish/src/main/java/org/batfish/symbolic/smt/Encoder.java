@@ -2,6 +2,7 @@ package org.batfish.symbolic.smt;
 
 import com.microsoft.z3.*;
 import org.batfish.common.BatfishException;
+import org.batfish.common.Directory;
 import org.batfish.common.Pair;
 import org.batfish.config.Settings;
 import org.batfish.datamodel.*;
@@ -12,6 +13,12 @@ import org.batfish.symbolic.smt.PredicateLabel.labels;
 import org.batfish.symbolic.utils.Tuple;
 
 import javax.annotation.Nullable;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -968,7 +975,35 @@ public class Encoder {
     }
     System.out.println();
   }
-
+  
+  /**
+   * Load the faultloc file and throw exception if faultloc file is not in the directory
+   *
+   * @return A list of PredicateLabels
+   */
+  public List<PredicateLabel> loadFaultloc(){
+    // find the path of the faultloc file
+    Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
+    System.out.println(testrigpath);
+    Path filepath = testrigpath.resolve("faultloc");
+    File file = filepath.toFile();
+    // check whether faultloc file exists, if not, throw an exception
+    ArrayList<PredicateLabel> result= new ArrayList<PredicateLabel>();
+    try {
+      BufferedReader br = new BufferedReader(new FileReader(file));
+      String s=null;
+      //go through the faultloc file and turns each line into a PredicateLabel
+      while ((s=br.readLine())!=null) {
+        String[] arr= s.split(" ");
+        PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0]), arr[1], arr[2]);
+        result.add(label);
+      }
+    br.close();
+    }catch (IOException e) {
+      throw new BatfishException ("FileNotFound");
+    }
+    return result;
+  } 
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -976,7 +1011,6 @@ public class Encoder {
    * @return A VerificationResult indicating the status of the check.
    */
   public Tuple<VerificationResult, Model> verify() {
-
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
 
@@ -993,7 +1027,7 @@ public class Encoder {
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
-
+    System.out.println(loadFaultloc());
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
     int numNodes = mainSlice.getGraph().getConfigurations().size();
     int numEdges = 0;
@@ -1128,6 +1162,8 @@ public class Encoder {
           System.out.println("=========================================");
           System.out.println("\nPredicates not in the unsatCore:");
 
+          // Print out each predicate not in unsat core
+          // TODO: Create list of "found" predicates from faultloc list
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
           for (String e : predicatesNameToLabelMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
@@ -1146,10 +1182,15 @@ public class Encoder {
                 System.out.println(e.toString() + ": " + label + ": "
                         + predicatesNameToExprMap.get(e));
               }
+              
+              // TODO: If label matches label in faultloc list, then add it to a found list
             }
           }
 
           System.out.println("==========================================");
+          
+          // TODO: Print out number of found and unfound items in faultloc list
+          // TODO: Print out unfound items in faultloc list
 
           if (_shouldPrintUnsatCore) {
             System.out.println("Size of (Minimized) UnsatCore : " + minCorePredNameToExprMap.size());
