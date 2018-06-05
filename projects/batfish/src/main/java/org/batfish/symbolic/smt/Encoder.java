@@ -981,7 +981,7 @@ public class Encoder {
    *
    * @return A list of PredicateLabels
    */
-  public List<PredicateLabel> loadFaultloc(){
+  public ArrayList<PredicateLabel> loadFaultloc(){
     // find the path of the faultloc file
     Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
     System.out.println(testrigpath);
@@ -1164,6 +1164,8 @@ public class Encoder {
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
+          ArrayList<PredicateLabel> unfound= loadFaultloc();
+          ArrayList<PredicateLabel> Faultloc= loadFaultloc();
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
           for (String e : predicatesNameToLabelMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
@@ -1182,7 +1184,10 @@ public class Encoder {
                 System.out.println(e.toString() + ": " + label + ": "
                         + predicatesNameToExprMap.get(e));
               }
-              
+              for (PredicateLabel _label : Faultloc ) {             
+                if (_label.equals(label))
+                  unfound.remove(_label);
+              }
               // TODO: If label matches label in faultloc list, then add it to a found list
             }
           }
@@ -1191,7 +1196,9 @@ public class Encoder {
           
           // TODO: Print out number of found and unfound items in faultloc list
           // TODO: Print out unfound items in faultloc list
-
+          System.out.println("There are "+unfound.size()+" items in faultloc unfound and "+(Faultloc.size()-unfound.size()+" items found"));
+          System.out.println("The unfound predicates are: ");
+          System.out.println(unfound);
           if (_shouldPrintUnsatCore) {
             System.out.println("Size of (Minimized) UnsatCore : " + minCorePredNameToExprMap.size());
             System.out.println("\nPredicates in the unsatCore:");
