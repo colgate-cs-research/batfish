@@ -132,4 +132,9 @@ public class PredicateLabel{
     }
     return false;
   }
+  
+  @Override
+  public int hashCode() {
+    return this.toString().hashCode();
+  }
 }
