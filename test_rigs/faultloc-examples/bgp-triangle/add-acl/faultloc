@@ -1,0 +1,5 @@
+environment A GigabitEthernet0/1
+bound C GigabitEthernet0/2
+failed null null
+bound null null
+initAclFunctions_inbound C Interface<GigabitEthernet0/2>
