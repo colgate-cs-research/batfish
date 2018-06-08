@@ -1,0 +1,4 @@
+init-testrig test_rigs/faultloc-examples/bgp-triangle/add-acl
+add-batfish-option numIters 20
+add-batfish-option printUnsatCore
+get smt-reachability ingressNodeRegex="D", finalNodeRegex="C", srcIps=['12.0.0.0/8'], dstIps=['13.0.0.0/8'], failures=1

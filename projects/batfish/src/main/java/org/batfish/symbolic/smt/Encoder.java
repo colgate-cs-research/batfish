@@ -991,7 +991,7 @@ public class Encoder {
       //go through the faultloc file and turns each line into a PredicateLabel
       while ((s=br.readLine())!=null) {
         String[] arr= s.split(" ");
-        PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0]), arr[1], arr[2], arr[3]);
+        PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0].toUpperCase()), arr[1], arr[2], arr[3]);
         result.add(label);
       }
     br.close();

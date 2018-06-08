@@ -60,7 +60,11 @@ public class PredicateLabel{
     this.type=type;
     this.device=device;
     this.intface=face;
-    this.intface_String=face.getName();
+    if (face != null) {
+        this.intface_String=face.getName();
+    } else  {
+        this.intface_String = null;
+    }
     this.proto = proto;
   }
   
@@ -81,11 +85,11 @@ public class PredicateLabel{
   }
   
   public String toString() {
-    if (intface_String==null)
-      return type+" "+device+" "+intface+" "+proto;
-    else 
-      return type+" "+device+" "+intface_String+" "+proto;
+      return type+" "+(device != null ? device : "")
+          +" "+(intface_String != null ? intface_String : "")
+          +" "+ (proto != null ? proto.name() : "");
   }
+
   public void Settype(labels s) {
     this.type=s;
   }
