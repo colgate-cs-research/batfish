@@ -1,5 +1,6 @@
 package org.batfish.common.plugin;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -124,6 +125,8 @@ public interface IBatfish extends IPluginConsumer {
   AssertionAst parseAssertion(String text);
 
   AnswerElement pathDiff(HeaderSpace headerSpace);
+  
+  
 
   void popEnvironment();
 

@@ -975,24 +975,37 @@ public class Encoder {
   /**
    * Load the faultloc file and throw exception if faultloc file is not in the directory
    *
-   * @return A list of PredicateLabels
+   * @return HashMap<String,ArrayList<PredicateLabel>> A hashmap with questions as keys and 
+   * coresponding list of PredicateLabels as value
    */
-  public ArrayList<PredicateLabel> loadFaultloc(){
+  public HashMap<String,ArrayList<PredicateLabel>> loadFaultloc(){
     // find the path of the faultloc file
     Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
-    System.out.println(testrigpath);
     Path filepath = testrigpath.resolve("faultloc");
     File file = filepath.toFile();
     // check whether faultloc file exists, if not, throw an exception
-    ArrayList<PredicateLabel> result= new ArrayList<PredicateLabel>();
+    HashMap<String,ArrayList<PredicateLabel>> result= new HashMap<String,ArrayList<PredicateLabel>>();
     try {
       BufferedReader br = new BufferedReader(new FileReader(file));
       String s=null;
-      //go through the faultloc file and turns each line into a PredicateLabel
+      String question=null;
+      String[] arr = null;
+      ArrayList<PredicateLabel> label_list=new ArrayList<PredicateLabel>();
+      //go through the faultloc file and turns each line into a PredicateLabel and associated with the corespoding question
       while ((s=br.readLine())!=null) {
-        String[] arr= s.split(" ");
-        PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0].toUpperCase()), arr[1], arr[2], arr[3]);
-        result.add(label);
+        if (!s.contains(" ")) {
+          if (question!=null) {
+            result.put(question, label_list);
+          }
+          question=s;
+          label_list=new ArrayList<PredicateLabel>();
+        }
+        if (s.contains(" ")) {
+          arr = s.split(" ");
+          PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0]), arr[1], arr[2],arr[3]);
+          label_list.add(label);
+        }
+        result.put(question, label_list);
       }
     br.close();
     }catch (IOException e) {
@@ -1009,7 +1022,8 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
-
+    System.out.println("Expected predicates:");
+    System.out.println(loadFaultloc());
     //printSlicesMap();
 
     //from list of B see if it gets assignedTo -- B: pred220
@@ -1160,8 +1174,8 @@ public class Encoder {
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
-          ArrayList<PredicateLabel> unfound= loadFaultloc();
-          ArrayList<PredicateLabel> Faultloc= loadFaultloc();
+          HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
+          HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
           for (String e : predicatesNameToLabelMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
@@ -1172,9 +1186,8 @@ public class Encoder {
 //                        + predicatesNameToExprMap.get(e));
                 System.out.println(label);
               }
-              for (PredicateLabel _label : Faultloc ) {             
-                if (_label.equals(label))
-                  unfound.remove(_label);
+              for (String q: Faultloc.keySet()) {
+                unfound.get(q).remove(label);
               }
               // TODO: If label matches label in faultloc list, then add it to a found list
             }
@@ -1184,9 +1197,12 @@ public class Encoder {
           
           // TODO: Print out number of found and unfound items in faultloc list
           // TODO: Print out unfound items in faultloc list
-          System.out.println("There are "+unfound.size()+" items in faultloc unfound and "+(Faultloc.size()-unfound.size()+" items found"));
-          System.out.println("The unfound predicates are: ");
-          System.out.println(unfound);
+          for (String q:Faultloc.keySet()) {
+            System.out.println("For "+q);
+            System.out.println("There are "+unfound.get(q).size()+" items in faultloc unfound and "+(Faultloc.get(q).size()-unfound.get(q).size()+" items found"));
+            System.out.println("The unfound predicates are: ");
+            System.out.println(unfound.get(q));
+          }
           if (_shouldPrintUnsatCore) {
             System.out.println("Size of (Minimized) UnsatCore : " + minCorePredNameToExprMap.size());
             System.out.println("\nPredicates in the unsatCore:");

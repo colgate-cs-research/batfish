@@ -4,7 +4,16 @@ import java.util.EnumSet;
 import org.batfish.datamodel.Interface;
 import org.batfish.symbolic.Protocol;
 
+/**
+ * A class contains the information of a predicate: type, name of the router and name of the interface 
+ *
+ * @author Owen Sun
+ */
+
 public class PredicateLabel{
+  /**
+  * This enum type labels are all the types of the predicate may have.
+  */
   
   public enum labels{
     POLICY,
@@ -83,21 +92,42 @@ public class PredicateLabel{
       this.proto = Protocol.fromString(proto);
     }
   }
-  
+ 
+  @Override
+  /**
+  * This method override the toString method since the interface
+  * may saved as String or Interface type. This methods will correctly
+  * return the information.
+
+  * @return String The type, router and the interface of this predicate
+  */
   public String toString() {
       return type+(device != null ? " " + device : "")
           +(intface_String != null ? " " + intface_String : "")
           +(proto != null ? " " + proto.name() : "");
   }
 
+  
+  /**
+  * This method updates the type
+  * @param s String the new type
+  */
   public void Settype(labels s) {
     this.type=s;
   }
   
+  /**
+  * This method updates the router
+  * @param s String the new router name
+  */
   public void Setdevice(String s) {
     this.device=s;
   }
   
+  /**
+  * This method updates the interface
+  * @param s String the new interface
+  */
   public void Setinterface(String s) {
     this.intface_String=s;
   }
@@ -106,46 +136,65 @@ public class PredicateLabel{
     this.proto = p;
   }
   
+  /**
+  * This method returns the type
+  * @return labels the type of this PredicateLabel
+  */
+  
   public labels gettype() {
     return type;
   }
   
+  /**
+  * This method return the name of the router
+  * @return String return the name of the router
+  */
+  
   public String getdevice() {
-    if (device=="null")
-      return null;
     return device;
   }
   
+  /**
+  * This method returns the interface
+  * @return Interface This returns the interface
+  */
+  
   public Interface getintface() {
-    if (this.intface!=null)
       return this.intface;
-    else
-      return null;
   }
   
+  /**
+  * This method returns interface in a String
+  * @return String This returns the interface
+  */
+  
   public String getStrintface() {
-    if (this.intface_String=="null")
-      return null;
-    else 
       return this.intface_String;
   }
+  
+  /**
+  * This method compare two predicates are the same or not
+  * @param Object o1 This is the predicateLabel going to be compared
+  * @return boolean Return true if they are the same, false if they are different
+  */
   
   @Override
   public boolean equals (Object o1) {
     if (o1 instanceof PredicateLabel) {
     boolean type_b=false, device_b=false, intface_b =false, proto_b = false;
-    if (((PredicateLabel) o1).gettype().equals(type))
+
+    PredicateLabel p1=(PredicateLabel) o1;
+    if ((p1).gettype().equals(type))
       type_b = true;
     
-    if (((((PredicateLabel) o1).getdevice()==null)&&(device==null))
-        ||(((PredicateLabel) o1).getdevice()!=null && ((PredicateLabel) o1).getdevice().equals(device)))
+    if ((((p1).getdevice()==null)&&(device==null))
+        ||((p1).getdevice()!=null && (p1).getdevice().equals(device)))
         device_b=true;
     
-    if ((((PredicateLabel) o1).getStrintface()==null&&this.intface_String==null)
-        ||(((PredicateLabel) o1).getStrintface()!=null&&((PredicateLabel) o1).getStrintface().equals(intface_String)))
+    if (((p1).getStrintface()==null&&this.intface_String==null)
+        ||((p1).getStrintface()!=null&&(p1).getStrintface().equals(intface_String)))
       intface_b=true;
     
-    PredicateLabel p1 = (PredicateLabel) o1;
     if ((p1.proto == null && this.proto == null)
       || (p1.proto != null && p1.proto.equals(this.proto))) {
       proto_b = true;

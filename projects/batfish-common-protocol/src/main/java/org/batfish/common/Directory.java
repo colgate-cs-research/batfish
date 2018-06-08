@@ -54,7 +54,7 @@ public class Directory extends ComparableStructure<String> {
   public SortedSet<String> getFiles() {
     return _files;
   }
-
+  
   public void setDirectories(SortedSet<Directory> directories) {
     _directories = directories;
   }
