@@ -996,7 +996,7 @@ public class Encoder {
       }
     br.close();
     }catch (IOException e) {
-      throw new BatfishException ("FileNotFound");
+      System.out.println ("Faultloc file not found");
     }
     return result;
   } 
@@ -1168,8 +1168,9 @@ public class Encoder {
               PredicateLabel label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
               if (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable()) {
-                System.out.println(e.toString() + ": " + label + ": "
-                        + predicatesNameToExprMap.get(e));
+//                System.out.println(e.toString() + ": " + label + ": "
+//                        + predicatesNameToExprMap.get(e));
+                System.out.println(label);
               }
               for (PredicateLabel _label : Faultloc ) {             
                 if (_label.equals(label))
@@ -1193,7 +1194,8 @@ public class Encoder {
             for (String e : minCorePredNameToExprMap.keySet()) {
               PredicateLabel label = predicatesNameToLabelMap.get(e);
               if (_settings.shouldRemoveUnsatCoreFilters() && label.isConfigurable()) {
-                System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
+                //System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
+                System.out.println(label);
               }
 
             }

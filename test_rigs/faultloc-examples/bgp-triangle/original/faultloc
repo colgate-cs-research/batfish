@@ -1,3 +1,0 @@
-ENVIRONMENT A GigabitEthernet0/1 null
-VALUE_LIMIT C GigabitEthernet0/2 null
-FAILURES null null null
