@@ -1167,7 +1167,7 @@ public class Encoder {
             if (!unsatCoreStrings.contains(e)) {
               PredicateLabel label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
-              if (label.isConfigurable()) {
+              if (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable()) {
                 System.out.println(e.toString() + ": " + label + ": "
                         + predicatesNameToExprMap.get(e));
               }
@@ -1192,7 +1192,7 @@ public class Encoder {
             System.out.println("==========================================");
             for (String e : minCorePredNameToExprMap.keySet()) {
               PredicateLabel label = predicatesNameToLabelMap.get(e);
-              if (!_settings.shouldRemoveUnsatCoreFilters() && label.isConfigurable()) {
+              if (_settings.shouldRemoveUnsatCoreFilters() && label.isConfigurable()) {
                 System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
               }
 

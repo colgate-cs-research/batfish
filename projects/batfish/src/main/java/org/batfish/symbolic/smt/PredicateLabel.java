@@ -85,9 +85,9 @@ public class PredicateLabel{
   }
   
   public String toString() {
-      return type+" "+(device != null ? device : "")
-          +" "+(intface_String != null ? intface_String : "")
-          +" "+ (proto != null ? proto.name() : "");
+      return type+(device != null ? " " + device : "")
+          +(intface_String != null ? " " + intface_String : "")
+          +(proto != null ? " " + proto.name() : "");
   }
 
   public void Settype(labels s) {
@@ -148,7 +148,7 @@ public class PredicateLabel{
     PredicateLabel p1 = (PredicateLabel) o1;
     if ((p1.proto == null && this.proto == null)
       || (p1.proto != null && p1.proto.equals(this.proto))) {
-      type_b = true;
+      proto_b = true;
     }
         
     return (type_b && device_b && intface_b && proto_b);
