@@ -8,15 +8,19 @@ OPTIONS=$BASEDIR/options
         POLICIES=$BASEDIR/$NETWORK/original/policies/reach.cmd
         ORIG_CONFIGS=$BASEDIR/$NETWORK/original/configs
         \ls $BASEDIR/$NETWORK | while read SCENARIO; do
-            echo -e "\n\n##### $NETWORK/$SCENARIO ####################\n"
+            echo -e "\n\n##### SCENARIO: $NETWORK/$SCENARIO ###################################\n"
             TESTRIG_DIR=$BASEDIR/$NETWORK/$SCENARIO
 
             SCENARIO_CONFIGS=$TESTRIG_DIR/configs
-            echo -e "Config differences\n======================================"
+            echo -e "CONFIG DIFFERENCES"
+            echo -e "====================================================="
             diff -ru $ORIG_CONFIGS $SCENARIO_CONFIGS
-            echo -e "======================================\n"
+            echo -e "=====================================================\n"
 
+            echo -e "CHECK POLICIES"
+            echo -e "====================================================="
             cat $OPTIONS $POLICIES | allinone -runmode interactive -testrigdir $TESTRIG_DIR || exit 1
+            echo -e "====================================================="
         done
     fi
 done

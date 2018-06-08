@@ -936,8 +936,6 @@ public class Encoder {
       }
     }
 
-    System.out.printf("Minimizing UNSATCore : \n Number of predicates in original UnsatCore: %d",origUnsatCore.length);
-
   }
 
 
@@ -1022,8 +1020,6 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
-    System.out.println("Expected predicates:");
-    System.out.println(loadFaultloc());
     //printSlicesMap();
 
     //from list of B see if it gets assignedTo -- B: pred220
@@ -1037,7 +1033,6 @@ public class Encoder {
 
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
-    System.out.println(loadFaultloc());
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
     int numNodes = mainSlice.getGraph().getConfigurations().size();
     int numEdges = 0;
@@ -1085,7 +1080,6 @@ public class Encoder {
     } else if (status == Status.UNKNOWN) {
       throw new BatfishException("ERROR: satisfiability unknown");
     } else {
-      System.out.println("Solver.check() -> SATISFIABLE");
       VerificationResult result;
       Model m;
       int numCounterexamples = 0;
@@ -1165,12 +1159,14 @@ public class Encoder {
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
+          System.out.println("POLICY VIOLATED");
+          System.out.println("=====================================================");
           Map<String, BoolExpr> minCorePredNameToExprMap = new TreeMap<>();
 
           minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
-         
-          System.out.println("\nPredicates not in the unsatCore:");
-          System.out.println("=========================================");
+
+          System.out.println("\nNot Unsat Core:");
+          System.out.println("-------------------------------------------");
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
@@ -1181,8 +1177,10 @@ public class Encoder {
             if (!unsatCoreStrings.contains(e)) {
               PredicateLabel label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
-              if (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable()) {
-//                System.out.println(e.toString() + ": " + label + ": "
+              if (_shouldPrintUnsatCore 
+                      && (_settings.shouldRemoveUnsatCoreFilters() 
+                          || label.isConfigurable())) {
+//                System.out.println(label + ": "
 //                        + predicatesNameToExprMap.get(e));
                 System.out.println(label);
               }
@@ -1192,31 +1190,40 @@ public class Encoder {
               // TODO: If label matches label in faultloc list, then add it to a found list
             }
           }
-
-          System.out.println("==========================================");
+          System.out.println("-------------------------------------------");
           
           // TODO: Print out number of found and unfound items in faultloc list
           // TODO: Print out unfound items in faultloc list
           for (String q:Faultloc.keySet()) {
-            System.out.println("For "+q);
-            System.out.println("There are "+unfound.get(q).size()+" items in faultloc unfound and "+(Faultloc.get(q).size()-unfound.get(q).size()+" items found"));
-            System.out.println("The unfound predicates are: ");
-            System.out.println(unfound.get(q));
+            int unfoundCount = unfound.get(q).size();
+            int foundCount = Faultloc.get(q).size()-unfoundCount;
+            System.out.println("\nFaulty predicates for " + q + ": " 
+                    + foundCount + " found, " + unfoundCount + " unfound");
+            if (unfoundCount > 0) {
+              System.out.println("Unfound faulty predicates for " + q + ":");
+              System.out.println("-------------------------------------------");
+              for (PredicateLabel label : unfound.get(q)) {
+                  System.out.println(label);
+              }
+              System.out.println("-------------------------------------------");
+            }
           }
+
           if (_shouldPrintUnsatCore) {
-            System.out.println("Size of (Minimized) UnsatCore : " + minCorePredNameToExprMap.size());
-            System.out.println("\nPredicates in the unsatCore:");
-            System.out.println("==========================================");
+            System.out.println("\nUnsat Core:");
+            System.out.println("-------------------------------------------");
             for (String e : minCorePredNameToExprMap.keySet()) {
               PredicateLabel label = predicatesNameToLabelMap.get(e);
-              if (_settings.shouldRemoveUnsatCoreFilters() && label.isConfigurable()) {
-                //System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
+              if (_settings.shouldRemoveUnsatCoreFilters() 
+                      || label.isConfigurable()) {
+                //System.out.println(label + ": " + minCorePredNameToExprMap.get(e));
                 System.out.println(label);
               }
 
             }
-            System.out.println("==========================================");
+            System.out.println("-------------------------------------------");
           }
+          System.out.println("=====================================================");
           break;
         }
         if (s == Status.UNKNOWN) {

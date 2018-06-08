@@ -1,4 +1,4 @@
-init-testrig test_rigs/faultloc-examples/bgp-triangle/add-acl
+init-testrig test_rigs/faultloc-examples/bgp-triangle/rm-neighbor
 add-batfish-option numIters 20
 add-batfish-option printUnsatCore
 add-batfish-option noFilterUnsatCore
