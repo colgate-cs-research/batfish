@@ -46,7 +46,7 @@ class SymbolicEnum<T> {
       if (!isPowerOfTwo(size)) {
         BitVecExpr maxValue = slice.getCtx().mkBV(size - 1, _numBits);
         BoolExpr constraint = slice.getCtx().mkBVULE(_bitvec, maxValue);
-        slice.add(constraint);
+        slice.add(constraint, new PredicateLabel(PredicateLabel.labels.VALUE_LIMIT));
       }
     }
   }

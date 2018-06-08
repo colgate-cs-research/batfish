@@ -203,7 +203,7 @@ public class PropertyChecker {
     Graph graph = enc.getMainSlice().getGraph();
     for (List<GraphEdge> edges : graph.getEdgeMap().values()) {
       for (GraphEdge ge : edges) {
-        PredicateLabel label=new PredicateLabel(labels.failed);
+        PredicateLabel label=new PredicateLabel(labels.FAILURES);
         ArithExpr f = enc.getSymbolicFailures().getFailedVariable(ge);
         assert f != null;
         if (!failSet.contains(ge)) {
@@ -224,7 +224,7 @@ public class PropertyChecker {
   private void addEnvironmentConstraints(Encoder enc, EnvironmentType t) {
     LogicalGraph lg = enc.getMainSlice().getLogicalGraph();
     Context ctx = enc.getCtx();
-    PredicateLabel label=new PredicateLabel(labels.environment);
+    PredicateLabel label=new PredicateLabel(labels.ENVIRONMENT);
     switch (t) {
       case ANY:
         break;
@@ -344,6 +344,7 @@ public class PropertyChecker {
       HeaderLocationQuestion q,
       TriFunction<Encoder, Set<String>, Set<GraphEdge>, Map<String, BoolExpr>> instrument,
       Function<VerifyParam, AnswerElement> answer) {
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
 
     long totalTime = System.currentTimeMillis();
     PathRegexes p = new PathRegexes(q);
@@ -456,8 +457,8 @@ public class PropertyChecker {
                   }
 
                   related = enc.mkAnd(related, relatePackets(enc, enc2));
-                  enc.add(related);
-                  enc.add(enc.mkNot(required));
+                  enc.add(related, label);
+                  enc.add(enc.mkNot(required), label);
 
                 } else {
                   // Not a differential query; just a query on a single version of the network.
@@ -470,10 +471,10 @@ public class PropertyChecker {
                     allProp = enc.mkAnd(allProp, r);
                   }
                   if (!_settings.shouldRenegatePropertyOfInterest()) { //faultloc option to not invert property of interest
-                    enc.add(enc.mkNot(allProp));
+                    enc.add(enc.mkNot(allProp), label);
                   }else{
                     System.out.println("PropertyChecker : Leaving property uninverted.");
-                    enc.add(allProp);
+                    enc.add(allProp, label);
                   }
                 }
 
@@ -610,7 +611,7 @@ public class PropertyChecker {
             lens.add(lenVars.get(router));
           }
           BoolExpr allEqual = PropertyAdder.allEqual(enc.getCtx(), lens);
-          PredicateLabel label=new PredicateLabel(labels.policy);
+          PredicateLabel label=new PredicateLabel(labels.POLICY);
           enc.add(enc.mkNot(allEqual), label);
           for (Entry<String, ArithExpr> entry : lenVars.entrySet()) {
             String name = entry.getKey();
@@ -667,8 +668,9 @@ public class PropertyChecker {
       required = enc1.mkAnd(required, enc1.mkEq(dataFwd1, dataFwd2));
     }
 
-    enc1.add(related);
-    enc1.add(enc1.mkNot(required));
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    enc1.add(related, label);
+    enc1.add(enc1.mkNot(required), label);
 
     Tuple<VerificationResult, Model> tup = enc1.verify();
     VerificationResult res = tup.getFirst();
@@ -766,7 +768,7 @@ public class PropertyChecker {
       }
       someBlackHole = ctx.mkOr(someBlackHole, ctx.mkAnd(isFwdTo, doesNotFwd));
     }
-    PredicateLabel label=new PredicateLabel(labels.policy);
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
     enc.add(someBlackHole, label);
     VerificationResult result = enc.verify().getFirst();
     return new SmtOneAnswerElement(result);
@@ -812,7 +814,7 @@ public class PropertyChecker {
       }
       acc = enc.mkOr(acc, enc.mkNot(enc.mkImplies(reach, all)));
     }
-    PredicateLabel label=new PredicateLabel(labels.policy);
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
     enc.add(acc, label);
     VerificationResult res = enc.verify().getFirst();
     return new SmtOneAnswerElement(res);
@@ -864,7 +866,7 @@ public class PropertyChecker {
       BoolExpr hasLoop = pa.instrumentLoop(router);
       someLoop = ctx.mkOr(someLoop, hasLoop);
     }
-    PredicateLabel label=new PredicateLabel(labels.policy);
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
     enc.add(someLoop, label);
 
     VerificationResult result = enc.verify().getFirst();
@@ -882,6 +884,8 @@ public class PropertyChecker {
    * will be equal given their equal inputs.
    */
   public AnswerElement checkLocalEquivalence(Pattern n, boolean strict, boolean fullModel) {
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    
     Graph graph = new Graph(_batfish);
     List<String> routers = PatternUtils.findMatchingNodes(graph, n, Pattern.compile(""));
 
@@ -1064,7 +1068,7 @@ public class PropertyChecker {
           for (SymbolicRoute env2 : envRecords) {
             if (!env1.equals(env2)) {
               BoolExpr c = e2.mkImplies(env1.getPermitted(), e2.mkNot(env2.getPermitted()));
-              e2.add(c);
+              e2.add(c, label);
             }
           }
         }
@@ -1107,8 +1111,8 @@ public class PropertyChecker {
         required = ctx.mkAnd(sameForwarding); // equalOutputs, equalIncomingAcls);
       }
 
-      e2.add(assumptions);
-      e2.add(ctx.mkNot(required));
+      e2.add(assumptions, label);
+      e2.add(ctx.mkNot(required), label);
 
       VerificationResult res = e2.verify().getFirst();
       String name = r1 + "<-->" + r2;

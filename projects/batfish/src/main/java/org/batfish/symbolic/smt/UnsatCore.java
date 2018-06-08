@@ -53,11 +53,6 @@ class UnsatCore {
     }
   }
 
-  void  track(Solver solver, Context ctx, BoolExpr be) {
-    PredicateLabel label = new PredicateLabel(labels.unlabeled);
-    track(solver, ctx, be, label);
-  }
-
   boolean getDoTrack() {
     return _doTrack;
   }

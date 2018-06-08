@@ -5,7 +5,7 @@ import javafx.util.Pair;
 import org.batfish.symbolic.Graph;
 import org.batfish.symbolic.GraphEdge;
 import org.batfish.symbolic.Protocol;
-
+import org.batfish.symbolic.smt.PredicateLabel.labels;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -168,7 +168,8 @@ class PropertyAdder {
     initializeReachabilityVars(_encoderSlice, ctx, solver, reachableVars, idVars);
 
     ArithExpr baseId = idVars.get(router);
-    _encoderSlice.add(ctx.mkEq(baseId, ctx.mkInt(1)));
+    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    _encoderSlice.add(ctx.mkEq(baseId, ctx.mkInt(1)), label);
 
     Graph g = _encoderSlice.getGraph();
     for (Entry<String, List<GraphEdge>> entry : g.getEdgeMap().entrySet()) {

@@ -66,6 +66,20 @@ public class Protocol {
         throw new BatfishException("Error[toRoutingProtocol]: " + p.name());
     }
   }
+  
+  public static Protocol fromString(String p) {
+    if (p.toUpperCase().equals(Protocol.CONNECTED.name())) {
+      return Protocol.CONNECTED;
+    } else if (p.toUpperCase().equals(Protocol.STATIC.name())) {
+      return Protocol.STATIC;
+    } else if (p.toUpperCase().equals(Protocol.BGP.name())) {
+      return Protocol.BGP;
+    } else if (p.toUpperCase().equals(Protocol.OSPF.name())) {
+      return Protocol.OSPF;
+    } else {
+      return null;
+    }
+  }
 
   public boolean isBgp() {
     return _type == Type.BGP;

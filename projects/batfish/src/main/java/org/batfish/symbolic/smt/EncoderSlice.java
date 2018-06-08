@@ -142,10 +142,6 @@ class EncoderSlice {
   }
 
   // Add a variable to the encoding
-  void add(BoolExpr e) {
-    _encoder.add(e);
-  }
-
   void add(BoolExpr e, PredicateLabel label) {
     _encoder.add(e, label);
   }
@@ -294,7 +290,7 @@ class EncoderSlice {
           //BoolExpr outAcl = getCtx().mkBoolConst(outName);
           BoolExpr outAcl = mkBoolConstant(outName);
           BoolExpr outAclFunc = computeACL(outbound);
-          PredicateLabel label=new PredicateLabel(labels.initAclFunctions_outbound,router,i);
+          PredicateLabel label=new PredicateLabel(labels.ACLS_OUTBOUND,router,i);
           add(mkEq(outAcl, outAclFunc), label);
           _outboundAcls.put(ge, outAcl);
         }
@@ -309,7 +305,7 @@ class EncoderSlice {
           //BoolExpr inAcl = getCtx().mkBoolConst(inName);
           BoolExpr inAcl = mkBoolConstant(inName);
           BoolExpr inAclFunc = computeACL(inbound);
-          PredicateLabel label=new PredicateLabel(labels.initAclFunctions_inbound,router,i);
+          PredicateLabel label=new PredicateLabel(labels.ACLS_INBOUND,router,i);
           add(mkEq(inAcl, inAclFunc), label);
           _inboundAcls.put(ge, inAcl);
         }
@@ -913,7 +909,7 @@ class EncoderSlice {
     ArithExpr upperBound16 = mkInt((long) Math.pow(2, 16));
     ArithExpr upperBound32 = mkInt((long) Math.pow(2, 32));
     ArithExpr zero = mkInt(0);
-    PredicateLabel label=new PredicateLabel(labels.bound);
+    PredicateLabel label=new PredicateLabel(labels.VALUE_LIMIT);
     // Valid 16 bit integer
     add(mkGe(_symbolicPacket.getDstPort(), zero), label);
     add(mkGe(_symbolicPacket.getSrcPort(), zero), label);
@@ -976,7 +972,7 @@ class EncoderSlice {
    * ahead of time based on the configuration.
    */
   private void addCommunityConstraints() {
-    PredicateLabel label=new PredicateLabel(labels.addCommunityConstraints);
+    PredicateLabel label=new PredicateLabel(labels.COMMUNITY);
     for (SymbolicRoute r : getAllSymbolicRecords()) {
       for (Entry<CommunityVar, BoolExpr> entry : r.getCommunities().entrySet()) {
         CommunityVar cvar = entry.getKey();
@@ -1438,7 +1434,7 @@ class EncoderSlice {
     for (Entry<String, Configuration> entry : getGraph().getConfigurations().entrySet()) {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
-      PredicateLabel label=new PredicateLabel(labels.bestOverall, router);
+      
       // These constraints will be added at the protocol-level when a single protocol
       if (!_optimizations.getSliceHasSingleProtocol().contains(router)) {
 
@@ -1467,11 +1463,13 @@ class EncoderSlice {
           } else {
             acc = mkOr(acc, val);
           }
+          PredicateLabel label=new PredicateLabel(labels.BEST_OVERALL, router, null, proto);
           add(
               mkImplies(bestVars.getPermitted(), greaterOrEqual(conf, proto, best, bestVars, null)),
               label);
         }
 
+        PredicateLabel label=new PredicateLabel(labels.BEST_OVERALL, router);
         if (someProto) {
           if (acc != null) {
             add(mkEq(somePermitted, best.getPermitted()), label);
@@ -1493,9 +1491,9 @@ class EncoderSlice {
     for (Entry<String, Configuration> entry : getGraph().getConfigurations().entrySet()) {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
-      PredicateLabel label=new PredicateLabel(labels.bestperprotocal,router);
 
       for (Protocol proto : getProtocols().get(router)) {
+        PredicateLabel label=new PredicateLabel(labels.BEST_PER_PROTOCOL, router, null, proto);
 
         SymbolicRoute bestVars = _symbolicDecisions.getBestVars(_optimizations, router, proto);
         assert (bestVars != null);
@@ -1544,7 +1542,7 @@ class EncoderSlice {
     for (Entry<String, Configuration> entry : getGraph().getConfigurations().entrySet()) {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
-      PredicateLabel label=new PredicateLabel(labels.addChoicePerProtocolConstraint,router);
+      PredicateLabel label=new PredicateLabel(labels.BEST_PER_PROTOCOL,router);
       for (Protocol proto : getProtocols().get(router)) {
         SymbolicRoute bestVars = _symbolicDecisions.getBestVars(_optimizations, router, proto);
         assert (bestVars != null);
@@ -1571,7 +1569,6 @@ class EncoderSlice {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
       boolean someEdge = false;
-      PredicateLabel label=new PredicateLabel(labels.controlForwarding,router);
       SymbolicRoute best = _symbolicDecisions.getBestNeighbor().get(router);
       Map<GraphEdge, BoolExpr> cfExprs = new HashMap<>();
 
@@ -1608,6 +1605,7 @@ class EncoderSlice {
 
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
+          PredicateLabel label = new PredicateLabel(labels.CONTROL_FORWARDING, router, null, proto);
           add(mkImplies(sends, cForward), label);
 
           // record the negation as well
@@ -1620,7 +1618,8 @@ class EncoderSlice {
         if (!constrained.contains(ge)) {
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
-          add(mkNot(cForward));
+          PredicateLabel label = new PredicateLabel(labels.CONTROL_FORWARDING, router);
+          add(mkNot(cForward), label);
         }
       }
 
@@ -1629,6 +1628,7 @@ class EncoderSlice {
         for (GraphEdge ge : getGraph().getEdgeMap().get(router)) {
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
+          PredicateLabel label = new PredicateLabel(labels.CONTROL_FORWARDING, router);
           add(mkNot(cForward), label);
         }
       } else {
@@ -1648,6 +1648,7 @@ class EncoderSlice {
               BoolExpr expr = cfExprs.get(ge);
               BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
               assert (cForward != null);
+              PredicateLabel label = new PredicateLabel(labels.CONTROL_FORWARDING, router);
               if (expr != null) {
                 add(mkImplies(mkNot(expr), mkNot(cForward)), label);
               } else {
@@ -1905,7 +1906,6 @@ class EncoderSlice {
 
     for (Entry<String, List<GraphEdge>> entry : getGraph().getEdgeMap().entrySet()) {
       String router = entry.getKey();
-      PredicateLabel label=new PredicateLabel(labels.addDataForwardingConstraints, router);
       List<GraphEdge> edges = entry.getValue();
       for (GraphEdge ge : edges) {
 
@@ -1964,6 +1964,7 @@ class EncoderSlice {
             acl = mkTrue();
           }
           BoolExpr notBlocked = mkAnd(fwd, acl);
+          PredicateLabel label=new PredicateLabel(labels.DATA_FORWARDING, router, ge.getStart());
           add(mkEq(notBlocked, dForward), label);
         }
       }
@@ -1990,7 +1991,7 @@ class EncoderSlice {
     ArithExpr failed = getSymbolicFailures().getFailedVariable(e.getEdge());
     assert (failed != null);
     BoolExpr notFailed = mkEq(failed, mkInt(0));
-    PredicateLabel label=new PredicateLabel(labels.addImportConstraint,router,iface);
+    PredicateLabel label=new PredicateLabel(labels.IMPORT,router,iface,proto);
 
     if (vars.getIsUsed()) {
 
@@ -2180,19 +2181,18 @@ class EncoderSlice {
     ArithExpr failed = getSymbolicFailures().getFailedVariable(e.getEdge());
     assert (failed != null);
     BoolExpr notFailed = mkEq(failed, mkInt(0));
+    PredicateLabel label= new PredicateLabel(labels.EXPORT, router, null, proto);
 
     // only add constraints once when using a single copy of export variables
     if (!_optimizations.getSliceCanKeepSingleExportVar().get(router).get(proto) || !usedExport) {
 
       if (proto.isConnected()) {
         BoolExpr val = mkNot(vars.getPermitted());
-        PredicateLabel label= new PredicateLabel(labels.addExportConstraint_connected, router);
         add(val, label);
       }
 
       if (proto.isStatic()) {
         BoolExpr val = mkNot(vars.getPermitted());
-        PredicateLabel label= new PredicateLabel(labels.addExportConstraint_static, router);
         add(val, label);
       }
 
@@ -2273,7 +2273,6 @@ class EncoderSlice {
                   this, conf, overallBest, ospfRedistribVars, proto, statements, cost, ge, true);
           BoolExpr acc2 = f.compute();
           // System.out.println("ADDING: \n" + acc2.simplify());
-          PredicateLabel label= new PredicateLabel(labels.addExportConstraint, router);
           add(acc2, label);
           BoolExpr usable2 = mkAnd(active, doExport, ospfRedistribVars.getPermitted(), notFailed);
           BoolExpr geq = greaterOrEqual(conf, proto, ospfRedistribVars, varsOther, e);
@@ -2327,7 +2326,6 @@ class EncoderSlice {
             acc = mkIf(relevant, values, acc);
           }
         }
-        PredicateLabel label= new PredicateLabel(labels.addExportConstraint, router);
         add(acc, label);
 
         if (Encoder.ENABLE_DEBUGGING) {
@@ -2420,7 +2418,7 @@ class EncoderSlice {
             protoBest = _symbolicDecisions.getBestNeighborPerProtocol().get(router, proto);
           }
           assert protoBest != null;
-          PredicateLabel label=new PredicateLabel(labels.addTransferFunction,router);
+          PredicateLabel label=new PredicateLabel(labels.BEST_PER_PROTOCOL,router, null, proto);
           add(mkNot(protoBest.getPermitted()), label);
         }
       }
@@ -2438,7 +2436,7 @@ class EncoderSlice {
       SymbolicRoute vars = entry.getValue();
       if (_optimizations.getSliceHasSingleProtocol().contains(router)) {
         Protocol proto = getProtocols().get(router).get(0);
-        PredicateLabel label=new PredicateLabel(labels.addHistoryConstraint,router);
+        PredicateLabel label=new PredicateLabel(labels.BEST_OVERALL,router, null, proto);
         add(
             mkImplies(vars.getPermitted(), vars.getProtocolHistory().checkIfValue(proto)),
             label);
@@ -2452,7 +2450,7 @@ class EncoderSlice {
    * up the solver significantly.
    */
   private void addUnusedDefaultValueConstraints() {
-    PredicateLabel label=new PredicateLabel(labels.addUnusedDefaultValueConstraints);
+    PredicateLabel label=new PredicateLabel(labels.DEFAULT_VALUE);
     for (SymbolicRoute vars : getAllSymbolicRecords()) {
 
       BoolExpr notPermitted = mkNot(vars.getPermitted());
@@ -2518,7 +2516,7 @@ class EncoderSlice {
             mkImplies(notPermitted, mkEq(vars.getRouterId(), zero)),
             label);
       }
-      vars.getCommunities().forEach((cvar, e) -> add(mkImplies(notPermitted, mkNot(e))));
+      vars.getCommunities().forEach((cvar, e) -> add(mkImplies(notPermitted, mkNot(e)), label));
     }
   }
 
@@ -2562,8 +2560,7 @@ class EncoderSlice {
   private void addHeaderSpaceConstraint() {
 
     BoolExpr acc;
-    PredicateLabel label_1=new PredicateLabel(labels.addHeaderSpaceConstraint);
-    PredicateLabel label_2=new PredicateLabel(labels.addUnusedDefaultValueConstraints);
+    PredicateLabel label=new PredicateLabel(labels.HEADER_SPACE);
 
     if (_headerSpace.getDstIps().size() > 0) {
       acc = mkFalse();
@@ -2571,7 +2568,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getDstIp(), ipWildcard);
         acc = mkOr(acc, bound);
       }
-      add(acc, label_1);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotDstIps().size() > 0) {
@@ -2580,7 +2577,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getDstIp(), ipWildcard);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getSrcIps().size() > 0) {
@@ -2589,7 +2586,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
         acc = mkOr(acc, bound);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotSrcIps().size() > 0) {
@@ -2598,7 +2595,7 @@ class EncoderSlice {
         BoolExpr bound = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getSrcOrDstIps().size() > 0) {
@@ -2608,7 +2605,7 @@ class EncoderSlice {
         BoolExpr bound2 = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
         acc = mkOr(acc, bound1, bound2);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getDstPorts().size() > 0) {
@@ -2617,7 +2614,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotDstPorts().size() > 0) {
@@ -2626,7 +2623,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getSrcPorts().size() > 0) {
@@ -2635,7 +2632,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotSrcPorts().size() > 0) {
@@ -2644,7 +2641,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getSrcOrDstPorts().size() > 0) {
@@ -2654,7 +2651,7 @@ class EncoderSlice {
         BoolExpr bound2 = subRangeBound(_symbolicPacket.getSrcPort(), subRange);
         acc = mkOr(acc, bound1, bound2);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getIcmpTypes().size() > 0) {
@@ -2663,7 +2660,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpType(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotIcmpTypes().size() > 0) {
@@ -2672,7 +2669,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpType(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getIcmpCodes().size() > 0) {
@@ -2681,7 +2678,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpCode(), subRange);
         acc = mkOr(acc, bound);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotIcmpCodes().size() > 0) {
@@ -2690,7 +2687,7 @@ class EncoderSlice {
         BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpCode(), subRange);
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getIpProtocols().size() > 0) {
@@ -2699,7 +2696,7 @@ class EncoderSlice {
         BoolExpr bound = mkEq(_symbolicPacket.getIpProtocol(), mkInt(ipProtocol.number()));
         acc = mkOr(acc, bound);
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     if (_headerSpace.getNotIpProtocols().size() > 0) {
@@ -2708,7 +2705,7 @@ class EncoderSlice {
         BoolExpr bound = mkEq(_symbolicPacket.getIpProtocol(), mkInt(ipProtocol.number()));
         acc = mkAnd(acc, mkNot(bound));
       }
-      add(acc, label_2);
+      add(acc, label);
     }
 
     // TODO: need to implement fragment offsets, Ecns, states, etc
@@ -2718,7 +2715,7 @@ class EncoderSlice {
    * Add various constraints for well-formed environments
    */
   private void addEnvironmentConstraints() {
-    PredicateLabel label=new PredicateLabel(labels.addEnvironmentConstraints);
+    PredicateLabel label=new PredicateLabel(labels.ENVIRONMENT);
     for (SymbolicRoute vars : getLogicalGraph().getEnvironmentVars().values()) {
       // Environment messages are not internal
       if (vars.getBgpInternal() != null) {

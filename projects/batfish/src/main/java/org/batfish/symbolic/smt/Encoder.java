@@ -398,11 +398,6 @@ public class Encoder {
     return getCtx().mkEq(e1, e2);
   }
 
-  // Add a boolean variable to the model
-  void add(BoolExpr e) {
-    _unsatCore.track(_solver, _ctx, e);
-  }
-
   void add(BoolExpr e, PredicateLabel caller) {
     _unsatCore.track(_solver, _ctx, e, caller);
   }
@@ -422,7 +417,7 @@ public class Encoder {
     Set<ArithExpr> vars = new HashSet<>();
     getSymbolicFailures().getFailedInternalLinks().forEach((router, peer, var) -> vars.add(var));
     getSymbolicFailures().getFailedEdgeLinks().forEach((ge, var) -> vars.add(var));
-    PredicateLabel label=new PredicateLabel(labels.failed);
+    PredicateLabel label=new PredicateLabel(labels.VALUE_LIMIT);
 
     ArithExpr sum = mkInt(0);
     for (ArithExpr var : vars) {
@@ -431,6 +426,7 @@ public class Encoder {
       add(mkGe(var, mkInt(0)), label);
       add(mkLe(var, mkInt(1)), label);
     }
+    label=new PredicateLabel(labels.FAILURES);
     if (k == 0) {
       for (ArithExpr var : vars) {
         add(mkEq(var, mkInt(0)), label);
@@ -847,7 +843,7 @@ public class Encoder {
   ){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
     staticVars.addAll(staticVariableAssignments.keySet());
-    PredicateLabel label=new PredicateLabel(labels.packetvariables);
+    PredicateLabel label=new PredicateLabel(labels.PACKET);
     for (Expr e : staticVars) {
       if (nonStaticVariableAssignments.containsKey(e)) {
         newEqs.add(_ctx.mkEq(e, nonStaticVariableAssignments.get(e)));
@@ -870,7 +866,7 @@ public class Encoder {
   private void addCounterExampleConstraints(Set<Expr> staticVars,
                                             Map<Expr, Expr> nonStaticVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
-    PredicateLabel label=new PredicateLabel(labels.counterexampleconstraint);
+    PredicateLabel label=new PredicateLabel(labels.COUNTEREXAMPLE);
     StringBuilder builder = new StringBuilder();
     for (Expr var : nonStaticVariableAssignments.keySet()) {
       if (!staticVars.contains(var))
@@ -995,7 +991,7 @@ public class Encoder {
       //go through the faultloc file and turns each line into a PredicateLabel
       while ((s=br.readLine())!=null) {
         String[] arr= s.split(" ");
-        PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0]), arr[1], arr[2]);
+        PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0]), arr[1], arr[2], arr[3]);
         result.add(label);
       }
     br.close();
@@ -1144,7 +1140,7 @@ public class Encoder {
 
         // Find the smallest possible counterexample
         if (_question.getMinimize()) {
-          PredicateLabel newlabel=new PredicateLabel(labels.environment);
+          PredicateLabel newlabel=new PredicateLabel(labels.ENVIRONMENT);
           BoolExpr blocking = environmentBlockingClause(m);
           add(blocking, newlabel);
         }
@@ -1158,9 +1154,9 @@ public class Encoder {
           Map<String, BoolExpr> minCorePredNameToExprMap = new TreeMap<>();
 
           minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
-
-          System.out.println("=========================================");
+         
           System.out.println("\nPredicates not in the unsatCore:");
+          System.out.println("=========================================");
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
@@ -1171,16 +1167,7 @@ public class Encoder {
             if (!unsatCoreStrings.contains(e)) {
               PredicateLabel label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
-              if (!(label.gettype()==labels.failed)
-                      || (label.gettype()==labels.environment)
-                      || (label.gettype()==labels.bestOverall)
-                      || (label.gettype()==labels.bestperprotocal)
-                      || (label.gettype()==labels.choiceperprotocal)
-                      || (label.gettype()==labels.controlForwarding)
-                      || (label.gettype()==labels.policy)
-                      || (label.gettype()==labels.bound)
-                      || (label.gettype()==labels.unuseddefaultvalue)
-                      || (label.gettype()==labels.historyconstraints)) {
+              if (label.isConfigurable()) {
                 System.out.println(e.toString() + ": " + label + ": "
                         + predicatesNameToExprMap.get(e));
               }
@@ -1205,16 +1192,7 @@ public class Encoder {
             System.out.println("==========================================");
             for (String e : minCorePredNameToExprMap.keySet()) {
               PredicateLabel label = predicatesNameToLabelMap.get(e);
-              if (!_settings.shouldRemoveUnsatCoreFilters() && (!(label.gettype()==(labels.failed)
-                      || label.gettype()==(labels.environment)
-                      || label.gettype()==(labels.bestOverall)
-                      || label.gettype()==(labels.bestperprotocal)
-                      || label.gettype()==(labels.choiceperprotocal)
-                      || label.gettype()==(labels.controlForwarding)
-                      || label.gettype()==(labels.policy)
-                      || label.gettype()==(labels.bound)
-                      || label.gettype()==(labels.unuseddefaultvalue)
-                      || label.gettype()==(labels.historyconstraints)))) {
+              if (!_settings.shouldRemoveUnsatCoreFilters() && label.isConfigurable()) {
                 System.out.println(e + ": " + label + ": " + minCorePredNameToExprMap.get(e));
               }
 
