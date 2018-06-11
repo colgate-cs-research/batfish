@@ -20,7 +20,7 @@ OPTIONS=$BASEDIR/options
             echo -e "CHECK POLICIES"
             echo -e "====================================================="
             cat $OPTIONS $POLICIES | allinone -runmode interactive -testrigdir $TESTRIG_DIR || exit 1
-            echo -e "====================================================="
+            echo -e "\n====================================================="
         done
     fi
 done
