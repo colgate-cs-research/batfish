@@ -37,7 +37,16 @@ public class PredicateLabel{
   };
   
   private final static EnumSet<labels> CONFIGURABLE_LABELS = EnumSet.of(
-      labels.IMPORT, labels.EXPORT, labels.COMMUNITY, labels.ACLS_INBOUND, labels.ACLS_OUTBOUND);
+      labels.IMPORT, labels.EXPORT, labels.COMMUNITY, 
+      labels.ACLS_INBOUND, labels.ACLS_OUTBOUND);
+  
+  private final static EnumSet<labels> TRACK_LABELS = 
+      EnumSet.complementOf(EnumSet.of(labels.COUNTEREXAMPLE));
+//      EnumSet.of(
+//      labels.IMPORT, labels.EXPORT, labels.COMMUNITY, 
+//      labels.ACLS_INBOUND, labels.ACLS_OUTBOUND,
+//      labels.BEST_PER_PROTOCOL, labels.BEST_OVERALL,
+//      labels.CONTROL_FORWARDING, labels.DATA_FORWARDING);
   
   private labels type;
   
@@ -221,5 +230,16 @@ public class PredicateLabel{
    */
   public boolean isConfigurable() {
     return CONFIGURABLE_LABELS.contains(this.type);
+  }
+  
+  /**
+   * Checks whether the label corresponds to a predicate that should be tracked (to allow it
+   * to be part of the unsat core).
+   * @return true if the label corresponds to a predicate that should be tracked,
+   *    otherwise false
+   */
+  public boolean shouldTrack() {
+    //return isConfigurable();
+    return TRACK_LABELS.contains(this.type);
   }
 }

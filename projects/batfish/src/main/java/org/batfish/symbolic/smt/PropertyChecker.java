@@ -470,11 +470,14 @@ public class PropertyChecker {
                     }
                     allProp = enc.mkAnd(allProp, r);
                   }
-                  if (!_settings.shouldRenegatePropertyOfInterest()) { //faultloc option to not invert property of interest
-                    enc.add(enc.mkNot(allProp), label);
-                  }else{
-                    System.out.println("PropertyChecker : Leaving property uninverted.");
+                  if (_settings.shouldNotNegateProperty()) {
+                    // faultloc option to not negate property of interest
+                    System.out.println("Leaving property unnegated");
                     enc.add(allProp, label);
+                  }else{
+                    // Default minesweeper: negate property of interest
+                    System.out.println("Negating property");
+                    enc.add(enc.mkNot(allProp), label);
                   }
                 }
 

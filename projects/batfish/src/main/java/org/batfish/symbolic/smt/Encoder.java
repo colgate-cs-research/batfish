@@ -916,7 +916,7 @@ public class Encoder {
     Set<Integer> noncoreAssertionsIdxList = new HashSet<>(); //tracking noncore assertions
 
     BoolExpr currentPred;
-    if (_settings.shouldForgoUnsatCoreMinimization()){
+    if (_settings.shouldMinimizeUnsatCore()){
       for (int j = 0; j < origUnsatCore.length; j++){
         currentPred =  origUnsatCore[j];
         origUnsatCore[j] = mkTrue(); //Equivalent of removing the assertion
@@ -1159,8 +1159,10 @@ public class Encoder {
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
-          System.out.println("POLICY VIOLATED");
+          System.out.println("\nPOLICY VIOLATED");
           System.out.println("=====================================================");
+          System.out.println("\n" + numCounterexamples + " counterexamples");
+
           Map<String, BoolExpr> minCorePredNameToExprMap = new TreeMap<>();
 
           minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
@@ -1177,21 +1179,47 @@ public class Encoder {
             if (!unsatCoreStrings.contains(e)) {
               PredicateLabel label = predicatesNameToLabelMap.get(e.toString());
               // Only consider constraints we can change
-              if (_shouldPrintUnsatCore 
-                      && (_settings.shouldRemoveUnsatCoreFilters() 
-                          || label.isConfigurable())) {
-//                System.out.println(label + ": "
-//                        + predicatesNameToExprMap.get(e));
-                System.out.println(label);
+              if ((_settings.shouldRemoveUnsatCoreFilters() 
+                    || label.isConfigurable())) {
+                if (_shouldPrintUnsatCore) {
+                System.out.println(label + ": " 
+                        + predicatesNameToExprMap.get(e));
+                } else {
+                    System.out.println(label);
+                }
               }
-              for (String q: Faultloc.keySet()) {
-                unfound.get(q).remove(label);
+              if (!_settings.shouldNotNegateProperty()) {
+                // Track which labels are not found
+                for (String q: Faultloc.keySet()) {
+                    unfound.get(q).remove(label);
+                }
               }
-              // TODO: If label matches label in faultloc list, then add it to a found list
             }
           }
           System.out.println("-------------------------------------------");
           
+          System.out.println("\nUnsat Core:");
+          System.out.println("-------------------------------------------");
+          for (String e : minCorePredNameToExprMap.keySet()) {
+            PredicateLabel label = predicatesNameToLabelMap.get(e);
+            if (_settings.shouldRemoveUnsatCoreFilters() 
+                    || label.isConfigurable()) {
+                if (_shouldPrintUnsatCore) {
+                  System.out.println(label + ": " 
+                          + minCorePredNameToExprMap.get(e));
+                } else {
+                  System.out.println(label);
+                }
+            }
+            if (_settings.shouldNotNegateProperty()) {
+              // Track which labels are not found
+              for (String q: Faultloc.keySet()) {
+                  unfound.get(q).remove(label);
+              }
+            }
+          }
+          System.out.println("-------------------------------------------");
+
           // TODO: Print out number of found and unfound items in faultloc list
           // TODO: Print out unfound items in faultloc list
           for (String q:Faultloc.keySet()) {
@@ -1209,20 +1237,6 @@ public class Encoder {
             }
           }
 
-          if (_shouldPrintUnsatCore) {
-            System.out.println("\nUnsat Core:");
-            System.out.println("-------------------------------------------");
-            for (String e : minCorePredNameToExprMap.keySet()) {
-              PredicateLabel label = predicatesNameToLabelMap.get(e);
-              if (_settings.shouldRemoveUnsatCoreFilters() 
-                      || label.isConfigurable()) {
-                //System.out.println(label + ": " + minCorePredNameToExprMap.get(e));
-                System.out.println(label);
-              }
-
-            }
-            System.out.println("-------------------------------------------");
-          }
           System.out.println("=====================================================");
           break;
         }
@@ -1232,8 +1246,6 @@ public class Encoder {
       } while (_question.getMinimize() || numCounterexamples < _numIters);
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
-
-      System.out.println("Generated " + numCounterexamples + " counterexamples");
 
       if (_shouldPrintCounterExampleChanges) {
         System.out.println("Changes in Model Variables");

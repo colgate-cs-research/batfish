@@ -46,7 +46,7 @@ class UnsatCore {
     _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
     _trackingVars.put(name, be);
-    if (_doTrack) {
+    if (_doTrack  && label.shouldTrack()) {
       solver.assertAndTrack(be, ctx.mkBoolConst(name));
     } else {
       solver.add(be);

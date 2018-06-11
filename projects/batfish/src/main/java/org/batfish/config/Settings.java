@@ -512,7 +512,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_INVERT_SAT_FORMULA_FAULTLOC = "invertSat";
 
-  private static final String ARG_RENEGATE_PROPERTY_OF_INTEREST = "renegateProperty";
+  private static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
 
   private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
 
@@ -520,7 +520,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_NO_FILTER_UNSAT_CORE = "noFilterUnsatCore";
 
-  private static final String ARG_FORGO_UNSAT_CORE_MINIMIZATION = "forgoMinimization";
+  private static final String ARG_MINIMIZE_UNSAT_CORE = "minimizeUnsatCore";
 
   private static final String CAN_EXECUTE = "canexecute";
 
@@ -997,8 +997,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC);
   }
 
-  public boolean shouldRenegatePropertyOfInterest(){
-    return _config.getBoolean(ARG_RENEGATE_PROPERTY_OF_INTEREST);
+  public boolean shouldNotNegateProperty(){
+    return _config.getBoolean(ARG_NO_NEGATE_PROPERTY);
   }
 
   public boolean shouldPrintUnsatCore(){
@@ -1009,8 +1009,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_NO_FILTER_UNSAT_CORE);
   }
 
-  public boolean shouldForgoUnsatCoreMinimization(){
-    return _config.getBoolean(ARG_FORGO_UNSAT_CORE_MINIMIZATION);
+  public boolean shouldMinimizeUnsatCore(){
+    return _config.getBoolean(ARG_MINIMIZE_UNSAT_CORE);
   }
 
   public boolean shouldPrintCounterExampleDiffs(){
@@ -1109,10 +1109,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(BfConsts.COMMAND_VALIDATE_ENVIRONMENT, false);
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
     setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
-    setDefaultProperty(ARG_RENEGATE_PROPERTY_OF_INTEREST, false);
+    setDefaultProperty(ARG_NO_NEGATE_PROPERTY, false);
     setDefaultProperty(ARG_PRINT_UNSAT_CORE, false);
     setDefaultProperty(ARG_NO_FILTER_UNSAT_CORE, false);
-    setDefaultProperty(ARG_FORGO_UNSAT_CORE_MINIMIZATION, false);
+    setDefaultProperty(ARG_MINIMIZE_UNSAT_CORE, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
@@ -1400,13 +1400,13 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(
         ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
 
-    addBooleanOption(ARG_RENEGATE_PROPERTY_OF_INTEREST, "renegate property being checked by Minesweeper");
+    addBooleanOption(ARG_NO_NEGATE_PROPERTY, "do not negate property being checked by Minesweeper");
 
     addBooleanOption(ARG_PRINT_UNSAT_CORE, "print predicates in the UnsatCore");
 
     addBooleanOption(ARG_NO_FILTER_UNSAT_CORE, "remove filters from UnsatCore printout");
 
-    addBooleanOption(ARG_FORGO_UNSAT_CORE_MINIMIZATION, "omit minimization of unsat core");
+    addBooleanOption(ARG_MINIMIZE_UNSAT_CORE, "minimize unsat core");
 
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
@@ -1521,10 +1521,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.COMMAND_VALIDATE_ENVIRONMENT);
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
     getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
-    getBooleanOptionValue(ARG_RENEGATE_PROPERTY_OF_INTEREST);
+    getBooleanOptionValue(ARG_NO_NEGATE_PROPERTY);
     getBooleanOptionValue(ARG_PRINT_UNSAT_CORE);
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
-    getBooleanOptionValue(ARG_FORGO_UNSAT_CORE_MINIMIZATION);
+    getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
 
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
