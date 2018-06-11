@@ -16,30 +16,42 @@ public class PredicateLabel{
   */
   
   public enum labels{
+    // Predicates for policy and environment
     POLICY,
     HEADER_SPACE,
     FAILURES,
     ENVIRONMENT,
+    // Predicates computed based on predicates derived from configuration
     BEST_PER_PROTOCOL,
     BEST_OVERALL,
     CONTROL_FORWARDING,
     DATA_FORWARDING,
+    // Predicates derived from configuration
     IMPORT,
     EXPORT,
     COMMUNITY,
     ACLS_OUTBOUND,
     ACLS_INBOUND,
+    // Predicates derived from counterexamples
     PACKET,
     COUNTEREXAMPLE,
+    // Predicates for guaranteeing validity
     DEFAULT_VALUE,
     VALUE_LIMIT,
     SSA
   };
   
+  /** Labels for predicates derived from configuration */
   private final static EnumSet<labels> CONFIGURABLE_LABELS = EnumSet.of(
       labels.IMPORT, labels.EXPORT, labels.COMMUNITY, 
       labels.ACLS_INBOUND, labels.ACLS_OUTBOUND);
   
+  /** Labels for predicates that are computable based on predicates derived
+   * from configuration */
+  private final static EnumSet<labels> COMPUTABLE_LABELS = EnumSet.of(
+      labels.BEST_PER_PROTOCOL, labels.BEST_OVERALL, 
+      labels.CONTROL_FORWARDING, labels.DATA_FORWARDING);
+
   private final static EnumSet<labels> TRACK_LABELS = 
       EnumSet.complementOf(EnumSet.of(labels.COUNTEREXAMPLE));
 //      EnumSet.of(
@@ -210,10 +222,6 @@ public class PredicateLabel{
     }
         
     return (type_b && device_b && intface_b && proto_b);
-//    if ((o1.gettype()==type) && (o1.getdevice()==device) && (this.intface_String==o1.getStrintface()))
-//      return true;
-//   
-//    return false;
     }
     return false;
   }
@@ -224,12 +232,23 @@ public class PredicateLabel{
   }
   
   /**
-   * Checks whether the label corresponds to a predicate that is derived from configuration.
-   * @return true if the label corresponds to a predicate that is derived from configuration,
-   *    otherwise false
+   * Checks whether the label corresponds to a predicate that is derived from 
+   *    configuration.
+   * @return true if the label corresponds to a predicate that is derived from 
+   *    configuration, otherwise false
    */
   public boolean isConfigurable() {
     return CONFIGURABLE_LABELS.contains(this.type);
+  }
+
+  /**
+   * Checks whether the label corresponds to a predicate that is computed
+   *    based on predicates derived from the configuration.
+   * @return true if the label corresponds to a predicate that is computed
+   *    based on predicates derived from configuration, otherwise false
+   */
+  public boolean isComputable() {
+    return COMPUTABLE_LABELS.contains(this.type);
   }
   
   /**
