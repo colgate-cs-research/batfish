@@ -517,6 +517,7 @@ public class Graph {
   private void initEbgpNeighbors() {
     Map<String, List<Ip>> ips = new HashMap<>();
     Map<String, List<BgpNeighbor>> neighbors = new HashMap<>();
+    List<GraphEdge> _ebgppossible= new ArrayList<>();
 
     for (Entry<String, Configuration> entry : _configurations.entrySet()) {
       String router = entry.getKey();
@@ -541,6 +542,9 @@ public class Graph {
       List<BgpNeighbor> ns = neighbors.get(router);
       if (conf.getDefaultVrf().getBgpProcess() != null) {
         List<GraphEdge> edges = _edgeMap.get(router);
+        //System.out.println(router);
+        //System.out.println(ns);
+        //System.out.println(ipList);
         for (GraphEdge ge : edges) {
           for (int i = 0; i < ipList.size(); i++) {
             Ip ip = ipList.get(i);
@@ -550,9 +554,14 @@ public class Graph {
               _ebgpNeighbors.put(ge, n);
             }
           }
+          if (!_ebgpNeighbors.keySet().contains(ge)&&(ge.getEnd()!=null))
+            if(_configurations.get(ge.getRouter()).getDefaultVrf().getBgpProcess()!=null)
+              _ebgppossible.add(ge);
         }
       }
     }
+    System.out.println("Test:");  
+    System.out.println(_ebgppossible);
   }
 
   /*
