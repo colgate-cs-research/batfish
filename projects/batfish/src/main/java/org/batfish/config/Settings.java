@@ -518,6 +518,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_PRINT_UNSAT_CORE = "printUnsatCore";
 
+  private static final String ARG_ENABLE_SLICING = "enableSlicing";
+  
+  private static final String ARG_INCLUDE_COMPUTABLE= "includeComputable";
+  
   private static final String ARG_NO_FILTER_UNSAT_CORE = "noFilterUnsatCore";
 
   private static final String ARG_MINIMIZE_UNSAT_CORE = "minimizeUnsatCore";
@@ -1004,6 +1008,14 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
   public boolean shouldPrintUnsatCore(){
     return _config.getBoolean(ARG_PRINT_UNSAT_CORE);
   }
+  
+  public boolean shouldenableSlicing() {
+    return _config.getBoolean(ARG_ENABLE_SLICING);
+  }
+  
+  public boolean shouldincludeComputable() {
+    return _config.getBoolean(ARG_INCLUDE_COMPUTABLE);
+  }
 
   public boolean shouldRemoveUnsatCoreFilters(){
     return _config.getBoolean(ARG_NO_FILTER_UNSAT_CORE);
@@ -1116,6 +1128,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
+    setDefaultProperty(ARG_ENABLE_SLICING,false);
+    setDefaultProperty(ARG_INCLUDE_COMPUTABLE,false);
   }
 
   private void initOptions() {
@@ -1403,6 +1417,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(ARG_NO_NEGATE_PROPERTY, "do not negate property being checked by Minesweeper");
 
     addBooleanOption(ARG_PRINT_UNSAT_CORE, "print predicates in the UnsatCore");
+    
+    addBooleanOption(ARG_ENABLE_SLICING, "enable slicing method (backward)");
+    
+    addBooleanOption(ARG_INCLUDE_COMPUTABLE, "Track both config and conputable predicates");
 
     addBooleanOption(ARG_NO_FILTER_UNSAT_CORE, "remove filters from UnsatCore printout");
 
@@ -1530,6 +1548,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);
     getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);
+    getBooleanOptionValue(ARG_ENABLE_SLICING);
+    getBooleanOptionValue(ARG_INCLUDE_COMPUTABLE);
   }
 
   public void setActiveTestrigSettings(TestrigSettings activeTestrigSettings) {
