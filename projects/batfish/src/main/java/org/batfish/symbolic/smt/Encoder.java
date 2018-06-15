@@ -183,7 +183,7 @@ public class Encoder {
       System.out.println(graph);
     }
 
-    _unsatCore = new UnsatCore(ENABLE_UNSAT_CORE);
+    _unsatCore = new UnsatCore(ENABLE_UNSAT_CORE,this._settings);
 
     initFailedLinkVariables();
     initSlices(_question.getHeaderSpace(), graph);
@@ -1172,6 +1172,8 @@ public class Encoder {
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
+          int _conf=0;
+          int _comp=0;
           HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
           HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
@@ -1192,10 +1194,18 @@ public class Encoder {
                 // Track which labels are not found
                 for (String q: Faultloc.keySet()) {
                     unfound.get(q).remove(label);
+                    if (!Faultloc.get(q).contains(label)) {
+                      if (label.isComputable())
+                        _comp+=1;
+                      if (label.isConfigurable())
+                        _conf=0;
+                    }
                 }
               }
             }
           }
+          System.out.println("Number of config: "+_conf);
+          System.out.println("Number of conputable: "+_comp);
           System.out.println("-------------------------------------------");
           
           System.out.println("\nUnsat Core:");
