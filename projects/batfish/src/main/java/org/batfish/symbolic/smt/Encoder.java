@@ -16,11 +16,13 @@ import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
+import javassist.bytecode.ClassFileWriter.FieldWriter;
 
 /**
  * A class responsible for building a symbolic encoding of the entire network. The encoder does this
@@ -1020,6 +1022,7 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
+    FileWriter filewriter= null;
     //printSlicesMap();
 
     //from list of B see if it gets assignedTo -- B: pred220
@@ -1036,6 +1039,10 @@ public class Encoder {
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
     int numNodes = mainSlice.getGraph().getConfigurations().size();
     int numEdges = 0;
+    int foundCount=0;
+    int unfoundCount=0;
+    int _conf=0;
+    int _comp=0;
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
@@ -1172,8 +1179,6 @@ public class Encoder {
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
-          int _conf=0;
-          int _comp=0;
           HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
           HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
@@ -1233,8 +1238,8 @@ public class Encoder {
           // TODO: Print out number of found and unfound items in faultloc list
           // TODO: Print out unfound items in faultloc list
           for (String q:Faultloc.keySet()) {
-            int unfoundCount = unfound.get(q).size();
-            int foundCount = Faultloc.get(q).size()-unfoundCount;
+            unfoundCount = unfound.get(q).size();
+            foundCount = Faultloc.get(q).size()-unfoundCount;
             System.out.println("\nFaulty predicates for " + q + ": " 
                     + foundCount + " found, " + unfoundCount + " unfound");
             if (unfoundCount > 0) {
@@ -1264,6 +1269,40 @@ public class Encoder {
                   variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
         }
       }
+      
+      Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
+      Path filepath = testrigpath.resolve("experiment.csv");
+      File file = filepath.toFile();
+      System.out.println(filepath);
+      FileWriter filewriter1=null;
+      String FILE_HEADER="#CES/ES,#foundpreds,#unfoundpreds,#extraconfigpred,#extracomputepred";
+      String COMMA=",";
+      String NEW_LINE="\n";
+      try {
+        filewriter1 = new FileWriter(file);
+        filewriter1.append(FILE_HEADER.toString());
+        filewriter1.append(NEW_LINE);
+        filewriter1.append(Integer.toString(numCounterexamples));
+        filewriter1.append(COMMA);
+        filewriter1.append(Integer.toString(foundCount));
+        filewriter1.append(COMMA);
+        filewriter1.append(Integer.toString(unfoundCount));
+        filewriter1.append(COMMA);
+        filewriter1.append(Integer.toString(_conf));
+        filewriter1.append(COMMA);
+        filewriter1.append(Integer.toString(_comp));
+        filewriter1.append(NEW_LINE);
+      }
+      catch (Exception e) {
+        System.out.println("Error in creating csv file");
+      } finally {
+        try {
+          filewriter1.flush();
+          filewriter1.close();
+        } catch(IOException e) {
+          System.out.println("Error in flusing/closing filewriter");
+        }
+      }
 
       return new Tuple<>(result, m);
     }
@@ -1288,6 +1327,8 @@ public class Encoder {
         slice.computeEncoding();
       }
     }
+    
+    
   }
 
   /*
