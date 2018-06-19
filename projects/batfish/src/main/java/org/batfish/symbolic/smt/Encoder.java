@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
-import javassist.bytecode.ClassFileWriter.FieldWriter;
 
 /**
  * A class responsible for building a symbolic encoding of the entire network. The encoder does this
@@ -1279,7 +1278,7 @@ public class Encoder {
       String COMMA=",";
       String NEW_LINE="\n";
       try {
-        filewriter1 = new FileWriter(file);
+        filewriter1 = new FileWriter(file, true);
         filewriter1.append(FILE_HEADER.toString());
         filewriter1.append(NEW_LINE);
         filewriter1.append(Integer.toString(numCounterexamples));
