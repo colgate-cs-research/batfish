@@ -76,6 +76,8 @@ public class Encoder {
   private boolean _shouldPrintUnsatCore;
 
   private boolean _shouldPrintCounterExampleChanges;
+  
+  private boolean _shouldMinimizeUnsatCore;
 
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
@@ -142,6 +144,7 @@ public class Encoder {
     _shouldInvertFormula =_settings.shouldInvertSatFormula();
     _shouldPrintUnsatCore = _settings.shouldPrintUnsatCore();
     _shouldPrintCounterExampleChanges = _settings.shouldPrintCounterExampleDiffs();
+    _shouldMinimizeUnsatCore=_settings.shouldMinimizeUnsatCore();
 
 
     HashMap<String, String> cfg = new HashMap<>();
@@ -1021,9 +1024,6 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
-    FileWriter filewriter= null;
-    //printSlicesMap();
-
     //from list of B see if it gets assignedTo -- B: pred220
     Map<Expr, List<String>>   assignedTo = new HashMap<>();
 
@@ -1170,8 +1170,10 @@ public class Encoder {
           System.out.println("\n" + numCounterexamples + " counterexamples");
 
           Map<String, BoolExpr> minCorePredNameToExprMap = new TreeMap<>();
-
-          minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
+          if (_shouldMinimizeUnsatCore)
+            minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
+          else 
+            minCorePredNameToExprMap=predicatesNameToExprMap;
 
           System.out.println("\nNot Unsat Core:");
           System.out.println("-------------------------------------------");
@@ -1202,14 +1204,15 @@ public class Encoder {
                       if (label.isComputable())
                         _comp+=1;
                       if (label.isConfigurable())
-                        _conf=0;
+                        _conf+=1;
                     }
                 }
+                System.out.println("Number of config: "+_conf);
+                System.out.println("Number of conputable: "+_comp);
               }
             }
           }
-          System.out.println("Number of config: "+_conf);
-          System.out.println("Number of conputable: "+_comp);
+
           System.out.println("-------------------------------------------");
           
           System.out.println("\nUnsat Core:");
@@ -1229,6 +1232,12 @@ public class Encoder {
               // Track which labels are not found
               for (String q: Faultloc.keySet()) {
                   unfound.get(q).remove(label);
+                  if (!Faultloc.get(q).contains(label)) {
+                    if (label.isComputable())
+                      _comp+=1;
+                    if (label.isConfigurable())
+                      _conf+=1;
+                  }
               }
             }
           }
@@ -1250,6 +1259,47 @@ public class Encoder {
               System.out.println("-------------------------------------------");
             }
           }
+          Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
+          Path filepath = testrigpath.resolve("experiment.csv");
+          File file = filepath.toFile();
+          System.out.println(filepath);
+          FileWriter filewriter1=null;
+          String FILE_HEADER="#CES/ES,#foundpreds,#unfoundpreds,#extraconfigpred,#extracomputepred,includecomputable?,notnegating?,minimize?,slice?";
+          String COMMA=",";
+          String NEW_LINE="\n";
+          try {
+            filewriter1 = new FileWriter(file, true);
+            filewriter1.append(FILE_HEADER.toString());
+            filewriter1.append(NEW_LINE);
+            filewriter1.append(Integer.toString(numCounterexamples));
+            filewriter1.append(COMMA);
+            filewriter1.append(Integer.toString(foundCount));
+            filewriter1.append(COMMA);
+            filewriter1.append(Integer.toString(unfoundCount));
+            filewriter1.append(COMMA);
+            filewriter1.append(Integer.toString(_conf));
+            filewriter1.append(COMMA);
+            filewriter1.append(Integer.toString(_comp));
+            filewriter1.append(COMMA);
+            filewriter1.append(Boolean.toString(_settings.shouldincludeComputable()));
+            filewriter1.append(COMMA);
+            filewriter1.append(Boolean.toString(_settings.shouldNotNegateProperty()));
+            filewriter1.append(COMMA);
+            filewriter1.append(Boolean.toString(_settings.shouldMinimizeUnsatCore()));
+            filewriter1.append(COMMA);
+            filewriter1.append(Boolean.toString(_settings.shouldenableSlicing()));
+            filewriter1.append(NEW_LINE);        
+          }
+          catch (Exception e) {
+            System.out.println("Error in creating csv file");
+          } finally {
+            try {
+              filewriter1.flush();
+              filewriter1.close();
+            } catch(IOException e) {
+              System.out.println("Error in flusing/closing filewriter");
+            }
+          }
 
           System.out.println("=====================================================");
           break;
@@ -1268,41 +1318,6 @@ public class Encoder {
                   variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
         }
       }
-      
-      Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
-      Path filepath = testrigpath.resolve("experiment.csv");
-      File file = filepath.toFile();
-      System.out.println(filepath);
-      FileWriter filewriter1=null;
-      String FILE_HEADER="#CES/ES,#foundpreds,#unfoundpreds,#extraconfigpred,#extracomputepred";
-      String COMMA=",";
-      String NEW_LINE="\n";
-      try {
-        filewriter1 = new FileWriter(file, true);
-        filewriter1.append(FILE_HEADER.toString());
-        filewriter1.append(NEW_LINE);
-        filewriter1.append(Integer.toString(numCounterexamples));
-        filewriter1.append(COMMA);
-        filewriter1.append(Integer.toString(foundCount));
-        filewriter1.append(COMMA);
-        filewriter1.append(Integer.toString(unfoundCount));
-        filewriter1.append(COMMA);
-        filewriter1.append(Integer.toString(_conf));
-        filewriter1.append(COMMA);
-        filewriter1.append(Integer.toString(_comp));
-        filewriter1.append(NEW_LINE);
-      }
-      catch (Exception e) {
-        System.out.println("Error in creating csv file");
-      } finally {
-        try {
-          filewriter1.flush();
-          filewriter1.close();
-        } catch(IOException e) {
-          System.out.println("Error in flusing/closing filewriter");
-        }
-      }
-
       return new Tuple<>(result, m);
     }
   }
