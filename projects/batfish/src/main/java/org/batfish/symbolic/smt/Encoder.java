@@ -78,6 +78,8 @@ public class Encoder {
   private boolean _shouldPrintCounterExampleChanges;
   
   private boolean _shouldMinimizeUnsatCore;
+  
+  private boolean _shouldEnableSlicing;
 
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
@@ -145,6 +147,7 @@ public class Encoder {
     _shouldPrintUnsatCore = _settings.shouldPrintUnsatCore();
     _shouldPrintCounterExampleChanges = _settings.shouldPrintCounterExampleDiffs();
     _shouldMinimizeUnsatCore=_settings.shouldMinimizeUnsatCore();
+    _shouldEnableSlicing=_settings.shouldenableSlicing();
 
 
     HashMap<String, String> cfg = new HashMap<>();
@@ -943,9 +946,9 @@ public class Encoder {
   }
 
 
-  public void checkPreds(Expr[] unsatCore, Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
+  public List<String> checkPreds(Collection<BoolExpr> unSatcore, Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
     List<String> worklist = new ArrayList<>();
-    for (Expr exp: unsatCore){
+    for (Expr exp: unSatcore){
       worklist.add(exp.toString());
     }
 
@@ -967,11 +970,12 @@ public class Encoder {
         processed.add(currentPred);
       }
     }
-    System.out.println(" Printing processed"); //in one of these processed expressions, this is where something went wrong, FAULT LOCALISATION
-    for (String str: processed){
-      System.out.print(str + ", ");
-    }
-    System.out.println();
+//    System.out.println(" Printing processed"); //in one of these processed expressions, this is where something went wrong, FAULT LOCALISATION
+//    for (String str: processed){
+//      System.out.print(str + ", ");
+//    }
+//    System.out.println();
+    return processed;
   }
   
   /**
@@ -1165,6 +1169,8 @@ public class Encoder {
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
+          HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
+          HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
           System.out.println("\nPOLICY VIOLATED");
           System.out.println("=====================================================");
           System.out.println("\n" + numCounterexamples + " counterexamples");
@@ -1174,14 +1180,31 @@ public class Encoder {
             minimizeUnsatCore(predicatesNameToExprMap,minCorePredNameToExprMap); //minimal UnsatCore stored in minCorePredNameToExprMap.
           else 
             minCorePredNameToExprMap=predicatesNameToExprMap;
+          
+          List<String> Predlist=new ArrayList<String>();
+          if (_shouldEnableSlicing) {
+            Predlist=checkPreds(minCorePredNameToExprMap.values(),assignedTo,referencedTo);
+            for (String k:Predlist) {
+              PredicateLabel label=predicatesNameToLabelMap.get(k);
+              if (label!=null) {
+                for (String q: Faultloc.keySet())
+                  if (!Faultloc.get(q).contains(label)) {
+                    if (label.isComputable())
+                      _comp+=1;
+                    if (label.isConfigurable())
+                      _conf+=1;
+                }
+              }
+            }    
+          } 
+          
 
           System.out.println("\nNot Unsat Core:");
           System.out.println("-------------------------------------------");
 
           // Print out each predicate not in unsat core
           // TODO: Create list of "found" predicates from faultloc list
-          HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
-          HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
+
           Set<String> unsatCoreStrings = minCorePredNameToExprMap.keySet();
           for (String e : predicatesNameToLabelMap.keySet()) {
             if (!unsatCoreStrings.contains(e)) {
@@ -1205,13 +1228,13 @@ public class Encoder {
                         _comp+=1;
                       if (label.isConfigurable())
                         _conf+=1;
-                    }
+                  }
                 }
-                System.out.println("Number of config: "+_conf);
-                System.out.println("Number of conputable: "+_comp);
               }
             }
           }
+          System.out.println("Number of config: "+_conf);
+          System.out.println("Number of conputable: "+_comp);
 
           System.out.println("-------------------------------------------");
           
