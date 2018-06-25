@@ -1234,7 +1234,7 @@ public class Encoder {
             }
           }
           System.out.println("Number of config: "+_conf);
-          System.out.println("Number of conputable: "+_comp);
+          System.out.println("Number of conputable: "+_comp); 
 
           System.out.println("-------------------------------------------");
           
@@ -1292,6 +1292,8 @@ public class Encoder {
           String NEW_LINE="\n";
           try {
             filewriter1 = new FileWriter(file, true);
+            filewriter1.append(_question.prettyPrint());
+            filewriter1.append(NEW_LINE);
             filewriter1.append(FILE_HEADER.toString());
             filewriter1.append(NEW_LINE);
             filewriter1.append(Integer.toString(numCounterexamples));
