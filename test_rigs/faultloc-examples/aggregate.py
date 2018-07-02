@@ -1,8 +1,14 @@
 import os
 import csv
+import argparse
 
-top_level_dir = "/Users/student/Desktop/result"
-masterpath = "/Users/student/Desktop/master.csv"
+parser = argparse.ArgumentParser(description='Aggregate experiment output')
+parser.add_argument('path', dest='path', action='store', required=True,
+                   help='path containing experiment output')
+args = parser.parse_args()
+
+top_level_dir = os.path.join(args.path, "result")
+masterpath = os.path.join(args.path, "master.csv")
 
 # Open master file
 

@@ -10,6 +10,9 @@ BASEDIR="`dirname $SCRIPTPATH`"
 source $BASEDIR/../../tools/batfish_functions.sh
 #BASEDIR=test_rigs/faultloc-examples
 OPTIONS=$BASEDIR/options
+if [ -f $BASEDIR/custom-options ]; then
+    OPTIONS=$BASEDIR/custom-options
+fi
 
 \ls $BASEDIR | while read NETWORK; do
     if [ -d $BASEDIR/$NETWORK ]; then
