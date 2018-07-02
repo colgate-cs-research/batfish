@@ -49,7 +49,9 @@ class UnsatCore {
     _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
     _trackingVars.put(name, be);
-    if (_doTrack  && (label.isConfigurable() || (_settings.shouldIncludeComputable() && label.isComputable()))) {
+    if (_doTrack && (_settings.shouldRemoveUnsatCoreFilters() 
+          || label.isConfigurable() 
+          || (_settings.shouldIncludeComputable() && label.isComputable()))) {
         solver.assertAndTrack(be, ctx.mkBoolConst(name));
       } else {
         solver.add(be);

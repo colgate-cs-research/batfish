@@ -69,18 +69,6 @@ public class Encoder {
 
   private Settings _settings;
 
-  private int _numIters;
-
-  private boolean _shouldInvertFormula;
-
-  private boolean _shouldPrintUnsatCore;
-
-  private boolean _shouldPrintCounterExampleChanges;
-  
-  private boolean _shouldMinimizeUnsatCore;
-  
-  private boolean _shouldEnableSlicing;
-
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
    *
@@ -142,13 +130,6 @@ public class Encoder {
     _question = q;
     _slices = new HashMap<>();
     _sliceReachability = new HashMap<>();
-    _numIters = _settings.getNumIters();
-    _shouldInvertFormula =_settings.shouldInvertSatFormula();
-    _shouldPrintUnsatCore = _settings.shouldPrintUnsatCore();
-    _shouldPrintCounterExampleChanges = _settings.shouldPrintCounterExampleDiffs();
-    _shouldMinimizeUnsatCore=_settings.shouldMinimizeUnsatCore();
-    _shouldEnableSlicing=_settings.shouldenableSlicing();
-
 
     HashMap<String, String> cfg = new HashMap<>();
 
@@ -1050,7 +1031,7 @@ public class Encoder {
 
     long start = System.currentTimeMillis();
 
-    if (_shouldInvertFormula) { //create a new solver with negated formula
+    if (_settings.shouldInvertSatFormula()) { //create a new solver with negated formula
       negateSolverAssertions();
     }
 
@@ -1144,7 +1125,7 @@ public class Encoder {
 
         numCounterexamples++;
 
-        if (_numIters > 1) {
+        if (_settings.getNumIters() > 1) {
           // the 15 data plane packet variables + other static variables (eg:- reachable_id) need to be fixed.
           if (numCounterexamples == 1) {
             addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
@@ -1159,7 +1140,7 @@ public class Encoder {
           add(blocking, newlabel);
         }
 
-        if (_shouldInvertFormula) { //create a new solver with negated formula
+        if (_settings.shouldInvertSatFormula()) { //create a new solver with negated formula
           negateSolverAssertions();
         }
 
@@ -1175,49 +1156,45 @@ public class Encoder {
           List<String> unsatCore = this.getUnsatCorePredNames();
 
           // Minimize unsat core, if requested
-          if (_shouldMinimizeUnsatCore) {
+          if (_settings.shouldMinimizeUnsatCore()) {
             unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
           }          
        
-          // Compute predicates in not unsat core, and display changeable predicates
-          System.out.println("\nNot Unsat Core:");
-          System.out.println("-------------------------------------------");
+          // Compute predicates in not unsat core
           List<String> notUnsatCore = new ArrayList<String>();
           for (String predicate : predicatesNameToLabelMap.keySet()) {
-            if (!unsatCore.contains(predicate)) {
-              PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-              // Add to not unsat core if label should be tracked
-              if (label.isConfigurable() || (_settings.shouldIncludeComputable() && label.isComputable())) {
+            PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+            if (!unsatCore.contains(predicate) 
+                  && (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable() 
+                      || (_settings.shouldIncludeComputable() && label.isComputable()))) {
                 notUnsatCore.add(predicate);
-              }
-              // Only output constraints we can change
-              if (_settings.shouldRemoveUnsatCoreFilters() 
-                    || label.isConfigurable() || label.isComputable()) {
-                if (_shouldPrintUnsatCore) {
-                System.out.println(label + ": " 
-                        + predicatesNameToExprMap.get(predicate));
-                } else {
-                    System.out.println(label);
-                }
-              }
+             }
+          }
+          
+          // Display not unsat core
+          System.out.println("\nNot Unsat Core:");
+          System.out.println("-------------------------------------------");
+          for (String predicate : notUnsatCore) {
+            PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+            if (_settings.shouldPrintUnsatExpr()) {
+            System.out.println(label + ": " 
+                    + predicatesNameToExprMap.get(predicate));
+            } else {
+                System.out.println(label);
             }
           }
           System.out.println("-------------------------------------------");
           
-          // Display changeable predicates in unsat core
+          // Display unsat core
           System.out.println("\nUnsat Core:");
           System.out.println("-------------------------------------------");
           for (String predicate : unsatCore) {
-            // Only output constraints we can change
             PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-            if (_settings.shouldRemoveUnsatCoreFilters() 
-                    || label.isConfigurable() || label.isComputable()) {
-                if (_shouldPrintUnsatCore) {
-                  System.out.println(label + ": " 
-                          + predicatesNameToExprMap.get(predicate));
-                } else {
-                  System.out.println(label);
-                }
+            if (_settings.shouldPrintUnsatExpr()) {
+              System.out.println(label + ": " 
+                      + predicatesNameToExprMap.get(predicate));
+            } else {
+              System.out.println(label);
             }
           }
           System.out.println("-------------------------------------------");
@@ -1238,9 +1215,9 @@ public class Encoder {
           
           // If requested, compute a backward slice from all predicates in the (not) unsat
           // core and add everything in the slice to the list of predicates for fault localization.
-          if (_shouldEnableSlicing) {
+          if (_settings.shouldEnableSlicing()) {
             Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
-            faultCandidates.addAll(backwardSlice);
+            faultCandidates = backwardSlice;
             System.out.println("\nBackward slice:");
             System.out.println("-------------------------------------------");
             for (String predicate : backwardSlice) {
@@ -1248,7 +1225,7 @@ public class Encoder {
               PredicateLabel label = predicatesNameToLabelMap.get(predicate);
               if (_settings.shouldRemoveUnsatCoreFilters() 
                       || label.isConfigurable() || label.isComputable()) {
-                  if (_shouldPrintUnsatCore) {
+                  if (_settings.shouldPrintUnsatExpr()) {
                     System.out.println(label + ": " 
                             + predicatesNameToExprMap.get(predicate));
                   } else {
@@ -1323,7 +1300,7 @@ public class Encoder {
             filewriter1.append(COMMA);
             filewriter1.append(Boolean.toString(_settings.shouldMinimizeUnsatCore()));
             filewriter1.append(COMMA);
-            filewriter1.append(Boolean.toString(_settings.shouldenableSlicing()));
+            filewriter1.append(Boolean.toString(_settings.shouldEnableSlicing()));
             filewriter1.append(NEW_LINE);        
           }
           catch (Exception e) {
@@ -1343,11 +1320,11 @@ public class Encoder {
         if (s == Status.UNKNOWN) {
           throw new BatfishException("ERROR: satisfiability unknown");
         }
-      } while (_question.getMinimize() || numCounterexamples < _numIters);
+      } while (_question.getMinimize() || numCounterexamples < _settings.getNumIters());
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
 
-      if (_shouldPrintCounterExampleChanges) {
+      if (_settings.shouldPrintCounterExampleDiffs()) {
         System.out.println("Changes in Model Variables");
         for (String variableName : variableNames) {
           System.out.println(

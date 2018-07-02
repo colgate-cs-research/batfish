@@ -516,7 +516,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
 
-  private static final String ARG_PRINT_UNSAT_CORE = "printUnsatCore";
+  private static final String ARG_PRINT_UNSAT_EXPR = "printUnsatExpr";
 
   private static final String ARG_ENABLE_SLICING = "enableSlicing";
   
@@ -1005,11 +1005,11 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_NO_NEGATE_PROPERTY);
   }
 
-  public boolean shouldPrintUnsatCore(){
-    return _config.getBoolean(ARG_PRINT_UNSAT_CORE);
+  public boolean shouldPrintUnsatExpr(){
+    return _config.getBoolean(ARG_PRINT_UNSAT_EXPR);
   }
   
-  public boolean shouldenableSlicing() {
+  public boolean shouldEnableSlicing() {
     return _config.getBoolean(ARG_ENABLE_SLICING);
   }
   
@@ -1122,7 +1122,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
     setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
     setDefaultProperty(ARG_NO_NEGATE_PROPERTY, false);
-    setDefaultProperty(ARG_PRINT_UNSAT_CORE, false);
+    setDefaultProperty(ARG_PRINT_UNSAT_EXPR, false);
     setDefaultProperty(ARG_NO_FILTER_UNSAT_CORE, false);
     setDefaultProperty(ARG_MINIMIZE_UNSAT_CORE, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
@@ -1416,13 +1416,13 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(ARG_NO_NEGATE_PROPERTY, "do not negate property being checked by Minesweeper");
 
-    addBooleanOption(ARG_PRINT_UNSAT_CORE, "print predicates in the UnsatCore");
+    addBooleanOption(ARG_PRINT_UNSAT_EXPR, "print expressions in the UnsatCore");
     
     addBooleanOption(ARG_ENABLE_SLICING, "enable slicing method (backward)");
     
     addBooleanOption(ARG_INCLUDE_COMPUTABLE, "Track both config and conputable predicates");
 
-    addBooleanOption(ARG_NO_FILTER_UNSAT_CORE, "remove filters from UnsatCore printout");
+    addBooleanOption(ARG_NO_FILTER_UNSAT_CORE, "Track all predicates");
 
     addBooleanOption(ARG_MINIMIZE_UNSAT_CORE, "minimize unsat core");
 
@@ -1540,7 +1540,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
     getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
     getBooleanOptionValue(ARG_NO_NEGATE_PROPERTY);
-    getBooleanOptionValue(ARG_PRINT_UNSAT_CORE);
+    getBooleanOptionValue(ARG_PRINT_UNSAT_EXPR);
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
     getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
