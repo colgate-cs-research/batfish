@@ -1,0 +1,2 @@
+p1
+EXPORT H GigabitEthernet0/1 BGP

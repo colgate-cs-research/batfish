@@ -1,0 +1,5 @@
+p1
+IMPORT C GigabitEthernet0/1 BGP
+EXPORT C GigabitEthernet0/1 BGP
+IMPORT D GigabitEthernet0/2 BGP
+EXPORT D GigabitEthernet0/2 BGP
