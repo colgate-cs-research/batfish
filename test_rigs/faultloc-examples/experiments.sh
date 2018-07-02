@@ -27,11 +27,11 @@ for SETUP in "${SETUPS[@]}"; do
     echo $SETUP
 
     # Prepare options file
-    echo "add-batfish-options numIters 20" > $BASEDIR/custom-options
+    echo "add-batfish-option numIters 20" > $BASEDIR/custom-options
     for (( i=0; i<${#SETUP}; i++ )); do
         CHAR=${SETUP:$i:1}
         OPTION=${OPTIONS[$CHAR]}
-        echo "add-batfish-options $OPTION" >> $BASEDIR/custom-options
+        echo "add-batfish-option $OPTION" >> $BASEDIR/custom-options
     done
 
     if [ $SETUP=="" ]; then

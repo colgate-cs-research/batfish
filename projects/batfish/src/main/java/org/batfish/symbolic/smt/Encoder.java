@@ -1041,8 +1041,6 @@ public class Encoder {
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
     int numNodes = mainSlice.getGraph().getConfigurations().size();
     int numEdges = 0;
-    int foundCount=0;
-    int unfoundCount=0;
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
@@ -1187,10 +1185,12 @@ public class Encoder {
           List<String> notUnsatCore = new ArrayList<String>();
           for (String predicate : predicatesNameToLabelMap.keySet()) {
             if (!unsatCore.contains(predicate)) {
-              // Add to not unsat core
-              notUnsatCore.add(predicate);
-              // Only output constraints we can change
               PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+              // Add to not unsat core if label should be tracked
+              if (label.isConfigurable() || (_settings.shouldIncludeComputable() && label.isComputable())) {
+                notUnsatCore.add(predicate);
+              }
+              // Only output constraints we can change
               if (_settings.shouldRemoveUnsatCoreFilters() 
                     || label.isConfigurable() || label.isComputable()) {
                 if (_shouldPrintUnsatCore) {
@@ -1276,6 +1276,8 @@ public class Encoder {
           }
           
           // Print out found and unfound items in faultloc list
+          int unfoundCount = 0;
+          int foundCount = 0;
           for (String q:Faultloc.keySet()) {
             unfoundCount = unfound.get(q).size();
             foundCount = Faultloc.get(q).size()-unfoundCount;
@@ -1315,7 +1317,7 @@ public class Encoder {
             filewriter1.append(COMMA);
             filewriter1.append(Integer.toString(extraComputable));
             filewriter1.append(COMMA);
-            filewriter1.append(Boolean.toString(_settings.shouldincludeComputable()));
+            filewriter1.append(Boolean.toString(_settings.shouldIncludeComputable()));
             filewriter1.append(COMMA);
             filewriter1.append(Boolean.toString(_settings.shouldNotNegateProperty()));
             filewriter1.append(COMMA);

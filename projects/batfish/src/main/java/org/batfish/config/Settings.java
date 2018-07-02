@@ -1013,7 +1013,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_ENABLE_SLICING);
   }
   
-  public boolean shouldincludeComputable() {
+  public boolean shouldIncludeComputable() {
     return _config.getBoolean(ARG_INCLUDE_COMPUTABLE);
   }
 

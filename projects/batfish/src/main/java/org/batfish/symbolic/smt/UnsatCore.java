@@ -21,7 +21,7 @@ class UnsatCore {
 
   private Map<String, BoolExpr> _trackingVars;
   private Map<String, PredicateLabel> _trackingLabels;
-  private Settings _setting;
+  private Settings _settings;
 
   private int _trackingNum;
 
@@ -36,12 +36,12 @@ class UnsatCore {
   protected static final String UNUSED_DEFAULT_VALUE = "addUnusedDefaultValueConstraints";
   protected static final String HISTORY_CONSTRAINTS = "addHistoryConstraints";
 
-  UnsatCore(boolean doTrack, Settings setting) {
+  UnsatCore(boolean doTrack, Settings settings) {
     _doTrack = doTrack;
     _trackingLabels = new HashMap<>();
     _trackingVars = new HashMap<>();
     _trackingNum = 0;
-    _setting=setting;
+    _settings=settings;
   }
 
   void track(Solver solver, Context ctx, BoolExpr be, PredicateLabel label) {
@@ -49,7 +49,7 @@ class UnsatCore {
     _trackingLabels.put(name, label);
     _trackingNum = _trackingNum + 1;
     _trackingVars.put(name, be);
-    if (_doTrack  && (label.isConfigurable()||(_setting.shouldincludeComputable()&&label.isComputable()))) {
+    if (_doTrack  && (label.isConfigurable() || (_settings.shouldIncludeComputable() && label.isComputable()))) {
         solver.assertAndTrack(be, ctx.mkBoolConst(name));
       } else {
         solver.add(be);
