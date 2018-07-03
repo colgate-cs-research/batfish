@@ -1001,6 +1001,26 @@ public class Encoder {
     return result;
   } 
   /**
+   * Load the possible bgp edges and turn them into a list of predicateLabels
+   *
+   * @return List<PredicateLabel> represents the possilbe labels generated from the possible bgp edges
+   * but not actually exist
+   */  
+  public List<PredicateLabel> edgeToLabel(){
+    List<GraphEdge> possible=_graph.getPossilbe();
+    List<PredicateLabel> result=new ArrayList<PredicateLabel>();
+    for (GraphEdge e: possible) {
+      PredicateLabel label1=new PredicateLabel(labels.EXPORT,e.getRouter(),e.getStart(),Protocol.BGP);
+      PredicateLabel label2=new PredicateLabel(labels.IMPORT,e.getPeer(),e.getEnd(),Protocol.BGP);
+      result.add(label1);
+      result.add(label2);
+    }
+    return result;
+    
+  }
+  
+  
+  /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
    *
@@ -1239,8 +1259,12 @@ public class Encoder {
           // Determine which labels are not found
           int extraComputable = 0;
           int extraConfigurable = 0;
+          List<PredicateLabel> combination= new ArrayList<PredicateLabel> ();
           for (String predicate : faultCandidates) {
             PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+            combination.add(label);}
+          combination.addAll(edgeToLabel());
+          for (PredicateLabel label:combination)
             for (String q: Faultloc.keySet()) {
                 unfound.get(q).remove(label);
                 if (!Faultloc.get(q).contains(label)) {
@@ -1250,7 +1274,7 @@ public class Encoder {
                     extraConfigurable+=1;
               }
             }
-          }
+          
           
           // Print out found and unfound items in faultloc list
           int unfoundCount = 0;

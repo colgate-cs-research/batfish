@@ -98,7 +98,7 @@ public class Graph {
   private Map<String, Integer> _originatorId;
   private Map<String, Integer> _domainMap;
   private Map<Integer, Set<String>> _domainMapInverse;
-
+  private List<GraphEdge> _ebgppossible;
   /**
    * A graph with a static route with a dynamic next hop cannot be encoded to SMT, so some of the
    * Minesweeper analyses will fail. Compression is still possible though.
@@ -517,7 +517,7 @@ public class Graph {
   private void initEbgpNeighbors() {
     Map<String, List<Ip>> ips = new HashMap<>();
     Map<String, List<BgpNeighbor>> neighbors = new HashMap<>();
-    List<GraphEdge> _ebgppossible= new ArrayList<>();
+    _ebgppossible= new ArrayList<>();
 
     for (Entry<String, Configuration> entry : _configurations.entrySet()) {
       String router = entry.getKey();
@@ -1301,5 +1301,8 @@ public class Graph {
 
   public Set<String> getRouters() {
     return _routers;
+  }
+  public List<GraphEdge> getPossilbe(){
+    return _ebgppossible;
   }
 }
