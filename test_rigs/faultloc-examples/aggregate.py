@@ -1,8 +1,14 @@
 import os
 import csv
+import argparse
 
-top_level_dir = "/Users/student/Desktop/result"
-masterpath = "/Users/student/Desktop/master.csv"
+parser = argparse.ArgumentParser(description='Aggregate experiment output')
+parser.add_argument('-path', dest='path', action='store', required=True,
+                   help='path containing experiment output')
+args = parser.parse_args()
+
+top_level_dir = os.path.join(args.path, "result")
+masterpath = os.path.join(args.path, "master.csv")
 
 # Open master file
 
@@ -11,27 +17,27 @@ writer=csv.writer(f)
 writer.writerow(["#CES/ES","#foundpreds","#unfoundpreds","#extraconfigpred","#extracomputepred","includecomputable?","notnegating?","minimize?","slice?","experiment","network","scenario"])
 # List every experiment
 experiments = os.listdir(top_level_dir)
-experiments.remove('.DS_Store')
 for experiment in experiments:
+    # Ignore hidden directories
+    if experiment.startswith('.'):
+        next
     experiment_dir = os.path.join(top_level_dir, experiment)
 
 
     # List every network
     networks = os.listdir(experiment_dir)
-    try:
-        networks.remove('.DS_Store')
-    except:
-        pass
     for network in networks:
+        # Ignore hidden directories
+        if network.startswith('.'):
+            next
         network_dir = os.path.join(experiment_dir, network)
     
         # List every scenario
         scenarios = os.listdir(os.path.join(network_dir, 'testrigs'))
-        try:
-            scenarios.remove('.DS_Store')
-        except:
-            pass
         for scenario in scenarios:
+            # Ignore hidden directories
+            if scenario.startswith('.'):
+                next
             try:
                 scenario_file = os.path.join(network_dir, 'testrigs', scenario, 'testrig', 'experiment.csv')
                 test = open(scenario_file,'r')
