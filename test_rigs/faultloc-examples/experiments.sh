@@ -52,7 +52,7 @@ for SETUP in "${SETUPS[@]}"; do
 done
 
 # Aggregate results
-python3 $BASEDIR/aggregate.py $OUTPUTDIR
+python3 $BASEDIR/aggregate.py -path $OUTPUTDIR
 
 # Clean up
 rm $BASEDIR/custom-options
