@@ -54,5 +54,10 @@ done
 # Aggregate results
 python3 $BASEDIR/aggregate.py -path $OUTPUTDIR
 
+# Render graphs
+cd $OUTPUTDIR
+Rscript $BASEDIR/generategraph.R
+cd $BASEDIR
+
 # Clean up
 rm $BASEDIR/custom-options
