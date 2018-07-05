@@ -42,7 +42,7 @@ unfoundpred[6]=cs[3]
 unfoundpred[7]=csm[3]
 unfoundpred[8]=sm[3]
 png("unfoundpred.png",width = 800)
-boxplot (foundpred,data=foundpred, main="numbers of unfoundpred", xlab="Number of unfoundpred", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (unfoundpred,data=unfoundpred, main="numbers of unfoundpred", xlab="Number of unfoundpred", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
 dev.off()
 extraconfig=list()
 extraconfig[1]=noop[4]
