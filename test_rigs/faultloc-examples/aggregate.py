@@ -14,7 +14,7 @@ masterpath = os.path.join(args.path, "master.csv")
 
 f = open(masterpath,'w')
 writer=csv.writer(f)
-writer.writerow(["#CES/ES","#foundpreds","#unfoundpreds","#extraconfigpred","#extracomputepred","includecomputable?","notnegating?","minimize?","slice?","experiment","network","scenario"])
+writer.writerow(["examples","foundpreds","unfoundpreds","extraconfigpred","extracomputepred","includecomputable","notnegating","minimize","slice","experiment","network","scenario"])
 # List every experiment
 experiments = os.listdir(top_level_dir)
 for experiment in experiments:
