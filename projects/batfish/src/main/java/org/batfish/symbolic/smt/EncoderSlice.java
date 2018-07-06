@@ -2273,7 +2273,8 @@ class EncoderSlice {
                   this, conf, overallBest, ospfRedistribVars, proto, statements, cost, ge, true);
           BoolExpr acc2 = f.compute();
           // System.out.println("ADDING: \n" + acc2.simplify());
-          add(acc2, label);
+          PredicateLabel label2= new PredicateLabel(labels.EXPORT_REDISTRIBUTED, router, ge.getStart(), proto);
+          add(acc2, label2);
           BoolExpr usable2 = mkAnd(active, doExport, ospfRedistribVars.getPermitted(), notFailed);
           BoolExpr geq = greaterOrEqual(conf, proto, ospfRedistribVars, varsOther, e);
           BoolExpr isBetter = mkNot(mkAnd(ospfRedistribVars.getPermitted(), geq));

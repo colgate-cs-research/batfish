@@ -29,6 +29,7 @@ public class PredicateLabel{
     // Predicates derived from configuration
     IMPORT,
     EXPORT,
+    EXPORT_REDISTRIBUTED,
     COMMUNITY,
     ACLS_OUTBOUND,
     ACLS_INBOUND,
@@ -43,7 +44,7 @@ public class PredicateLabel{
   
   /** Labels for predicates derived from configuration */
   private final static EnumSet<labels> CONFIGURABLE_LABELS = EnumSet.of(
-      labels.IMPORT, labels.EXPORT, labels.COMMUNITY, 
+      labels.IMPORT, labels.EXPORT, labels.EXPORT_REDISTRIBUTED, labels.COMMUNITY, 
       labels.ACLS_INBOUND, labels.ACLS_OUTBOUND);
   
   /** Labels for predicates that are computable based on predicates derived
