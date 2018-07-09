@@ -14,13 +14,13 @@ masterpath = os.path.join(args.path, "master.csv")
 
 f = open(masterpath,'w')
 writer=csv.writer(f)
-writer.writerow(["examples","foundpreds","unfoundpreds","extraconfigpred","extracomputepred","includecomputable","notnegating","minimize","slice","experiment","network","scenario"])
+writer.writerow(["examples","foundpreds","unfoundpreds","extraconfigpred","extracomputepred","includecomputable","notnegating","minimize","slice","unfoundpred","experiment","network","scenario"])
 # List every experiment
 experiments = os.listdir(top_level_dir)
 for experiment in experiments:
     # Ignore hidden directories
     if experiment.startswith('.'):
-        next
+        continue
     experiment_dir = os.path.join(top_level_dir, experiment)
 
 
@@ -29,7 +29,7 @@ for experiment in experiments:
     for network in networks:
         # Ignore hidden directories
         if network.startswith('.'):
-            next
+            continue
         network_dir = os.path.join(experiment_dir, network)
     
         # List every scenario
@@ -37,7 +37,7 @@ for experiment in experiments:
         for scenario in scenarios:
             # Ignore hidden directories
             if scenario.startswith('.'):
-                next
+                continue
             try:
                 scenario_file = os.path.join(network_dir, 'testrigs', scenario, 'testrig', 'experiment.csv')
                 test = open(scenario_file,'r')

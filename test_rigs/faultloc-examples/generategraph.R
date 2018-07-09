@@ -1,5 +1,5 @@
 mydata = read.csv("master.csv",header=TRUE,sep=",")
-mydata[14]<-(mydata[2]/(mydata[2]+mydata[3]))*100
+mydata$percentfound<-(mydata$foundpreds/(mydata$foundpreds+mydata$unfoundpreds))*100
 mydata[is.na(mydata)]=0
 noop=list()
 noop<-subset(mydata,experiment=="noop")
@@ -10,77 +10,23 @@ csm<-subset(mydata,experiment=="csm")
 cm<-subset(mydata,experiment=="cm")
 sm<-subset(mydata,experiment=="sm")
 slice<-subset(mydata,experiment=="s")
-examples=list()
-examples[1]=noop[1]
-examples[2]=compute[1]
-examples[3]=minimize[1]
-examples[4]=cm[1]
-examples[5]=slice[1]
-examples[6]=cs[1]
-examples[7]=csm[1]
-examples[8]=sm[1]
 png("examples.png",width = 800)
-boxplot (examples,data=examples, main="numbers of examples", xlab="Number of examples", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (mydata$examples~mydata$experiment, main="number of example", xlab="number", ylab="Experiment")
 dev.off()
-foundpred=list()
-foundpred[1]=noop[2]
-foundpred[2]=compute[2]
-foundpred[3]=minimize[2]
-foundpred[4]=cm[2]
-foundpred[5]=slice[2]
-foundpred[6]=cs[2]
-foundpred[7]=csm[2]
-foundpred[8]=sm[2]
 png("foundpred.png",width = 800)
-boxplot (foundpred,data=foundpred, main="numbers of foundpred", xlab="Number of foundpred", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (mydata$foundpreds~mydata$experiment, main="numbers of predicates found", xlab="number", ylab="Experiment")
 dev.off()
-unfoundpred=list()
-unfoundpred[1]=noop[3]
-unfoundpred[2]=compute[3]
-unfoundpred[3]=minimize[3]
-unfoundpred[4]=cm[3]
-unfoundpred[5]=slice[3]
-unfoundpred[6]=cs[3]
-unfoundpred[7]=csm[3]
-unfoundpred[8]=sm[3]
 png("unfoundpred.png",width = 800)
-boxplot (unfoundpred,data=unfoundpred, main="numbers of unfoundpred", xlab="Number of unfoundpred", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (mydata$unfoundpreds~mydata$experiment, main="numbers of predicates unfound", xlab="number", ylab="Experiment")
 dev.off()
-extraconfig=list()
-extraconfig[1]=noop[4]
-extraconfig[2]=compute[4]
-extraconfig[3]=minimize[4]
-extraconfig[4]=cm[4]
-extraconfig[5]=slice[4]
-extraconfig[6]=cs[4]
-extraconfig[7]=csm[4]
-extraconfig[8]=sm[4]
 png("extraconfig.png",width = 800)
-boxplot (extraconfig,data=extraconfig, main="numbers of extraconfig", xlab="Number of extraconfig", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (mydata$extraconfigpred~mydata$experiment, main="numbers of extraconfig", xlab="number of extraconfig", ylab="Experiment")
 dev.off()
-extracompute=list()
-extracompute[1]=noop[5]
-extracompute[2]=compute[5]
-extracompute[3]=minimize[5]
-extracompute[4]=cm[5]
-extracompute[5]=slice[5]
-extracompute[6]=cs[5]
-extracompute[7]=csm[5]
-extracompute[8]=sm[5]
 png("extracompute.png",width = 800)
-boxplot (extracompute,data=extracompute, main="numbers of extracompute", xlab="Number of extracompute", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (mydata$extracomputepred~mydata$experiment, main="numbers of extracompute", xlab="Number of extracompute", ylab="Experiment")
 dev.off()
-percent=list()
-percent[1]=noop[14]
-percent[2]=compute[14]
-percent[3]=minimize[14]
-percent[4]=cm[14]
-percent[5]=slice[14]
-percent[6]=cs[14]
-percent[7]=csm[14]
-percent[8]=sm[14]
 png("percent.png",width = 800)
-boxplot (percent,data=percent, main="numbers of percent", xlab="Number of percent", ylab="Differnt experiment", names=c("noop","compute","minimize","c+m","slice","c+s","c+s+m","s+m"))
+boxplot (mydata$percentfound~mydata$experiment, main="Percent of predicates found", xlab="Percent", ylab="Experiment")
 dev.off()
 addacl<-subset(mydata,scenario=="add-acl")
 addroutemap<-subset(mydata,scenario=="add-routemap")

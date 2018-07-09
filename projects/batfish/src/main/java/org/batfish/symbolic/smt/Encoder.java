@@ -1301,9 +1301,10 @@ public class Encoder {
           FileWriter filewriter1=null;
           String unfoundpred="";
           for (String q:Faultloc.keySet()) {
-            unfoundpred+=unfound.get(q).toString()+";";            
+            for (PredicateLabel label:unfound.get(q))
+            unfoundpred+=label.toString()+";";            
           }
-          String FILE_HEADER="#CES/ES,#foundpreds,#unfoundpreds,#extraconfigpred,#extracomputepred,includecomputable?,notnegating?,minimize?,slice?";
+          String FILE_HEADER="examples,foundpreds,unfoundpreds,extraconfigpred,extracomputepred,includecomputable,notnegating,minimize,slice,unfoundpred";
           String COMMA=",";
           String NEW_LINE="\n";
           try {
