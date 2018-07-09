@@ -1299,6 +1299,10 @@ public class Encoder {
           File file = filepath.toFile();
           System.out.println(filepath);
           FileWriter filewriter1=null;
+          String unfoundpred="";
+          for (String q:Faultloc.keySet()) {
+            unfoundpred+=unfound.get(q).toString()+";";            
+          }
           String FILE_HEADER="#CES/ES,#foundpreds,#unfoundpreds,#extraconfigpred,#extracomputepred,includecomputable?,notnegating?,minimize?,slice?";
           String COMMA=",";
           String NEW_LINE="\n";
@@ -1325,6 +1329,8 @@ public class Encoder {
             filewriter1.append(Boolean.toString(_settings.shouldMinimizeUnsatCore()));
             filewriter1.append(COMMA);
             filewriter1.append(Boolean.toString(_settings.shouldEnableSlicing()));
+            filewriter1.append(COMMA);
+            filewriter1.append(unfoundpred);
             filewriter1.append(NEW_LINE);        
           }
           catch (Exception e) {
