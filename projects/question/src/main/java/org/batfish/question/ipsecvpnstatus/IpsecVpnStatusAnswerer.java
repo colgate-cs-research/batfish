@@ -52,8 +52,8 @@ public class IpsecVpnStatusAnswerer extends Answerer {
     IpsecVpnStatusQuestion question = (IpsecVpnStatusQuestion) _question;
 
     Map<String, Configuration> configurations = _batfish.loadConfigurations();
-    Set<String> includeNodes1 = question.getNode1Regex().getMatchingNodes(configurations);
-    Set<String> includeNodes2 = question.getNode2Regex().getMatchingNodes(configurations);
+    Set<String> includeNodes1 = question.getNode1Regex().getMatchingNodes(_batfish);
+    Set<String> includeNodes2 = question.getNode2Regex().getMatchingNodes(_batfish);
 
     CommonUtil.initRemoteIpsecVpns(configurations);
 
@@ -66,7 +66,7 @@ public class IpsecVpnStatusAnswerer extends Answerer {
         IpsecVpnInfo vpnInfo = analyzeIpsecVpn(ipsecVpn);
         if ((vpnInfo.getRemoteEndpoint() == null
                 || includeNodes2.contains(vpnInfo.getRemoteEndpoint().getHostname()))
-            && vpnInfo.getProblems().stream().anyMatch(v -> question.matchesProblem(v))) {
+            && vpnInfo.getProblems().stream().anyMatch(question::matchesProblem)) {
           answerElement.getIpsecVpns().add(vpnInfo);
         }
       }

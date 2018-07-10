@@ -8,7 +8,8 @@ import org.batfish.common.ParseTreeSentences;
 import org.batfish.common.Warning;
 import org.batfish.common.Warnings;
 
-public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement, Serializable {
+public class ParseVendorConfigurationAnswerElement extends ParseAnswerElement
+    implements Serializable {
 
   /** */
   private static final long serialVersionUID = 1L;
@@ -40,6 +41,7 @@ public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement
     _warnings.get(name).getRedFlagWarnings().add(warning);
   }
 
+  @Override
   public SortedMap<String, BatfishException.BatfishStackTrace> getErrors() {
     return _errors;
   }
@@ -48,10 +50,12 @@ public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement
     return _fileMap;
   }
 
+  @Override
   public SortedMap<String, ParseStatus> getParseStatus() {
     return _parseStatus;
   }
 
+  @Override
   public SortedMap<String, ParseTreeSentences> getParseTrees() {
     return _parseTrees;
   }
@@ -60,6 +64,7 @@ public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement
     return _version;
   }
 
+  @Override
   public SortedMap<String, Warnings> getWarnings() {
     return _warnings;
   }
@@ -97,6 +102,7 @@ public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement
     return retString.toString();
   }
 
+  @Override
   public void setErrors(SortedMap<String, BatfishException.BatfishStackTrace> errors) {
     _errors = errors;
   }
@@ -105,10 +111,12 @@ public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement
     _fileMap = fileMap;
   }
 
+  @Override
   public void setParseStatus(SortedMap<String, ParseStatus> parseStatus) {
     _parseStatus = parseStatus;
   }
 
+  @Override
   public void setParseTrees(SortedMap<String, ParseTreeSentences> parseTrees) {
     _parseTrees = parseTrees;
   }
@@ -117,6 +125,7 @@ public class ParseVendorConfigurationAnswerElement implements ParseAnswerElement
     _version = version;
   }
 
+  @Override
   public void setWarnings(SortedMap<String, Warnings> warnings) {
     _warnings = warnings;
   }

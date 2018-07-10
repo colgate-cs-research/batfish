@@ -1,17 +1,74 @@
 package org.batfish.grammar.flatjuniper;
 
+import static org.batfish.representation.juniper.JuniperConfiguration.ACL_NAME_GLOBAL_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureType.APPLICATION;
+import static org.batfish.representation.juniper.JuniperStructureType.APPLICATION_OR_APPLICATION_SET;
+import static org.batfish.representation.juniper.JuniperStructureType.APPLICATION_SET;
+import static org.batfish.representation.juniper.JuniperStructureType.AUTHENTICATION_KEY_CHAIN;
+import static org.batfish.representation.juniper.JuniperStructureType.BGP_GROUP;
+import static org.batfish.representation.juniper.JuniperStructureType.DHCP_RELAY_SERVER_GROUP;
+import static org.batfish.representation.juniper.JuniperStructureType.FIREWALL_FILTER;
+import static org.batfish.representation.juniper.JuniperStructureType.IKE_GATEWAY;
+import static org.batfish.representation.juniper.JuniperStructureType.IKE_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureType.IKE_PROPOSAL;
+import static org.batfish.representation.juniper.JuniperStructureType.INTERFACE;
+import static org.batfish.representation.juniper.JuniperStructureType.IPSEC_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureType.IPSEC_PROPOSAL;
+import static org.batfish.representation.juniper.JuniperStructureType.POLICY_STATEMENT;
+import static org.batfish.representation.juniper.JuniperStructureType.PREFIX_LIST;
+import static org.batfish.representation.juniper.JuniperStructureType.VLAN;
+import static org.batfish.representation.juniper.JuniperStructureUsage.APPLICATION_SET_MEMBER_APPLICATION;
+import static org.batfish.representation.juniper.JuniperStructureUsage.APPLICATION_SET_MEMBER_APPLICATION_SET;
+import static org.batfish.representation.juniper.JuniperStructureUsage.AUTHENTICATION_KEY_CHAINS_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.BGP_ALLOW;
+import static org.batfish.representation.juniper.JuniperStructureUsage.BGP_EXPORT_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.BGP_IMPORT_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.BGP_NEIGHBOR;
+import static org.batfish.representation.juniper.JuniperStructureUsage.DHCP_RELAY_GROUP_ACTIVE_SERVER_GROUP;
+import static org.batfish.representation.juniper.JuniperStructureUsage.FIREWALL_FILTER_DESTINATION_PREFIX_LIST;
+import static org.batfish.representation.juniper.JuniperStructureUsage.FIREWALL_FILTER_PREFIX_LIST;
+import static org.batfish.representation.juniper.JuniperStructureUsage.FIREWALL_FILTER_SOURCE_PREFIX_LIST;
+import static org.batfish.representation.juniper.JuniperStructureUsage.FORWARDING_TABLE_EXPORT_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.GENERATED_ROUTE_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IKE_GATEWAY_EXTERNAL_INTERFACE;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IKE_GATEWAY_IKE_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IKE_POLICY_IKE_PROPOSAL;
+import static org.batfish.representation.juniper.JuniperStructureUsage.INTERFACE_FILTER;
+import static org.batfish.representation.juniper.JuniperStructureUsage.INTERFACE_INCOMING_FILTER;
+import static org.batfish.representation.juniper.JuniperStructureUsage.INTERFACE_OUTGOING_FILTER;
+import static org.batfish.representation.juniper.JuniperStructureUsage.INTERFACE_VLAN;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IPSEC_POLICY_IPSEC_PROPOSAL;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IPSEC_VPN_BIND_INTERFACE;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IPSEC_VPN_IKE_GATEWAY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.IPSEC_VPN_IPSEC_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.OSPF_EXPORT_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.POLICY_STATEMENT_POLICY;
+import static org.batfish.representation.juniper.JuniperStructureUsage.POLICY_STATEMENT_PREFIX_LIST;
+import static org.batfish.representation.juniper.JuniperStructureUsage.POLICY_STATEMENT_PREFIX_LIST_FILTER;
+import static org.batfish.representation.juniper.JuniperStructureUsage.SECURITY_POLICY_MATCH_APPLICATION;
+import static org.batfish.representation.juniper.JuniperStructureUsage.SNMP_COMMUNITY_PREFIX_LIST;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import javax.annotation.Nullable;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ErrorNode;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Warnings;
@@ -22,24 +79,26 @@ import org.batfish.datamodel.BgpAuthenticationAlgorithm;
 import org.batfish.datamodel.DiffieHellmanGroup;
 import org.batfish.datamodel.EncryptionAlgorithm;
 import org.batfish.datamodel.ExtendedCommunity;
+import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.IcmpCode;
 import org.batfish.datamodel.IcmpType;
-import org.batfish.datamodel.IkeAuthenticationAlgorithm;
 import org.batfish.datamodel.IkeAuthenticationMethod;
-import org.batfish.datamodel.IkeProposal;
+import org.batfish.datamodel.IkeHashingAlgorithm;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
+import org.batfish.datamodel.Ip6;
 import org.batfish.datamodel.IpProtocol;
+import org.batfish.datamodel.IpWildcard;
 import org.batfish.datamodel.IpsecAuthenticationAlgorithm;
 import org.batfish.datamodel.IpsecProposal;
 import org.batfish.datamodel.IpsecProtocol;
 import org.batfish.datamodel.IsisAuthenticationAlgorithm;
+import org.batfish.datamodel.IsisHelloAuthenticationType;
 import org.batfish.datamodel.IsisOption;
 import org.batfish.datamodel.IsoAddress;
 import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.NamedPort;
-import org.batfish.datamodel.OspfArea;
-import org.batfish.datamodel.OspfAreaSummary;
+import org.batfish.datamodel.OriginType;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Prefix6;
 import org.batfish.datamodel.RoutingProtocol;
@@ -47,11 +106,19 @@ import org.batfish.datamodel.SnmpCommunity;
 import org.batfish.datamodel.SnmpHost;
 import org.batfish.datamodel.SnmpServer;
 import org.batfish.datamodel.SubRange;
+import org.batfish.datamodel.SwitchportMode;
 import org.batfish.datamodel.TcpFlags;
 import org.batfish.datamodel.VrrpGroup;
+import org.batfish.datamodel.ospf.OspfAreaSummary;
+import org.batfish.datamodel.ospf.OspfDefaultOriginateType;
+import org.batfish.datamodel.ospf.OspfMetricType;
+import org.batfish.datamodel.ospf.StubType;
 import org.batfish.datamodel.vendor_family.juniper.TacplusServer;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.A_applicationContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.A_application_setContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Aa_termContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Aas_applicationContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Aas_application_setContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Aat_destination_portContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Aat_protocolContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Aat_source_portContext;
@@ -60,11 +127,13 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.As_unitContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_advertise_externalContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_advertise_inactiveContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_advertise_peer_asContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_allowContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_authentication_algorithmContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_authentication_keyContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_authentication_key_chainContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_clusterContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_descriptionContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_enforce_first_asContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_exportContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_groupContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.B_importContext;
@@ -95,6 +164,7 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_fragment_offsetCon
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_fragment_offset_exceptContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_icmp_codeContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_icmp_typeContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_ip_protocolContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_is_fragmentContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_packet_lengthContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_packet_length_exceptContext;
@@ -107,6 +177,7 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_source_prefix_list
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_tcp_establishedContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_tcp_flagsContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftf_tcp_initialContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftfa_address_mask_prefixContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftt_acceptContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftt_discardContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fftt_next_ipContext;
@@ -121,16 +192,22 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fod_active_server_group
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fod_groupContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fod_server_groupContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Fodg_interfaceContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Hello_authentication_typeContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Hib_protocolContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Hib_system_serviceContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.I_descriptionContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.I_disableContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.I_enableContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.I_mtuContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.I_unitContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Icmp_codeContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Icmp_typeContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ife_filterContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ife_port_modeContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ife_vlanContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ifi_addressContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ifi_filterContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ifia_arpContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ifia_preferredContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ifia_primaryContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ifia_vrrp_groupContext;
@@ -149,20 +226,38 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Is_exportContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Is_interfaceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Is_levelContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Is_no_ipv4_routingContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Is_reference_bandwidthContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isi_levelContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isi_passiveContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isi_point_to_pointContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isib_minimum_intervalContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isib_multiplierContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_enableContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_hello_authentication_keyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_hello_authentication_typeContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_hello_intervalContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_hold_timeContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_metricContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isil_te_metricContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isl_disableContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Isl_wide_metrics_onlyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Iso_timeoutContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ist_credibility_protocol_preferenceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ist_family_shortcutsContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Junos_applicationContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Junos_application_setContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.O_areaContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.O_exportContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.O_reference_bandwidthContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oa_interfaceContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oa_nssaContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oa_stubContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oai_passiveContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oan_default_lsaContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oan_no_summariesContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oand_metric_typeContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oand_type_7Context;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Oas_no_summariesContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.P_bgpContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Po_communityContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Po_policy_statementContext;
@@ -176,9 +271,11 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Poplt_networkContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Pops_commonContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Pops_termContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_as_pathContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_as_path_groupContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_colorContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_communityContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_familyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_instanceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_interfaceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_local_preferenceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_metricContext;
@@ -186,7 +283,10 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_policyContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_prefix_listContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_prefix_list_filterContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_protocolContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_ribContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_route_filterContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsf_tagContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_address_maskContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_exactContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_longerContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_orlongerContext;
@@ -195,17 +295,27 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_thenContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_throughContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popsfrf_uptoContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_acceptContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_as_path_prependContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_community_addContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_community_deleteContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_community_setContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_default_action_acceptContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_default_action_rejectContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_externalContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_local_preferenceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_metricContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_metric_addContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_next_hopContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_next_hop_selfContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_next_policyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_next_termContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_originContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_preferenceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Popst_rejectContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.PortContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Proposal_set_typeContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.RangeContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Reference_bandwidthContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ri_interfaceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ri_named_routing_instanceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ro_aggregateContext;
@@ -221,22 +331,31 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Roaa_pathContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rof_exportContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rog_metricContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rog_policyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Roifie_lanContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Roifie_point_to_pointContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Ros_routeContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rosr_discardContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rosr_metricContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rosr_next_hopContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rosr_preferenceContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rosr_rejectContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Rosr_tagContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Routing_protocolContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.S_firewallContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.S_routing_optionsContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.S_snmpContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.S_vlans_namedContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sc_literalContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sc_namedContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Se_address_bookContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Se_authentication_key_chainContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Se_zonesContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sea_keyContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sea_toleranceContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sead_addressContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sead_address_setContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seada_addressContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seada_address_setContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seak_algorithmContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seak_optionsContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seak_secretContext;
@@ -272,21 +391,22 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seipvi_gatewayContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Seipvi_ipsec_policyContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sep_default_policyContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sep_from_zoneContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepf_policyContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepfpm_applicationContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepfpm_destination_addressContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepfpm_source_addressContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepfpm_source_identityContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepfpt_denyContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepfpt_permitContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sep_globalContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctx_policyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctxpm_applicationContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctxpm_destination_addressContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctxpm_source_addressContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctxpm_source_identityContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctxpt_denyContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sepctxpt_permitContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sez_security_zoneContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezs_address_bookContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezs_host_inbound_trafficContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezs_interfacesContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsa_addressContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsa_address_setContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsaa_addressContext;
-import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsaa_address_setContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsaad_addressContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsaad_address_setContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsh_protocolsContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Sezsh_system_servicesContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Snmp_communityContext;
@@ -310,13 +430,18 @@ import org.batfish.grammar.flatjuniper.FlatJuniperParser.Tcp_flags_alternativeCo
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Tcp_flags_atomContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Tcp_flags_literalContext;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.VariableContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Vlt_vlan_idContext;
+import org.batfish.grammar.flatjuniper.FlatJuniperParser.Wildcard_addressContext;
 import org.batfish.representation.juniper.AddressAddressBookEntry;
 import org.batfish.representation.juniper.AddressBook;
 import org.batfish.representation.juniper.AddressBookEntry;
 import org.batfish.representation.juniper.AddressSetAddressBookEntry;
 import org.batfish.representation.juniper.AddressSetEntry;
 import org.batfish.representation.juniper.AggregateRoute;
-import org.batfish.representation.juniper.Application;
+import org.batfish.representation.juniper.ApplicationOrApplicationSetReference;
+import org.batfish.representation.juniper.ApplicationSet;
+import org.batfish.representation.juniper.ApplicationSetMemberReference;
+import org.batfish.representation.juniper.ApplicationSetReference;
 import org.batfish.representation.juniper.BaseApplication;
 import org.batfish.representation.juniper.BaseApplication.Term;
 import org.batfish.representation.juniper.BgpGroup;
@@ -328,7 +453,7 @@ import org.batfish.representation.juniper.DhcpRelayServerGroup;
 import org.batfish.representation.juniper.Family;
 import org.batfish.representation.juniper.FirewallFilter;
 import org.batfish.representation.juniper.FwFrom;
-import org.batfish.representation.juniper.FwFromApplication;
+import org.batfish.representation.juniper.FwFromApplicationOrApplicationSet;
 import org.batfish.representation.juniper.FwFromDestinationAddress;
 import org.batfish.representation.juniper.FwFromDestinationAddressBookEntry;
 import org.batfish.representation.juniper.FwFromDestinationAddressExcept;
@@ -340,6 +465,8 @@ import org.batfish.representation.juniper.FwFromHostProtocol;
 import org.batfish.representation.juniper.FwFromHostService;
 import org.batfish.representation.juniper.FwFromIcmpCode;
 import org.batfish.representation.juniper.FwFromIcmpType;
+import org.batfish.representation.juniper.FwFromJunosApplication;
+import org.batfish.representation.juniper.FwFromJunosApplicationSet;
 import org.batfish.representation.juniper.FwFromPacketLength;
 import org.batfish.representation.juniper.FwFromPort;
 import org.batfish.representation.juniper.FwFromPrefixList;
@@ -362,6 +489,7 @@ import org.batfish.representation.juniper.HostProtocol;
 import org.batfish.representation.juniper.HostSystemService;
 import org.batfish.representation.juniper.IkeGateway;
 import org.batfish.representation.juniper.IkePolicy;
+import org.batfish.representation.juniper.IkeProposal;
 import org.batfish.representation.juniper.Interface;
 import org.batfish.representation.juniper.IpBgpGroup;
 import org.batfish.representation.juniper.IpsecPolicy;
@@ -372,11 +500,15 @@ import org.batfish.representation.juniper.IsisSettings;
 import org.batfish.representation.juniper.JuniperAuthenticationKey;
 import org.batfish.representation.juniper.JuniperAuthenticationKeyChain;
 import org.batfish.representation.juniper.JuniperConfiguration;
-import org.batfish.representation.juniper.JuniperStructureType;
 import org.batfish.representation.juniper.JuniperStructureUsage;
 import org.batfish.representation.juniper.JunosApplication;
+import org.batfish.representation.juniper.JunosApplicationReference;
+import org.batfish.representation.juniper.JunosApplicationSet;
+import org.batfish.representation.juniper.JunosApplicationSetReference;
 import org.batfish.representation.juniper.NamedBgpGroup;
 import org.batfish.representation.juniper.NodeDevice;
+import org.batfish.representation.juniper.NssaSettings;
+import org.batfish.representation.juniper.OspfArea;
 import org.batfish.representation.juniper.PolicyStatement;
 import org.batfish.representation.juniper.PrefixList;
 import org.batfish.representation.juniper.PsFrom;
@@ -395,18 +527,28 @@ import org.batfish.representation.juniper.PsFromPrefixListFilterLonger;
 import org.batfish.representation.juniper.PsFromPrefixListFilterOrLonger;
 import org.batfish.representation.juniper.PsFromProtocol;
 import org.batfish.representation.juniper.PsFromRouteFilter;
+import org.batfish.representation.juniper.PsFromTag;
 import org.batfish.representation.juniper.PsTerm;
 import org.batfish.representation.juniper.PsThen;
 import org.batfish.representation.juniper.PsThenAccept;
+import org.batfish.representation.juniper.PsThenAsPathPrepend;
 import org.batfish.representation.juniper.PsThenCommunityAdd;
 import org.batfish.representation.juniper.PsThenCommunityDelete;
 import org.batfish.representation.juniper.PsThenCommunitySet;
+import org.batfish.representation.juniper.PsThenDefaultActionAccept;
+import org.batfish.representation.juniper.PsThenDefaultActionReject;
+import org.batfish.representation.juniper.PsThenExternal;
 import org.batfish.representation.juniper.PsThenLocalPreference;
 import org.batfish.representation.juniper.PsThenMetric;
+import org.batfish.representation.juniper.PsThenMetricAdd;
 import org.batfish.representation.juniper.PsThenNextHopIp;
+import org.batfish.representation.juniper.PsThenNextHopSelf;
 import org.batfish.representation.juniper.PsThenNextPolicy;
+import org.batfish.representation.juniper.PsThenOrigin;
+import org.batfish.representation.juniper.PsThenPreference;
 import org.batfish.representation.juniper.PsThenReject;
 import org.batfish.representation.juniper.Route4FilterLine;
+import org.batfish.representation.juniper.Route4FilterLineAddressMask;
 import org.batfish.representation.juniper.Route4FilterLineExact;
 import org.batfish.representation.juniper.Route4FilterLineLengthRange;
 import org.batfish.representation.juniper.Route4FilterLineLonger;
@@ -414,6 +556,7 @@ import org.batfish.representation.juniper.Route4FilterLineOrLonger;
 import org.batfish.representation.juniper.Route4FilterLineThrough;
 import org.batfish.representation.juniper.Route4FilterLineUpTo;
 import org.batfish.representation.juniper.Route6FilterLine;
+import org.batfish.representation.juniper.Route6FilterLineAddressMask;
 import org.batfish.representation.juniper.Route6FilterLineExact;
 import org.batfish.representation.juniper.Route6FilterLineLengthRange;
 import org.batfish.representation.juniper.Route6FilterLineLonger;
@@ -424,7 +567,10 @@ import org.batfish.representation.juniper.RouteFilter;
 import org.batfish.representation.juniper.RoutingInformationBase;
 import org.batfish.representation.juniper.RoutingInstance;
 import org.batfish.representation.juniper.StaticRoute;
+import org.batfish.representation.juniper.StubSettings;
+import org.batfish.representation.juniper.Vlan;
 import org.batfish.representation.juniper.Zone;
+import org.batfish.vendor.StructureType;
 
 public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
@@ -450,11 +596,33 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   private static final String F_IPV6 = "ipv6 - other";
 
+  private static final String F_ISIS_EXPORT = "protocols - isis - export";
+
   private static final String F_PERMIT_TUNNEL =
       "security - policies - from-zone - to-zone - policy - then - permit - tunnel";
 
   private static final String F_POLICY_TERM_THEN_NEXT_HOP =
       "policy-statement - term - then - next-hop";
+
+  private static final String GLOBAL_ADDRESS_BOOK_NAME = "global";
+
+  /** Mark the specified structure as defined on each line in the supplied context */
+  private void defineStructure(StructureType type, String name, RuleContext ctx) {
+    /* Recursively process children to find all relevant definition lines for the specified context */
+    for (int i = 0; i < ctx.getChildCount(); i++) {
+      ParseTree child = ctx.getChild(i);
+      if (child instanceof TerminalNode) {
+        _configuration.defineStructure(type, name, getLine(((TerminalNode) child).getSymbol()));
+      } else if (child instanceof RuleContext) {
+        defineStructure(type, name, (RuleContext) child);
+      }
+    }
+  }
+
+  /** Return original line number for the specified token */
+  private int getLine(Token t) {
+    return _parser.getLine(t);
+  }
 
   public static NamedPort getNamedPort(PortContext ctx) {
     if (ctx.AFS() != null) {
@@ -594,8 +762,34 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
-  private static Application toApplication(Junos_applicationContext ctx) {
-    if (ctx.JUNOS_AOL() != null) {
+  private static long toReferenceBandwidth(Reference_bandwidthContext ctx) {
+    long base = toLong(ctx.base);
+    if (ctx.K() != null) {
+      return base * 1000L;
+    } else if (ctx.M() != null) {
+      return base * 1000000L;
+    } else if (ctx.G() != null) {
+      return base * 1000000000L;
+    } else {
+      return base;
+    }
+  }
+
+  private IsisHelloAuthenticationType toIsisHelloAuthenticationType(
+      Hello_authentication_typeContext ctx) {
+    if (ctx.MD5() != null) {
+      return IsisHelloAuthenticationType.MD5;
+    } else if (ctx.SIMPLE() != null) {
+      return IsisHelloAuthenticationType.SIMPLE;
+    } else {
+      throw convError(IsisHelloAuthenticationType.class, ctx);
+    }
+  }
+
+  private JunosApplication toJunosApplication(Junos_applicationContext ctx) {
+    if (ctx.ANY() != null) {
+      return JunosApplication.ANY;
+    } else if (ctx.JUNOS_AOL() != null) {
       return JunosApplication.JUNOS_AOL;
     } else if (ctx.JUNOS_BGP() != null) {
       return JunosApplication.JUNOS_BGP;
@@ -607,8 +801,6 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_BOOTPS;
     } else if (ctx.JUNOS_CHARGEN() != null) {
       return JunosApplication.JUNOS_CHARGEN;
-    } else if (ctx.JUNOS_CIFS() != null) {
-      return JunosApplication.JUNOS_CIFS;
     } else if (ctx.JUNOS_CVSPSERVER() != null) {
       return JunosApplication.JUNOS_CVSPSERVER;
     } else if (ctx.JUNOS_DHCP_CLIENT() != null) {
@@ -629,10 +821,18 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_FINGER;
     } else if (ctx.JUNOS_FTP() != null) {
       return JunosApplication.JUNOS_FTP;
+    } else if (ctx.JUNOS_FTP_DATA() != null) {
+      return JunosApplication.JUNOS_FTP_DATA;
     } else if (ctx.JUNOS_GNUTELLA() != null) {
       return JunosApplication.JUNOS_GNUTELLA;
     } else if (ctx.JUNOS_GOPHER() != null) {
       return JunosApplication.JUNOS_GOPHER;
+    } else if (ctx.JUNOS_GPRS_GTP_C() != null) {
+      return JunosApplication.JUNOS_GPRS_GTP_C;
+    } else if (ctx.JUNOS_GPRS_GTP_U() != null) {
+      return JunosApplication.JUNOS_GPRS_GTP_U;
+    } else if (ctx.JUNOS_GPRS_GTP_V0() != null) {
+      return JunosApplication.JUNOS_GPRS_GTP_V0;
     } else if (ctx.JUNOS_GRE() != null) {
       return JunosApplication.JUNOS_GRE;
     } else if (ctx.JUNOS_GTP() != null) {
@@ -665,8 +865,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_ICMP6_ECHO_REPLY;
     } else if (ctx.JUNOS_ICMP6_ECHO_REQUEST() != null) {
       return JunosApplication.JUNOS_ICMP6_ECHO_REQUEST;
-    } else if (ctx.JUNOS_ICMP6_PACKET_TO_BIG() != null) {
-      return JunosApplication.JUNOS_ICMP6_PACKET_TO_BIG;
+    } else if (ctx.JUNOS_ICMP6_PACKET_TOO_BIG() != null) {
+      return JunosApplication.JUNOS_ICMP6_PACKET_TOO_BIG;
     } else if (ctx.JUNOS_ICMP6_PARAM_PROB_HEADER() != null) {
       return JunosApplication.JUNOS_ICMP6_PARAM_PROB_HEADER;
     } else if (ctx.JUNOS_ICMP6_PARAM_PROB_NEXTHDR() != null) {
@@ -703,26 +903,16 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_LPR;
     } else if (ctx.JUNOS_MAIL() != null) {
       return JunosApplication.JUNOS_MAIL;
-    } else if (ctx.JUNOS_MGCP() != null) {
-      return JunosApplication.JUNOS_MGCP;
     } else if (ctx.JUNOS_MGCP_CA() != null) {
       return JunosApplication.JUNOS_MGCP_CA;
     } else if (ctx.JUNOS_MGCP_UA() != null) {
       return JunosApplication.JUNOS_MGCP_UA;
-    } else if (ctx.JUNOS_MS_RPC() != null) {
-      return JunosApplication.JUNOS_MS_RPC;
-    } else if (ctx.JUNOS_MS_RPC_ANY() != null) {
-      return JunosApplication.JUNOS_MS_RPC_ANY;
     } else if (ctx.JUNOS_MS_RPC_EPM() != null) {
       return JunosApplication.JUNOS_MS_RPC_EPM;
-    } else if (ctx.JUNOS_MS_RPC_IIS_COM() != null) {
-      return JunosApplication.JUNOS_MS_RPC_IIS_COM;
     } else if (ctx.JUNOS_MS_RPC_IIS_COM_1() != null) {
       return JunosApplication.JUNOS_MS_RPC_IIS_COM_1;
     } else if (ctx.JUNOS_MS_RPC_IIS_COM_ADMINBASE() != null) {
       return JunosApplication.JUNOS_MS_RPC_IIS_COM_ADMINBASE;
-    } else if (ctx.JUNOS_MS_RPC_MSEXCHANGE() != null) {
-      return JunosApplication.JUNOS_MS_RPC_MSEXCHANGE;
     } else if (ctx.JUNOS_MS_RPC_MSEXCHANGE_DIRECTORY_NSP() != null) {
       return JunosApplication.JUNOS_MS_RPC_MSEXCHANGE_DIRECTORY_NSP;
     } else if (ctx.JUNOS_MS_RPC_MSEXCHANGE_DIRECTORY_RFR() != null) {
@@ -737,8 +927,6 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_MS_RPC_UUID_ANY_TCP;
     } else if (ctx.JUNOS_MS_RPC_UUID_ANY_UDP() != null) {
       return JunosApplication.JUNOS_MS_RPC_UUID_ANY_UDP;
-    } else if (ctx.JUNOS_MS_RPC_WMIC() != null) {
-      return JunosApplication.JUNOS_MS_RPC_WMIC;
     } else if (ctx.JUNOS_MS_RPC_WMIC_ADMIN() != null) {
       return JunosApplication.JUNOS_MS_RPC_WMIC_ADMIN;
     } else if (ctx.JUNOS_MS_RPC_WMIC_ADMIN2() != null) {
@@ -819,8 +1007,6 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_REALAUDIO;
     } else if (ctx.JUNOS_RIP() != null) {
       return JunosApplication.JUNOS_RIP;
-    } else if (ctx.JUNOS_ROUTING_INBOUND() != null) {
-      return JunosApplication.JUNOS_ROUTING_INBOUND;
     } else if (ctx.JUNOS_RSH() != null) {
       return JunosApplication.JUNOS_RSH;
     } else if (ctx.JUNOS_RTSP() != null) {
@@ -851,66 +1037,42 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_SSH;
     } else if (ctx.JUNOS_STUN() != null) {
       return JunosApplication.JUNOS_STUN;
-    } else if (ctx.JUNOS_SUN_RPC() != null) {
-      return JunosApplication.JUNOS_SUN_RPC;
-    } else if (ctx.JUNOS_SUN_RPC_ANY() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_ANY;
     } else if (ctx.JUNOS_SUN_RPC_ANY_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_ANY_TCP;
     } else if (ctx.JUNOS_SUN_RPC_ANY_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_ANY_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_MOUNTD() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_MOUNTD;
     } else if (ctx.JUNOS_SUN_RPC_MOUNTD_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_MOUNTD_TCP;
     } else if (ctx.JUNOS_SUN_RPC_MOUNTD_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_MOUNTD_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_NFS() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_NFS;
-    } else if (ctx.JUNOS_SUN_RPC_NFS_ACCESS() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_NFS_ACCESS;
     } else if (ctx.JUNOS_SUN_RPC_NFS_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_NFS_TCP;
     } else if (ctx.JUNOS_SUN_RPC_NFS_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_NFS_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_NLOCKMGR() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_NLOCKMGR;
     } else if (ctx.JUNOS_SUN_RPC_NLOCKMGR_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_NLOCKMGR_TCP;
     } else if (ctx.JUNOS_SUN_RPC_NLOCKMGR_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_NLOCKMGR_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_PORTMAP() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_PORTMAP;
     } else if (ctx.JUNOS_SUN_RPC_PORTMAP_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_PORTMAP_TCP;
     } else if (ctx.JUNOS_SUN_RPC_PORTMAP_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_PORTMAP_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_RQUOTAD() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_RQUOTAD;
     } else if (ctx.JUNOS_SUN_RPC_RQUOTAD_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_RQUOTAD_TCP;
     } else if (ctx.JUNOS_SUN_RPC_RQUOTAD_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_RQUOTAD_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_RUSERD() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_RUSERD;
     } else if (ctx.JUNOS_SUN_RPC_RUSERD_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_RUSERD_TCP;
     } else if (ctx.JUNOS_SUN_RPC_RUSERD_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_RUSERD_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_SADMIND() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_SADMIND;
     } else if (ctx.JUNOS_SUN_RPC_SADMIND_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_SADMIND_TCP;
     } else if (ctx.JUNOS_SUN_RPC_SADMIND_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_SADMIND_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_SPRAYD() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_SPRAYD;
     } else if (ctx.JUNOS_SUN_RPC_SPRAYD_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_SPRAYD_TCP;
     } else if (ctx.JUNOS_SUN_RPC_SPRAYD_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_SPRAYD_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_STATUS() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_STATUS;
     } else if (ctx.JUNOS_SUN_RPC_STATUS_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_STATUS_TCP;
     } else if (ctx.JUNOS_SUN_RPC_STATUS_UDP() != null) {
@@ -919,20 +1081,14 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return JunosApplication.JUNOS_SUN_RPC_TCP;
     } else if (ctx.JUNOS_SUN_RPC_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_WALLD() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_WALLD;
     } else if (ctx.JUNOS_SUN_RPC_WALLD_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_WALLD_TCP;
     } else if (ctx.JUNOS_SUN_RPC_WALLD_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_WALLD_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_YPBIND() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_YPBIND;
     } else if (ctx.JUNOS_SUN_RPC_YPBIND_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_YPBIND_TCP;
     } else if (ctx.JUNOS_SUN_RPC_YPBIND_UDP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_YPBIND_UDP;
-    } else if (ctx.JUNOS_SUN_RPC_YPSERV() != null) {
-      return JunosApplication.JUNOS_SUN_RPC_YPSERV;
     } else if (ctx.JUNOS_SUN_RPC_YPSERV_TCP() != null) {
       return JunosApplication.JUNOS_SUN_RPC_YPSERV_TCP;
     } else if (ctx.JUNOS_SUN_RPC_YPSERV_UDP() != null) {
@@ -978,8 +1134,59 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     } else if (ctx.JUNOS_YMSG() != null) {
       return JunosApplication.JUNOS_YMSG;
     } else {
-      throw new BatfishException(
-          "missing application mapping for application: \"" + ctx.getText() + "\"");
+      throw convError(JunosApplication.class, ctx);
+    }
+  }
+
+  private JunosApplicationSet toJunosApplicationSet(Junos_application_setContext ctx) {
+    if (ctx.JUNOS_CIFS() != null) {
+      return JunosApplicationSet.JUNOS_CIFS;
+    } else if (ctx.JUNOS_MGCP() != null) {
+      return JunosApplicationSet.JUNOS_MGCP;
+    } else if (ctx.JUNOS_MS_RPC() != null) {
+      return JunosApplicationSet.JUNOS_MS_RPC;
+    } else if (ctx.JUNOS_MS_RPC_ANY() != null) {
+      return JunosApplicationSet.JUNOS_MS_RPC_ANY;
+    } else if (ctx.JUNOS_MS_RPC_IIS_COM() != null) {
+      return JunosApplicationSet.JUNOS_MS_RPC_IIS_COM;
+    } else if (ctx.JUNOS_MS_RPC_MSEXCHANGE() != null) {
+      return JunosApplicationSet.JUNOS_MS_RPC_MSEXCHANGE;
+    } else if (ctx.JUNOS_MS_RPC_WMIC() != null) {
+      return JunosApplicationSet.JUNOS_MS_RPC_WMIC;
+    } else if (ctx.JUNOS_ROUTING_INBOUND() != null) {
+      return JunosApplicationSet.JUNOS_ROUTING_INBOUND;
+    } else if (ctx.JUNOS_SUN_RPC() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC;
+    } else if (ctx.JUNOS_SUN_RPC_ANY() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_ANY;
+    } else if (ctx.JUNOS_SUN_RPC_MOUNTD() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_MOUNTD;
+    } else if (ctx.JUNOS_SUN_RPC_NFS() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_NFS;
+    } else if (ctx.JUNOS_SUN_RPC_NFS_ACCESS() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_NFS_ACCESS;
+    } else if (ctx.JUNOS_SUN_RPC_NLOCKMGR() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_NLOCKMGR;
+    } else if (ctx.JUNOS_SUN_RPC_PORTMAP() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_PORTMAP;
+    } else if (ctx.JUNOS_SUN_RPC_RQUOTAD() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_RQUOTAD;
+    } else if (ctx.JUNOS_SUN_RPC_RUSERD() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_RUSERD;
+    } else if (ctx.JUNOS_SUN_RPC_SADMIND() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_SADMIND;
+    } else if (ctx.JUNOS_SUN_RPC_SPRAYD() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_SPRAYD;
+    } else if (ctx.JUNOS_SUN_RPC_STATUS() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_STATUS;
+    } else if (ctx.JUNOS_SUN_RPC_WALLD() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_WALLD;
+    } else if (ctx.JUNOS_SUN_RPC_YPBIND() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_YPBIND;
+    } else if (ctx.JUNOS_SUN_RPC_YPSERV() != null) {
+      return JunosApplicationSet.JUNOS_SUN_RPC_YPSERV;
+    } else {
+      throw convError(JunosApplicationSet.class, ctx);
     }
   }
 
@@ -1015,10 +1222,16 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return EncryptionAlgorithm.THREEDES_CBC;
     } else if (ctx.AES_128_CBC() != null) {
       return EncryptionAlgorithm.AES_128_CBC;
+    } else if (ctx.AES_128_GCM() != null) {
+      return EncryptionAlgorithm.AES_128_GCM;
     } else if (ctx.AES_192_CBC() != null) {
       return EncryptionAlgorithm.AES_192_CBC;
+    } else if (ctx.AES_192_GCM() != null) {
+      return EncryptionAlgorithm.AES_192_GCM;
     } else if (ctx.AES_256_CBC() != null) {
       return EncryptionAlgorithm.AES_256_CBC;
+    } else if (ctx.AES_256_GCM() != null) {
+      return EncryptionAlgorithm.AES_256_GCM;
     } else if (ctx.DES_CBC() != null) {
       return EncryptionAlgorithm.DES_CBC;
     } else {
@@ -1132,13 +1345,17 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
-  private static int toIcmpCode(Icmp_codeContext ctx) {
+  @Nullable
+  private static Integer toIcmpCode(Icmp_codeContext ctx, Warnings w) {
     if (ctx.FRAGMENTATION_NEEDED() != null) {
       return IcmpCode.PACKET_TOO_BIG;
     } else if (ctx.HOST_UNREACHABLE() != null) {
       return IcmpCode.DESTINATION_HOST_UNREACHABLE;
+    } else if (ctx.TTL_EQ_ZERO_DURING_TRANSIT() != null) {
+      return IcmpCode.TTL_EQ_ZERO_DURING_TRANSIT;
     } else {
-      throw new BatfishException("Missing mapping for icmp-code: '" + ctx.getText() + "'");
+      w.redFlag(String.format("Missing mapping for icmp-code: '%s'", ctx.getText()));
+      return null;
     }
   }
 
@@ -1160,16 +1377,16 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
-  private static IkeAuthenticationAlgorithm toIkeAuthenticationAlgorithm(
+  private static IkeHashingAlgorithm toIkeHashingAlgorithm(
       Ike_authentication_algorithmContext ctx) {
     if (ctx.MD5() != null) {
-      return IkeAuthenticationAlgorithm.MD5;
+      return IkeHashingAlgorithm.MD5;
     } else if (ctx.SHA1() != null) {
-      return IkeAuthenticationAlgorithm.SHA1;
+      return IkeHashingAlgorithm.SHA1;
     } else if (ctx.SHA_256() != null) {
-      return IkeAuthenticationAlgorithm.SHA_256;
+      return IkeHashingAlgorithm.SHA_256;
     } else if (ctx.SHA_384() != null) {
-      return IkeAuthenticationAlgorithm.SHA_384;
+      return IkeHashingAlgorithm.SHA_384;
     } else {
       throw new BatfishException("invalid ike authentication algorithm: " + ctx.getText());
     }
@@ -1188,12 +1405,20 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
-  private static Integer toInt(TerminalNode node) {
+  private static int toInt(TerminalNode node) {
     return toInt(node.getSymbol());
   }
 
   private static int toInt(Token token) {
     return Integer.parseInt(token.getText());
+  }
+
+  private static long toLong(TerminalNode node) {
+    return toLong(node.getSymbol());
+  }
+
+  private static long toLong(Token token) {
+    return Long.parseLong(token.getText());
   }
 
   private static IpProtocol toIpProtocol(Ip_protocolContext ctx) {
@@ -1257,11 +1482,13 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
-  private static IpsecProtocol toIpsecProtocol(Ipsec_protocolContext ctx) {
+  private static SortedSet<IpsecProtocol> toIpsecProtocol(Ipsec_protocolContext ctx) {
     if (ctx.AH() != null) {
-      return IpsecProtocol.AH;
+      return ImmutableSortedSet.of(IpsecProtocol.AH);
     } else if (ctx.ESP() != null) {
-      return IpsecProtocol.ESP;
+      return ImmutableSortedSet.of(IpsecProtocol.ESP);
+    } else if (ctx.BUNDLE() != null) {
+      return ImmutableSortedSet.of(IpsecProtocol.AH, IpsecProtocol.ESP);
     } else {
       throw new BatfishException("invalid ipsec protocol: " + ctx.getText());
     }
@@ -1353,7 +1580,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     return tcpFlagsList;
   }
 
-  private static String unquote(String text) {
+  static String unquote(String text) {
     if (text.length() == 0) {
       return text;
     }
@@ -1382,9 +1609,9 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   private OspfArea _currentArea;
 
-  private Prefix _currentAreaRangePrefix;
-
   @Nullable private Long _currentAreaRangeMetric;
+
+  private Prefix _currentAreaRangePrefix;
 
   private boolean _currentAreaRangeRestrict;
 
@@ -1468,6 +1695,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   private VrrpGroup _currentVrrpGroup;
 
+  private String _currentVlanName;
+
   private Zone _currentZone;
 
   private FirewallFilter _currentZoneInboundFilter;
@@ -1477,6 +1706,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   private LineAction _defaultCrossZoneAction;
 
   private int _disjunctionPolicyIndex;
+
+  private AddressBook _globalAddressBook;
 
   private boolean _hasZones;
 
@@ -1488,22 +1719,42 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   private final Set<String> _unimplementedFeatures;
 
+  private final boolean _unrecognizedAsRedFlag;
+
   private final Warnings _w;
+
+  private ApplicationSet _currentApplicationSet;
+
+  private NssaSettings _currentNssaSettings;
+
+  private StubSettings _currentStubSettings;
 
   public ConfigurationBuilder(
       FlatJuniperCombinedParser parser,
       String text,
       Warnings warnings,
-      Set<String> unimplementedFeatures) {
+      Set<String> unimplementedFeatures,
+      boolean unrecognizedAsRedFlag) {
     _parser = parser;
     _text = text;
     _configuration = new JuniperConfiguration(unimplementedFeatures);
     _currentRoutingInstance = _configuration.getDefaultRoutingInstance();
     _termRouteFilters = new HashMap<>();
     _unimplementedFeatures = unimplementedFeatures;
+    _unrecognizedAsRedFlag = unrecognizedAsRedFlag;
     _w = warnings;
     _conjunctionPolicyIndex = 0;
     _disjunctionPolicyIndex = 0;
+    _globalAddressBook =
+        _configuration
+            .getGlobalAddressBooks()
+            .computeIfAbsent(GLOBAL_ADDRESS_BOOK_NAME, n -> new AddressBook(n, new TreeMap<>()));
+  }
+
+  private BatfishException convError(Class<?> type, ParserRuleContext ctx) {
+    String typeName = type.getSimpleName();
+    String txt = getFullText(ctx);
+    return new BatfishException("Could not convert to " + typeName + ": " + txt);
   }
 
   @Override
@@ -1512,6 +1763,80 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     _currentApplication =
         _configuration.getApplications().computeIfAbsent(name, BaseApplication::new);
     _currentApplicationTerm = _currentApplication.getMainTerm();
+    defineStructure(APPLICATION, name, ctx);
+  }
+
+  @Override
+  public void enterA_application_set(A_application_setContext ctx) {
+    String name = ctx.name.getText();
+    _currentApplicationSet =
+        _configuration.getApplicationSets().computeIfAbsent(name, ApplicationSet::new);
+    defineStructure(APPLICATION_SET, name, ctx);
+  }
+
+  @Override
+  public void exitA_application_set(A_application_setContext ctx) {
+    _currentApplicationSet = null;
+  }
+
+  @Override
+  public void exitAas_application(Aas_applicationContext ctx) {
+    if (ctx.junos_application() != null) {
+      JunosApplication application = toJunosApplication(ctx.junos_application());
+      if (!application.hasDefinition()) {
+        _w.redFlag(
+            String.format(
+                "unimplemented pre-defined junos application: '%s'",
+                ctx.junos_application().getText()));
+        return;
+      }
+      _currentApplicationSet.setMembers(
+          ImmutableList.<ApplicationSetMemberReference>builder()
+              .addAll(_currentApplicationSet.getMembers())
+              .add(new JunosApplicationReference(application))
+              .build());
+    } else {
+      String name = ctx.name.getText();
+      int line = getLine(ctx.name.getStart());
+      _currentApplicationSet.setMembers(
+          ImmutableList.<ApplicationSetMemberReference>builder()
+              .addAll(_currentApplicationSet.getMembers())
+              .add(new ApplicationOrApplicationSetReference(name))
+              .build());
+      // only mark the structure as referenced if we know it's not a pre-defined application
+      _configuration.referenceStructure(
+          APPLICATION_OR_APPLICATION_SET, name, APPLICATION_SET_MEMBER_APPLICATION, line);
+    }
+  }
+
+  @Override
+  public void exitAas_application_set(Aas_application_setContext ctx) {
+    if (ctx.junos_application_set() != null) {
+      JunosApplicationSet junosApplicationSet = toJunosApplicationSet(ctx.junos_application_set());
+      if (!junosApplicationSet.hasDefinition()) {
+        _w.redFlag(
+            String.format(
+                "unimplemented pre-defined junos application-set: '%s'",
+                ctx.junos_application_set().getText()));
+        return;
+      }
+      _currentApplicationSet.setMembers(
+          ImmutableList.<ApplicationSetMemberReference>builder()
+              .addAll(_currentApplicationSet.getMembers())
+              .add(new JunosApplicationSetReference(junosApplicationSet))
+              .build());
+    } else {
+      String name = ctx.name.getText();
+      int line = getLine(ctx.name.getStart());
+      _currentApplicationSet.setMembers(
+          ImmutableList.<ApplicationSetMemberReference>builder()
+              .addAll(_currentApplicationSet.getMembers())
+              .add(new ApplicationSetReference(name))
+              .build());
+      // only mark the structure as referenced if we know it's not a pre-defined application-set
+      _configuration.referenceStructure(
+          APPLICATION_SET, name, APPLICATION_SET_MEMBER_APPLICATION_SET, line);
+    }
   }
 
   @Override
@@ -1521,24 +1846,59 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void enterB_allow(B_allowContext ctx) {
+    if (_currentBgpGroup.getGroupName() != null) {
+      _configuration.referenceStructure(
+          BGP_GROUP, _currentBgpGroup.getGroupName(), BGP_ALLOW, getLine(ctx.getStart()));
+    }
+    if (ctx.IPV6_PREFIX() != null) {
+      _currentBgpGroup.setIpv6(true);
+      _currentBgpGroup = DUMMY_BGP_GROUP;
+      // not supported for now
+      return;
+    }
+    Prefix remotePrefix = Prefix.ZERO; // equivalent to ALL
+    if (ctx.IP_PREFIX() != null) {
+      remotePrefix = Prefix.parse(ctx.IP_PREFIX().getText());
+    }
+    Map<Prefix, IpBgpGroup> ipBgpGroups = _currentRoutingInstance.getIpBgpGroups();
+    IpBgpGroup ipBgpGroup = ipBgpGroups.get(remotePrefix);
+    if (ipBgpGroup == null) {
+      ipBgpGroup = new IpBgpGroup(remotePrefix);
+      ipBgpGroup.setParent(_currentBgpGroup);
+      ipBgpGroups.put(remotePrefix, ipBgpGroup);
+      ipBgpGroup.setDynamic(true);
+    }
+    _currentBgpGroup = ipBgpGroup;
+  }
+
+  @Override
   public void enterB_group(B_groupContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
     Map<String, NamedBgpGroup> namedBgpGroups = _currentRoutingInstance.getNamedBgpGroups();
     NamedBgpGroup namedBgpGroup = namedBgpGroups.get(name);
     if (namedBgpGroup == null) {
-      namedBgpGroup = new NamedBgpGroup(name, definitionLine);
+      namedBgpGroup = new NamedBgpGroup(name);
       namedBgpGroup.setParent(_currentBgpGroup);
       namedBgpGroups.put(name, namedBgpGroup);
     }
     _currentBgpGroup = namedBgpGroup;
+    defineStructure(BGP_GROUP, name, ctx);
   }
 
   @Override
   public void enterB_neighbor(B_neighborContext ctx) {
+    if (_currentBgpGroup.getGroupName() != null) {
+      _configuration.referenceStructure(
+          BGP_GROUP,
+          _currentBgpGroup.getGroupName(),
+          BGP_NEIGHBOR,
+          getLine(ctx.NEIGHBOR().getSymbol()));
+    }
     if (ctx.IP_ADDRESS() != null) {
-      Ip remoteAddress = new Ip(ctx.IP_ADDRESS().getText());
-      Map<Ip, IpBgpGroup> ipBgpGroups = _currentRoutingInstance.getIpBgpGroups();
+      Prefix remoteAddress =
+          new Prefix(new Ip(ctx.IP_ADDRESS().getText()), Prefix.MAX_PREFIX_LENGTH);
+      Map<Prefix, IpBgpGroup> ipBgpGroups = _currentRoutingInstance.getIpBgpGroups();
       IpBgpGroup ipBgpGroup = ipBgpGroups.get(remoteAddress);
       if (ipBgpGroup == null) {
         ipBgpGroup = new IpBgpGroup(remoteAddress);
@@ -1554,28 +1914,22 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   @Override
   public void enterF_family(F_familyContext ctx) {
-    if (ctx.INET() != null) {
-      _currentFirewallFamily = Family.INET;
-    } else if (ctx.INET6() != null) {
-      _currentFirewallFamily = Family.INET6;
-    } else if (ctx.MPLS() != null) {
-      _currentFirewallFamily = Family.MPLS;
-    }
+    _currentFirewallFamily = toFamily(ctx);
   }
 
   @Override
   public void enterF_filter(F_filterContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
     Map<String, FirewallFilter> filters = _configuration.getFirewallFilters();
     _currentFilter = filters.get(name);
     if (_currentFirewallFamily == null) {
       _currentFirewallFamily = Family.INET;
     }
     if (_currentFilter == null) {
-      _currentFilter = new FirewallFilter(name, _currentFirewallFamily, definitionLine);
+      _currentFilter = new FirewallFilter(name, _currentFirewallFamily);
       filters.put(name, _currentFilter);
     }
+    defineStructure(FIREWALL_FILTER, name, ctx);
   }
 
   @Override
@@ -1590,35 +1944,32 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     _currentDhcpRelayGroup =
         _currentRoutingInstance
             .getDhcpRelayGroups()
-            .computeIfAbsent(
-                DhcpRelayGroup.MASTER_DHCP_RELAY_GROUP_NAME, k -> new DhcpRelayGroup(k));
+            .computeIfAbsent(DhcpRelayGroup.MASTER_DHCP_RELAY_GROUP_NAME, DhcpRelayGroup::new);
   }
 
   @Override
   public void enterFod_group(Fod_groupContext ctx) {
     String name = ctx.name.getText();
     _currentDhcpRelayGroup =
-        _currentRoutingInstance
-            .getDhcpRelayGroups()
-            .computeIfAbsent(name, k -> new DhcpRelayGroup(k));
+        _currentRoutingInstance.getDhcpRelayGroups().computeIfAbsent(name, DhcpRelayGroup::new);
   }
 
   @Override
   public void enterFod_server_group(Fod_server_groupContext ctx) {
     String name = ctx.name.getText();
-    final int line = ctx.name.getStart().getLine();
     DhcpRelayServerGroup serverGroup =
         _currentRoutingInstance
             .getDhcpRelayServerGroups()
-            .computeIfAbsent(name, k -> new DhcpRelayServerGroup(k, line));
+            .computeIfAbsent(name, DhcpRelayServerGroup::new);
     Ip ip = new Ip(ctx.address.getText());
     serverGroup.getServers().add(ip);
+    defineStructure(DHCP_RELAY_SERVER_GROUP, name, ctx);
   }
 
   @Override
   public void enterI_unit(I_unitContext ctx) {
     String unit = ctx.num.getText();
-    int definitionLine = ctx.num.getLine();
+    int definitionLine = getLine(ctx.num);
     String unitFullName = _currentMasterInterface.getName() + "." + unit;
     Map<String, Interface> units = _currentMasterInterface.getUnits();
     _currentInterface = units.get(unitFullName);
@@ -1688,7 +2039,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       currentInterface = interfaces.get(ifaceName);
       if (currentInterface == null) {
         String fullIfaceName = nodeDevicePrefix + ifaceName;
-        int definitionLine = ctx.interface_id().getStart().getLine();
+        int definitionLine = getLine(ctx.interface_id().getStart());
         currentInterface = new Interface(fullIfaceName, definitionLine);
         currentInterface.setRoutingInstance(_currentRoutingInstance.getName());
         currentInterface.setParent(_configuration.getGlobalMasterInterface());
@@ -1703,8 +2054,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void enterIs_interface(Is_interfaceContext ctx) {
     Map<String, Interface> interfaces = _configuration.getInterfaces();
     String unitFullName = null;
-    String name = ctx.id.name.getText();
-    int definitionLine = ctx.id.name.getLine();
+    String name = getInterfaceName(ctx.id);
+    int definitionLine = getLine(ctx.id.name);
     String unit = null;
     if (ctx.id.unit != null) {
       unit = ctx.id.unit.getText();
@@ -1717,7 +2068,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       interfaces.put(name, _currentIsisInterface);
     }
     if (unit != null) {
-      definitionLine = ctx.id.unit.getLine();
+      definitionLine = getLine(ctx.id.unit);
       Map<String, Interface> units = _currentIsisInterface.getUnits();
       _currentIsisInterface = units.get(unitFullName);
       if (_currentIsisInterface == null) {
@@ -1810,16 +2161,81 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       unitFullName = _currentOspfInterface.getName();
     }
     Ip currentArea = new Ip(_currentArea.getName());
-    if (ctx.oai_passive() != null) {
-      _currentOspfInterface.getOspfPassiveAreas().add(currentArea);
+    Ip currentInterfaceArea = _currentOspfInterface.getOspfArea();
+    if (currentInterfaceArea != null && !currentArea.equals(currentInterfaceArea)) {
+      _w.redFlag("Interface: \"" + unitFullName + "\" assigned to multiple areas");
     } else {
-      Ip interfaceActiveArea = _currentOspfInterface.getOspfActiveArea();
-      if (interfaceActiveArea != null && !currentArea.equals(interfaceActiveArea)) {
-        throw new BatfishException(
-            "Interface: \"" + unitFullName + "\" assigned to multiple active areas");
-      }
-      _currentOspfInterface.setOspfActiveArea(currentArea);
+      _currentOspfInterface.setOspfArea(currentArea);
     }
+  }
+
+  @Override
+  public void enterOa_nssa(Oa_nssaContext ctx) {
+    _currentNssaSettings = _currentArea.getNssaSettings();
+    if (_currentNssaSettings == null) {
+      _currentNssaSettings = new NssaSettings();
+      _currentArea.setNssaSettings(_currentNssaSettings);
+    }
+    _currentArea.setStubType(StubType.NSSA);
+  }
+
+  @Override
+  public void exitOa_nssa(Oa_nssaContext ctx) {
+    _currentNssaSettings = null;
+  }
+
+  @Override
+  public void enterOa_stub(Oa_stubContext ctx) {
+    _currentStubSettings = _currentArea.getStubSettings();
+    if (_currentStubSettings == null) {
+      _currentStubSettings = new StubSettings();
+      _currentArea.setStubSettings(_currentStubSettings);
+    }
+    _currentArea.setStubType(StubType.STUB);
+  }
+
+  @Override
+  public void exitOa_stub(Oa_stubContext ctx) {
+    _currentStubSettings = null;
+  }
+
+  @Override
+  public void exitOai_passive(Oai_passiveContext ctx) {
+    _currentOspfInterface.setOspfPassive(true);
+  }
+
+  @Override
+  public void enterOan_default_lsa(Oan_default_lsaContext ctx) {
+    if (_currentNssaSettings.getDefaultLsaType() == OspfDefaultOriginateType.NONE) {
+      _currentNssaSettings.setDefaultLsaType(OspfDefaultOriginateType.INTER_AREA);
+    }
+  }
+
+  @Override
+  public void exitOand_metric_type(Oand_metric_typeContext ctx) {
+    if (ctx.METRIC_TYPE_1() != null) {
+      _currentNssaSettings.setDefaultLsaType(OspfDefaultOriginateType.EXTERNAL_TYPE1);
+    }
+    if (ctx.METRIC_TYPE_2() != null) {
+      _currentNssaSettings.setDefaultLsaType(OspfDefaultOriginateType.EXTERNAL_TYPE2);
+    }
+  }
+
+  @Override
+  public void exitOand_type_7(Oand_type_7Context ctx) {
+    if (_currentNssaSettings.getDefaultLsaType() != OspfDefaultOriginateType.EXTERNAL_TYPE1) {
+      _currentNssaSettings.setDefaultLsaType(OspfDefaultOriginateType.EXTERNAL_TYPE2);
+    }
+  }
+
+  @Override
+  public void exitOan_no_summaries(Oan_no_summariesContext ctx) {
+    _currentNssaSettings.setNoSummaries(true);
+  }
+
+  @Override
+  public void exitOas_no_summaries(Oas_no_summariesContext ctx) {
+    _currentStubSettings.setNoSummaries(true);
   }
 
   @Override
@@ -1837,20 +2253,19 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void enterPo_policy_statement(Po_policy_statementContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
     Map<String, PolicyStatement> policyStatements = _configuration.getPolicyStatements();
-    _currentPolicyStatement =
-        policyStatements.computeIfAbsent(name, n -> new PolicyStatement(n, definitionLine));
+    _currentPolicyStatement = policyStatements.computeIfAbsent(name, PolicyStatement::new);
     _currentPsTerm = _currentPolicyStatement.getDefaultTerm();
     _currentPsThens = _currentPsTerm.getThens();
+    defineStructure(POLICY_STATEMENT, name, ctx);
   }
 
   @Override
   public void enterPo_prefix_list(Po_prefix_listContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
     Map<String, PrefixList> prefixLists = _configuration.getPrefixLists();
-    _currentPrefixList = prefixLists.computeIfAbsent(name, n -> new PrefixList(n, definitionLine));
+    _currentPrefixList = prefixLists.computeIfAbsent(name, PrefixList::new);
+    defineStructure(PREFIX_LIST, name, ctx);
   }
 
   @Override
@@ -1878,6 +2293,35 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     } else if (ctx.IPV6_PREFIX() != null) {
       _currentRoute6FilterPrefix = new Prefix6(ctx.IPV6_PREFIX().getText());
       _currentRouteFilter.setIpv6(true);
+    }
+  }
+
+  @Override
+  public void exitPopsfrf_address_mask(Popsfrf_address_maskContext ctx) {
+    if (_currentRouteFilterPrefix != null) { // ipv4
+      if (ctx.IP_ADDRESS() != null) {
+        Route4FilterLine line =
+            new Route4FilterLineAddressMask(
+                _currentRouteFilterPrefix, new Ip(ctx.IP_ADDRESS().getText()).inverted());
+        _currentRouteFilterLine = _currentRouteFilter.insertLine(line, Route4FilterLine.class);
+      } else {
+        _w.redFlag(
+            String.format(
+                "Route filter mask does not match version for prefix %s",
+                _currentRouteFilterPrefix));
+      }
+    } else if (_currentRoute6FilterPrefix != null) { // ipv6
+      if (ctx.IPV6_ADDRESS() != null) {
+        Route6FilterLine line =
+            new Route6FilterLineAddressMask(
+                _currentRoute6FilterPrefix, new Ip6(ctx.IPV6_ADDRESS().getText()).inverted());
+        _currentRoute6FilterLine = _currentRouteFilter.insertLine(line, Route6FilterLine.class);
+      } else {
+        _w.redFlag(
+            String.format(
+                "Route filter mask does not match version for prefix %s",
+                _currentRouteFilterPrefix));
+      }
     }
   }
 
@@ -2040,14 +2484,89 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void enterSe_address_book(Se_address_bookContext ctx) {
+    String name = ctx.GLOBAL().getText();
+    _currentAddressBook =
+        _configuration
+            .getGlobalAddressBooks()
+            .computeIfAbsent(name, n -> new AddressBook(n, new TreeMap<>()));
+  }
+
+  @Override
+  public void exitSe_address_book(Se_address_bookContext ctx) {
+    _currentAddressBook = null;
+  }
+
+  @Override
+  public void enterSead_address_set(Sead_address_setContext ctx) {
+    String name = ctx.name.getText();
+    AddressBookEntry entry =
+        _currentAddressBook.getEntries().computeIfAbsent(name, AddressSetAddressBookEntry::new);
+    try {
+      _currentAddressSetAddressBookEntry = (AddressSetAddressBookEntry) entry;
+    } catch (ClassCastException e) {
+      _w.redFlag(
+          "Cannot create address-set address-book entry \""
+              + name
+              + "\" because a different type of address-book entry with that name already exists");
+      // Create a throw-away entry so deeper parsing does not fail for this entry
+      _currentAddressSetAddressBookEntry = new AddressSetAddressBookEntry(name);
+    }
+  }
+
+  @Override
+  public void exitSead_address(Sead_addressContext ctx) {
+    String name = ctx.name.getText();
+    if (ctx.wildcard_address() != null) {
+      IpWildcard ipWildcard = toIpWildcard(ctx.wildcard_address());
+      AddressBookEntry addressEntry = new AddressAddressBookEntry(name, ipWildcard);
+      _currentAddressBook.getEntries().put(name, addressEntry);
+    } else if (ctx.address != null) {
+      IpWildcard ipWildcard = new IpWildcard(new Ip(ctx.address.getText()));
+      AddressBookEntry addressEntry = new AddressAddressBookEntry(name, ipWildcard);
+      _currentAddressBook.getEntries().put(name, addressEntry);
+    } else if (ctx.prefix != null) {
+      IpWildcard ipWildcard = new IpWildcard(Prefix.parse(ctx.prefix.getText()));
+      AddressBookEntry addressEntry = new AddressAddressBookEntry(name, ipWildcard);
+      _currentAddressBook.getEntries().put(name, addressEntry);
+    } else if (ctx.DESCRIPTION() != null) {
+      /* TODO - data model doesn't have a place to put this yet. */
+    } else {
+      throw convError(IpWildcard.class, ctx);
+    }
+  }
+
+  @Override
+  public void exitSead_address_set(Sead_address_setContext ctx) {
+    _currentAddressSetAddressBookEntry = null;
+  }
+
+  @Override
+  public void exitSeada_address(Seada_addressContext ctx) {
+    String name = ctx.name.getText();
+    _currentAddressSetAddressBookEntry
+        .getEntries()
+        .add(new AddressSetEntry(name, _currentAddressBook));
+  }
+
+  @Override
+  public void exitSeada_address_set(Seada_address_setContext ctx) {
+    String name = ctx.name.getText();
+    _currentAddressSetAddressBookEntry
+        .getEntries()
+        .add(new AddressSetEntry(name, _currentAddressBook));
+  }
+
+  @Override
   public void enterSe_authentication_key_chain(Se_authentication_key_chainContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.getStart().getLine();
+    int line = getLine(ctx.getStart());
     JuniperAuthenticationKeyChain authenticationkeyChain =
         _configuration
             .getAuthenticationKeyChains()
             .computeIfAbsent(name, n -> new JuniperAuthenticationKeyChain(n, line));
     _currentAuthenticationKeyChain = authenticationkeyChain;
+    defineStructure(AUTHENTICATION_KEY_CHAIN, name, ctx);
   }
 
   @Override
@@ -2063,51 +2582,37 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void enterSeik_gateway(Seik_gatewayContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
-    _currentIkeGateway =
-        _configuration
-            .getIkeGateways()
-            .computeIfAbsent(name, n -> new IkeGateway(n, definitionLine));
+    _currentIkeGateway = _configuration.getIkeGateways().computeIfAbsent(name, IkeGateway::new);
+    defineStructure(IKE_GATEWAY, name, ctx);
   }
 
   @Override
   public void enterSeik_policy(Seik_policyContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
-    _currentIkePolicy =
-        _configuration
-            .getIkePolicies()
-            .computeIfAbsent(name, n -> new IkePolicy(n, definitionLine));
+    _currentIkePolicy = _configuration.getIkePolicies().computeIfAbsent(name, IkePolicy::new);
+    defineStructure(IKE_POLICY, name, ctx);
   }
 
   @Override
   public void enterSeik_proposal(Seik_proposalContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
-    _currentIkeProposal =
-        _configuration
-            .getIkeProposals()
-            .computeIfAbsent(name, n -> new IkeProposal(n, definitionLine));
+    _currentIkeProposal = _configuration.getIkeProposals().computeIfAbsent(name, IkeProposal::new);
+    defineStructure(IKE_PROPOSAL, name, ctx);
   }
 
   @Override
   public void enterSeip_policy(Seip_policyContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
-    _currentIpsecPolicy =
-        _configuration
-            .getIpsecPolicies()
-            .computeIfAbsent(name, n -> new IpsecPolicy(n, definitionLine));
+    _currentIpsecPolicy = _configuration.getIpsecPolicies().computeIfAbsent(name, IpsecPolicy::new);
+    defineStructure(IPSEC_POLICY, name, ctx);
   }
 
   @Override
   public void enterSeip_proposal(Seip_proposalContext ctx) {
     String name = ctx.name.getText();
-    int definitionLine = ctx.name.getStart().getLine();
     _currentIpsecProposal =
-        _configuration
-            .getIpsecProposals()
-            .computeIfAbsent(name, n -> new IpsecProposal(n, definitionLine));
+        _configuration.getIpsecProposals().computeIfAbsent(name, IpsecProposal::new);
+    defineStructure(IPSEC_PROPOSAL, name, ctx);
   }
 
   @Override
@@ -2136,6 +2641,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
                   _currentFromZone.getInboundFilter());
         }
       }
+
       if (ctx.to.JUNOS_HOST() == null) {
         _currentToZone = _configuration.getZones().get(toName);
         if (_currentToZone == null) {
@@ -2146,33 +2652,60 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
           _configuration.getZones().put(toName, _currentToZone);
         }
       }
+
       if (ctx.from.JUNOS_HOST() != null) {
+        // Policy for traffic originating from this device
         _currentFilter = _currentToZone.getFromHostFilter();
         if (_currentFilter == null) {
-          _currentFilter = new FirewallFilter(policyName, Family.INET, -1);
+          _currentFilter = new FirewallFilter(policyName, Family.INET);
           _configuration.getFirewallFilters().put(policyName, _currentFilter);
           _currentToZone.setFromHostFilter(_currentFilter);
         }
       } else if (ctx.to.JUNOS_HOST() != null) {
+        // Policy for traffic destined for this device
         _currentFilter = _currentFromZone.getToHostFilter();
         if (_currentFilter == null) {
-          _currentFilter = new FirewallFilter(policyName, Family.INET, -1);
+          _currentFilter = new FirewallFilter(policyName, Family.INET);
           _configuration.getFirewallFilters().put(policyName, _currentFilter);
           _currentFromZone.setToHostFilter(_currentFilter);
         }
       } else {
+        // Policy for thru traffic
         _currentFilter = _currentFromZone.getToZonePolicies().get(toName);
         if (_currentFilter == null) {
-          _currentFilter = new FirewallFilter(policyName, Family.INET, -1);
+          _currentFilter = new FirewallFilter(policyName, Family.INET);
           _configuration.getFirewallFilters().put(policyName, _currentFilter);
           _currentFromZone.getToZonePolicies().put(toName, _currentFilter);
         }
+        // Add this filter to the to-zone for easy combination with egress ACL
+        _currentToZone.getFromZonePolicies().put(policyName, _currentFilter);
+      }
+
+      /*
+       * Need to keep track of the from-zone for this filter to apply srcInterface filter to the
+       * firewallFilter
+       */
+      if (_currentFromZone != null) {
+        _currentFilter.setFromZone(_currentFromZone.getName());
       }
     }
   }
 
   @Override
-  public void enterSepf_policy(Sepf_policyContext ctx) {
+  public void enterSep_global(Sep_globalContext ctx) {
+    _currentFilter =
+        _configuration
+            .getFirewallFilters()
+            .computeIfAbsent(ACL_NAME_GLOBAL_POLICY, n -> new FirewallFilter(n, Family.INET));
+  }
+
+  @Override
+  public void exitSep_global(Sep_globalContext ctx) {
+    _currentFilter = null;
+  }
+
+  @Override
+  public void enterSepctx_policy(Sepctx_policyContext ctx) {
     String termName = ctx.name.getText();
     _currentFwTerm = _currentFilter.getTerms().computeIfAbsent(termName, FwTerm::new);
   }
@@ -2207,7 +2740,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
                 + _currentZone.getName()
                 + "~INTERFACE~"
                 + _currentZoneInterface.getName();
-        _currentZoneInboundFilter = new FirewallFilter(name, Family.INET, -1);
+        _currentZoneInboundFilter = new FirewallFilter(name, Family.INET);
         _configuration.getFirewallFilters().put(name, _currentZoneInboundFilter);
         _currentZone
             .getInboundInterfaceFilters()
@@ -2220,6 +2753,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void enterSezs_interfaces(Sezs_interfacesContext ctx) {
     _currentZoneInterface = initInterface(ctx.interface_id());
     _currentZone.getInterfaces().add(_currentZoneInterface);
+    _configuration.getInterfaceZones().put(_currentZoneInterface, _currentZone);
   }
 
   @Override
@@ -2230,11 +2764,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     try {
       _currentAddressSetAddressBookEntry = (AddressSetAddressBookEntry) entry;
     } catch (ClassCastException e) {
-      throw new BatfishException(
+      _w.redFlag(
           "Cannot create address-set address-book entry \""
               + name
-              + "\" because a different type of address-book entry with that name already exists",
-          e);
+              + "\" because a different type of address-book entry with that name already exists");
+      // Create a throw-away entry so deeper parsing does not fail for this entry
+      _currentAddressSetAddressBookEntry = new AddressSetAddressBookEntry(name);
     }
   }
 
@@ -2251,10 +2786,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     String hostname = ctx.hostname.getText();
     _configuration.getTacplusServers().add(hostname);
     _currentTacplusServer =
-        _configuration
-            .getJf()
-            .getTacplusServers()
-            .computeIfAbsent(hostname, k -> new TacplusServer(k));
+        _configuration.getJf().getTacplusServers().computeIfAbsent(hostname, TacplusServer::new);
   }
 
   @Override
@@ -2267,6 +2799,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void enterSys_host(Sys_hostContext ctx) {
     String hostname = ctx.hostname.getText();
     _configuration.getSyslogHosts().add(hostname);
+  }
+
+  @Override
+  public void enterS_vlans_named(S_vlans_namedContext ctx) {
+    _currentVlanName = ctx.name.getText();
+    defineStructure(VLAN, _currentVlanName, ctx);
   }
 
   @Override
@@ -2283,19 +2821,46 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitAat_destination_port(Aat_destination_portContext ctx) {
     SubRange subrange = toSubRange(ctx.subrange());
-    _currentApplicationTerm.getLine().getDstPorts().add(subrange);
+    HeaderSpace oldHeaderSpace = _currentApplicationTerm.getHeaderSpace();
+    _currentApplicationTerm.setHeaderSpace(
+        oldHeaderSpace
+            .toBuilder()
+            .setDstPorts(
+                ImmutableSet.<SubRange>builder()
+                    .addAll(oldHeaderSpace.getDstPorts())
+                    .add(subrange)
+                    .build())
+            .build());
   }
 
   @Override
   public void exitAat_protocol(Aat_protocolContext ctx) {
     IpProtocol protocol = toIpProtocol(ctx.ip_protocol());
-    _currentApplicationTerm.getLine().getIpProtocols().add(protocol);
+    HeaderSpace oldHeaderSpace = _currentApplicationTerm.getHeaderSpace();
+    _currentApplicationTerm.setHeaderSpace(
+        oldHeaderSpace
+            .toBuilder()
+            .setIpProtocols(
+                ImmutableSet.<IpProtocol>builder()
+                    .addAll(oldHeaderSpace.getIpProtocols())
+                    .add(protocol)
+                    .build())
+            .build());
   }
 
   @Override
   public void exitAat_source_port(Aat_source_portContext ctx) {
     SubRange subrange = toSubRange(ctx.subrange());
-    _currentApplicationTerm.getLine().getSrcPorts().add(subrange);
+    HeaderSpace oldHeaderSpace = _currentApplicationTerm.getHeaderSpace();
+    _currentApplicationTerm.setHeaderSpace(
+        oldHeaderSpace
+            .toBuilder()
+            .setSrcPorts(
+                ImmutableSet.<SubRange>builder()
+                    .addAll(oldHeaderSpace.getSrcPorts())
+                    .add(subrange)
+                    .build())
+            .build());
   }
 
   @Override
@@ -2313,6 +2878,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     _currentBgpGroup.setAdvertisePeerAs(true);
   }
 
+  @Override
   public void exitB_authentication_algorithm(B_authentication_algorithmContext ctx) {
     if (ctx.AES_128_CMAC_96() != null) {
       _currentBgpGroup.setAuthenticationAlgorithm(BgpAuthenticationAlgorithm.AES_128_CMAC_96);
@@ -2323,18 +2889,17 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
+  @Override
   public void exitB_authentication_key(B_authentication_keyContext ctx) {
     _currentBgpGroup.setAuthenticationKey(ctx.key.getText());
   }
 
+  @Override
   public void exitB_authentication_key_chain(B_authentication_key_chainContext ctx) {
     _currentBgpGroup.setAuthenticationKeyChainName(ctx.name.getText());
-    int line = ctx.getStart().getLine();
+    int line = getLine(ctx.getStart());
     _configuration.referenceStructure(
-        JuniperStructureType.AUTHENTICATION_KEY_CHAIN,
-        ctx.name.getText(),
-        JuniperStructureUsage.AUTHENTICATION_KEY_CHAINS_POLICY,
-        line);
+        AUTHENTICATION_KEY_CHAIN, ctx.name.getText(), AUTHENTICATION_KEY_CHAINS_POLICY, line);
   }
 
   @Override
@@ -2349,33 +2914,20 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitB_enforce_first_as(B_enforce_first_asContext ctx) {
+    _currentBgpGroup.setEnforceFirstAs(true);
+  }
+
+  @Override
   public void exitB_export(B_exportContext ctx) {
     Policy_expressionContext expr = ctx.expr;
-    String name;
-    int line;
-    if (expr.variable() != null) {
-      name = expr.variable().getText();
-      line = expr.variable().getStart().getLine();
-    } else {
-      name = toComplexPolicyStatement(expr);
-      line = expr.getStart().getLine();
-    }
-    _currentBgpGroup.getExportPolicies().put(name, line);
+    _currentBgpGroup.getExportPolicies().add(toComplexPolicyStatement(expr, BGP_EXPORT_POLICY));
   }
 
   @Override
   public void exitB_import(B_importContext ctx) {
     Policy_expressionContext expr = ctx.expr;
-    String name;
-    int line;
-    if (expr.variable() != null) {
-      name = expr.variable().getText();
-      line = expr.variable().getStart().getLine();
-    } else {
-      name = toComplexPolicyStatement(expr);
-      line = expr.getStart().getLine();
-    }
-    _currentBgpGroup.getImportPolicies().put(name, line);
+    _currentBgpGroup.getImportPolicies().add(toComplexPolicyStatement(expr, BGP_IMPORT_POLICY));
   }
 
   @Override
@@ -2449,19 +3001,13 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   @Override
   public void exitFftf_destination_address(Fftf_destination_addressContext ctx) {
-    if (ctx.IP_ADDRESS() != null || ctx.IP_PREFIX() != null) {
-      Prefix prefix;
-      if (ctx.IP_PREFIX() != null) {
-        prefix = Prefix.parse(ctx.IP_PREFIX().getText());
-      } else {
-        prefix = new Prefix(new Ip(ctx.IP_ADDRESS().getText()), Prefix.MAX_PREFIX_LENGTH);
-      }
-      FwFrom from;
-      if (ctx.EXCEPT() != null) {
-        from = new FwFromDestinationAddressExcept(prefix);
-      } else {
-        from = new FwFromDestinationAddress(prefix);
-      }
+    FwFrom from;
+    IpWildcard ipWildcard = formIpWildCard(ctx.fftfa_address_mask_prefix());
+    if (ipWildcard != null) {
+      from =
+          ctx.EXCEPT() != null
+              ? new FwFromDestinationAddressExcept(ipWildcard)
+              : new FwFromDestinationAddress(ipWildcard);
       _currentFwTerm.getFroms().add(from);
     }
   }
@@ -2496,6 +3042,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       from = new FwFromDestinationPrefixList(name);
     }
     _currentFwTerm.getFroms().add(from);
+    _configuration.referenceStructure(
+        PREFIX_LIST, name, FIREWALL_FILTER_DESTINATION_PREFIX_LIST, getLine(ctx.name.start));
   }
 
   @Override
@@ -2525,17 +3073,21 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       // TODO: support icmpv6
       return;
     }
-    SubRange icmpCodeRange;
+    SubRange icmpCodeRange = null;
     if (ctx.subrange() != null) {
       icmpCodeRange = toSubRange(ctx.subrange());
     } else if (ctx.icmp_code() != null) {
-      int icmpCode = toIcmpCode(ctx.icmp_code());
-      icmpCodeRange = new SubRange(icmpCode, icmpCode);
+      Integer icmpCode = toIcmpCode(ctx.icmp_code(), _w);
+      if (icmpCode != null) {
+        icmpCodeRange = new SubRange(icmpCode, icmpCode);
+      }
     } else {
-      throw new BatfishException("Invalid icmp-code");
+      _w.redFlag(String.format("Invalid icmp-code: '%s'", ctx.getText()));
     }
-    FwFrom from = new FwFromIcmpCode(icmpCodeRange);
-    _currentFwTerm.getFroms().add(from);
+    if (icmpCodeRange != null) {
+      FwFrom from = new FwFromIcmpCode(icmpCodeRange);
+      _currentFwTerm.getFroms().add(from);
+    }
   }
 
   @Override
@@ -2554,6 +3106,13 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       throw new BatfishException("Invalid icmp-type");
     }
     FwFrom from = new FwFromIcmpType(icmpTypeRange);
+    _currentFwTerm.getFroms().add(from);
+  }
+
+  @Override
+  public void exitFftf_ip_protocol(Fftf_ip_protocolContext ctx) {
+    IpProtocol protocol = toIpProtocol(ctx.ip_protocol());
+    FwFrom from = new FwFromProtocol(protocol);
     _currentFwTerm.getFroms().add(from);
   }
 
@@ -2603,6 +3162,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
     FwFromPrefixList from = new FwFromPrefixList(name);
     _currentFwTerm.getFroms().add(from);
+    _configuration.referenceStructure(
+        PREFIX_LIST, name, FIREWALL_FILTER_PREFIX_LIST, getLine(ctx.name.start));
   }
 
   @Override
@@ -2614,19 +3175,13 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   @Override
   public void exitFftf_source_address(Fftf_source_addressContext ctx) {
-    if (ctx.IP_ADDRESS() != null || ctx.IP_PREFIX() != null) {
-      Prefix prefix;
-      if (ctx.IP_PREFIX() != null) {
-        prefix = Prefix.parse(ctx.IP_PREFIX().getText());
-      } else {
-        prefix = new Prefix(new Ip(ctx.IP_ADDRESS().getText()), Prefix.MAX_PREFIX_LENGTH);
-      }
-      FwFrom from;
-      if (ctx.EXCEPT() != null) {
-        from = new FwFromSourceAddressExcept(prefix);
-      } else {
-        from = new FwFromSourceAddress(prefix);
-      }
+    FwFrom from;
+    IpWildcard ipWildcard = formIpWildCard(ctx.fftfa_address_mask_prefix());
+    if (ipWildcard != null) {
+      from =
+          ctx.EXCEPT() != null
+              ? new FwFromSourceAddressExcept(ipWildcard)
+              : new FwFromSourceAddress(ipWildcard);
       _currentFwTerm.getFroms().add(from);
     }
   }
@@ -2661,6 +3216,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       from = new FwFromSourcePrefixList(name);
     }
     _currentFwTerm.getFroms().add(from);
+    _configuration.referenceStructure(
+        PREFIX_LIST, name, FIREWALL_FILTER_SOURCE_PREFIX_LIST, getLine(ctx.name.start));
   }
 
   @Override
@@ -2766,9 +3323,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitFod_active_server_group(Fod_active_server_groupContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
     _currentDhcpRelayGroup.setActiveServerGroup(name);
-    _currentDhcpRelayGroup.setActiveServerGroupLine(line);
+    _configuration.referenceStructure(
+        DHCP_RELAY_SERVER_GROUP,
+        name,
+        DHCP_RELAY_GROUP_ACTIVE_SERVER_GROUP,
+        getLine(ctx.name.getStart()));
   }
 
   @Override
@@ -2785,6 +3345,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       String interfaceName = iface.getName();
       _currentDhcpRelayGroup.getInterfaces().add(interfaceName);
     }
+  }
+
+  @Override
+  public void exitI_description(I_descriptionContext ctx) {
+    String text = unquote(ctx.description().text.getText());
+    _currentInterface.setDescription(text);
   }
 
   @Override
@@ -2809,6 +3375,37 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitIfe_filter(Ife_filterContext ctx) {
+    FilterContext filter = ctx.filter();
+    String name = filter.name.getText();
+    int line = getLine(filter.name.getStart());
+    _configuration.referenceStructure(FIREWALL_FILTER, name, INTERFACE_FILTER, line);
+  }
+
+  @Override
+  public void exitIfe_port_mode(Ife_port_modeContext ctx) {
+    if (ctx.TRUNK() != null) {
+      _currentInterface.setSwitchportMode(SwitchportMode.TRUNK);
+    }
+  }
+
+  @Override
+  public void exitIfe_vlan(Ife_vlanContext ctx) {
+    if (_currentInterface.getSwitchportMode() == SwitchportMode.TRUNK) {
+      if (ctx.range() != null) {
+        List<SubRange> subRanges = toRange(ctx.range());
+        subRanges.forEach(subRange -> _currentInterface.getAllowedVlans().add(subRange));
+      }
+    } else if (ctx.name != null) {
+      // SwitchPortMode here can be ACCESS or NONE, overwrite both with ACCESS(considered default)
+      _currentInterface.setSwitchportMode(SwitchportMode.ACCESS);
+      String name = ctx.name.getText();
+      _currentInterface.setAccessVlan(name);
+      _configuration.referenceStructure(VLAN, name, INTERFACE_VLAN, getLine(ctx.name.getStart()));
+    }
+  }
+
+  @Override
   public void exitIfi_address(Ifi_addressContext ctx) {
     _currentInterfaceAddress = null;
   }
@@ -2816,18 +3413,27 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitIfi_filter(Ifi_filterContext ctx) {
     FilterContext filter = ctx.filter();
+    String name = filter.name.getText();
+    JuniperStructureUsage usage = INTERFACE_FILTER;
     if (filter.direction() != null) {
-      String name = filter.name.getText();
-      int line = filter.name.getStart().getLine();
       DirectionContext direction = filter.direction();
       if (direction.INPUT() != null) {
         _currentInterface.setIncomingFilter(name);
-        _currentInterface.setIncomingFilterLine(line);
+        usage = INTERFACE_INCOMING_FILTER;
       } else if (direction.OUTPUT() != null) {
         _currentInterface.setOutgoingFilter(name);
-        _currentInterface.setOutgoingFilterLine(line);
+        usage = INTERFACE_OUTGOING_FILTER;
       }
     }
+    _configuration.referenceStructure(
+        FIREWALL_FILTER, name, usage, getLine(filter.name.getStart()));
+  }
+
+  @Override
+  public void exitIfia_arp(Ifia_arpContext ctx) {
+    Ip ip = new Ip(ctx.ip.getText());
+    _currentInterface.setAdditionalArpIps(
+        ImmutableSet.<Ip>builder().addAll(_currentInterface.getAdditionalArpIps()).add(ip).build());
   }
 
   @Override
@@ -2882,6 +3488,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       policies.add(policy.getText());
     }
     _currentRoutingInstance.getIsisSettings().getExportPolicies().addAll(policies);
+    // Needs data plane implementation
+    todo(ctx, F_ISIS_EXPORT);
   }
 
   @Override
@@ -2900,6 +3508,17 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitIso_timeout(Iso_timeoutContext ctx) {
+    _currentRoutingInstance.getIsisSettings().setOverloadTimeout(toInt(ctx.DEC()));
+  }
+
+  @Override
+  public void exitIs_reference_bandwidth(Is_reference_bandwidthContext ctx) {
+    long referenceBandwidth = toReferenceBandwidth(ctx.reference_bandwidth());
+    _currentRoutingInstance.getIsisSettings().setReferenceBandwidth((double) referenceBandwidth);
+  }
+
+  @Override
   public void exitIsi_level(Isi_levelContext ctx) {
     _currentIsisInterfaceLevelSettings = null;
   }
@@ -2915,8 +3534,43 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitIsib_minimum_interval(Isib_minimum_intervalContext ctx) {
+    _currentIsisInterface
+        .getIsisSettings()
+        .setBfdLivenessDetectionMinimumInterval(toInt(ctx.DEC()));
+  }
+
+  @Override
+  public void exitIsib_multiplier(Isib_multiplierContext ctx) {
+    _currentIsisInterface.getIsisSettings().setBfdLivenessDetectionMultiplier(toInt(ctx.DEC()));
+  }
+
+  @Override
   public void exitIsil_enable(Isil_enableContext ctx) {
     _currentIsisInterfaceLevelSettings.setEnabled(true);
+  }
+
+  @Override
+  public void exitIsil_hello_authentication_key(Isil_hello_authentication_keyContext ctx) {
+    String key = unquote(ctx.key.getText());
+    String decodedKeyHash = decryptIfNeededAndHash(key, getLine(ctx.key.getStart()));
+    _currentIsisInterfaceLevelSettings.setHelloAuthenticationKey(decodedKeyHash);
+  }
+
+  @Override
+  public void exitIsil_hello_authentication_type(Isil_hello_authentication_typeContext ctx) {
+    _currentIsisInterfaceLevelSettings.setHelloAuthenticationType(
+        toIsisHelloAuthenticationType(ctx.hello_authentication_type()));
+  }
+
+  @Override
+  public void exitIsil_hello_interval(Isil_hello_intervalContext ctx) {
+    _currentIsisInterfaceLevelSettings.setHelloInterval(toInt(ctx.DEC()));
+  }
+
+  @Override
+  public void exitIsil_hold_time(Isil_hold_timeContext ctx) {
+    _currentIsisInterfaceLevelSettings.setHoldTime(toInt(ctx.DEC()));
   }
 
   @Override
@@ -2966,8 +3620,15 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitO_export(O_exportContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
-    _currentRoutingInstance.getOspfExportPolicies().put(name, line);
+    _currentRoutingInstance.getOspfExportPolicies().add(name);
+    _configuration.referenceStructure(
+        POLICY_STATEMENT, name, OSPF_EXPORT_POLICY, getLine(ctx.name.getStart()));
+  }
+
+  @Override
+  public void exitO_reference_bandwidth(O_reference_bandwidthContext ctx) {
+    long referenceBandwidth = toReferenceBandwidth(ctx.reference_bandwidth());
+    _currentRoutingInstance.setOspfReferenceBandwidth((double) referenceBandwidth);
   }
 
   @Override
@@ -2995,6 +3656,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitOaa_restrict(FlatJuniperParser.Oaa_restrictContext ctx) {
     _currentAreaRangeRestrict = true;
+  }
+
+  @Override
+  public void exitOai_metric(FlatJuniperParser.Oai_metricContext ctx) {
+    int ospfCost = toInt(ctx.DEC());
+    _currentOspfInterface.setOspfCost(ospfCost);
   }
 
   @Override
@@ -3047,7 +3714,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       String text = ctx.invalid_community_regex().getText();
       _currentCommunityList.getLines().add(new CommunityListLine(text));
       _w.redFlag(
-          ctx.getStart().getLine()
+          getLine(ctx.getStart())
               + ": In community-list '"
               + _currentCommunityList.getName()
               + "': Invalid or unsupported community regex: '"
@@ -3088,6 +3755,14 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitPopsf_as_path_group(Popsf_as_path_groupContext ctx) {
+    _w.redFlag(
+        String.format(
+            "unimplemented 'policy-options policy-statement term' from clause: %s",
+            getFullText(ctx)));
+  }
+
+  @Override
   public void exitPopsf_color(Popsf_colorContext ctx) {
     int color = toInt(ctx.color);
     PsFromColor fromColor = new PsFromColor(color);
@@ -3115,13 +3790,21 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitPopsf_instance(Popsf_instanceContext ctx) {
+    _w.redFlag(
+        String.format(
+            "unimplemented 'policy-options policy-statement term' from clause: %s",
+            getFullText(ctx)));
+  }
+
+  @Override
   public void exitPopsf_interface(Popsf_interfaceContext ctx) {
-    String name = ctx.id.name.getText();
-    int definitionLine = ctx.id.name.getLine();
+    String name = getInterfaceName(ctx.id);
+    int definitionLine = getLine(ctx.id.name);
     String unit = null;
     if (ctx.id.unit != null) {
       unit = ctx.id.unit.getText();
-      definitionLine = ctx.id.unit.getLine();
+      definitionLine = getLine(ctx.id.unit);
     }
     String unitFullName = name + "." + unit;
     Map<String, Interface> interfaces = _configuration.getInterfaces();
@@ -3163,7 +3846,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   @Override
   public void exitPopsf_policy(Popsf_policyContext ctx) {
-    String policyName = toComplexPolicyStatement(ctx.policy_expression());
+    String policyName = toComplexPolicyStatement(ctx.policy_expression(), POLICY_STATEMENT_POLICY);
     PsFrom from = new PsFromPolicyStatement(policyName);
     _currentPsTerm.getFroms().add(from);
   }
@@ -3173,6 +3856,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     String name = ctx.name.getText();
     PsFrom from = new PsFromPrefixList(name);
     _currentPsTerm.getFroms().add(from);
+    _configuration.referenceStructure(
+        PREFIX_LIST, name, POLICY_STATEMENT_PREFIX_LIST, getLine(ctx.name.start));
   }
 
   @Override
@@ -3189,6 +3874,8 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       throw new BatfishException("Invalid prefix-list-filter length specification");
     }
     _currentPsTerm.getFroms().add(from);
+    _configuration.referenceStructure(
+        PREFIX_LIST, name, POLICY_STATEMENT_PREFIX_LIST_FILTER, getLine(ctx.name.start));
   }
 
   @Override
@@ -3196,6 +3883,14 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     RoutingProtocol protocol = toRoutingProtocol(ctx.protocol);
     PsFromProtocol fromProtocol = new PsFromProtocol(protocol);
     _currentPsTerm.getFroms().add(fromProtocol);
+  }
+
+  @Override
+  public void exitPopsf_rib(Popsf_ribContext ctx) {
+    _w.redFlag(
+        String.format(
+            "unimplemented 'policy-options policy-statement term' from clause: %s",
+            getFullText(ctx)));
   }
 
   @Override
@@ -3208,6 +3903,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitPopsf_tag(Popsf_tagContext ctx) {
+    int tag = toInt(ctx.DEC());
+    _currentPsTerm.getFroms().add(new PsFromTag(tag));
+  }
+
+  @Override
   public void exitPopsfrf_then(Popsfrf_thenContext ctx) {
     _currentPsThens = _currentPsTerm.getThens();
   }
@@ -3215,6 +3916,24 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitPopst_accept(Popst_acceptContext ctx) {
     _currentPsThens.add(PsThenAccept.INSTANCE);
+  }
+
+  @Override
+  public void exitPopst_as_path_prepend(Popst_as_path_prependContext ctx) {
+    List<Long> asPaths = new LinkedList<>();
+    if (ctx.DEC() != null) {
+      asPaths.add(toLong(ctx.DEC()));
+    } else if (ctx.DOUBLE_QUOTED_STRING() != null) {
+      String[] unquoted = unquote(ctx.DOUBLE_QUOTED_STRING().getText()).split("\\s+");
+      Arrays.stream(unquoted).map(Long::parseLong).forEach(asPaths::add);
+    } else {
+      _w.redFlag(
+          String.format(
+              "unimplemented 'policy-options policy-statement term' then clause: %s",
+              getFullText(ctx)));
+      return;
+    }
+    _currentPsThens.add(new PsThenAsPathPrepend(asPaths));
   }
 
   @Override
@@ -3239,6 +3958,28 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitPopst_default_action_accept(Popst_default_action_acceptContext ctx) {
+    _currentPsThens.add(new PsThenDefaultActionAccept());
+  }
+
+  @Override
+  public void exitPopst_default_action_reject(Popst_default_action_rejectContext ctx) {
+    _currentPsThens.add(new PsThenDefaultActionReject());
+  }
+
+  @Override
+  public void exitPopst_external(Popst_externalContext ctx) {
+    int type = toInt(ctx.DEC());
+    if (type == 1) {
+      _currentPsThens.add(new PsThenExternal(OspfMetricType.E1));
+    } else if (type == 2) {
+      _currentPsThens.add(new PsThenExternal(OspfMetricType.E2));
+    } else {
+      _w.redFlag(String.format("unimplemented: then %s", getFullText(ctx)));
+    }
+  }
+
+  @Override
   public void exitPopst_local_preference(Popst_local_preferenceContext ctx) {
     int localPreference = toInt(ctx.localpref);
     PsThenLocalPreference then = new PsThenLocalPreference(localPreference);
@@ -3250,6 +3991,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     int metric = toInt(ctx.metric);
     PsThenMetric then = new PsThenMetric(metric);
     _currentPsThens.add(then);
+  }
+
+  @Override
+  public void exitPopst_metric_add(Popst_metric_addContext ctx) {
+    int metric = toInt(ctx.metric);
+    _currentPsThens.add(new PsThenMetricAdd(metric));
   }
 
   @Override
@@ -3266,8 +4013,44 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
+  public void exitPopst_next_hop_self(Popst_next_hop_selfContext ctx) {
+    _currentPsThens.add(PsThenNextHopSelf.INSTANCE);
+  }
+
+  @Override
   public void exitPopst_next_policy(Popst_next_policyContext ctx) {
     _currentPsThens.add(PsThenNextPolicy.INSTANCE);
+  }
+
+  @Override
+  public void exitPopst_next_term(Popst_next_termContext ctx) {
+    // The next-term action itself is a no-op in Batfish, so we do not model this behavior.
+    //
+    // TODO(https://github.com/batfish/batfish/issues/1551): need to implement next_term replacing
+    // any existing flow control action.
+  }
+
+  @Override
+  public void exitPopst_origin(Popst_originContext ctx) {
+    OriginType origin;
+    if (ctx.EGP() != null) {
+      origin = OriginType.EGP;
+    } else if (ctx.IGP() != null) {
+      origin = OriginType.IGP;
+    } else if (ctx.INCOMPLETE() != null) {
+      origin = OriginType.INCOMPLETE;
+    } else {
+      _w.redFlag(String.format("unimplemented origin type: %s", getFullText(ctx)));
+      return;
+    }
+    _currentPsThens.add(new PsThenOrigin(origin));
+  }
+
+  @Override
+  public void exitPopst_preference(Popst_preferenceContext ctx) {
+    int preference = toInt(ctx.preference);
+    PsThenPreference then = new PsThenPreference(preference);
+    _currentPsThens.add(then);
   }
 
   @Override
@@ -3279,6 +4062,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void exitRi_interface(Ri_interfaceContext ctx) {
     Interface iface = initInterface(ctx.id);
     iface.setRoutingInstance(_currentRoutingInstance.getName());
+    defineStructure(INTERFACE, iface.getName(), ctx);
   }
 
   @Override
@@ -3343,9 +4127,9 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitRof_export(Rof_exportContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
     _configuration.getDefaultRoutingInstance().setForwardingTableExportPolicy(name);
-    _configuration.getDefaultRoutingInstance().setForwardingTableExportPolicyLine(line);
+    _configuration.referenceStructure(
+        POLICY_STATEMENT, name, FORWARDING_TABLE_EXPORT_POLICY, getLine(ctx.name.getStart()));
   }
 
   @Override
@@ -3358,9 +4142,20 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void exitRog_policy(Rog_policyContext ctx) {
     if (_currentGeneratedRoute != null) { // not ipv6
       String policy = ctx.policy.getText();
-      int line = ctx.policy.getStart().getLine();
-      _currentGeneratedRoute.getPolicies().put(policy, line);
+      _configuration.referenceStructure(
+          POLICY_STATEMENT, policy, GENERATED_ROUTE_POLICY, getLine(ctx.policy.getStart()));
+      _currentGeneratedRoute.getPolicies().add(policy);
     }
+  }
+
+  @Override
+  public void enterRoifie_lan(Roifie_lanContext ctx) {
+    _currentRoutingInstance.setExportLocalRoutesLan(true);
+  }
+
+  @Override
+  public void exitRoifie_point_to_point(Roifie_point_to_pointContext ctx) {
+    _currentRoutingInstance.setExportLocalRoutesPointToPoint(true);
   }
 
   @Override
@@ -3383,6 +4178,11 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       initInterface(ctx.interface_id());
       _currentStaticRoute.setNextHopInterface(ctx.interface_id().getText());
     }
+  }
+
+  @Override
+  public void exitRosr_preference(Rosr_preferenceContext ctx) {
+    _currentStaticRoute.setDistance(toInt(ctx.pref));
   }
 
   @Override
@@ -3409,6 +4209,11 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitS_snmp(S_snmpContext ctx) {
     _currentSnmpServer = null;
+  }
+
+  @Override
+  public void exitS_vlans_named(S_vlans_namedContext ctx) {
+    _currentVlanName = null;
   }
 
   @Override
@@ -3469,18 +4274,21 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitSeikg_external_interface(Seikg_external_interfaceContext ctx) {
     Interface_idContext interfaceId = ctx.interface_id();
-    int line = ctx.interface_id().getStart().getLine();
     Interface iface = initInterface(interfaceId);
     _currentIkeGateway.setExternalInterface(iface);
-    _currentIkeGateway.setExternalInterfaceLine(line);
+    _configuration.referenceStructure(
+        INTERFACE,
+        iface.getName(),
+        IKE_GATEWAY_EXTERNAL_INTERFACE,
+        getLine(ctx.interface_id().getStart()));
   }
 
   @Override
   public void exitSeikg_ike_policy(Seikg_ike_policyContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
     _currentIkeGateway.setIkePolicy(name);
-    _currentIkeGateway.setIkePolicyLine(line);
+    _configuration.referenceStructure(
+        IKE_POLICY, name, IKE_GATEWAY_IKE_POLICY, getLine(ctx.name.getStart()));
   }
 
   @Override
@@ -3492,7 +4300,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitSeikp_pre_shared_key(Seikp_pre_shared_keyContext ctx) {
     String key = unquote(ctx.key.getText());
-    String decodedKeyHash = JuniperUtils.decryptAndHashJuniper9CipherText(key);
+    String decodedKeyHash = decryptIfNeededAndHash(key, getLine(ctx.key));
     _currentIkePolicy.setPreSharedKeyHash(decodedKeyHash);
   }
 
@@ -3500,21 +4308,23 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void exitSeikp_proposal_set(Seikp_proposal_setContext ctx) {
     Set<String> proposalsInSet = initIkeProposalSet(ctx.proposal_set_type());
     for (String proposal : proposalsInSet) {
-      _currentIkePolicy.getProposals().put(proposal, -1);
+      _currentIkePolicy.getProposals().add(proposal);
     }
   }
 
   @Override
   public void exitSeikp_proposals(Seikp_proposalsContext ctx) {
-    String proposal = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
-    _currentIkePolicy.getProposals().put(proposal, line);
+    for (VariableContext proposal : ctx.proposals) {
+      String name = proposal.getText();
+      _currentIkePolicy.getProposals().add(name);
+      _configuration.referenceStructure(
+          IKE_PROPOSAL, name, IKE_POLICY_IKE_PROPOSAL, getLine(proposal.getStart()));
+    }
   }
 
   @Override
   public void exitSeikpr_authentication_algorithm(Seikpr_authentication_algorithmContext ctx) {
-    IkeAuthenticationAlgorithm alg =
-        toIkeAuthenticationAlgorithm(ctx.ike_authentication_algorithm());
+    IkeHashingAlgorithm alg = toIkeHashingAlgorithm(ctx.ike_authentication_algorithm());
     _currentIkeProposal.setAuthenticationAlgorithm(alg);
   }
 
@@ -3568,15 +4378,18 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   public void exitSeipp_proposal_set(Seipp_proposal_setContext ctx) {
     Set<String> proposalsInSet = initIpsecProposalSet(ctx.proposal_set_type());
     for (String proposal : proposalsInSet) {
-      _currentIpsecPolicy.getProposals().put(proposal, -1);
+      _currentIpsecPolicy.getProposals().add(proposal);
     }
   }
 
   @Override
   public void exitSeipp_proposals(Seipp_proposalsContext ctx) {
-    String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
-    _currentIpsecPolicy.getProposals().put(name, line);
+    for (VariableContext proposal : ctx.proposals) {
+      String name = proposal.getText();
+      _currentIpsecPolicy.getProposals().add(name);
+      _configuration.referenceStructure(
+          IPSEC_PROPOSAL, name, IPSEC_POLICY_IPSEC_PROPOSAL, getLine(proposal.getStart()));
+    }
   }
 
   @Override
@@ -3606,32 +4419,34 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   @Override
   public void exitSeippr_protocol(Seippr_protocolContext ctx) {
-    IpsecProtocol protocol = toIpsecProtocol(ctx.ipsec_protocol());
-    _currentIpsecProposal.setProtocol(protocol);
+    _currentIpsecProposal.setProtocols(toIpsecProtocol(ctx.ipsec_protocol()));
   }
 
   @Override
   public void exitSeipv_bind_interface(Seipv_bind_interfaceContext ctx) {
     Interface iface = initInterface(ctx.interface_id());
-    int line = ctx.interface_id().getStart().getLine();
     _currentIpsecVpn.setBindInterface(iface);
-    _currentIpsecVpn.setBindInterfaceLine(line);
+    _configuration.referenceStructure(
+        INTERFACE,
+        iface.getName(),
+        IPSEC_VPN_BIND_INTERFACE,
+        getLine(ctx.interface_id().getStart()));
   }
 
   @Override
   public void exitSeipvi_gateway(Seipvi_gatewayContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
     _currentIpsecVpn.setGateway(name);
-    _currentIpsecVpn.setGatewayLine(line);
+    _configuration.referenceStructure(
+        IKE_GATEWAY, name, IPSEC_VPN_IKE_GATEWAY, getLine(ctx.name.getStart()));
   }
 
   @Override
   public void exitSeipvi_ipsec_policy(Seipvi_ipsec_policyContext ctx) {
     String name = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
     _currentIpsecVpn.setIpsecPolicy(name);
-    _currentIpsecVpn.setIpsecPolicyLine(line);
+    _configuration.referenceStructure(
+        IPSEC_POLICY, name, IPSEC_VPN_IPSEC_POLICY, getLine(ctx.name.getStart()));
   }
 
   @Override
@@ -3649,31 +4464,52 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
-  public void exitSepf_policy(Sepf_policyContext ctx) {
+  public void exitSepctx_policy(Sepctx_policyContext ctx) {
     _currentFwTerm = null;
   }
 
   @Override
-  public void exitSepfpm_application(Sepfpm_applicationContext ctx) {
-    if (ctx.ANY() != null) {
-      return;
-    } else if (ctx.junos_application() != null) {
-      Application application = toApplication(ctx.junos_application());
+  public void exitSepctxpm_application(Sepctxpm_applicationContext ctx) {
+    if (ctx.junos_application() != null) {
+      JunosApplication application = toJunosApplication(ctx.junos_application());
+      if (!application.hasDefinition()) {
+        _w.redFlag(
+            String.format(
+                "unimplemented pre-defined junos application: '%s'",
+                ctx.junos_application().getText()));
+        return;
+      }
       if (application.getIpv6()) {
         _currentFwTerm.setIpv6(true);
       } else {
-        FwFromApplication from = new FwFromApplication(application);
-        _currentFwTerm.getFromApplications().add(from);
+        FwFromJunosApplication from = new FwFromJunosApplication(application);
+        _currentFwTerm.getFromApplicationSetMembers().add(from);
       }
+    } else if (ctx.junos_application_set() != null) {
+      JunosApplicationSet applicationSet = toJunosApplicationSet(ctx.junos_application_set());
+      if (!applicationSet.hasDefinition()) {
+        _w.redFlag(
+            String.format(
+                "unimplemented pre-defined junos application-set: '%s'",
+                ctx.junos_application_set().getText()));
+        return;
+      }
+      FwFromJunosApplicationSet from = new FwFromJunosApplicationSet(applicationSet);
+      _currentFwTerm.getFromApplicationSetMembers().add(from);
     } else {
-      String name = ctx.name.getText();
-      FwFromApplication from = new FwFromApplication(name, _configuration.getApplications());
-      _currentFwTerm.getFromApplications().add(from);
+      String name;
+      int line;
+      name = ctx.name.getText();
+      line = getLine(ctx.name.getStart());
+      _configuration.referenceStructure(
+          APPLICATION_OR_APPLICATION_SET, name, SECURITY_POLICY_MATCH_APPLICATION, line);
+      FwFromApplicationOrApplicationSet from = new FwFromApplicationOrApplicationSet(name);
+      _currentFwTerm.getFromApplicationSetMembers().add(from);
     }
   }
 
   @Override
-  public void exitSepfpm_destination_address(Sepfpm_destination_addressContext ctx) {
+  public void exitSepctxpm_destination_address(Sepctxpm_destination_addressContext ctx) {
     if (ctx.address_specifier().ANY() != null) {
       return;
     } else if (ctx.address_specifier().ANY_IPV4() != null) {
@@ -3683,9 +4519,10 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return;
     } else if (ctx.address_specifier().variable() != null) {
       String addressBookEntryName = ctx.address_specifier().variable().getText();
-      FwFrom match =
-          new FwFromDestinationAddressBookEntry(
-              _currentToZone.getAddressBook(), addressBookEntryName);
+      // Use global address book for global policies (no toZone)
+      AddressBook addressBook =
+          (_currentToZone == null) ? _globalAddressBook : _currentToZone.getAddressBook();
+      FwFrom match = new FwFromDestinationAddressBookEntry(addressBook, addressBookEntryName);
       _currentFwTerm.getFroms().add(match);
     } else {
       throw new BatfishException("Invalid address-specifier");
@@ -3693,7 +4530,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
-  public void exitSepfpm_source_address(Sepfpm_source_addressContext ctx) {
+  public void exitSepctxpm_source_address(Sepctxpm_source_addressContext ctx) {
     if (ctx.address_specifier().ANY() != null) {
       return;
     } else if (ctx.address_specifier().ANY_IPV4() != null) {
@@ -3703,8 +4540,10 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return;
     } else if (ctx.address_specifier().variable() != null) {
       String addressBookEntryName = ctx.address_specifier().variable().getText();
-      FwFrom match =
-          new FwFromSourceAddressBookEntry(_currentFromZone.getAddressBook(), addressBookEntryName);
+      // Use global address book for global policies (no fromZone)
+      AddressBook addressBook =
+          (_currentFromZone == null) ? _globalAddressBook : _currentFromZone.getAddressBook();
+      FwFrom match = new FwFromSourceAddressBookEntry(addressBook, addressBookEntryName);
       _currentFwTerm.getFroms().add(match);
     } else {
       throw new BatfishException("Invalid address-specifier");
@@ -3712,7 +4551,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
-  public void exitSepfpm_source_identity(Sepfpm_source_identityContext ctx) {
+  public void exitSepctxpm_source_identity(Sepctxpm_source_identityContext ctx) {
     if (ctx.ANY() != null) {
       return;
     } else {
@@ -3722,13 +4561,13 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
-  public void exitSepfpt_deny(Sepfpt_denyContext ctx) {
+  public void exitSepctxpt_deny(Sepctxpt_denyContext ctx) {
     _currentFwTerm.getThens().add(FwThenDiscard.INSTANCE);
   }
 
   @Override
-  public void exitSepfpt_permit(Sepfpt_permitContext ctx) {
-    if (ctx.sepfptp_tunnel() != null) {
+  public void exitSepctxpt_permit(Sepctxpt_permitContext ctx) {
+    if (ctx.sepctxptp_tunnel() != null) {
       // Used for dynamic VPNs (no bind interface tied to a zone)
       // TODO: change from deny to appropriate action when implemented
       todo(ctx, F_PERMIT_TUNNEL);
@@ -3754,11 +4593,27 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     _currentZoneInterface = null;
   }
 
+  private static IpWildcard toIpWildcard(Wildcard_addressContext ctx) {
+    Ip address = new Ip(ctx.ip_address.getText());
+    Ip mask = new Ip(ctx.wildcard_mask.getText());
+    // Mask needs to be inverted since 0's are don't-cares in this context
+    return new IpWildcard(address, mask.inverted());
+  }
+
   @Override
   public void exitSezsa_address(Sezsa_addressContext ctx) {
     String name = ctx.name.getText();
-    Prefix prefix = Prefix.parse(ctx.IP_PREFIX().getText());
-    AddressBookEntry addressEntry = new AddressAddressBookEntry(name, prefix);
+    IpWildcard ipWildcard = null;
+    if (ctx.wildcard_address() != null) {
+      ipWildcard = toIpWildcard(ctx.wildcard_address());
+    } else if (ctx.address != null) {
+      ipWildcard = new IpWildcard(new Ip(ctx.address.getText()));
+    } else if (ctx.prefix != null) {
+      ipWildcard = new IpWildcard(Prefix.parse(ctx.prefix.getText()));
+    } else {
+      throw convError(IpWildcard.class, ctx);
+    }
+    AddressBookEntry addressEntry = new AddressAddressBookEntry(name, ipWildcard);
     _currentZone.getAddressBook().getEntries().put(name, addressEntry);
   }
 
@@ -3768,7 +4623,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
-  public void exitSezsaa_address(Sezsaa_addressContext ctx) {
+  public void exitSezsaad_address(Sezsaad_addressContext ctx) {
     String name = ctx.name.getText();
     _currentAddressSetAddressBookEntry
         .getEntries()
@@ -3776,7 +4631,7 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   @Override
-  public void exitSezsaa_address_set(Sezsaa_address_setContext ctx) {
+  public void exitSezsaad_address_set(Sezsaad_address_setContext ctx) {
     String name = ctx.name.getText();
     _currentAddressSetAddressBookEntry
         .getEntries()
@@ -3822,13 +4677,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitSnmpc_client_list_name(Snmpc_client_list_nameContext ctx) {
     String list = ctx.name.getText();
-    int line = ctx.name.getStart().getLine();
     _currentSnmpCommunity.setAccessList(list);
-    _currentSnmpCommunity.setAccessListLine(line);
+    _configuration.referenceStructure(
+        PREFIX_LIST, list, SNMP_COMMUNITY_PREFIX_LIST, getLine(ctx.name.getStart()));
     // TODO: verify whether both ipv4 and ipv6 list should be set with this
     // command
     _currentSnmpCommunity.setAccessList6(list);
-    _currentSnmpCommunity.setAccessList6Line(line);
   }
 
   @Override
@@ -3877,7 +4731,16 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void exitSyt_secret(Syt_secretContext ctx) {
     String cipherText = unquote(ctx.secret.getText());
-    _currentTacplusServer.setSecret(JuniperUtils.decryptAndHashJuniper9CipherText(cipherText));
+    _currentTacplusServer.setSecret(decryptIfNeededAndHash(cipherText, getLine(ctx.secret)));
+  }
+
+  private String decryptIfNeededAndHash(String text, int line) {
+    if (JuniperUtils.isJuniper9CipherText(text)) {
+      return JuniperUtils.decryptAndHashJuniper9CipherText(text);
+    } else {
+      _w.redFlag(String.format("Unencrypted key stored at line: %d", line));
+      return CommonUtil.sha256Digest(text + CommonUtil.salt());
+    }
   }
 
   @Override
@@ -3886,8 +4749,39 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     _currentTacplusServer.setSourceAddress(sourceAddress);
   }
 
+  @Override
+  public void exitVlt_vlan_id(Vlt_vlan_idContext ctx) {
+    Vlan vlan = new Vlan(_currentVlanName, toInt(ctx.id));
+    _configuration.getVlanNameToVlan().put(_currentVlanName, vlan);
+  }
+
+  @Nullable
+  private IpWildcard formIpWildCard(Fftfa_address_mask_prefixContext ctx) {
+    IpWildcard ipWildcard = null;
+    if (ctx == null) {
+      return null;
+    } else if (ctx.ip_address != null && ctx.wildcard_mask != null) {
+      Ip ipAddress = new Ip(ctx.ip_address.getText());
+      Ip mask = new Ip(ctx.wildcard_mask.getText());
+      ipWildcard = new IpWildcard(ipAddress, mask.inverted());
+    } else if (ctx.ip_address != null) {
+      ipWildcard =
+          new IpWildcard(new Prefix(new Ip(ctx.ip_address.getText()), Prefix.MAX_PREFIX_LENGTH));
+    } else if (ctx.IP_PREFIX() != null) {
+      ipWildcard = new IpWildcard(Prefix.parse(ctx.IP_PREFIX().getText()));
+    }
+    return ipWildcard;
+  }
+
   public JuniperConfiguration getConfiguration() {
     return _configuration;
+  }
+
+  private String getFullText(ParserRuleContext ctx) {
+    int start = ctx.getStart().getStartIndex();
+    int end = ctx.getStop().getStopIndex();
+    String text = _text.substring(start, end + 1);
+    return text;
   }
 
   private String getInterfaceName(Interface_idContext ctx) {
@@ -3906,16 +4800,72 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
 
   private Set<String> initIkeProposalSet(Proposal_set_typeContext ctx) {
     Set<String> proposals = new HashSet<>();
+
+    // the proposal-sets have been defined as per the specifications in the link:
+    // https://www.juniper.net/documentation/en_US/junos/topics/reference/configuration-statement/security-edit-proposal-set-ike.html
     if (ctx.BASIC() != null) {
-      proposals.add(initIkeProposal(IkeProposal.PSK_DES_DH1_SHA1));
-      proposals.add(initIkeProposal(IkeProposal.PSK_DES_DH1_MD5));
+      IkeProposal proposal1 = new IkeProposal("PSK_DES_DH1_SHA1");
+      IkeProposal proposal2 = new IkeProposal("PSK_DES_DH1_MD5");
+
+      proposals.add(
+          initIkeProposal(
+              proposal1
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.DES_CBC)
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP1)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.SHA1)));
+      proposals.add(
+          initIkeProposal(
+              proposal2
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.DES_CBC)
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP1)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.MD5)));
     } else if (ctx.COMPATIBLE() != null) {
-      proposals.add(initIkeProposal(IkeProposal.PSK_3DES_DH2_MD5));
-      proposals.add(initIkeProposal(IkeProposal.PSK_DES_DH2_SHA1));
-      proposals.add(initIkeProposal(IkeProposal.PSK_DES_DH2_MD5));
+      IkeProposal proposal1 = new IkeProposal("PSK_3DES_DH2_MD5");
+      IkeProposal proposal2 = new IkeProposal("PSK_DES_DH2_SHA1");
+      IkeProposal proposal3 = new IkeProposal("PSK_DES_DH2_MD5");
+
+      proposals.add(
+          initIkeProposal(
+              proposal1
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP2)
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.THREEDES_CBC)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.MD5)));
+      proposals.add(
+          initIkeProposal(
+              proposal2
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP2)
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.DES_CBC)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.SHA1)));
+      proposals.add(
+          initIkeProposal(
+              proposal3
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP2)
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.DES_CBC)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.MD5)));
+
     } else if (ctx.STANDARD() != null) {
-      proposals.add(initIkeProposal(IkeProposal.PSK_3DES_DH2_SHA1));
-      proposals.add(initIkeProposal(IkeProposal.PSK_AES128_DH2_SHA1));
+      IkeProposal proposal1 = new IkeProposal("PSK_3DES_DH2_SHA1");
+      IkeProposal proposal2 = new IkeProposal("PSK_AES128_DH2_SHA1");
+
+      proposals.add(
+          initIkeProposal(
+              proposal1
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP2)
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.THREEDES_CBC)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.SHA1)));
+      proposals.add(
+          initIkeProposal(
+              proposal2
+                  .setAuthenticationMethod(IkeAuthenticationMethod.PRE_SHARED_KEYS)
+                  .setDiffieHellmanGroup(DiffieHellmanGroup.GROUP2)
+                  .setEncryptionAlgorithm(EncryptionAlgorithm.AES_128_CBC)
+                  .setAuthenticationAlgorithm(IkeHashingAlgorithm.SHA1)));
     }
     return proposals;
   }
@@ -3931,12 +4881,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     } else {
       interfaces = _configuration.getInterfaces();
     }
-    String name = id.name.getText();
-    int definitionLine = id.name.getLine();
+    String name = getInterfaceName(id);
+    int definitionLine = getLine(id.name);
     String unit = null;
     if (id.unit != null) {
       unit = id.unit.getText();
-      definitionLine = id.unit.getLine();
+      definitionLine = getLine(id.unit);
     }
     String unitFullName = name + "." + unit;
     Interface iface = interfaces.get(name);
@@ -3981,14 +4931,14 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   }
 
   private AsPath toAsPath(As_path_exprContext path) {
-    List<SortedSet<Integer>> asPath = new ArrayList<>();
+    List<SortedSet<Long>> asPath = new ArrayList<>();
     for (As_unitContext ctx : path.items) {
-      SortedSet<Integer> asSet = new TreeSet<>();
+      SortedSet<Long> asSet = new TreeSet<>();
       if (ctx.DEC() != null) {
-        asSet.add(toInt(ctx.DEC()));
+        asSet.add(toLong(ctx.DEC()));
       } else {
         for (Token token : ctx.as_set().items) {
-          asSet.add(toInt(token));
+          asSet.add(toLong(token));
         }
       }
       asPath.add(asSet);
@@ -4020,21 +4970,24 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     }
   }
 
-  private String toComplexPolicyStatement(Policy_expressionContext expr) {
+  private String toComplexPolicyStatement(
+      Policy_expressionContext expr, JuniperStructureUsage usage) {
     if (expr.pe_nested() != null) {
-      return toComplexPolicyStatement(expr.pe_nested().policy_expression());
+      return toComplexPolicyStatement(expr.pe_nested().policy_expression(), usage);
     } else if (expr.variable() != null) {
       String name = expr.variable().getText();
+      _configuration.referenceStructure(
+          POLICY_STATEMENT, name, usage, getLine(expr.variable().getStart()));
       return name;
     } else if (expr.pe_conjunction() != null) {
       Set<String> conjuncts = new LinkedHashSet<>();
       for (Policy_expressionContext conjunctCtx : expr.pe_conjunction().policy_expression()) {
-        String conjunctName = toComplexPolicyStatement(conjunctCtx);
+        String conjunctName = toComplexPolicyStatement(conjunctCtx, usage);
         conjuncts.add(conjunctName);
       }
       String conjunctionPolicyName = "~CONJUNCTION_POLICY_" + _conjunctionPolicyIndex + "~";
       _conjunctionPolicyIndex++;
-      PolicyStatement conjunctionPolicy = new PolicyStatement(conjunctionPolicyName, -1);
+      PolicyStatement conjunctionPolicy = new PolicyStatement(conjunctionPolicyName);
       PsTerm conjunctionPolicyTerm = conjunctionPolicy.getDefaultTerm();
       PsFromPolicyStatementConjunction from = new PsFromPolicyStatementConjunction(conjuncts);
       conjunctionPolicyTerm.getFroms().add(from);
@@ -4044,12 +4997,12 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
     } else if (expr.pe_disjunction() != null) {
       Set<String> disjuncts = new LinkedHashSet<>();
       for (Policy_expressionContext disjunctCtx : expr.pe_disjunction().policy_expression()) {
-        String disjunctName = toComplexPolicyStatement(disjunctCtx);
+        String disjunctName = toComplexPolicyStatement(disjunctCtx, usage);
         disjuncts.add(disjunctName);
       }
       String disjunctionPolicyName = "~DISJUNCTION_POLICY_" + _disjunctionPolicyIndex + "~";
       _disjunctionPolicyIndex++;
-      PolicyStatement disjunctionPolicy = new PolicyStatement(disjunctionPolicyName, -1);
+      PolicyStatement disjunctionPolicy = new PolicyStatement(disjunctionPolicyName);
       PsTerm disjunctionPolicyTerm = disjunctionPolicy.getDefaultTerm();
       for (String disjunct : disjuncts) {
         PsFromPolicyStatement from = new PsFromPolicyStatement(disjunct);
@@ -4068,8 +5021,18 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
       return DiffieHellmanGroup.GROUP1;
     } else if (ctx.GROUP14() != null) {
       return DiffieHellmanGroup.GROUP14;
+    } else if (ctx.GROUP15() != null) {
+      return DiffieHellmanGroup.GROUP15;
+    } else if (ctx.GROUP16() != null) {
+      return DiffieHellmanGroup.GROUP16;
+    } else if (ctx.GROUP19() != null) {
+      return DiffieHellmanGroup.GROUP19;
     } else if (ctx.GROUP2() != null) {
       return DiffieHellmanGroup.GROUP2;
+    } else if (ctx.GROUP20() != null) {
+      return DiffieHellmanGroup.GROUP20;
+    } else if (ctx.GROUP24() != null) {
+      return DiffieHellmanGroup.GROUP24;
     } else if (ctx.GROUP5() != null) {
       return DiffieHellmanGroup.GROUP5;
     } else {
@@ -4080,5 +5043,39 @@ public class ConfigurationBuilder extends FlatJuniperParserBaseListener {
   private void todo(ParserRuleContext ctx, String feature) {
     _w.todo(ctx, feature, _parser, _text);
     _unimplementedFeatures.add("Juniper: " + feature);
+  }
+
+  private Family toFamily(F_familyContext ctx) {
+    if (ctx.ANY() != null) {
+      return Family.ANY;
+    } else if (ctx.BRIDGE() != null) {
+      return Family.BRIDGE;
+    } else if (ctx.CCC() != null) {
+      return Family.CCC;
+    } else if (ctx.ETHERNET_SWITCHING() != null) {
+      return Family.ETHERNET_SWITCHING;
+    } else if (ctx.INET() != null) {
+      return Family.INET;
+    } else if (ctx.INET6() != null) {
+      return Family.INET6;
+    } else if (ctx.MPLS() != null) {
+      return Family.MPLS;
+    } else {
+      throw convError(Family.class, ctx);
+    }
+  }
+
+  @Override
+  public void visitErrorNode(ErrorNode errorNode) {
+    Token token = errorNode.getSymbol();
+    String lineText = errorNode.getText().replace("\n", "").replace("\r", "").trim();
+    int line = getLine(token);
+    String msg = String.format("Unrecognized Line: %d: %s", line, lineText);
+    if (_unrecognizedAsRedFlag) {
+      _w.redFlag(msg + " SUBSEQUENT LINES MAY NOT BE PROCESSED CORRECTLY");
+      _configuration.setUnrecognized(true);
+    } else {
+      _parser.getErrors().add(msg);
+    }
   }
 }

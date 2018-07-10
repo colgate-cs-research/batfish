@@ -21,7 +21,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class UniqueBgpPrefixOriginationQuestionPlugin extends QuestionPlugin {
 
-  public static class UniqueBgpPrefixOriginationAnswerElement implements AnswerElement {
+  public static class UniqueBgpPrefixOriginationAnswerElement extends AnswerElement {
 
     private SortedMap<String, SortedMap<String, PrefixSpace>> _intersections;
 
@@ -68,7 +68,7 @@ public class UniqueBgpPrefixOriginationQuestionPlugin extends QuestionPlugin {
       UniqueBgpPrefixOriginationAnswerElement answerElement =
           new UniqueBgpPrefixOriginationAnswerElement();
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
-      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(_batfish);
       _batfish.initBgpOriginationSpaceExplicit(configurations);
       for (Entry<String, Configuration> e : configurations.entrySet()) {
         String node1 = e.getKey();

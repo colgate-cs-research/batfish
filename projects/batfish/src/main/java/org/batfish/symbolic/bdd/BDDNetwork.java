@@ -7,7 +7,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
 import org.batfish.common.Pair;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.IpAccessList;
@@ -81,11 +80,10 @@ public class BDDNetwork {
    * representation of the import and export policies on this interface.
    */
   private void computeInterfacePolicies() {
+    Set<String> includeNodes = _nodeSpecifier.getMatchingNodes(_graph.getBatfish());
     for (Entry<String, Configuration> entry : _graph.getConfigurations().entrySet()) {
       String router = entry.getKey();
-      // Skip if doesn't match the node regex
-      Matcher m = _nodeSpecifier.getRegex().matcher(router);
-      if (!m.matches()) {
+      if (!includeNodes.contains(router)) { // skip if we don't care about this node
         continue;
       }
       Configuration conf = entry.getValue();
@@ -109,12 +107,12 @@ public class BDDNetwork {
 
         // Incoming ACL
         if (in != null) {
-          BDDAcl x = BDDAcl.create(conf, in, true);
+          BDDAcl x = BDDAcl.create(in);
           _inAcls.put(ge, x);
         }
         // Outgoing ACL
         if (out != null) {
-          BDDAcl x = BDDAcl.create(conf, out, true);
+          BDDAcl x = BDDAcl.create(out);
           _outAcls.put(ge, x);
         }
       }
@@ -122,9 +120,7 @@ public class BDDNetwork {
 
     for (Entry<String, List<GraphEdge>> entry : _graph.getEdgeMap().entrySet()) {
       String router = entry.getKey();
-      // Skip if doesn't match the node regex
-      Matcher m = _nodeSpecifier.getRegex().matcher(router);
-      if (!m.matches()) {
+      if (!includeNodes.contains(router)) { // skip if we don't care about this node
         continue;
       }
       List<GraphEdge> edges = entry.getValue();

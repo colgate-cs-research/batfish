@@ -1,11 +1,12 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
     <groupId>org.batfish</groupId>
     <artifactId>batfish-parent</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
   </parent>
 
   <artifactId>batfish</artifactId>
@@ -25,8 +26,14 @@
               </goals>
               <configuration>
                 <ignoredUnusedDeclaredDependencies>
-                  <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14</ignoredUnusedDeclaredDependency>
-                  <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service</ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.lastnpe.eea:guava-eea
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.lastnpe.eea:jdk-eea
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service
+                  </ignoredUnusedDeclaredDependency>
                 </ignoredUnusedDeclaredDependencies>
               </configuration>
             </execution>
@@ -45,6 +52,11 @@
 
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+      </plugin>
+
+      <plugin>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-maven-plugin</artifactId>
         <executions>
@@ -61,7 +73,8 @@
             <configuration>
               <includes>**/CiscoLexer.g4,**/CiscoParser.g4</includes>
               <libDirectory>${basedir}/src/main/antlr4/org/batfish/grammar/cisco</libDirectory>
-              <statusDirectory>${project.build.directory}/maven-status/antlr4-cisco</statusDirectory>
+              <statusDirectory>${project.build.directory}/maven-status/antlr4-cisco
+              </statusDirectory>
             </configuration>
           </execution>
           <execution>
@@ -70,9 +83,11 @@
               <goal>antlr4</goal>
             </goals>
             <configuration>
-               <includes>**/FlatJuniperLexer.g4,**/FlatJuniperParser.g4</includes>
-              <libDirectory>${basedir}/src/main/antlr4/org/batfish/grammar/flatjuniper</libDirectory>
-              <statusDirectory>${project.build.directory}/maven-status/antlr4-flatjuniper</statusDirectory>
+              <includes>**/FlatJuniperLexer.g4,**/FlatJuniperParser.g4</includes>
+              <libDirectory>${basedir}/src/main/antlr4/org/batfish/grammar/flatjuniper
+              </libDirectory>
+              <statusDirectory>${project.build.directory}/maven-status/antlr4-flatjuniper
+              </statusDirectory>
             </configuration>
           </execution>
           <execution>
@@ -83,7 +98,8 @@
             <configuration>
               <includes>**/FlatVyosLexer.g4,**/FlatVyosParser.g4</includes>
               <libDirectory>${basedir}/src/main/antlr4/org/batfish/grammar/flatvyos</libDirectory>
-              <statusDirectory>${project.build.directory}/maven-status/antlr4-flatvyos</statusDirectory>
+              <statusDirectory>${project.build.directory}/maven-status/antlr4-flatvyos
+              </statusDirectory>
             </configuration>
           </execution>
           <execution>
@@ -97,6 +113,20 @@
               <statusDirectory>${project.build.directory}/maven-status/antlr4-mrv</statusDirectory>
             </configuration>
           </execution>
+          <execution>
+            <id>antlr4-palo-alto</id>
+            <goals>
+              <goal>antlr4</goal>
+            </goals>
+            <configuration>
+              <includes>**/PaloAltoLexer.g4,**/PaloAltoParser.g4</includes>
+              <libDirectory>${basedir}/src/main/antlr4/org/batfish/grammar/palo_alto
+              </libDirectory>
+              <statusDirectory>${project.build.directory}/maven-status/antlr4-palo-alto
+              </statusDirectory>
+            </configuration>
+          </execution>
+
 
           <!-- All the rest that do not have imports. Note that we exclude all the g4 files from above. -->
           <execution>
@@ -106,29 +136,9 @@
             </goals>
             <configuration>
               <includes>**/*.g4</includes>
-              <excludes>**/cisco/*.g4,**/flatjuniper/*.g4,**/flatvyos/*.g4,**/mrv/*.g4</excludes>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-pmd-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>check</id>
-            <goals><goal>check</goal></goals>
-            <configuration>
-              <failOnViolation>true</failOnViolation>
-            </configuration>
-          </execution>
-
-          <execution>
-            <id>cpd-check</id>
-            <goals><goal>cpd-check</goal></goals>
-            <configuration>
-              <failOnViolation>false</failOnViolation>
+              <excludes>
+                **/cisco/*.g4,**/flatjuniper/*.g4,**/flatvyos/*.g4,**/mrv/*.g4,**/palo_alto/*.g4
+              </excludes>
             </configuration>
           </execution>
         </executions>
@@ -253,11 +263,34 @@
       <artifactId>jersey-media-json-jettison</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>org.jgrapht</groupId>
+      <artifactId>jgrapht-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.lz4</groupId>
+      <artifactId>lz4-java</artifactId>
+    </dependency>
+
     <!-- Runtime dependencies to add logging. -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
       <scope>runtime</scope>
+    </dependency>
+
+    <!-- Provided dependencies to be available at compile time only -->
+    <dependency>
+      <groupId>org.lastnpe.eea</groupId>
+      <artifactId>guava-eea</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.lastnpe.eea</groupId>
+      <artifactId>jdk-eea</artifactId>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Test scope dependencies. -->
@@ -276,13 +309,7 @@
 
     <dependency>
       <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-core</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-library</artifactId>
+      <artifactId>java-hamcrest</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

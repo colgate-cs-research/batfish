@@ -1,7 +1,6 @@
 package org.batfish.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.function.BiFunction;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.util.BatfishObjectMapper;
@@ -9,6 +8,8 @@ import org.batfish.common.util.JsonDiff;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.answers.JsonDiffAnswerElement;
 import org.batfish.datamodel.questions.Question;
+import org.batfish.datamodel.table.TableAnswerElement;
+import org.batfish.datamodel.table.TableDiff;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
@@ -39,9 +40,14 @@ public abstract class Answerer {
 
   public abstract AnswerElement answer();
 
-  // this is the default differential answerer
-  // if you want a custom one for a subclass, override this function in the
-  // subclass
+  /**
+   * The default implementation for generating differential answers.
+   *
+   * <p>It uses {@link TableDiff} if the answer element is a {@link TableAnswerElement}. Otherwise,
+   * it uses a JSON-level diff.
+   *
+   * <p>Answerers that want a custom differential answer, should override this function.
+   */
   public AnswerElement answerDiff() {
     _batfish.pushBaseEnvironment();
     _batfish.checkEnvironmentExists();
@@ -50,22 +56,32 @@ public abstract class Answerer {
     _batfish.checkEnvironmentExists();
     _batfish.popEnvironment();
     _batfish.pushBaseEnvironment();
-    AnswerElement before = create(_question, _batfish).answer();
+    AnswerElement baseAnswer = create(_question, _batfish).answer();
     _batfish.popEnvironment();
     _batfish.pushDeltaEnvironment();
-    AnswerElement after = create(_question, _batfish).answer();
+    AnswerElement deltaAnswer = create(_question, _batfish).answer();
     _batfish.popEnvironment();
-    ObjectMapper mapper = new BatfishObjectMapper();
-    try {
-      String beforeJsonStr = mapper.writeValueAsString(before);
-      String afterJsonStr = mapper.writeValueAsString(after);
-      JSONObject beforeJson = new JSONObject(beforeJsonStr);
-      JSONObject afterJson = new JSONObject(afterJsonStr);
-      JsonDiff diff = new JsonDiff(beforeJson, afterJson);
+    if (baseAnswer instanceof TableAnswerElement) {
+      TableAnswerElement rawTable =
+          TableDiff.diffTables(
+              (TableAnswerElement) baseAnswer,
+              (TableAnswerElement) deltaAnswer,
+              _question.getIncludeOneTableKeys());
+      TableAnswerElement finalTable = new TableAnswerElement(rawTable.getMetadata());
+      finalTable.postProcessAnswer(_question, rawTable.getRows().getData());
+      return finalTable;
+    } else {
+      try {
+        String beforeJsonStr = BatfishObjectMapper.writePrettyString(baseAnswer);
+        String afterJsonStr = BatfishObjectMapper.writePrettyString(deltaAnswer);
+        JSONObject beforeJson = new JSONObject(beforeJsonStr);
+        JSONObject afterJson = new JSONObject(afterJsonStr);
+        JsonDiff diff = new JsonDiff(beforeJson, afterJson);
 
-      return new JsonDiffAnswerElement(diff);
-    } catch (JsonProcessingException | JSONException e) {
-      throw new BatfishException("Could not convert diff element to json string", e);
+        return new JsonDiffAnswerElement(diff);
+      } catch (JsonProcessingException | JSONException e) {
+        throw new BatfishException("Could not convert diff element to json string", e);
+      }
     }
   }
 }

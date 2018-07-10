@@ -13,14 +13,11 @@ configs/
   ...... 3 more entries
 example-network.png
 example-topology.json
-gns-network.net
 hosts/
   host1.json
   host2.json
 iptables/
   host1.iptables
   host2.iptables
-node_roles.json
-node_roles_inferred.json
 testrig_positions
 

@@ -1,29 +1,35 @@
 package org.batfish.coordinator;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Strings.isNullOrEmpty;
+import static java.util.stream.Collectors.toCollection;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
-import com.google.common.io.Closer;
 import io.opentracing.ActiveSpan;
 import io.opentracing.References;
 import io.opentracing.SpanContext;
 import io.opentracing.util.GlobalTracer;
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.PushbackInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -32,16 +38,15 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.zip.GZIPInputStream;
 import javax.annotation.Nullable;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
@@ -53,7 +58,6 @@ import org.batfish.common.Task;
 import org.batfish.common.Warnings;
 import org.batfish.common.WorkItem;
 import org.batfish.common.plugin.AbstractCoordinator;
-import org.batfish.common.util.BatfishObjectInputStream;
 import org.batfish.common.util.BatfishObjectMapper;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.common.util.UnzipUtility;
@@ -67,8 +71,16 @@ import org.batfish.datamodel.AnalysisMetadata;
 import org.batfish.datamodel.TestrigMetadata;
 import org.batfish.datamodel.answers.Answer;
 import org.batfish.datamodel.answers.AnswerStatus;
+import org.batfish.datamodel.answers.AutocompleteSuggestion;
+import org.batfish.datamodel.answers.AutocompleteSuggestion.CompletionType;
 import org.batfish.datamodel.answers.ParseVendorConfigurationAnswerElement;
+import org.batfish.datamodel.pojo.Node;
+import org.batfish.datamodel.pojo.Topology;
+import org.batfish.datamodel.questions.InterfacePropertySpecifier;
+import org.batfish.datamodel.questions.NodePropertySpecifier;
+import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
+import org.batfish.role.NodeRolesData;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -84,9 +96,17 @@ public class WorkMgr extends AbstractCoordinator {
     }
   }
 
+  private static final Set<String> CONTAINER_FILENAMES = initContainerFilenames();
+
   private static final Set<String> ENV_FILENAMES = initEnvFilenames();
 
   private static final int MAX_SHOWN_TESTRIG_INFO_SUBDIR_ENTRIES = 10;
+
+  private static Set<String> initContainerFilenames() {
+    Set<String> envFilenames =
+        new ImmutableSet.Builder<String>().add(BfConsts.RELPATH_NODE_ROLES_PATH).build();
+    return envFilenames;
+  }
 
   private static Set<String> initEnvFilenames() {
     Set<String> envFilenames = new HashSet<>();
@@ -136,7 +156,7 @@ public class WorkMgr extends AbstractCoordinator {
 
       assignWork(work, idleWorker);
     } catch (Exception e) {
-      _logger.errorf("Got exception in assignWork: %s\n", ExceptionUtils.getStackTrace(e));
+      _logger.errorf("Got exception in assignWork: %s\n", Throwables.getStackTraceAsString(e));
     }
   }
 
@@ -157,21 +177,11 @@ public class WorkMgr extends AbstractCoordinator {
       assert assignWorkSpan != null; // avoid unused warning
       // get the task and add other standard stuff
       JSONObject task = new JSONObject(work.getWorkItem().getRequestParams());
-      Path containerDir =
-          Main.getSettings().getContainersLocation().resolve(work.getWorkItem().getContainerName());
-      String testrigName = work.getWorkItem().getTestrigName();
-      Path testrigBaseDir =
-          containerDir
-              .resolve(Paths.get(BfConsts.RELPATH_TESTRIGS_DIR, testrigName))
-              .toAbsolutePath();
-      task.put(BfConsts.ARG_CONTAINER_DIR, containerDir.toAbsolutePath().toString());
-      task.put(BfConsts.ARG_TESTRIG, testrigName);
+      task.put(BfConsts.ARG_CONTAINER, work.getWorkItem().getContainerName());
       task.put(
-          BfConsts.ARG_LOG_FILE,
-          testrigBaseDir.resolve(work.getId() + BfConsts.SUFFIX_LOG_FILE).toString());
-      task.put(
-          BfConsts.ARG_ANSWER_JSON_PATH,
-          testrigBaseDir.resolve(work.getId() + BfConsts.SUFFIX_ANSWER_JSON_FILE).toString());
+          BfConsts.ARG_STORAGE_BASE,
+          Main.getSettings().getContainersLocation().toAbsolutePath().toString());
+      task.put(BfConsts.ARG_TESTRIG, work.getWorkItem().getTestrigName());
 
       client =
           CommonUtil.createHttpClientBuilder(
@@ -180,7 +190,8 @@ public class WorkMgr extends AbstractCoordinator {
                   _settings.getSslPoolKeystoreFile(),
                   _settings.getSslPoolKeystorePassword(),
                   _settings.getSslPoolTruststoreFile(),
-                  _settings.getSslPoolTruststorePassword())
+                  _settings.getSslPoolTruststorePassword(),
+                  true)
               .build();
 
       String protocol = _settings.getSslPoolDisable() ? "http" : "https";
@@ -221,10 +232,10 @@ public class WorkMgr extends AbstractCoordinator {
         }
       }
     } catch (ProcessingException e) {
-      String stackTrace = ExceptionUtils.getStackTrace(e);
+      String stackTrace = Throwables.getStackTraceAsString(e);
       _logger.error(String.format("Unable to connect to worker at %s: %s\n", worker, stackTrace));
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getStackTrace(e);
+      String stackTrace = Throwables.getStackTraceAsString(e);
       _logger.error(String.format("Exception assigning work: %s\n", stackTrace));
     } finally {
       if (client != null) {
@@ -244,14 +255,14 @@ public class WorkMgr extends AbstractCoordinator {
       try {
         _workQueueMgr.markAssignmentError(work);
       } catch (Exception e) {
-        String stackTrace = ExceptionUtils.getStackTrace(e);
+        String stackTrace = Throwables.getStackTraceAsString(e);
         _logger.errorf("Unable to markAssignmentError for work %s: %s\n", work, stackTrace);
       }
     } else if (assigned) {
       try {
         _workQueueMgr.markAssignmentSuccess(work, worker);
       } catch (Exception e) {
-        String stackTrace = ExceptionUtils.getStackTrace(e);
+        String stackTrace = Throwables.getStackTraceAsString(e);
         _logger.errorf("Unable to markAssignmentSuccess for work %s: %s\n", work, stackTrace);
       }
 
@@ -275,7 +286,39 @@ public class WorkMgr extends AbstractCoordinator {
         checkTask(work, assignedWorker);
       }
     } catch (Exception e) {
-      _logger.errorf("Got exception in checkTasks: %s\n", ExceptionUtils.getStackTrace(e));
+      _logger.errorf("Got exception in checkTasks: %s\n", Throwables.getStackTraceAsString(e));
+    }
+  }
+
+  public List<AutocompleteSuggestion> autoComplete(
+      String container,
+      String testrig,
+      CompletionType completionType,
+      String query,
+      int maxSuggestions)
+      throws IOException {
+    switch (completionType) {
+      case INTERFACE_PROPERTY:
+        {
+          List<AutocompleteSuggestion> suggestions = InterfacePropertySpecifier.autoComplete(query);
+          return suggestions.subList(0, Integer.min(suggestions.size(), maxSuggestions));
+        }
+      case NODE:
+        {
+          checkArgument(
+              !isNullOrEmpty(testrig), "Testrig name should be supplied for 'NODE' autoCompletion");
+          List<AutocompleteSuggestion> suggestions =
+              NodesSpecifier.autoComplete(
+                  query, getNodes(container, testrig), getNodeRolesData(container));
+          return suggestions.subList(0, Integer.min(suggestions.size(), maxSuggestions));
+        }
+      case NODE_PROPERTY:
+        {
+          List<AutocompleteSuggestion> suggestions = NodePropertySpecifier.autoComplete(query);
+          return suggestions.subList(0, Integer.min(suggestions.size(), maxSuggestions));
+        }
+      default:
+        throw new UnsupportedOperationException("Unsupported completion type: " + completionType);
     }
   }
 
@@ -299,7 +342,8 @@ public class WorkMgr extends AbstractCoordinator {
                   _settings.getSslPoolKeystoreFile(),
                   _settings.getSslPoolKeystorePassword(),
                   _settings.getSslPoolTruststoreFile(),
-                  _settings.getSslPoolTruststorePassword())
+                  _settings.getSslPoolTruststorePassword(),
+                  true)
               .build();
 
       String protocol = _settings.getSslPoolDisable() ? "http" : "https";
@@ -328,18 +372,17 @@ public class WorkMgr extends AbstractCoordinator {
                   "got error while refreshing status: %s %s\n", array.get(0), array.get(1)));
         } else {
           String taskStr = array.get(1).toString();
-          BatfishObjectMapper mapper = new BatfishObjectMapper();
-          task = mapper.readValue(taskStr, Task.class);
+          task = BatfishObjectMapper.mapper().readValue(taskStr, Task.class);
           if (task.getStatus() == null) {
             _logger.error("did not see status key in json response\n");
           }
         }
       }
     } catch (ProcessingException e) {
-      String stackTrace = ExceptionUtils.getStackTrace(e);
+      String stackTrace = Throwables.getStackTraceAsString(e);
       _logger.error(String.format("unable to connect to %s: %s\n", worker, stackTrace));
     } catch (Exception e) {
-      String stackTrace = ExceptionUtils.getStackTrace(e);
+      String stackTrace = Throwables.getStackTraceAsString(e);
       _logger.error(String.format("exception: %s\n", stackTrace));
     } finally {
       if (client != null) {
@@ -354,7 +397,7 @@ public class WorkMgr extends AbstractCoordinator {
     try {
       _workQueueMgr.processTaskCheckResult(work, task);
     } catch (Exception e) {
-      _logger.errorf("exception: %s\n", ExceptionUtils.getStackTrace(e));
+      _logger.errorf("exception: %s\n", Throwables.getStackTraceAsString(e));
     }
 
     // if the task ended, send a hint to the pool manager to look up worker status
@@ -387,11 +430,13 @@ public class WorkMgr extends AbstractCoordinator {
         throw new BatfishException("Question name not provided for ANSWER work");
       }
       Path qFile = getpathContainerQuestion(workItem.getContainerName(), qName);
-      Question question = Question.parseQuestion(qFile, getCurrentClassLoader());
+      Question question = Question.parseQuestion(qFile);
       workType =
-          question.getDataPlane()
-              ? WorkType.DATAPLANE_DEPENDENT_ANSWERING
-              : WorkType.DATAPLANE_INDEPENDENT_ANSWERING;
+          question.getIndependent()
+              ? WorkType.INDEPENDENT_ANSWERING
+              : question.getDataPlane()
+                  ? WorkType.DATAPLANE_DEPENDENT_ANSWERING
+                  : WorkType.PARSING_DEPENDENT_ANSWERING;
     }
 
     if (WorkItemBuilder.isAnalyzingWorkItem(workItem)) {
@@ -403,12 +448,17 @@ public class WorkMgr extends AbstractCoordinator {
         throw new BatfishException("Analysis name not provided for ANALYZE work");
       }
       Set<String> qNames = listAnalysisQuestions(workItem.getContainerName(), aName);
-      workType = WorkType.DATAPLANE_INDEPENDENT_ANSWERING;
+      // compute the strongest dependency among the embedded questions
+      workType = WorkType.INDEPENDENT_ANSWERING;
       for (String qName : qNames) {
         Path qFile = getpathAnalysisQuestion(workItem.getContainerName(), aName, qName);
-        Question question = Question.parseQuestion(qFile, getCurrentClassLoader());
+        Question question = Question.parseQuestion(qFile);
         if (question.getDataPlane()) {
           workType = WorkType.DATAPLANE_DEPENDENT_ANSWERING;
+          break;
+        }
+        if (!question.getIndependent()) {
+          workType = WorkType.PARSING_DEPENDENT_ANSWERING;
         }
       }
     }
@@ -447,7 +497,7 @@ public class WorkMgr extends AbstractCoordinator {
       List<String> questionsToDelete,
       @Nullable Boolean suggested) {
     Path containerDir = getdirContainer(containerName);
-    Path aDir = containerDir.resolve(Paths.get(BfConsts.RELPATH_ANALYSES_DIR, aName));
+    Path aDir = containerDir.resolve(BfConsts.RELPATH_ANALYSES_DIR).resolve(aName);
 
     this.configureAnalysisValidityCheck(
         containerName, newAnalysis, aName, questionsToAdd, questionsToDelete, aDir);
@@ -481,7 +531,7 @@ public class WorkMgr extends AbstractCoordinator {
       }
     }
 
-    /** Delete questionsToDelete and add questionsToAdd */
+    /* Delete questionsToDelete and add questionsToAdd */
     Path questionsDir = aDir.resolve(BfConsts.RELPATH_QUESTIONS_DIR);
     for (String qName : questionsToDelete) {
       CommonUtil.deleteDirectory(questionsDir.resolve(qName));
@@ -507,7 +557,7 @@ public class WorkMgr extends AbstractCoordinator {
       if (Files.exists(aDir)) {
         throw new BatfishException(
             String.format("Analysis '%s' already exists for container '%s'", aName, containerName));
-      } else if (questionsToDelete.size() != 0) {
+      } else if (!questionsToDelete.isEmpty()) {
         throw new BatfishException("Cannot delete questions from a new analysis");
       }
     } else {
@@ -604,8 +654,7 @@ public class WorkMgr extends AbstractCoordinator {
       if (!Files.exists(answerFile)) {
         Answer ans = Answer.failureAnswer("Not answered", null);
         ans.setStatus(AnswerStatus.NOTFOUND);
-        BatfishObjectMapper mapper = new BatfishObjectMapper();
-        answer = mapper.writeValueAsString(ans);
+        answer = BatfishObjectMapper.writePrettyString(ans);
       } else {
         boolean answerIsStale;
         answerIsStale =
@@ -615,8 +664,7 @@ public class WorkMgr extends AbstractCoordinator {
         if (answerIsStale) {
           Answer ans = Answer.failureAnswer("Not fresh", null);
           ans.setStatus(AnswerStatus.STALE);
-          BatfishObjectMapper mapper = new BatfishObjectMapper();
-          answer = mapper.writeValueAsString(ans);
+          answer = BatfishObjectMapper.writePrettyString(ans);
         } else {
           answer = CommonUtil.readFile(answerFile);
         }
@@ -662,16 +710,14 @@ public class WorkMgr extends AbstractCoordinator {
     if (!Files.exists(answerFile)) {
       Answer ans = Answer.failureAnswer("Not answered", null);
       ans.setStatus(AnswerStatus.NOTFOUND);
-      BatfishObjectMapper mapper = new BatfishObjectMapper();
-      answer = mapper.writeValueAsString(ans);
+      answer = BatfishObjectMapper.writePrettyString(ans);
     } else {
       if (CommonUtil.getLastModifiedTime(questionFile)
               .compareTo(CommonUtil.getLastModifiedTime(answerFile))
           > 0) {
         Answer ans = Answer.failureAnswer("Not fresh", null);
         ans.setStatus(AnswerStatus.STALE);
-        BatfishObjectMapper mapper = new BatfishObjectMapper();
-        answer = mapper.writeValueAsString(ans);
+        answer = BatfishObjectMapper.writePrettyString(ans);
       } else {
         answer = CommonUtil.readFile(answerFile);
       }
@@ -730,11 +776,10 @@ public class WorkMgr extends AbstractCoordinator {
   /** Return a {@link Container container} contains all testrigs directories inside it */
   public Container getContainer(Path containerDir) {
     SortedSet<String> testrigs =
-        new TreeSet<>(
-            CommonUtil.getSubdirectories(containerDir.resolve(BfConsts.RELPATH_TESTRIGS_DIR))
-                .stream()
-                .map(dir -> dir.getFileName().toString())
-                .collect(Collectors.toSet()));
+        CommonUtil.getSubdirectories(containerDir.resolve(BfConsts.RELPATH_TESTRIGS_DIR))
+            .stream()
+            .map(dir -> dir.getFileName().toString())
+            .collect(toCollection(TreeSet::new));
 
     return Container.of(containerDir.toFile().getName(), testrigs);
   }
@@ -765,11 +810,10 @@ public class WorkMgr extends AbstractCoordinator {
       containersDir.toFile().mkdirs();
     }
     SortedSet<String> containers =
-        new TreeSet<>(
-            CommonUtil.getSubdirectories(containersDir)
-                .stream()
-                .map(dir -> dir.getFileName().toString())
-                .collect(Collectors.toSet()));
+        CommonUtil.getSubdirectories(containersDir)
+            .stream()
+            .map(dir -> dir.getFileName().toString())
+            .collect(toCollection(TreeSet::new));
     return containers;
   }
 
@@ -823,47 +867,68 @@ public class WorkMgr extends AbstractCoordinator {
     return getdirContainer(containerName).resolve(Paths.get(BfConsts.RELPATH_TESTRIGS_DIR));
   }
 
+  /**
+   * Returns the latest testrig in the container.
+   *
+   * @return An {@link Optional} object with the latest testrig or empty if no testrigs exist
+   */
+  public Optional<String> getLatestTestrig(String container) {
+    Function<String, Instant> toTestrigTimestamp =
+        t -> TestrigMetadataMgr.getTestrigCreationTimeOrMin(container, t);
+    return listTestrigs(container)
+        .stream()
+        .max(
+            Comparator.comparing(
+                toTestrigTimestamp, Comparator.nullsFirst(Comparator.naturalOrder())));
+  }
+
+  /**
+   * Gets the {@link NodeRolesData} for the {@code container}.
+   *
+   * @param container The container for which we should fetch the node roles
+   * @return The node roles
+   * @throws IOException The contents of node roles file cannot be converted to {@link
+   *     NodeRolesData}
+   */
+  public NodeRolesData getNodeRolesData(String container) throws IOException {
+    return NodeRolesData.read(getNodeRolesPath(container));
+  }
+
+  /** Gets the path of the node roles file */
+  public Path getNodeRolesPath(String container) {
+    return getdirContainer(container).resolve(BfConsts.RELPATH_NODE_ROLES_PATH);
+  }
+
+  /**
+   * Gets the set of nodes in this container and testrig. Extracts the set based on the topology
+   * file that is generated as part of the testrig initialization.
+   *
+   * @param container The container
+   * @param testrig The testrig
+   * @return The set of nodes
+   * @throws IOException If the contents of the topology file cannot be mapped to the topology
+   *     object
+   */
+  public Set<String> getNodes(String container, String testrig) throws IOException {
+    Path pojoTopologyPath =
+        getdirTestrig(container, testrig).resolve(BfConsts.RELPATH_TESTRIG_POJO_TOPOLOGY_PATH);
+    Topology topology =
+        BatfishObjectMapper.mapper().readValue(pojoTopologyPath.toFile(), Topology.class);
+    return topology.getNodes().stream().map(Node::getName).collect(Collectors.toSet());
+  }
+
   public JSONObject getParsingResults(String containerName, String testrigName)
-      throws ClassNotFoundException, JsonProcessingException, JSONException {
+      throws JsonProcessingException, JSONException {
 
-    // TODO Refactor deserializeObject() out of PluginConsumer so this function can use it.
-
-    /**
-     * A byte-array containing the first 4 bytes of the header for a file that is the output of java
-     * serialization
-     */
-    final byte[] JAVA_SERIALIZED_OBJECT_HEADER = {
-      (byte) 0xac, (byte) 0xed, (byte) 0x00, (byte) 0x05
-    };
-
-    ParseVendorConfigurationAnswerElement pvcae;
-    try (Closer closer = Closer.create()) {
-      // Reading the object from a file
-      FileInputStream fis =
-          closer.register(
-              new FileInputStream(
-                  getdirTestrig(containerName, testrigName)
-                      .resolve(BfConsts.RELPATH_PARSE_ANSWER_PATH)
-                      .toFile()));
-      BufferedInputStream bis = closer.register(new BufferedInputStream(fis));
-      GZIPInputStream gis = closer.register(new GZIPInputStream(bis));
-      PushbackInputStream pbstream =
-          new PushbackInputStream(gis, JAVA_SERIALIZED_OBJECT_HEADER.length);
-      ObjectInputStream ois =
-          new BatfishObjectInputStream(
-              pbstream, ParseVendorConfigurationAnswerElement.class.getClassLoader());
-
-      pvcae = (ParseVendorConfigurationAnswerElement) ois.readObject();
-
-      ois.close();
-    } catch (IOException e) {
-      throw new BatfishException("Failed to deserialize parse answer object", e);
-    }
+    ParseVendorConfigurationAnswerElement pvcae =
+        deserializeObject(
+            getdirTestrig(containerName, testrigName).resolve(BfConsts.RELPATH_PARSE_ANSWER_PATH),
+            ParseVendorConfigurationAnswerElement.class);
     JSONObject warnings = new JSONObject();
     SortedMap<String, Warnings> warningsMap = pvcae.getWarnings();
-    BatfishObjectMapper mapper = new BatfishObjectMapper();
+    ObjectWriter writer = BatfishObjectMapper.prettyWriter();
     for (String s : warningsMap.keySet()) {
-      warnings.put(s, mapper.writeValueAsString(warningsMap.get(s)));
+      warnings.put(s, writer.writeValueAsString(warningsMap.get(s)));
     }
     return warnings;
   }
@@ -955,7 +1020,7 @@ public class WorkMgr extends AbstractCoordinator {
   public Path getTestrigObject(String containerName, String testrigName, String objectName) {
     Path testrigDir = getdirTestrig(containerName, testrigName);
     Path file = testrigDir.resolve(objectName);
-    /**
+    /*
      * Check if we got an object name outside of the testrig folder, perhaps because of ".." in the
      * name; disallow it
      */
@@ -999,12 +1064,11 @@ public class WorkMgr extends AbstractCoordinator {
   }
 
   public String initContainer(@Nullable String containerName, @Nullable String containerPrefix) {
-    if (containerName == null || containerName.equals("")) {
-      containerName = containerPrefix + "_" + UUID.randomUUID();
-    }
-    Path containerDir = Main.getSettings().getContainersLocation().resolve(containerName);
+    String newContainerName =
+        isNullOrEmpty(containerName) ? containerPrefix + "_" + UUID.randomUUID() : containerName;
+    Path containerDir = Main.getSettings().getContainersLocation().resolve(newContainerName);
     if (Files.exists(containerDir)) {
-      throw new BatfishException("Container '" + containerName + "' already exists!");
+      throw new BatfishException("Container '" + newContainerName + "' already exists!");
     }
     if (!containerDir.toFile().mkdirs()) {
       throw new BatfishException("failed to create directory '" + containerDir + "'");
@@ -1021,7 +1085,7 @@ public class WorkMgr extends AbstractCoordinator {
     if (!questionsDir.toFile().mkdir()) {
       throw new BatfishException("failed to create directory '" + questionsDir + "'");
     }
-    return containerName;
+    return newContainerName;
   }
 
   @Override
@@ -1076,25 +1140,44 @@ public class WorkMgr extends AbstractCoordinator {
     // things look ok, now make the move
     boolean routingTables = false;
     boolean bgpTables = false;
+    boolean roleData = false;
     for (Path subFile : subFileList) {
-      Path target;
+      String name = subFile.getFileName().toString();
       if (isEnvFile(subFile)) {
-        String name = subFile.getFileName().toString();
+        // copy environment level files to the environment directory
         if (name.equals(BfConsts.RELPATH_ENVIRONMENT_ROUTING_TABLES)) {
           routingTables = true;
         }
         if (name.equals(BfConsts.RELPATH_ENVIRONMENT_BGP_TABLES)) {
           bgpTables = true;
         }
-        target = defaultEnvironmentLeafDir.resolve(subFile.getFileName());
+        CommonUtil.copy(subFile, defaultEnvironmentLeafDir.resolve(subFile.getFileName()));
+      } else if (isContainerFile(subFile)) {
+        // derive and write the new container level file from the input
+        if (name.equals(BfConsts.RELPATH_NODE_ROLES_PATH)) {
+          roleData = true;
+          try {
+            NodeRolesData testrigData = NodeRolesData.read(subFile);
+            Path nodeRolesPath = containerDir.resolve(BfConsts.RELPATH_NODE_ROLES_PATH);
+            NodeRolesData.mergeNodeRoleDimensions(
+                nodeRolesPath,
+                testrigData.getNodeRoleDimensions(),
+                testrigData.getDefaultDimension(),
+                false);
+          } catch (IOException e) {
+            // lets not stop the upload because that file is busted.
+            // TODO: figure out a way to surface this error to the user
+            _logger.errorf("Could not process node role data: %s", e);
+          }
+        }
       } else {
-        target = srcTestrigDir.resolve(subFile.getFileName());
+        // rest is plain copy
+        CommonUtil.copy(subFile, srcTestrigDir.resolve(subFile.getFileName()));
       }
-      CommonUtil.copy(subFile, target);
     }
     _logger.infof(
-        "Environment data for testrig:%s; bgpTables:%s, routingTables:%s\n",
-        testrigName, bgpTables, routingTables);
+        "Environment data for testrig:%s; bgpTables:%s, routingTables:%s, roleData:%s\n",
+        testrigName, bgpTables, routingTables, roleData);
 
     if (autoAnalyze) {
       for (WorkItem workItem : getAutoWorkQueue(containerName, testrigName)) {
@@ -1129,6 +1212,11 @@ public class WorkMgr extends AbstractCoordinator {
     return autoWorkQueue;
   }
 
+  private boolean isContainerFile(Path path) {
+    String name = path.getFileName().toString();
+    return CONTAINER_FILENAMES.contains(name);
+  }
+
   private boolean isEnvFile(Path path) {
     String name = path.getFileName().toString();
     return ENV_FILENAMES.contains(name);
@@ -1148,7 +1236,7 @@ public class WorkMgr extends AbstractCoordinator {
       _workQueueMgr.processTaskCheckResult(work, fakeTask);
       killed = true;
     } catch (Exception e) {
-      _logger.errorf("exception: %s\n", ExceptionUtils.getStackTrace(e));
+      _logger.errorf("exception: %s\n", Throwables.getStackTraceAsString(e));
     }
     return killed;
   }
@@ -1171,7 +1259,8 @@ public class WorkMgr extends AbstractCoordinator {
                   _settings.getSslPoolKeystoreFile(),
                   _settings.getSslPoolKeystorePassword(),
                   _settings.getSslPoolTruststoreFile(),
-                  _settings.getSslPoolTruststorePassword())
+                  _settings.getSslPoolTruststorePassword(),
+                  true)
               .build();
 
       String protocol = _settings.getSslPoolDisable() ? "http" : "https";
@@ -1197,7 +1286,7 @@ public class WorkMgr extends AbstractCoordinator {
           if (!array.get(0).equals(BfConsts.SVC_SUCCESS_KEY)) {
             _logger.errorf("Got error while killing task: %s %s\n", array.get(0), array.get(1));
           } else {
-            Task task = new BatfishObjectMapper().readValue(array.getString(1), Task.class);
+            Task task = BatfishObjectMapper.mapper().readValue(array.getString(1), Task.class);
             _workQueueMgr.processTaskCheckResult(work, task);
             killed = true;
           }
@@ -1211,9 +1300,9 @@ public class WorkMgr extends AbstractCoordinator {
         }
       }
     } catch (ProcessingException e) {
-      _logger.errorf("unable to connect to %s: %s\n", worker, ExceptionUtils.getStackTrace(e));
+      _logger.errorf("unable to connect to %s: %s\n", worker, Throwables.getStackTraceAsString(e));
     } catch (Exception e) {
-      _logger.errorf("exception: %s\n", ExceptionUtils.getStackTrace(e));
+      _logger.errorf("exception: %s\n", Throwables.getStackTraceAsString(e));
     } finally {
       if (client != null) {
         client.close();
@@ -1249,27 +1338,23 @@ public class WorkMgr extends AbstractCoordinator {
       return true;
     }
     boolean suggested = AnalysisMetadataMgr.getAnalysisSuggestedOrFalse(containerName, aName);
-    if (analysisType == AnalysisType.SUGGESTED && suggested
-        || analysisType == AnalysisType.USER && !suggested) {
-      return true;
-    }
-    return false;
+    return (analysisType == AnalysisType.SUGGESTED && suggested
+        || analysisType == AnalysisType.USER && !suggested);
   }
 
   public SortedSet<String> listAnalysisQuestions(String containerName, String analysisName) {
     Path analysisDir = getdirContainerAnalysis(containerName, analysisName);
     Path questionsDir = analysisDir.resolve(BfConsts.RELPATH_QUESTIONS_DIR);
     if (!Files.exists(questionsDir)) {
-      /** TODO: Something better than returning empty set? */
+      /* TODO: Something better than returning empty set? */
       return new TreeSet<>();
     }
     SortedSet<Path> subdirectories = CommonUtil.getSubdirectories(questionsDir);
     SortedSet<String> subdirectoryNames =
-        new TreeSet<>(
-            subdirectories
-                .stream()
-                .map(path -> path.getFileName().toString())
-                .collect(Collectors.toSet()));
+        subdirectories
+            .stream()
+            .map(path -> path.getFileName().toString())
+            .collect(toCollection(TreeSet::new));
     return subdirectoryNames;
   }
 
@@ -1279,14 +1364,12 @@ public class WorkMgr extends AbstractCoordinator {
       containersDir.toFile().mkdirs();
     }
     SortedSet<String> authorizedContainers =
-        new TreeSet<>(
-            CommonUtil.getSubdirectories(containersDir)
-                .stream()
-                .map(dir -> dir.getFileName().toString())
-                .filter(
-                    container ->
-                        Main.getAuthorizer().isAccessibleContainer(apiKey, container, false))
-                .collect(Collectors.toSet()));
+        CommonUtil.getSubdirectories(containersDir)
+            .stream()
+            .map(dir -> dir.getFileName().toString())
+            .filter(
+                container -> Main.getAuthorizer().isAccessibleContainer(apiKey, container, false))
+            .collect(toCollection(TreeSet::new));
     return authorizedContainers;
   }
 
@@ -1301,11 +1384,10 @@ public class WorkMgr extends AbstractCoordinator {
       return new TreeSet<>();
     }
     SortedSet<String> environments =
-        new TreeSet<>(
-            CommonUtil.getSubdirectories(environmentsDir)
-                .stream()
-                .map(dir -> dir.getFileName().toString())
-                .collect(Collectors.toSet()));
+        CommonUtil.getSubdirectories(environmentsDir)
+            .stream()
+            .map(dir -> dir.getFileName().toString())
+            .collect(toCollection(TreeSet::new));
     return environments;
   }
 
@@ -1321,14 +1403,13 @@ public class WorkMgr extends AbstractCoordinator {
       return new TreeSet<>();
     }
     SortedSet<String> questions =
-        new TreeSet<>(
-            CommonUtil.getSubdirectories(questionsDir)
-                .stream()
-                .map(dir -> dir.getFileName().toString())
-                // Question dirs starting with __ are internal questions
-                // and should not show up in listQuestions
-                .filter(dir -> verbose || !dir.startsWith("__"))
-                .collect(Collectors.toSet()));
+        CommonUtil.getSubdirectories(questionsDir)
+            .stream()
+            .map(dir -> dir.getFileName().toString())
+            // Question dirs starting with __ are internal questions
+            // and should not show up in listQuestions
+            .filter(dir -> verbose || !dir.startsWith("__"))
+            .collect(toCollection(TreeSet::new));
     return questions;
   }
 
@@ -1404,13 +1485,7 @@ public class WorkMgr extends AbstractCoordinator {
     }
     // as an optimization trigger AssignWork to see if we can schedule this (or another) work
     if (success) {
-      Thread thread =
-          new Thread() {
-            @Override
-            public void run() {
-              assignWork();
-            }
-          };
+      Thread thread = new Thread(this::assignWork);
       thread.start();
     }
     return success;
@@ -1484,7 +1559,7 @@ public class WorkMgr extends AbstractCoordinator {
     Path zipFile = CommonUtil.createTempFile("coord_up_env_", ".zip");
     CommonUtil.writeStreamToFile(fileStream, zipFile);
 
-    /** First copy base environment if it is set */
+    /* First copy base environment if it is set */
     if (baseEnvName.length() > 0) {
       Path baseEnvPath = environmentsDir.resolve(Paths.get(baseEnvName, BfConsts.RELPATH_ENV_DIR));
       if (!Files.exists(baseEnvPath)) {
@@ -1538,8 +1613,15 @@ public class WorkMgr extends AbstractCoordinator {
     CommonUtil.deleteIfExists(zipFile);
   }
 
-  public void uploadQuestion(
-      String containerName, String qName, InputStream fileStream, InputStream paramFileStream) {
+  public void uploadQuestion(String containerName, String qName, String questionJson) {
+    // Validate the question before saving it to disk.
+    try {
+      Question.parseQuestion(questionJson);
+    } catch (Exception e) {
+      throw new BatfishException(
+          String.format("Invalid question %s/%s: %s", containerName, qName, e.getMessage()), e);
+    }
+
     Path containerDir = getdirContainer(containerName);
     Path qDir = containerDir.resolve(Paths.get(BfConsts.RELPATH_QUESTIONS_DIR, qName));
     if (Files.exists(qDir)) {
@@ -1550,7 +1632,20 @@ public class WorkMgr extends AbstractCoordinator {
       throw new BatfishException("Failed to create directory: '" + qDir + "'");
     }
     Path file = qDir.resolve(BfConsts.RELPATH_QUESTION_FILE);
-    CommonUtil.writeStreamToFile(fileStream, file);
+    CommonUtil.writeFile(file, questionJson);
+  }
+
+  private static final DateTimeFormatter FORMATTER =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH-mm-ss.SSS")
+          .withLocale(Locale.getDefault())
+          .withZone(ZoneOffset.UTC);
+
+  static String generateFileDateString(String base, Instant instant) {
+    return base + "_" + FORMATTER.format(instant);
+  }
+
+  private static String generateFileDateString(String base) {
+    return generateFileDateString(base, Instant.now());
   }
 
   public void uploadTestrig(
@@ -1567,7 +1662,7 @@ public class WorkMgr extends AbstractCoordinator {
     Path originalDir =
         containerDir
             .resolve(BfConsts.RELPATH_ORIGINAL_DIR)
-            .resolve(testrigName + "_" + Instant.now());
+            .resolve(generateFileDateString(testrigName));
     if (!originalDir.toFile().mkdirs()) {
       throw new BatfishException("Failed to create directory: '" + originalDir + "'");
     }

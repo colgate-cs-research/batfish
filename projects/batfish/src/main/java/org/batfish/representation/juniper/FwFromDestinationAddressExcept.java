@@ -1,31 +1,34 @@
 package org.batfish.representation.juniper;
 
-import com.google.common.collect.Iterables;
-import java.util.Collections;
+import javax.annotation.Nullable;
 import org.batfish.common.Warnings;
+import org.batfish.datamodel.AclIpSpace;
 import org.batfish.datamodel.Configuration;
-import org.batfish.datamodel.IpAccessListLine;
+import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.IpWildcard;
-import org.batfish.datamodel.Prefix;
 
 public final class FwFromDestinationAddressExcept extends FwFrom {
 
   /** */
   private static final long serialVersionUID = 1L;
 
-  private final Prefix _prefix;
+  @Nullable private final IpWildcard _ipWildcard;
 
-  public FwFromDestinationAddressExcept(Prefix prefix) {
-    _prefix = prefix;
+  public FwFromDestinationAddressExcept(IpWildcard ipWildcard) {
+    _ipWildcard = ipWildcard;
   }
 
   @Override
-  public void applyTo(IpAccessListLine line, JuniperConfiguration jc, Warnings w, Configuration c) {
-    line.setNotDstIps(
-        Iterables.concat(line.getNotDstIps(), Collections.singleton(new IpWildcard(_prefix))));
+  public void applyTo(
+      HeaderSpace.Builder headerSpaceBuilder,
+      JuniperConfiguration jc,
+      Warnings w,
+      Configuration c) {
+    headerSpaceBuilder.setNotDstIps(
+        AclIpSpace.union(headerSpaceBuilder.getNotDstIps(), _ipWildcard.toIpSpace()));
   }
 
-  public Prefix getPrefix() {
-    return _prefix;
+  public IpWildcard getIpWildcard() {
+    return _ipWildcard;
   }
 }

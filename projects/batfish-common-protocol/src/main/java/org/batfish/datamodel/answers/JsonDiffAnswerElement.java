@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.common.util.JsonDiff;
 
-public class JsonDiffAnswerElement implements AnswerElement {
+public class JsonDiffAnswerElement extends AnswerElement {
 
   private static final String PROP_JSON_DIFF = "jsonDiff";
 
@@ -22,8 +22,6 @@ public class JsonDiffAnswerElement implements AnswerElement {
 
   @Override
   public String prettyPrint() {
-    final StringBuilder sb = new StringBuilder("Difference between base and delta\n");
-    sb.append(_jsonDiff.prettyPrint("  "));
-    return sb.toString();
+    return "Difference between base and delta\n" + _jsonDiff.prettyPrint("  ");
   }
 }

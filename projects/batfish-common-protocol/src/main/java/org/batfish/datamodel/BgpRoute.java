@@ -20,7 +20,7 @@ public class BgpRoute extends AbstractRoute {
 
   public static class Builder extends AbstractRouteBuilder<Builder, BgpRoute> {
 
-    private List<SortedSet<Integer>> _asPath;
+    private List<SortedSet<Long>> _asPath;
 
     private SortedSet<Long> _clusterList;
 
@@ -77,7 +77,7 @@ public class BgpRoute extends AbstractRoute {
           _weight);
     }
 
-    public List<SortedSet<Integer>> getAsPath() {
+    public List<SortedSet<Long>> getAsPath() {
       return _asPath;
     }
 
@@ -114,7 +114,7 @@ public class BgpRoute extends AbstractRoute {
       return _weight;
     }
 
-    public Builder setAsPath(List<SortedSet<Integer>> asPath) {
+    public Builder setAsPath(List<SortedSet<Long>> asPath) {
       _asPath = asPath;
       return getThis();
     }
@@ -212,7 +212,7 @@ public class BgpRoute extends AbstractRoute {
 
   private final Ip _originatorIp;
 
-  private final OriginType _originType;
+  @Nonnull private final OriginType _originType;
 
   private final RoutingProtocol _protocol;
 
@@ -237,7 +237,7 @@ public class BgpRoute extends AbstractRoute {
       @JsonProperty(PROP_CLUSTER_LIST) SortedSet<Long> clusterList,
       @JsonProperty(PROP_RECEIVED_FROM_ROUTE_REFLECTOR_CLIENT)
           boolean receivedFromRouteReflectorClient,
-      @JsonProperty(PROP_ORIGIN_TYPE) OriginType originType,
+      @Nonnull @JsonProperty(PROP_ORIGIN_TYPE) OriginType originType,
       @JsonProperty(PROP_PROTOCOL) RoutingProtocol protocol,
       @JsonProperty(PROP_RECEIVED_FROM_IP) Ip receivedFromIp,
       @JsonProperty(PROP_SRC_PROTOCOL) RoutingProtocol srcProtocol,
@@ -413,7 +413,7 @@ public class BgpRoute extends AbstractRoute {
     result = prime * result + Long.hashCode(_med);
     result = prime * result + _network.hashCode();
     result = prime * result + ((_nextHopIp == null) ? 0 : _nextHopIp.hashCode());
-    result = prime * result + ((_originType == null) ? 0 : _originType.ordinal());
+    result = prime * result + _originType.ordinal();
     result = prime * result + ((_originatorIp == null) ? 0 : _originatorIp.hashCode());
     result = prime * result + ((_protocol == null) ? 0 : _protocol.ordinal());
     result = prime * result + ((_receivedFromIp == null) ? 0 : _receivedFromIp.hashCode());
@@ -446,7 +446,7 @@ public class BgpRoute extends AbstractRoute {
   }
 
   @Override
-  public int routeCompare(AbstractRoute rhs) {
+  public int routeCompare(@Nonnull AbstractRoute rhs) {
     if (getClass() != rhs.getClass()) {
       return 0;
     }

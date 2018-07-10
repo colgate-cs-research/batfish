@@ -131,9 +131,8 @@ public class WorkItemBuilder {
 
     String testrig = workItem.getTestrigName();
     String envName =
-        reqParams.containsKey(BfConsts.ARG_ENVIRONMENT_NAME)
-            ? reqParams.get(BfConsts.ARG_ENVIRONMENT_NAME)
-            : BfConsts.RELPATH_DEFAULT_ENVIRONMENT_NAME;
+        reqParams.getOrDefault(
+            BfConsts.ARG_ENVIRONMENT_NAME, BfConsts.RELPATH_DEFAULT_ENVIRONMENT_NAME);
     String deltaTestrig = reqParams.get(BfConsts.ARG_DELTA_TESTRIG);
     String deltaEnvName = reqParams.get(BfConsts.ARG_DELTA_ENVIRONMENT_NAME);
     if (deltaEnvName != null && deltaTestrig == null) {
@@ -143,7 +142,7 @@ public class WorkItemBuilder {
       throw new BatfishException("deltaEnv not specified for deltaTestrig " + deltaTestrig);
     }
     if (reqParams.containsKey(BfConsts.ARG_DIFF_ACTIVE)
-        && !reqParams.get(BfConsts.ARG_DIFF_ACTIVE).toLowerCase().equals("false")) {
+        && !reqParams.get(BfConsts.ARG_DIFF_ACTIVE).equalsIgnoreCase("false")) {
       if (deltaTestrig == null) {
         throw new BatfishException("delta settings not specified when diff_active is on");
       }

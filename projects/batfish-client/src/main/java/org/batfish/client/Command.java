@@ -1,8 +1,10 @@
 package org.batfish.client;
 
 import com.google.common.collect.ImmutableMap;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 
@@ -11,6 +13,7 @@ public enum Command {
   ADD_BATFISH_OPTION("add-batfish-option"),
   ANSWER("answer"),
   ANSWER_DELTA("answer-delta"),
+  AUTOCOMPLETE("autocomplete"),
   CAT("cat"),
   CHECK_API_KEY("checkapikey"),
   CLEAR_SCREEN("cls"),
@@ -87,7 +90,16 @@ public enum Command {
   SYNC_TESTRIGS_SYNC_NOW("sync-testrigs-sync-now"),
   SYNC_TESTRIGS_UPDATE_SETTINGS("sync-testrigs-update-settings"),
   TEST("test"),
-  UPLOAD_CUSTOM_OBJECT("upload-custom");
+  UPLOAD_CUSTOM_OBJECT("upload-custom"),
+  VALIDATE_TEMPLATE("validate-template");
+
+  public enum TestComparisonMode {
+    COMPAREANSWER,
+    COMPAREALL,
+    COMPAREFAILURES,
+    COMPARESUMMARY,
+    RAW
+  }
 
   private static final Map<String, Command> _nameMap = buildNameMap();
 
@@ -124,11 +136,13 @@ public enum Command {
         new Pair<>(
             "<template-name>   [questionName=name] [param1=value1 [param2=value2] ...]",
             "Answer the template by name for the delta environment"));
+    descs.put(
+        AUTOCOMPLETE,
+        new Pair<>(
+            "[-maxSuggestions] <completion-type> <query>",
+            "Autocomplete information of question parameters"));
     descs.put(CAT, new Pair<>("<filename>", "Print the contents of the file"));
     descs.put(CHECK_API_KEY, new Pair<>("", "Check if API Key is valid"));
-    // descs.put(CHANGE_DIR, CHANGE_DIR
-    // + " <dirname>\n"
-    // + "\t Change the working directory");
     descs.put(CLEAR_SCREEN, new Pair<>("", "Clear screen"));
     descs.put(
         CONFIGURE_TEMPLATE,
@@ -325,9 +339,20 @@ public enum Command {
         new Pair<>(
             "<plugin-id> [key1=value1, [key2=value2], ...], ",
             "Update the settings for sync testrigs plugin"));
-    descs.put(TEST, new Pair<>("<reference file> <command>", "Show base testrig and environment"));
+    descs.put(
+        TEST,
+        new Pair<>(
+            "["
+                + Arrays.stream(TestComparisonMode.values())
+                    .map(v -> '-' + v.toString())
+                    .collect(Collectors.joining("|"))
+                + "] <ref file> <command>",
+            "Run the command and compare its output to the ref file (used for testing)"));
     descs.put(
         UPLOAD_CUSTOM_OBJECT, new Pair<>("<object-name> <object-file>", "Uploads a custom object"));
+    descs.put(
+        VALIDATE_TEMPLATE,
+        new Pair<>("<template-file> [param1=value1 [param2=value2] ...]", "Validate the template"));
     return descs;
   }
 

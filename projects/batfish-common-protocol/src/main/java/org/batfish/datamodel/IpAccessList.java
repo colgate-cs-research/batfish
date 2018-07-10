@@ -6,8 +6,10 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.google.common.collect.ImmutableList;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
 import java.util.List;
+import java.util.Map;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
+import org.batfish.datamodel.acl.Evaluator;
 
 @JsonSchemaDescription("An access-list used to filter IPV4 packets")
 public class IpAccessList extends ComparableStructure<String> {
@@ -87,6 +89,10 @@ public class IpAccessList extends ComparableStructure<String> {
     _lines = ImmutableList.copyOf(lines);
   }
 
+  public static Builder builder() {
+    return new Builder(null);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (o == this) {
@@ -98,14 +104,28 @@ public class IpAccessList extends ComparableStructure<String> {
     return other._lines.equals(_lines);
   }
 
-  public FilterResult filter(Flow flow) {
+  public FilterResult filter(
+      Flow flow,
+      String srcInterface,
+      Map<String, IpAccessList> availableAcls,
+      Map<String, IpSpace> namedIpSpaces) {
+    return filter(flow, srcInterface, availableAcls, namedIpSpaces, LineAction.REJECT);
+  }
+
+  public FilterResult filter(
+      Flow flow,
+      String srcInterface,
+      Map<String, IpAccessList> availableAcls,
+      Map<String, IpSpace> namedIpSpaces,
+      LineAction defaultAction) {
+    Evaluator evaluator = new Evaluator(flow, srcInterface, availableAcls, namedIpSpaces);
     for (int i = 0; i < _lines.size(); i++) {
       IpAccessListLine line = _lines.get(i);
-      if (line.matches(flow)) {
+      if (line.getMatchCondition().accept(evaluator)) {
         return new FilterResult(i, line.getAction());
       }
     }
-    return new FilterResult(null, LineAction.REJECT);
+    return new FilterResult(null, defaultAction);
   }
 
   @JsonProperty(PROP_LINES)
@@ -132,11 +152,13 @@ public class IpAccessList extends ComparableStructure<String> {
 
   @Override
   public String toString() {
-    String output = super.toString() + "\n" + "Identifier: " + _key;
+    StringBuilder output =
+        new StringBuilder().append(getClass().getSimpleName()).append(":").append(_key);
     for (IpAccessListLine line : _lines) {
-      output += "\n" + line;
+      output.append("\n");
+      output.append(line);
     }
-    return output;
+    return output.toString();
   }
 
   public boolean unorderedEqual(Object obj) {

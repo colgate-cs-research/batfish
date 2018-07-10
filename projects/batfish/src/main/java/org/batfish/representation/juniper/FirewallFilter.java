@@ -1,17 +1,22 @@
 package org.batfish.representation.juniper;
 
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.batfish.common.util.ReferenceCountedStructure;
+import javax.annotation.Nullable;
 
-public final class FirewallFilter extends ReferenceCountedStructure {
+public final class FirewallFilter implements Serializable {
 
   /** */
   private static final long serialVersionUID = 1L;
 
-  private final int _definitionLine;
-
   private final Family _family;
+
+  /*
+   * This is important filtering information for security policies (i.e. security policies only
+   * apply to specific from-zones)
+   */
+  private String _fromZone;
 
   private final String _name;
 
@@ -19,19 +24,19 @@ public final class FirewallFilter extends ReferenceCountedStructure {
 
   private final Map<String, FwTerm> _terms;
 
-  public FirewallFilter(String name, Family family, int definitionLine) {
-    _definitionLine = definitionLine;
+  public FirewallFilter(String name, Family family) {
     _family = family;
+    _fromZone = null;
     _name = name;
     _terms = new LinkedHashMap<>();
   }
 
-  public int getDefinitionLine() {
-    return _definitionLine;
-  }
-
   public Family getFamily() {
     return _family;
+  }
+
+  public @Nullable String getFromZone() {
+    return _fromZone;
   }
 
   public String getName() {
@@ -48,5 +53,9 @@ public final class FirewallFilter extends ReferenceCountedStructure {
 
   public void setRoutingPolicy(boolean routingPolicy) {
     _routingPolicy = routingPolicy;
+  }
+
+  public void setFromZone(String fromZone) {
+    _fromZone = fromZone;
   }
 }

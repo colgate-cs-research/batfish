@@ -1,10 +1,14 @@
 package org.batfish.datamodel;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Collections;
+import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nullable;
+import org.batfish.datamodel.collections.NodeInterfacePair;
 
+/** Represents the result of performing a traceroute for a {@link Flow} */
 public class FlowTrace implements Comparable<FlowTrace> {
 
   private static final String PROP_DISPOSITION = "disposition";
@@ -22,7 +26,7 @@ public class FlowTrace implements Comparable<FlowTrace> {
       @JsonProperty(PROP_HOPS) List<FlowTraceHop> hops,
       @JsonProperty(PROP_NOTES) String notes) {
     _disposition = disposition;
-    _hops = hops != null ? hops : Collections.emptyList();
+    _hops = hops != null ? hops : ImmutableList.of();
     _notes = notes;
   }
 
@@ -54,13 +58,7 @@ public class FlowTrace implements Comparable<FlowTrace> {
       return false;
     }
     FlowTrace rhs = (FlowTrace) o;
-    if (_disposition != rhs._disposition) {
-      return false;
-    }
-    if (!_hops.equals(rhs._hops)) {
-      return false;
-    }
-    return true;
+    return _disposition == rhs._disposition && _hops.equals(rhs._hops);
   }
 
   @JsonProperty(PROP_DISPOSITION)
@@ -71,6 +69,31 @@ public class FlowTrace implements Comparable<FlowTrace> {
   @JsonProperty(PROP_HOPS)
   public List<FlowTraceHop> getHops() {
     return _hops;
+  }
+
+  @Nullable
+  private FlowTraceHop getLastHop() {
+    int numHops = getHops().size();
+    if (numHops == 0) {
+      return null;
+    }
+    return getHops().get(numHops - 1);
+  }
+
+  /**
+   * Get the hostname/interface of the last hop or {@code null} if the flow was no accepted.
+   *
+   * @return the hostname of the accepting node or {@code null} if the flow disposition is not
+   *     "accepted"
+   */
+  @Nullable
+  @JsonIgnore
+  public NodeInterfacePair getAcceptingNode() {
+    if (getDisposition() != FlowDisposition.ACCEPTED) {
+      return null;
+    }
+    FlowTraceHop lastHop = getLastHop();
+    return lastHop == null ? null : lastHop.getEdge().getInterface2();
   }
 
   @JsonProperty(PROP_NOTES)
@@ -103,25 +126,29 @@ public class FlowTrace implements Comparable<FlowTrace> {
         transformedFlowString = " ***TRANSFORMED:" + transformedFlow.prettyPrint("") + "***";
       }
       String routesStr = routes != null ? (" --- " + routes) : "";
+      String filterOutStr =
+          hop.getFilterOut() != null ? (" -- [out: " + hop.getFilterOut() + "]") : "";
+      String filterInStr = hop.getFilterIn() != null ? (" -- [in: " + hop.getFilterIn() + "]") : "";
       Edge edge = hop.getEdge();
       int num = i + 1;
-      sb.append(
-          prefixString
-              + "Hop "
-              + num
-              + ": "
-              + edge.getNode1()
-              + ":"
-              + edge.getInt1()
-              + " -> "
-              + edge.getNode2()
-              + ":"
-              + edge.getInt2()
-              + transformedFlowString
-              + routesStr
-              + "\n");
+      sb.append(prefixString)
+          .append("Hop ")
+          .append(num)
+          .append(": ")
+          .append(edge.getNode1())
+          .append(":")
+          .append(edge.getInt1())
+          .append(" -> ")
+          .append(edge.getNode2())
+          .append(":")
+          .append(edge.getInt2())
+          .append(transformedFlowString)
+          .append(routesStr)
+          .append(filterOutStr)
+          .append(filterInStr)
+          .append("\n");
     }
-    sb.append(prefixString + _notes + "\n");
+    sb.append(prefixString).append(_notes).append("\n");
     return sb.toString();
   }
 }

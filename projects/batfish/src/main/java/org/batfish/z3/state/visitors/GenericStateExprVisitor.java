@@ -2,6 +2,7 @@ package org.batfish.z3.state.visitors;
 
 import org.batfish.z3.state.Accept;
 import org.batfish.z3.state.AclDeny;
+import org.batfish.z3.state.AclLineIndependentMatch;
 import org.batfish.z3.state.AclLineMatch;
 import org.batfish.z3.state.AclLineNoMatch;
 import org.batfish.z3.state.AclPermit;
@@ -12,6 +13,7 @@ import org.batfish.z3.state.DropAclIn;
 import org.batfish.z3.state.DropAclOut;
 import org.batfish.z3.state.DropNoRoute;
 import org.batfish.z3.state.DropNullRoute;
+import org.batfish.z3.state.NeighborUnreachable;
 import org.batfish.z3.state.NodeAccept;
 import org.batfish.z3.state.NodeDrop;
 import org.batfish.z3.state.NodeDropAcl;
@@ -19,17 +21,18 @@ import org.batfish.z3.state.NodeDropAclIn;
 import org.batfish.z3.state.NodeDropAclOut;
 import org.batfish.z3.state.NodeDropNoRoute;
 import org.batfish.z3.state.NodeDropNullRoute;
+import org.batfish.z3.state.NodeInterfaceNeighborUnreachable;
+import org.batfish.z3.state.NodeNeighborUnreachable;
 import org.batfish.z3.state.NumberedQuery;
-import org.batfish.z3.state.Originate;
+import org.batfish.z3.state.OriginateInterfaceLink;
 import org.batfish.z3.state.OriginateVrf;
-import org.batfish.z3.state.PostIn;
 import org.batfish.z3.state.PostInInterface;
 import org.batfish.z3.state.PostInVrf;
 import org.batfish.z3.state.PostOutEdge;
 import org.batfish.z3.state.PreInInterface;
-import org.batfish.z3.state.PreOut;
 import org.batfish.z3.state.PreOutEdge;
 import org.batfish.z3.state.PreOutEdgePostNat;
+import org.batfish.z3.state.PreOutVrf;
 import org.batfish.z3.state.Query;
 
 public interface GenericStateExprVisitor<R> {
@@ -39,6 +42,8 @@ public interface GenericStateExprVisitor<R> {
   R visitAccept(Accept accept);
 
   R visitAclDeny(AclDeny aclDeny);
+
+  R visitAclLineIndependentMatch(AclLineIndependentMatch aclLineIndependentMatch);
 
   R visitAclLineMatch(AclLineMatch aclLineMatch);
 
@@ -60,6 +65,8 @@ public interface GenericStateExprVisitor<R> {
 
   R visitDropNullRoute(DropNullRoute dropNullRoute);
 
+  R visitNeighborUnreachable(NeighborUnreachable neighborUnreachable);
+
   R visitNodeAccept(NodeAccept nodeAccept);
 
   R visitNodeDrop(NodeDrop nodeDrop);
@@ -74,27 +81,29 @@ public interface GenericStateExprVisitor<R> {
 
   R visitNodeDropNullRoute(NodeDropNullRoute nodeDropNullRoute);
 
+  R visitNodeInterfaceNeighborUnreachable(NodeInterfaceNeighborUnreachable nodeNeighborUnreachable);
+
+  R visitNodeNeighborUnreachable(NodeNeighborUnreachable nodeNeighborUnreachable);
+
   R visitNumberedQuery(NumberedQuery numberedQuery);
 
-  R visitOriginate(Originate originate);
+  R visitOriginateInterfaceLink(OriginateInterfaceLink originateInterfaceLink);
 
   R visitOriginateVrf(OriginateVrf originateVrf);
-
-  R visitPostIn(PostIn postIn);
 
   R visitPostInInterface(PostInInterface postInInterface);
 
   R visitPostInVrf(PostInVrf postInVrf);
 
+  R visitPostOutEdge(PostOutEdge preOutInterface);
+
   R visitPreInInterface(PreInInterface preInInterface);
 
-  R visitPreOut(PreOut preOut);
+  R visitPreOutVrf(PreOutVrf preOutVrf);
 
   R visitPreOutEdge(PreOutEdge preOutEdge);
 
   R visitPreOutEdgePostNat(PreOutEdgePostNat preOutInterface);
-
-  R visitPostOutEdge(PostOutEdge preOutInterface);
 
   R visitQuery(Query query);
 }

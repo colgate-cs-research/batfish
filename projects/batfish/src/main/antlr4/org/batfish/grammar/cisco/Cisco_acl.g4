@@ -123,7 +123,7 @@ as_path_set_stanza
 
 bandwidth_irs_stanza
 :
-   BANDWIDTH ~NEWLINE* NEWLINE
+   BANDWIDTH null_rest_of_line
 ;
 
 cadant_stdacl_name
@@ -257,7 +257,7 @@ extended_access_list_null_tail
       | MENU
       | REMARK
       | STATISTICS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 extended_access_list_stanza
@@ -312,7 +312,14 @@ extended_access_list_tail
    )? ala = access_list_action
    (
       VLAN vlan = DEC vmask = HEX
-   )? prot = protocol srcipr = access_list_ip_range
+   )?
+   (
+      prot = protocol
+      |
+      (
+         OBJECT_GROUP ogs = variable
+      )
+   ) srcipr = access_list_ip_range
    (
       alps_src = port_specifier
    )? dstipr = access_list_ip_range
@@ -447,7 +454,7 @@ ip_prefix_list_stanza
    (
       IP
       | IPV4
-   ) PREFIX_LIST name = variable
+   )? PREFIX_LIST name = variable
    (
       (
          NEWLINE
@@ -656,7 +663,7 @@ ipv6_prefix_list_tail
 
 ipx_sap_access_list_null_tail
 :
-   action = access_list_action ~NEWLINE* NEWLINE
+   action = access_list_action null_rest_of_line
 ;
 
 ipx_sap_access_list_stanza
@@ -782,7 +789,7 @@ null_irs_stanza
    NO?
    (
       SIGNALLING
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 null_rs_stanza
@@ -793,7 +800,7 @@ null_rs_stanza
       | KEY_SOURCE
       | LOGGING
       | WINDOW_SIZE
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 prefix_set_stanza
@@ -823,7 +830,7 @@ prefix_set_elem_list
 
 protocol_type_code_access_list_null_tail
 :
-   action = access_list_action ~NEWLINE* NEWLINE
+   action = access_list_action null_rest_of_line
 ;
 
 protocol_type_code_access_list_stanza
@@ -860,12 +867,12 @@ s_arp_access_list_extended_tail
    (
       REQUEST
       | RESPONSE
-   )? IP senderip = access_list_ip_range 
+   )? IP senderip = access_list_ip_range
    (
-      targetip = access_list_ip_range 
+      targetip = access_list_ip_range
    )? MAC sendermac = access_list_mac_range
    (
-      targetmac = access_list_mac_range 
+      targetmac = access_list_mac_range
    )? LOG? NEWLINE
 ;
 
@@ -1025,7 +1032,7 @@ standard_access_list_null_tail
    (
       REMARK
       | STATISTICS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 standard_access_list_stanza

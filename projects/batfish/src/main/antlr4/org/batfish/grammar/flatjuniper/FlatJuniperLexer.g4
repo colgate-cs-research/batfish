@@ -8,6 +8,15 @@ options {
 boolean enableIPV6_ADDRESS = true;
 boolean enableIP_ADDRESS = true;
 boolean enableDEC = true;
+boolean _markWildcards = false;
+
+public boolean isPrefix() {
+   char nextChar = (char)this.getInputStream().LA(1);
+   if(Character.isDigit(nextChar) || nextChar == '.'){
+      return false;
+    }
+    return true;
+}
 
 @Override
 public String printStateVariables() {
@@ -15,7 +24,16 @@ public String printStateVariables() {
    sb.append("enableIPV6_ADDRESS: " + enableIPV6_ADDRESS + "\n");
    sb.append("enableIP_ADDRESS: " + enableIP_ADDRESS + "\n");
    sb.append("enableDEC: " + enableDEC + "\n");
+   sb.append("markWildcards: " + _markWildcards + "\n");
    return sb.toString();
+}
+
+public void setMarkWildcards(boolean markWildcards) {
+   _markWildcards = markWildcards;
+}
+
+private void setWildcard() {
+  setType(_markWildcards? WILDCARD_ARTIFACT : WILDCARD);
 }
 
 }
@@ -28,7 +46,8 @@ tokens {
    PIPE,
    RST,
    SYN,
-   VERSION_STRING
+   VERSION_STRING,
+   WILDCARD_ARTIFACT
 }
 
 // Juniper Keywords
@@ -138,6 +157,11 @@ AGGREGATED_ETHER_OPTIONS
    'aggregated-ether-options'
 ;
 
+AGGREGATOR
+:
+  'aggregator'
+;
+
 AGGRESSIVE
 :
    'aggressive'
@@ -153,14 +177,30 @@ AES_128_CMAC_96
    'aes-128-cmac-96'
 ;
 
+AES_128_GCM
+:
+   'aes-128-gcm'
+;
+
+
 AES_192_CBC
 :
    'aes-192-cbc'
 ;
 
+AES_192_GCM
+:
+   'aes-192-gcm'
+;
+
 AES_256_CBC
 :
    'aes-256-cbc'
+;
+
+AES_256_GCM
+:
+   'aes-256-gcm'
 ;
 
 AH
@@ -198,6 +238,16 @@ ALLOW
    'allow'
 ;
 
+ALLOW_SNOOPED_CLIENTS
+:
+   'allow-snooped-clients'
+;
+
+ALLOW_V4MAPPED_PACKETS
+:
+   'allow-v4mapped-packets'
+;
+
 ALWAYS_COMPARE_MED
 :
    'always-compare-med'
@@ -206,6 +256,16 @@ ALWAYS_COMPARE_MED
 ALWAYS_SEND
 :
    'always-send'
+;
+
+ALWAYS_WRITE_GIADDR
+:
+   'always-write-giaddr'
+;
+
+ANALYZER
+:
+  'analyzer'
 ;
 
 ANY
@@ -241,6 +301,11 @@ APPLICATION
 APPLICATION_PROTOCOL
 :
    'application-protocol'
+;
+
+APPLICATION_SET
+:
+   'application-set'
 ;
 
 APPLICATION_TRACKING
@@ -313,6 +378,11 @@ AS_PATH_EXPAND
    'as-path-expand'
 ;
 
+AS_PATH_GROUP
+:
+   'as-path-group'
+;
+
 AS_PATH_PREPEND
 :
    'as-path-prepend'
@@ -323,9 +393,9 @@ ASCII_TEXT
    'ascii-text'
 ;
 
-ALLOW_V4MAPPED_PACKETS
+ASDOT_NOTATION
 :
-   'allow-v4mapped-packets'
+   'asdot-notation'
 ;
 
 AUTHENTICATION
@@ -363,11 +433,6 @@ AUTHENTICATION_ORDER
    'authentication-order'
 ;
 
-AUTONOMOUS_SYSTEM
-:
-   'autonomous-system'
-;
-
 AUTHENTICATION_TYPE
 :
    'authentication-type'
@@ -386,6 +451,16 @@ AUTO_EXPORT
 AUTO_NEGOTIATION
 :
    'auto-negotiation'
+;
+
+AUTO_SNAPSHOT
+:
+  'auto-snapshot'
+;
+
+AUTONOMOUS_SYSTEM
+:
+   'autonomous-system'
 ;
 
 BACKUP_ROUTER
@@ -443,6 +518,11 @@ BOOTP
    'bootp'
 ;
 
+BOOTP_SUPPORT
+:
+   'bootp-support'
+;
+
 BOOTPC
 :
    'bootpc'
@@ -466,6 +546,11 @@ BRIDGE_DOMAINS
 BROADCAST_CLIENT
 :
    'broadcast-client'
+;
+
+BUNDLE
+:
+   'bundle'
 ;
 
 CATEGORIES
@@ -503,6 +588,11 @@ CLEAR
    'clear'
 ;
 
+CLIENT_LIST
+:
+   'client-list'
+;
+
 CLIENT_LIST_NAME
 :
    'client-list-name'
@@ -536,6 +626,11 @@ COLOR2
 COMMIT
 :
    'commit'
+;
+
+COMMUNICATION_PROHIBITED_BY_FILTERING
+:
+   'communication-prohibited-by-filtering'
 ;
 
 COMMUNITY
@@ -677,6 +772,11 @@ DELETE
    'delete'
 ;
 
+DELETE_BINDING_ON_RENEGOTIATION
+:
+   'delete-binding-on-renegotiation'
+;
+
 DENY
 :
    'deny'
@@ -702,6 +802,16 @@ DESTINATION_ADDRESS
    'destination-address'
 ;
 
+DESTINATION_ADDRESS_EXCLUDED
+:
+   'destination-address-excluded'
+;
+
+DESTINATION_HOST_PROHIBITED
+:
+   'destination-host-prohibited'
+;
+
 DESTINATION_HOST_UNKNOWN
 :
    'destination-host-unknown'
@@ -710,6 +820,11 @@ DESTINATION_HOST_UNKNOWN
 DESTINATION_IP
 :
    'destination-ip'
+;
+
+DESTINATION_NETWORK_PROHIBITED
+:
+   'destination-network-prohibited'
 ;
 
 DESTINATION_NETWORK_UNKNOWN
@@ -847,6 +962,11 @@ EGP
    'egp'
 ;
 
+EGRESS
+:
+  'egress'
+;
+
 EIGHT02_3AD
 :
    '802.3ad'
@@ -880,6 +1000,11 @@ ENCRYPTED_PASSWORD
 ENCRYPTION_ALGORITHM
 :
    'encryption-algorithm'
+;
+
+ENFORCE_FIRST_AS
+:
+   'enforce-first-as'
 ;
 
 ENHANCED_HASH_KEY
@@ -1077,6 +1202,11 @@ FORWARDING_CLASS
    'forwarding-class'
 ;
 
+FORWARDING_CLASS_ACCOUNTING
+:
+   'forwarding-class-accounting'
+;
+
 FORWARDING_OPTIONS
 :
    'forwarding-options'
@@ -1157,6 +1287,11 @@ GIGETHER_OPTIONS
    'gigether-options'
 ;
 
+GLOBAL
+:
+  'global'
+;
+
 GRACEFUL_RESTART
 :
    'graceful-restart'
@@ -1187,9 +1322,34 @@ GROUP14
    'group14'
 ;
 
+GROUP15
+:
+   'group15'
+;
+
+GROUP16
+:
+   'group16'
+;
+
+GROUP19
+:
+   'group19'
+;
+
 GROUP2
 :
    'group2'
+;
+
+GROUP20
+:
+   'group20'
+;
+
+GROUP24
+:
+   'group24'
 ;
 
 GROUP5
@@ -1282,9 +1442,19 @@ HOST_NAME
    'host-name'
 ;
 
+HOST_PRECEDENCE_VIOLATION
+:
+   'host-precedence-violation'
+;
+
 HOST_UNREACHABLE
 :
    'host-unreachable'
+;
+
+HOST_UNREACHABLE_FOR_TOS
+:
+   'host-unreachable-for-tos'
 ;
 
 HOSTNAME
@@ -1487,6 +1657,11 @@ INET6_VPN
    'inet6-vpn'
 ;
 
+INGRESS
+:
+  'ingress'
+;
+
 INNER
 :
    'inner'
@@ -1602,9 +1777,19 @@ IP
    'ip'
 ;
 
+IP_HEADER_BAD
+:
+   'ip-header-bad'
+;
+
 IP_OPTIONS
 :
    'ip-options'
+;
+
+IP_PROTOCOL
+:
+   'ip-protocol'
 ;
 
 IPIP
@@ -1737,6 +1922,11 @@ JUNOS_FTP
    'junos-ftp'
 ;
 
+JUNOS_FTP_DATA
+:
+    'junos-ftp-data'
+;
+
 JUNOS_GNUTELLA
 :
    'junos-gnutella'
@@ -1745,6 +1935,28 @@ JUNOS_GNUTELLA
 JUNOS_GOPHER
 :
    'junos-gopher'
+;
+
+JUNOS_GPRS_GTP_C
+:
+    'junos-gprs-gtp-c'
+;
+
+
+JUNOS_GPRS_GTP_U
+:
+    'junos-gprs-gtp-u'
+;
+
+
+JUNOS_GPRS_GTP_V0
+:
+    'junos-gprs-gtp-v0'
+;
+
+JUNOS_GPRS_SCTP
+:
+    'junos-gprs-sctp'
 ;
 
 JUNOS_GRE
@@ -1832,9 +2044,9 @@ JUNOS_ICMP6_ECHO_REQUEST
    'junos-icmp6-echo-request'
 ;
 
-JUNOS_ICMP6_PACKET_TO_BIG
+JUNOS_ICMP6_PACKET_TOO_BIG
 :
-   'junos-icmp6-packet-to-big'
+   'junos-icmp6-packet-too-big'
 ;
 
 JUNOS_ICMP6_PARAM_PROB_HEADER
@@ -2262,6 +2474,11 @@ JUNOS_SMTP
    'junos-smtp'
 ;
 
+JUNOS_SMTPS
+:
+    'junos-smtps'
+;
+
 JUNOS_SNMP_AGENTX
 :
    'junos-snmp-agentx'
@@ -2612,6 +2829,11 @@ JUNOS_YMSG
    'junos-ymsg'
 ;
 
+K
+:
+  'k'
+;
+
 KEEP
 :
    'keep'
@@ -2680,6 +2902,16 @@ L2CIRCUIT
 L2VPN
 :
    'l2vpn'
+;
+
+L2_INTERFACE
+:
+  'l2-interface'
+;
+
+L2_LEARNING
+:
+  'l2-learning'
 ;
 
 L3_INTERFACE
@@ -3002,6 +3234,11 @@ MGCP_UA
    'mgcp-ua'
 ;
 
+MINIMUM_INTERVAL
+:
+  'minimum-interval'
+;
+
 MS_RPC
 :
    'ms-rpc'
@@ -3117,6 +3354,11 @@ NATIVE_VLAN_ID
    'native-vlan-id'
 ;
 
+NEAREST
+:
+   'nearest'
+;
+
 NEIGHBOR
 :
    'neighbor'
@@ -3165,6 +3407,11 @@ NETWORK_DOMAIN
 NETWORK_SUMMARY_EXPORT
 :
    'network-summary-export'
+;
+
+NETWORK_UNREACHABLE_FOR_TOS
+:
+   'network-unreachable-for-tos'
 ;
 
 NETWORK_UNREACHABLE
@@ -3237,9 +3484,19 @@ NO_ADJACENCY_DOWN_NOTIFICATION
    'no-adjacency-down-notification'
 ;
 
+NO_ADVERTISE
+:
+   'no-advertise'
+;
+
 NO_ANTI_REPLAY
 :
    'no-anti-replay'
+;
+
+NO_ARP
+:
+  'no-arp'
 ;
 
 NO_AUTO_NEGOTIATION
@@ -3292,6 +3549,11 @@ NO_NEXTHOP_CHANGE
    'no-nexthop-change'
 ;
 
+NO_PEER_LOOP_CHECK
+:
+   'no-peer-loop-check'
+;
+
 NO_READVERTISE
 :
    'no-readvertise'
@@ -3340,6 +3602,11 @@ NODE_DEVICE
 NODE_GROUP
 :
    'node-group'
+;
+
+NODE_LINK_PROTECTION
+:
+  'node-link-protection'
 ;
 
 NONSTOP_ROUTING
@@ -3662,6 +3929,11 @@ PRECEDENCE
    'precedence'
 ;
 
+PRECEDENCE_CUTOFF_IN_EFFECT
+:
+   'precedence-cutoff-in-effect'
+;
+
 PRECISION_TIMERS
 :
    'precision-timers'
@@ -3777,6 +4049,11 @@ PROTOCOL
    'protocol'
 ;
 
+PROTOCOL_UNREACHABLE
+:
+   'protocol-unreachable'
+;
+
 PROTOCOLS
 :
    'protocols'
@@ -3872,6 +4149,26 @@ REDIRECT
    'redirect'
 ;
 
+REDIRECT_FOR_HOST
+:
+   'redirect-for-host'
+;
+
+REDIRECT_FOR_NETWORK
+:
+   'redirect-for-network'
+;
+
+REDIRECT_FOR_TOS_AND_HOST
+:
+   'redirect-for-tos-and-host'
+;
+
+REDIRECT_FOR_TOS_AND_NET
+:
+   'redirect-for-tos-and-net'
+;
+
 REDUNDANCY_GROUP
 :
    'redundancy-group'
@@ -3889,7 +4186,7 @@ REDUNDANT_PARENT
 
 REFERENCE_BANDWIDTH
 :
-   'reference-bandwidth'
+   'reference-bandwidth' -> pushMode ( M_ReferenceBandwidth )
 ;
 
 REJECT
@@ -3915,6 +4212,16 @@ REMOVE_PRIVATE
 REMOVED
 :
    'Removed'
+;
+
+REPLACE
+:
+   'replace'
+;
+
+REQUIRED_OPTION_MISSING
+:
+   'required-option-missing'
 ;
 
 RESOLUTION
@@ -4262,11 +4569,6 @@ SRLG_VALUE
    'srlg-value'
 ;
 
-START_TIME
-:
-   'start-time'
-;
-
 SMTP
 :
    'smtp'
@@ -4317,6 +4619,11 @@ SOURCE_ADDRESS_FILTER
    'source-address-filter'
 ;
 
+SOURCE_HOST_ISOLATED
+:
+   'source-host-isolated'
+;
+
 SOURCE_IDENTITY
 :
    'source-identity'
@@ -4325,6 +4632,11 @@ SOURCE_IDENTITY
 SOURCE_INTERFACE
 :
    'source-interface'
+;
+
+SOURCE_MAC_ADDRESS
+:
+   'source-mac-address' -> pushMode ( M_MacAddress )
 ;
 
 SOURCE_NAT
@@ -4340,6 +4652,11 @@ SOURCE_PORT
 SOURCE_PREFIX_LIST
 :
    'source-prefix-list'
+;
+
+SOURCE_ROUTE_FAILED
+:
+   'source-route-failed'
 ;
 
 SOURCE_QUENCH
@@ -4367,9 +4684,19 @@ STANDARD
    'standard'
 ;
 
+START_TIME
+:
+   'start-time'
+;
+
 STATIC
 :
    'static'
+;
+
+STATIC_HOST_MAPPING
+:
+   'static-host-mapping'
 ;
 
 STATIC_NAT
@@ -4387,6 +4714,11 @@ STATION_PORT
    'station-port'
 ;
 
+STORM_CONTROL
+:
+   'storm-control'
+;
+
 STORM_CONTROL_PROFILES
 :
    'storm-control-profiles'
@@ -4395,6 +4727,11 @@ STORM_CONTROL_PROFILES
 STP
 :
    'stp'
+;
+
+STRUCTURED_DATA
+:
+   'structured-data'
 ;
 
 STUB
@@ -4656,6 +4993,16 @@ TTL
    'ttl'
 ;
 
+TTL_EQ_ZERO_DURING_REASSEMBLY
+:
+   'ttl-eq-zero-during-reassembly'
+;
+
+TTL_EQ_ZERO_DURING_TRANSIT
+:
+   'ttl-eq-zero-during-transit'
+;
+
 TUNNEL
 :
    'tunnel'
@@ -4749,6 +5096,11 @@ VIRTUAL_ADDRESS
 VIRTUAL_CHASSIS
 :
    'virtual-chassis'
+;
+
+VIRTUAL_ROUTER
+:
+   'virtual-router'
 ;
 
 VIRTUAL_SWITCH
@@ -4851,6 +5203,11 @@ WIDE_METRICS_ONLY
    'wide-metrics-only'
 ;
 
+WILDCARD_ADDRESS
+:
+   'wildcard-address' -> pushMode(M_WildcardAddress)
+;
+
 XAUTH
 :
    'xauth'
@@ -4939,6 +5296,11 @@ ASTERISK
    '*'
 ;
 
+BACKSLASH
+:
+   '\\'
+;
+
 CARAT
 :
    '^'
@@ -5009,6 +5371,7 @@ FLOAT
    )
 ;
 */
+
 FORWARD_SLASH
 :
    '/'
@@ -5033,6 +5396,8 @@ IP_PREFIX
    {enableIP_ADDRESS}?
 
    F_DecByte '.' F_DecByte '.' F_DecByte '/' F_Digit F_Digit?
+
+   {isPrefix()}?
 ;
 
 IPV6_ADDRESS
@@ -5145,6 +5510,11 @@ PLUS
    '+'
 ;
 
+QUESTION_MARK
+:
+   '?'
+;
+
 SEMICOLON
 :
    ';'
@@ -5162,7 +5532,7 @@ UNDERSCORE
 
 WILDCARD
 :
-   '<' ~'>'* '>'
+   '<' ~'>'* '>' {setWildcard();}
 ;
 
 WS
@@ -5194,6 +5564,12 @@ fragment
 F_HexDigit
 :
    [0-9a-fA-F]
+;
+
+fragment
+F_IpAddress
+:
+   F_DecByte '.' F_DecByte '.' F_DecByte '.' F_DecByte
 ;
 
 fragment
@@ -5282,6 +5658,11 @@ M_AsPath_NEWLINE
    {enableIPV6_ADDRESS = true;}
 
    -> type ( NEWLINE ) , popMode
+;
+
+M_AsPath_AGGREGATOR
+:
+   'aggregator' -> type ( AGGREGATOR ) , popMode
 ;
 
 M_AsPath_ORIGIN
@@ -5484,7 +5865,7 @@ M_Interface_VARIABLE
 
 M_Interface_WILDCARD
 :
-   '<' ~'>'* '>' -> type ( WILDCARD ) , popMode
+   '<' ~'>'* '>' {setType(_markWildcards?WILDCARD_ARTIFACT:WILDCARD);} -> popMode
 ;
 
 M_Interface_IP_ADDRESS
@@ -5512,7 +5893,7 @@ M_InterfaceQuote_VARIABLE
 
 M_InterfaceQuote_WILDCARD
 :
-   '<' ~'>'* '>' -> type ( WILDCARD )
+   '<' ~'>'* '>' {setType(_markWildcards?WILDCARD_ARTIFACT:WILDCARD);}
 ;
 
 mode M_ISO;
@@ -5574,6 +5955,11 @@ mode M_Members;
 M_Members_ASTERISK
 :
    '*' -> type ( ASTERISK )
+;
+
+M_Members_BACKSLASH
+:
+   '\\' -> type (BACKSLASH)
 ;
 
 M_Members_CARAT
@@ -5639,9 +6025,9 @@ M_Members_NEWLINE
    -> type ( NEWLINE ) , popMode
 ;
 
-NO_ADVERTISE
+M_Members_NO_ADVERTISE
 :
-   'no-advertise'
+   'no-advertise' -> type ( NO_ADVERTISE )
 ;
 
 M_Members_NO_EXPORT
@@ -5674,14 +6060,29 @@ M_Members_PERIOD
    '.' -> type ( PERIOD )
 ;
 
+M_Members_PLUS
+:
+   '+' -> type ( PLUS )
+;
+
 M_Members_PIPE
 :
    '|' -> type ( PIPE )
 ;
 
+M_Members_QUESTION_MARK
+:
+   '?' -> type ( QUESTION_MARK )
+;
+
 M_Members_TARGET
 :
    'target' -> type ( TARGET )
+;
+
+M_Members_UNDERSCORE
+:
+   '_' -> type ( UNDERSCORE )
 ;
 
 M_Members_WS
@@ -5691,12 +6092,49 @@ M_Members_WS
 
 mode M_PrefixListName;
 
-M_PrefixLsitName_VARIABLE
+M_PrefixListName_WILDCARD
+:
+   '<' ~'>'* '>' {setType(_markWildcards?WILDCARD_ARTIFACT:WILDCARD);} -> popMode
+;
+
+M_PrefixListName_VARIABLE
 :
    ~[ \t\n\r&|()"]+ -> type ( VARIABLE ) , popMode
 ;
 
 M_PrefixListName_WS
+:
+   F_WhitespaceChar+ -> channel ( HIDDEN )
+;
+
+mode M_ReferenceBandwidth;
+
+M_ReferenceBandwidth_DEC
+:
+  F_Digit+ -> type ( DEC )
+;
+
+M_ReferenceBandwidth_G
+:
+  'g' -> type ( G )
+;
+
+M_ReferenceBandwidth_K
+:
+  'k' -> type ( K )
+;
+
+M_ReferenceBandwidth_M
+:
+  'm' -> type ( M )
+;
+
+M_ReferenceBandwidth_NEWLINE
+:
+  F_NewlineChar+ -> type ( NEWLINE ) , popMode
+;
+
+M_ReferenceBandwidth_WS
 :
    F_WhitespaceChar+ -> channel ( HIDDEN )
 ;
@@ -5903,7 +6341,7 @@ M_VarOrWildcard_VARIABLE
 
 M_VarOrWildcard_WILDCARD
 :
-   '<' ~'>'* '>' -> type ( WILDCARD ) , popMode
+   '<' ~'>'* '>' {setType(_markWildcards?WILDCARD_ARTIFACT:WILDCARD);}-> popMode
 ;
 
 M_VarOrWildcard_WS
@@ -6003,4 +6441,28 @@ M_VrfTarget_TARGET
 M_VrfTarget_WS
 :
    F_WhitespaceChar+ -> channel ( HIDDEN )
+;
+
+mode M_WildcardAddress;
+
+M_WildcardAddress_IP_ADDRESS
+:
+    F_IpAddress -> type ( IP_ADDRESS )
+;
+
+M_WildcardAddress_FORWARD_SLASH
+:
+    '/' -> type ( FORWARD_SLASH ) , mode ( M_WildcardAddress2 )
+;
+
+M_WildcardAddress_WS
+:
+   F_WhitespaceChar+ -> channel ( HIDDEN )
+;
+
+mode M_WildcardAddress2;
+
+M_WildcardAddress2_IP_ADDRESS
+:
+    F_IpAddress -> type ( IP_ADDRESS ) , popMode
 ;

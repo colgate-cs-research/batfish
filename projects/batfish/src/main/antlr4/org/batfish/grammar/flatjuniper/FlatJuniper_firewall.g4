@@ -75,6 +75,7 @@ fft_from
       | fftf_icmp_code
       | fftf_icmp_type
       | fftf_ip_options
+      | fftf_ip_protocol
       | fftf_is_fragment
       | fftf_learn_vlan_1p_priority
       | fftf_next_header
@@ -85,6 +86,7 @@ fft_from
       | fftf_prefix_list
       | fftf_protocol
       | fftf_source_address
+      | fftf_source_mac_address
       | fftf_source_port
       | fftf_source_prefix_list
       | fftf_tcp_established
@@ -110,6 +112,13 @@ fft_then
    )
 ;
 
+fftfa_address_mask_prefix
+:
+    ip_address = IP_ADDRESS (FORWARD_SLASH wildcard_mask = IP_ADDRESS)?
+    | IP_PREFIX
+
+;
+
 fftf_address
 :
    ADDRESS
@@ -123,8 +132,7 @@ fftf_destination_address
 :
    DESTINATION_ADDRESS
    (
-      IP_ADDRESS
-      | IP_PREFIX
+      fftfa_address_mask_prefix
       | IPV6_ADDRESS
       | IPV6_PREFIX
    ) EXCEPT?
@@ -206,6 +214,11 @@ fftf_ip_options
    IP_OPTIONS ip_option
 ;
 
+fftf_ip_protocol
+:
+   IP_PROTOCOL ip_protocol
+;
+
 fftf_is_fragment
 :
    IS_FRAGMENT
@@ -266,11 +279,15 @@ fftf_source_address
 :
    SOURCE_ADDRESS
    (
-      IP_ADDRESS
-      | IP_PREFIX
+      fftfa_address_mask_prefix
       | IPV6_ADDRESS
       | IPV6_PREFIX
    ) EXCEPT?
+;
+
+fftf_source_mac_address
+:
+   SOURCE_MAC_ADDRESS address = MAC_ADDRESS FORWARD_SLASH length = DEC
 ;
 
 fftf_source_port

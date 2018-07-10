@@ -33,8 +33,7 @@ ro_area_default_cost
    (
       area_int = DEC
       | area_ip = IP_ADDRESS
-   )
-   DEFAULT_COST cost = DEC NEWLINE
+   ) DEFAULT_COST cost = DEC NEWLINE
 ;
 
 ro_area_filterlist
@@ -43,9 +42,11 @@ ro_area_filterlist
    (
       area_int = DEC
       | area_ip = IP_ADDRESS
-   )
-   FILTER_LIST PREFIX list = variable (IN | OUT)
-   NEWLINE
+   ) FILTER_LIST PREFIX list = variable
+   (
+      IN
+      | OUT
+   ) NEWLINE
 ;
 
 ro_area_nssa
@@ -57,7 +58,7 @@ ro_area_nssa
    ) NSSA
    (
       (
-         DEFAULT_INFORMATION_ORIGINATE
+         default_information_originate = DEFAULT_INFORMATION_ORIGINATE
          (
             (
                METRIC metric = DEC
@@ -68,8 +69,8 @@ ro_area_nssa
             )
          )*
       )
-      | NO_REDISTRIBUTION
-      | NO_SUMMARY
+      | no_redistribution = NO_REDISTRIBUTION
+      | no_summary = NO_SUMMARY
    )* NEWLINE
 ;
 
@@ -92,8 +93,7 @@ ro_area_range
    )?
    (
       COST cost = DEC
-   )?
-   NEWLINE
+   )? NEWLINE
 ;
 
 ro_area_stub
@@ -104,7 +104,7 @@ ro_area_stub
       | area_ip = IP_ADDRESS
    ) STUB
    (
-      NO_SUMMARY
+      no_summary = NO_SUMMARY
    )* NEWLINE
 ;
 
@@ -115,7 +115,11 @@ ro_authentication
 
 ro_auto_cost
 :
-   AUTO_COST REFERENCE_BANDWIDTH DEC (GBPS | MBPS)? NEWLINE
+   AUTO_COST REFERENCE_BANDWIDTH DEC
+   (
+      GBPS
+      | MBPS
+   )? NEWLINE
 ;
 
 ro_common
@@ -148,6 +152,11 @@ ro_default_information
       )
       | TAG DEC
    )* NEWLINE
+;
+
+ro_default_metric
+:
+   NO? DEFAULT_METRIC metric = DEC NEWLINE
 ;
 
 ro_distance
@@ -251,6 +260,7 @@ ro_null
             )
          )
       )
+      | ISPF
       | LOG
       | LOG_ADJ_CHANGES
       | LOG_ADJACENCY_CHANGES
@@ -275,7 +285,7 @@ ro_null
       | NSR
       | SNMP
       | TIMERS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ro_rfc1583_compatibility
@@ -348,14 +358,25 @@ ro_redistribute_connected
    )* NEWLINE
 ;
 
-ro_redistribute_rip
+ro_redistribute_eigrp
 :
-   REDISTRIBUTE RIP ~NEWLINE* NEWLINE
+   REDISTRIBUTE EIGRP tag = DEC
+   (
+      METRIC metric = DEC
+      | METRIC_TYPE type = DEC
+      | ROUTE_MAP map = variable
+      | SUBNETS
+   )* NEWLINE
 ;
 
 ro_redistribute_ospf_null
 :
-   REDISTRIBUTE OSPF ~NEWLINE* NEWLINE
+   REDISTRIBUTE OSPF null_rest_of_line
+;
+
+ro_redistribute_rip
+:
+   REDISTRIBUTE RIP null_rest_of_line
 ;
 
 ro_redistribute_static
@@ -405,7 +426,7 @@ ro_vrf
 
 ro6_area
 :
-   AREA ~NEWLINE* NEWLINE
+   AREA null_rest_of_line
 ;
 
 ro6_auto_cost
@@ -415,7 +436,7 @@ ro6_auto_cost
 
 ro6_default_information
 :
-   DEFAULT_INFORMATION ~NEWLINE* NEWLINE
+   DEFAULT_INFORMATION null_rest_of_line
 ;
 
 ro6_distance
@@ -453,22 +474,22 @@ ro6_null
    NO?
    (
       TIMERS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ro6_passive_interface
 :
-   NO? PASSIVE_INTERFACE ~NEWLINE* NEWLINE
+   NO? PASSIVE_INTERFACE null_rest_of_line
 ;
 
 ro6_router_id
 :
-   ROUTER_ID ~NEWLINE* NEWLINE
+   ROUTER_ID null_rest_of_line
 ;
 
 ro6_redistribute
 :
-   REDISTRIBUTE ~NEWLINE* NEWLINE
+   REDISTRIBUTE null_rest_of_line
 ;
 
 roa_cost
@@ -496,9 +517,8 @@ roa_range
       | NOT_ADVERTISE
    )?
    (
-      COST cost=DEC
-   )?
-   NEWLINE
+      COST cost = DEC
+   )? NEWLINE
 ;
 
 roa_network_null
@@ -584,7 +604,7 @@ rov3_null
       | REDISTRIBUTE
       | ROUTER_ID
       | TIMERS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 s_ipv6_router_ospf
@@ -622,6 +642,7 @@ s_router_ospf
       | ro_auto_cost
       | ro_common
       | ro_default_information
+      | ro_default_metric
       | ro_distance
       | ro_max_metric
       | ro_maximum_paths
@@ -630,6 +651,7 @@ s_router_ospf
       | ro_passive_interface
       | ro_redistribute_bgp
       | ro_redistribute_connected
+      | ro_redistribute_eigrp
       | ro_redistribute_ospf_null
       | ro_redistribute_rip
       | ro_redistribute_static

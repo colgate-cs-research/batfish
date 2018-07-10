@@ -3,7 +3,7 @@ package org.batfish.question;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
-import java.util.LinkedHashSet;
+import com.google.common.collect.Sets;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -30,7 +30,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class RoutesQuestionPlugin extends QuestionPlugin {
 
-  public static class RoutesAnswerElement implements AnswerElement {
+  public static class RoutesAnswerElement extends AnswerElement {
 
     private static final String PROP_ADDED = "added";
 
@@ -46,6 +46,8 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
     private SortedSet<Route> _added;
 
+    private SortedSet<AbstractRoute> _addedDetailed;
+
     private boolean _againstEnvironment;
 
     private boolean _detail;
@@ -53,6 +55,8 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     private SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> _detailRoutesByHostname;
 
     private SortedSet<Route> _removed;
+
+    private SortedSet<AbstractRoute> _removedDetailed;
 
     private SortedMap<String, RoutesByVrf> _routesByHostname;
 
@@ -62,28 +66,31 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
       _routesByHostname = new TreeMap<>();
       _added = new TreeSet<>();
       _removed = new TreeSet<>();
+      _addedDetailed = new TreeSet<>();
+      _removedDetailed = new TreeSet<>();
     }
 
     public RoutesAnswerElement(RoutesAnswerElement base, RoutesAnswerElement delta) {
       this();
-      Set<String> hosts = new LinkedHashSet<>();
-      hosts.addAll(base.getRoutesByHostname().keySet());
-      hosts.addAll(delta.getRoutesByHostname().keySet());
-      for (String host : hosts) {
+      for (String host :
+          Sets.union(base.getRoutesByHostname().keySet(), delta.getRoutesByHostname().keySet())) {
         RoutesByVrf routesByVrf = new RoutesByVrf();
         _routesByHostname.put(host, routesByVrf);
         RoutesByVrf baseRoutesByVrf = base._routesByHostname.get(host);
         RoutesByVrf deltaRoutesByVrf = delta._routesByHostname.get(host);
+        SortedMap<String, SortedSet<AbstractRoute>> baseDetailedRoutes =
+            base._detailRoutesByHostname.get(host);
+        SortedMap<String, SortedSet<AbstractRoute>> deltaDetailedRoutes =
+            delta._detailRoutesByHostname.get(host);
         if (baseRoutesByVrf == null) {
           for (Entry<String, SortedSet<Route>> e : deltaRoutesByVrf.entrySet()) {
             String vrfName = e.getKey();
             SortedSet<Route> deltaRoutes = e.getValue();
             SortedSet<Route> routes = new TreeSet<>();
             routesByVrf.put(vrfName, routes);
-            for (Route deltaRoute : deltaRoutes) {
-              _added.add(deltaRoute);
-              routes.add(deltaRoute);
-            }
+            _added.addAll(deltaRoutes);
+            _addedDetailed.addAll(deltaDetailedRoutes.get(vrfName));
+            routes.addAll(deltaRoutes);
           }
         } else if (deltaRoutesByVrf == null) {
           for (Entry<String, SortedSet<Route>> e : baseRoutesByVrf.entrySet()) {
@@ -91,42 +98,34 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
             SortedSet<Route> baseRoutes = e.getValue();
             SortedSet<Route> routes = new TreeSet<>();
             routesByVrf.put(vrfName, routes);
-            for (Route baseRoute : baseRoutes) {
-              _removed.add(baseRoute);
-              routes.add(baseRoute);
-            }
+            _removed.addAll(baseRoutes);
+            _removedDetailed.addAll(baseDetailedRoutes.get(vrfName));
+            routes.addAll(baseRoutes);
           }
         } else {
-          Set<String> vrfNames = new LinkedHashSet<>();
-          vrfNames.addAll(baseRoutesByVrf.keySet());
-          vrfNames.addAll(deltaRoutesByVrf.keySet());
-          for (String vrfName : vrfNames) {
+          for (String vrfName : Sets.union(baseRoutesByVrf.keySet(), deltaRoutesByVrf.keySet())) {
             SortedSet<Route> routes = new TreeSet<>();
             routesByVrf.put(vrfName, routes);
             SortedSet<Route> baseRoutes = baseRoutesByVrf.get(vrfName);
             SortedSet<Route> deltaRoutes = deltaRoutesByVrf.get(vrfName);
             if (baseRoutes == null) {
-              for (Route deltaRoute : deltaRoutes) {
-                _added.add(deltaRoute);
-                routes.add(deltaRoute);
-              }
+              _added.addAll(deltaRoutes);
+              _addedDetailed.addAll(deltaDetailedRoutes.get(vrfName));
+              routes.addAll(deltaRoutes);
             } else if (deltaRoutes == null) {
-              for (Route baseRoute : baseRoutes) {
-                _removed.add(baseRoute);
-                routes.add(baseRoute);
-              }
+              _removed.addAll(baseRoutes);
+              _removedDetailed.addAll(baseDetailedRoutes.get(vrfName));
+              routes.addAll(baseRoutes);
             } else {
-              Set<Route> tmpBaseRoutes = new LinkedHashSet<>(baseRoutes);
-              baseRoutes.removeAll(deltaRoutes);
-              deltaRoutes.removeAll(tmpBaseRoutes);
-              for (Route baseRoute : baseRoutes) {
-                _removed.add(baseRoute);
-                routes.add(baseRoute);
-              }
-              for (Route deltaRoute : deltaRoutes) {
-                _added.add(deltaRoute);
-                routes.add(deltaRoute);
-              }
+              _removed.addAll(Sets.difference(baseRoutes, deltaRoutes));
+              _removedDetailed.addAll(
+                  Sets.difference(
+                      baseDetailedRoutes.get(vrfName), deltaDetailedRoutes.get(vrfName)));
+              _added.addAll(Sets.difference(deltaRoutes, baseRoutes));
+              _addedDetailed.addAll(
+                  Sets.difference(
+                      deltaDetailedRoutes.get(vrfName), baseDetailedRoutes.get(vrfName)));
+              routes.addAll(Sets.symmetricDifference(baseRoutes, deltaRoutes));
             }
           }
         }
@@ -281,15 +280,14 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
             SortedSet<AbstractRoute> routes = e2.getValue();
             for (AbstractRoute route : routes) {
               String diffSymbol = null;
-              // TODO(https://github.com/batfish/batfish/issues/719)
-              // if (_added.contains(route)) {
-              //   diffSymbol = addedSymbol;
-              // } else if (_removed.contains(route)) {
-              //   diffSymbol = removedSymbol;
-              // }
+              if (_addedDetailed.contains(route)) {
+                diffSymbol = addedSymbol;
+              } else if (_removedDetailed.contains(route)) {
+                diffSymbol = removedSymbol;
+              }
               String diffStr = diffSymbol != null ? diffSymbol + " " : "";
               String routeStr = route.fullString();
-              String newStr = String.format("%s%s\n", diffStr, routeStr);
+              String newStr = String.format("%s%s%n", diffStr, routeStr);
               sb.append(newStr);
             }
           }
@@ -338,26 +336,7 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     @Override
     public RoutesAnswerElement answer() {
       RoutesQuestion question = (RoutesQuestion) _question;
-      if (question._againstEnvironment && question._fromEnvironment) {
-        throw new BatfishException(
-            String.format(
-                "%s and %s flags are mutually exclusive",
-                RoutesQuestion.PROP_AGAINST_ENVIRONMENT, RoutesQuestion.PROP_FROM_ENVIRONMENT));
-      }
-      if (question._againstEnvironment && question._detail) {
-        throw new BatfishException(
-            String.format(
-                "%s and %s flags together are currently unsupported",
-                RoutesQuestion.PROP_AGAINST_ENVIRONMENT, RoutesQuestion.PROP_DETAIL));
-      }
-      if (question._fromEnvironment && question._detail) {
-        throw new BatfishException(
-            String.format(
-                "%s and %s flags together are currently unsupported",
-                RoutesQuestion.PROP_FROM_ENVIRONMENT, RoutesQuestion.PROP_DETAIL));
-      }
-      Set<String> includeNodes =
-          question.getNodeRegex().getMatchingNodes(_batfish.loadConfigurations());
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(_batfish);
       RoutesAnswerElement answerElement;
       RoutesAnswerElement environmentAnswerElement = null;
       RoutesAnswerElement batfishAnswerElement = null;
@@ -413,18 +392,10 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     }
   }
 
-  // <question_page_comment>
-
   /**
    * Outputs all routes (RIB) at nodes in the network.
    *
    * <p>It produces routes from all protocols (e.g., BGP, OSPF, static, and connected).
-   *
-   * @type Routes dataplane
-   * @param nodeRegex Regular expression for names of nodes to include. Default value is '.*' (all
-   *     nodes).
-   * @example bf_answer("Nodes", nodeRegex="as1.*") Outputs the routes for all nodes whose names
-   *     begin with "as1".
    */
   public static class RoutesQuestion extends Question {
 
@@ -456,11 +427,42 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
     private boolean _useCompression;
 
-    public RoutesQuestion() {
-      _nodeRegex = NodesSpecifier.ALL;
-      _prefixSpace = new PrefixSpace();
-      _protocols = new TreeSet<>();
-      _useCompression = false;
+    @JsonCreator
+    public RoutesQuestion(
+        @JsonProperty(PROP_NODE_REGEX) NodesSpecifier nodeRegex,
+        @JsonProperty(PROP_PREFIX_SPACE) PrefixSpace prefixSpace,
+        @JsonProperty(PROP_PROTOCOLS) SortedSet<RoutingProtocol> protocols,
+        @JsonProperty(PROP_AGAINST_ENVIRONMENT) Boolean againstEnvironment,
+        @JsonProperty(PROP_FROM_ENVIRONMENT) Boolean fromEnvironment,
+        @JsonProperty(PROP_USE_COMPRESSION) Boolean useCompression,
+        @JsonProperty(PROP_DETAIL) Boolean detail) {
+      _nodeRegex = nodeRegex == null ? NodesSpecifier.ALL : nodeRegex;
+      _prefixSpace = prefixSpace == null ? new PrefixSpace() : prefixSpace;
+      _protocols = protocols == null ? new TreeSet<>() : protocols;
+      _againstEnvironment = againstEnvironment != null && againstEnvironment;
+      _fromEnvironment = fromEnvironment != null && fromEnvironment;
+      _useCompression = useCompression != null && useCompression;
+      _detail = detail != null && detail;
+
+      // sanity check
+      if (_againstEnvironment && _fromEnvironment) {
+        throw new BatfishException(
+            String.format(
+                "%s and %s flags are mutually exclusive",
+                RoutesQuestion.PROP_AGAINST_ENVIRONMENT, RoutesQuestion.PROP_FROM_ENVIRONMENT));
+      }
+      if (_againstEnvironment && _detail) {
+        throw new BatfishException(
+            String.format(
+                "%s and %s flags together are currently unsupported",
+                RoutesQuestion.PROP_AGAINST_ENVIRONMENT, RoutesQuestion.PROP_DETAIL));
+      }
+      if (_fromEnvironment && _detail) {
+        throw new BatfishException(
+            String.format(
+                "%s and %s flags together are currently unsupported",
+                RoutesQuestion.PROP_FROM_ENVIRONMENT, RoutesQuestion.PROP_DETAIL));
+      }
     }
 
     @JsonProperty(PROP_AGAINST_ENVIRONMENT)
@@ -507,41 +509,6 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
     public SortedSet<RoutingProtocol> getProtocols() {
       return _protocols;
     }
-
-    @JsonProperty(PROP_AGAINST_ENVIRONMENT)
-    public void setAgainstEnvironment(boolean againstEnvironment) {
-      _againstEnvironment = againstEnvironment;
-    }
-
-    @JsonProperty(PROP_DETAIL)
-    public void setDetail(boolean detail) {
-      _detail = detail;
-    }
-
-    @JsonProperty(PROP_FROM_ENVIRONMENT)
-    public void setFromEnvironment(boolean fromEnvironment) {
-      _fromEnvironment = fromEnvironment;
-    }
-
-    @JsonProperty(PROP_NODE_REGEX)
-    public void setNodeRegex(NodesSpecifier nodeRegex) {
-      _nodeRegex = nodeRegex;
-    }
-
-    @JsonProperty(PROP_PREFIX_SPACE)
-    public void setPrefixSpace(PrefixSpace prefixSpace) {
-      _prefixSpace = prefixSpace;
-    }
-
-    @JsonProperty(PROP_PROTOCOLS)
-    public void setProtocols(SortedSet<RoutingProtocol> protocols) {
-      _protocols = protocols;
-    }
-
-    @JsonProperty(PROP_USE_COMPRESSION)
-    public void setUseCompression(boolean useCompression) {
-      _useCompression = useCompression;
-    }
   }
 
   @Override
@@ -551,6 +518,6 @@ public class RoutesQuestionPlugin extends QuestionPlugin {
 
   @Override
   protected Question createQuestion() {
-    return new RoutesQuestion();
+    return new RoutesQuestion(null, null, null, null, null, null, null);
   }
 }

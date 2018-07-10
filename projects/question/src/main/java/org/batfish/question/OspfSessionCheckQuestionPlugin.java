@@ -1,8 +1,9 @@
 package org.batfish.question;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
-import com.google.common.base.MoreObjects;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,22 +22,22 @@ import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.OspfNeighbor;
-import org.batfish.datamodel.OspfNeighbor.OspfNeighborSummary;
-import org.batfish.datamodel.OspfProcess;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.PrefixTrie;
 import org.batfish.datamodel.Topology;
 import org.batfish.datamodel.Vrf;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.collections.IpPair;
+import org.batfish.datamodel.ospf.OspfNeighbor;
+import org.batfish.datamodel.ospf.OspfNeighbor.OspfNeighborSummary;
+import org.batfish.datamodel.ospf.OspfProcess;
 import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
 
 @AutoService(Plugin.class)
 public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
 
-  public static class OspfSessionCheckAnswerElement implements AnswerElement {
+  public static class OspfSessionCheckAnswerElement extends AnswerElement {
 
     private static final String PROP_ALL_OSPF_NEIGHBORS = "allOspfNeighbors";
 
@@ -121,10 +122,10 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
 
     @Override
     public String prettyPrint() {
-      StringBuilder sb = new StringBuilder();
-      sb.append(prettyPrintCategory(_halfOpen, PROP_HALF_OPEN));
-      sb.append(prettyPrintCategory(_mismatchLinkCost, PROP_MISMATCH_LINK_COST));
-      return sb.toString();
+      String sb =
+          String.valueOf(prettyPrintCategory(_halfOpen, PROP_HALF_OPEN))
+              + prettyPrintCategory(_mismatchLinkCost, PROP_MISMATCH_LINK_COST);
+      return sb;
     }
 
     private CharSequence prettyPrintCategory(
@@ -195,27 +196,21 @@ public class OspfSessionCheckQuestionPlugin extends QuestionPlugin {
       OspfSessionCheckQuestion question = (OspfSessionCheckQuestion) _question;
 
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
-      Set<String> includeNodes1 = question.getNode1Regex().getMatchingNodes(configurations);
-      Set<String> includeNodes2 = question.getNode2Regex().getMatchingNodes(configurations);
+      Set<String> includeNodes1 = question.getNode1Regex().getMatchingNodes(_batfish);
+      Set<String> includeNodes2 = question.getNode2Regex().getMatchingNodes(_batfish);
 
       SortedSet<Prefix> foreignPrefixes =
-          MoreObjects.firstNonNull(question._foreignOspfNetworks, Collections.emptySortedSet());
+          firstNonNull(question._foreignOspfNetworks, Collections.emptySortedSet());
       PrefixTrie foreignPrefixTrie = new PrefixTrie(foreignPrefixes);
 
       OspfSessionCheckAnswerElement answerElement = new OspfSessionCheckAnswerElement();
-      Set<Ip> allInterfaceIps = new HashSet<>();
-      Set<Ip> loopbackIps = new HashSet<>();
       Map<Ip, Set<String>> ipOwners = new HashMap<>();
       for (Configuration c : configurations.values()) {
         for (Interface i : c.getInterfaces().values()) {
           if (i.getActive() && i.getAddress() != null) {
             for (InterfaceAddress address : i.getAllAddresses()) {
-              Ip ip = address.getIp();
-              if (i.isLoopback(c.getConfigurationFormat())) {
-                loopbackIps.add(ip);
-              }
-              allInterfaceIps.add(ip);
-              Set<String> currentIpOwners = ipOwners.computeIfAbsent(ip, k -> new HashSet<>());
+              Set<String> currentIpOwners =
+                  ipOwners.computeIfAbsent(address.getIp(), k -> new HashSet<>());
               currentIpOwners.add(c.getHostname());
             }
           }

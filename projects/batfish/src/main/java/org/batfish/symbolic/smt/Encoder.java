@@ -9,11 +9,13 @@ import com.microsoft.z3.Model;
 import com.microsoft.z3.Solver;
 import com.microsoft.z3.Status;
 import com.microsoft.z3.Tactic;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -23,7 +25,8 @@ import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 import org.batfish.config.Settings;
-import org.batfish.datamodel.BgpNeighbor;
+import org.batfish.datamodel.BgpActivePeerConfig;
+import org.batfish.datamodel.BgpPeerConfig;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.Ip;
@@ -124,9 +127,8 @@ public class Encoder {
   }
 
   /**
-   * Create an encoder object while possibly reusing the partial encoding of another encoder. mkIf
-   * the context and solver are null, then a new encoder is created. Otherwise the old encoder is
-   * used.
+   * Create an encoder object while possibly reusing the partial encoding of another encoder. If the
+   * context and solver are null, then a new encoder is created. Otherwise the old encoder is used.
    */
   private Encoder(
       Settings settings,
@@ -238,9 +240,9 @@ public class Encoder {
     if (_modelIgp) {
       SortedSet<Pair<String, Ip>> ibgpRouters = new TreeSet<>();
 
-      for (Entry<GraphEdge, BgpNeighbor> entry : g.getIbgpNeighbors().entrySet()) {
+      for (Entry<GraphEdge, BgpActivePeerConfig> entry : g.getIbgpNeighbors().entrySet()) {
         GraphEdge ge = entry.getKey();
-        BgpNeighbor n = entry.getValue();
+        BgpPeerConfig n = entry.getValue();
         String router = ge.getRouter();
         Ip ip = n.getLocalIp();
         Pair<String, Ip> pair = new Pair<>(router, ip);
@@ -294,7 +296,7 @@ public class Encoder {
 
   // Symbolic boolean disjunction
   BoolExpr mkOr(BoolExpr... vals) {
-    return getCtx().mkOr(vals);
+    return getCtx().mkOr(Arrays.stream(vals).filter(Objects::nonNull).toArray(BoolExpr[]::new));
   }
 
   // Symbolic boolean implication
@@ -304,7 +306,7 @@ public class Encoder {
 
   // Symbolic boolean conjunction
   BoolExpr mkAnd(BoolExpr... vals) {
-    return getCtx().mkAnd(vals);
+    return getCtx().mkAnd(Arrays.stream(vals).filter(Objects::nonNull).toArray(BoolExpr[]::new));
   }
 
   // Symbolic true value
@@ -705,8 +707,8 @@ public class Encoder {
   }
 
   /**
-   * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
-   * model is satisfiable, then there is a counter example to the property.
+   * Checks that a property is always true by seeing if the encoding is unsatisfiable. If the model
+   * is satisfiable, then there is a counter example to the property.
    *
    * @return A VerificationResult indicating the status of the check.
    */
@@ -874,5 +876,13 @@ public class Encoder {
 
   public void setQuestion(HeaderQuestion question) {
     this._question = question;
+  }
+
+  public BitVecExpr mkBV(long val, int size) {
+    return _ctx.mkBV(val, size);
+  }
+
+  public BitVecExpr mkBVAND(BitVecExpr expr, BitVecExpr mask) {
+    return _ctx.mkBVAND(expr, mask);
   }
 }

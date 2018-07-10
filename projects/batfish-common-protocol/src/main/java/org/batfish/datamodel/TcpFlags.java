@@ -2,8 +2,9 @@ package org.batfish.datamodel;
 
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.io.Serializable;
+import java.util.Comparator;
 
-public final class TcpFlags implements Serializable {
+public final class TcpFlags implements Serializable, Comparable<TcpFlags> {
 
   public static class Builder {
     private boolean _ack;
@@ -129,6 +130,26 @@ public final class TcpFlags implements Serializable {
 
   public static final int ACK = 0x10;
 
+  public static final TcpFlags ACK_TCP_FLAG = builder().setAck(true).setUseAck(true).build();
+
+  private static final Comparator<TcpFlags> COMPARATOR =
+      Comparator.comparing(TcpFlags::getAck)
+          .thenComparing(TcpFlags::getCwr)
+          .thenComparing(TcpFlags::getEce)
+          .thenComparing(TcpFlags::getFin)
+          .thenComparing(TcpFlags::getPsh)
+          .thenComparing(TcpFlags::getRst)
+          .thenComparing(TcpFlags::getSyn)
+          .thenComparing(TcpFlags::getUrg)
+          .thenComparing(TcpFlags::getUseAck)
+          .thenComparing(TcpFlags::getUseCwr)
+          .thenComparing(TcpFlags::getUseEce)
+          .thenComparing(TcpFlags::getUseFin)
+          .thenComparing(TcpFlags::getUsePsh)
+          .thenComparing(TcpFlags::getUseRst)
+          .thenComparing(TcpFlags::getUseSyn)
+          .thenComparing(TcpFlags::getUseUrg);
+
   public static final int CWR = 0x80;
 
   public static final int ECE = 0x40;
@@ -219,17 +240,24 @@ public final class TcpFlags implements Serializable {
     _useUrg = useUrg;
   }
 
+  public boolean anyUsed() {
+    return _useAck || _useCwr || _useEce || _useFin || _usePsh || _useRst || _useSyn || _useUrg;
+  }
+
+  @Override
+  public int compareTo(TcpFlags o) {
+    return COMPARATOR.compare(this, o);
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
       return true;
-    }
-    TcpFlags other = (TcpFlags) obj;
-    if (other.toString().equals(this.toString())) {
-      return true;
-    } else {
+    } else if (!(obj instanceof TcpFlags)) {
       return false;
     }
+    TcpFlags other = (TcpFlags) obj;
+    return other.toString().equals(this.toString());
   }
 
   @JsonPropertyDescription("Value for ACK bit if used (true->1/false->0)")

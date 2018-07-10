@@ -12,6 +12,7 @@ import java.util.List;
 import org.batfish.z3.expr.StateExpr;
 import org.batfish.z3.state.Accept;
 import org.batfish.z3.state.AclDeny;
+import org.batfish.z3.state.AclLineIndependentMatch;
 import org.batfish.z3.state.AclLineMatch;
 import org.batfish.z3.state.AclLineNoMatch;
 import org.batfish.z3.state.AclPermit;
@@ -22,6 +23,7 @@ import org.batfish.z3.state.DropAclIn;
 import org.batfish.z3.state.DropAclOut;
 import org.batfish.z3.state.DropNoRoute;
 import org.batfish.z3.state.DropNullRoute;
+import org.batfish.z3.state.NeighborUnreachable;
 import org.batfish.z3.state.NodeAccept;
 import org.batfish.z3.state.NodeDrop;
 import org.batfish.z3.state.NodeDropAcl;
@@ -29,17 +31,18 @@ import org.batfish.z3.state.NodeDropAclIn;
 import org.batfish.z3.state.NodeDropAclOut;
 import org.batfish.z3.state.NodeDropNoRoute;
 import org.batfish.z3.state.NodeDropNullRoute;
+import org.batfish.z3.state.NodeInterfaceNeighborUnreachable;
+import org.batfish.z3.state.NodeNeighborUnreachable;
 import org.batfish.z3.state.NumberedQuery;
-import org.batfish.z3.state.Originate;
+import org.batfish.z3.state.OriginateInterfaceLink;
 import org.batfish.z3.state.OriginateVrf;
-import org.batfish.z3.state.PostIn;
 import org.batfish.z3.state.PostInInterface;
 import org.batfish.z3.state.PostInVrf;
 import org.batfish.z3.state.PostOutEdge;
 import org.batfish.z3.state.PreInInterface;
-import org.batfish.z3.state.PreOut;
 import org.batfish.z3.state.PreOutEdge;
 import org.batfish.z3.state.PreOutEdgePostNat;
+import org.batfish.z3.state.PreOutVrf;
 import org.batfish.z3.state.Query;
 import org.batfish.z3.state.StateParameter;
 
@@ -69,6 +72,15 @@ public class Parameterizer implements GenericStateExprVisitor<List<StateParamete
   public List<StateParameter> visitAclDeny(AclDeny aclDeny) {
     return ImmutableList.of(
         new StateParameter(aclDeny.getHostname(), NODE), new StateParameter(aclDeny.getAcl(), ACL));
+  }
+
+  @Override
+  public List<StateParameter> visitAclLineIndependentMatch(
+      AclLineIndependentMatch aclLineIndependentMatch) {
+    return ImmutableList.of(
+        new StateParameter(aclLineIndependentMatch.getHostname(), NODE),
+        new StateParameter(aclLineIndependentMatch.getAcl(), ACL),
+        new StateParameter(Integer.toString(aclLineIndependentMatch.getLine()), ACL_LINE));
   }
 
   @Override
@@ -130,6 +142,11 @@ public class Parameterizer implements GenericStateExprVisitor<List<StateParamete
   }
 
   @Override
+  public List<StateParameter> visitNeighborUnreachable(NeighborUnreachable neighborUnreachable) {
+    return ImmutableList.of();
+  }
+
+  @Override
   public List<StateParameter> visitNodeAccept(NodeAccept nodeAccept) {
     return ImmutableList.of(new StateParameter(nodeAccept.getHostname(), NODE));
   }
@@ -165,14 +182,31 @@ public class Parameterizer implements GenericStateExprVisitor<List<StateParamete
   }
 
   @Override
+  public List<StateParameter> visitNodeInterfaceNeighborUnreachable(
+      NodeInterfaceNeighborUnreachable nodeIfaceNeighborUnreachable) {
+    return ImmutableList.of(
+        new StateParameter(nodeIfaceNeighborUnreachable.getHostname(), NODE),
+        new StateParameter(nodeIfaceNeighborUnreachable.getIface(), INTERFACE));
+  }
+
+  @Override
+  public List<StateParameter> visitNodeNeighborUnreachable(
+      NodeNeighborUnreachable nodeNeighborUnreachable) {
+    return ImmutableList.of(new StateParameter(nodeNeighborUnreachable.getHostname(), NODE));
+  }
+
+  @Override
   public List<StateParameter> visitNumberedQuery(NumberedQuery numberedQuery) {
     return ImmutableList.of(
         new StateParameter(Integer.toString(numberedQuery.getLine()), QUERY_NUMBER));
   }
 
   @Override
-  public List<StateParameter> visitOriginate(Originate originate) {
-    return ImmutableList.of(new StateParameter(originate.getHostname(), NODE));
+  public List<StateParameter> visitOriginateInterfaceLink(
+      OriginateInterfaceLink originateInterfaceLink) {
+    return ImmutableList.of(
+        new StateParameter(originateInterfaceLink.getHostname(), NODE),
+        new StateParameter(originateInterfaceLink.getIface(), INTERFACE));
   }
 
   @Override
@@ -180,11 +214,6 @@ public class Parameterizer implements GenericStateExprVisitor<List<StateParamete
     return ImmutableList.of(
         new StateParameter(originateVrf.getHostname(), NODE),
         new StateParameter(originateVrf.getVrf(), VRF));
-  }
-
-  @Override
-  public List<StateParameter> visitPostIn(PostIn postIn) {
-    return ImmutableList.of(new StateParameter(postIn.getHostname(), NODE));
   }
 
   @Override
@@ -209,8 +238,10 @@ public class Parameterizer implements GenericStateExprVisitor<List<StateParamete
   }
 
   @Override
-  public List<StateParameter> visitPreOut(PreOut preOut) {
-    return ImmutableList.of(new StateParameter(preOut.getHostname(), NODE));
+  public List<StateParameter> visitPreOutVrf(PreOutVrf preOutVrf) {
+    return ImmutableList.of(
+        new StateParameter(preOutVrf.getHostname(), NODE),
+        new StateParameter(preOutVrf.getVrf(), VRF));
   }
 
   @Override

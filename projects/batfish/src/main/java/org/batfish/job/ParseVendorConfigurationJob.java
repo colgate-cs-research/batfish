@@ -18,12 +18,16 @@ import org.batfish.grammar.cisco.CiscoCombinedParser;
 import org.batfish.grammar.cisco.CiscoControlPlaneExtractor;
 import org.batfish.grammar.flatjuniper.FlatJuniperCombinedParser;
 import org.batfish.grammar.flatjuniper.FlatJuniperControlPlaneExtractor;
+import org.batfish.grammar.flattener.Flattener;
+import org.batfish.grammar.flattener.FlattenerLineMap;
 import org.batfish.grammar.flatvyos.FlatVyosCombinedParser;
 import org.batfish.grammar.flatvyos.FlatVyosControlPlaneExtractor;
 import org.batfish.grammar.iptables.IptablesCombinedParser;
 import org.batfish.grammar.iptables.IptablesControlPlaneExtractor;
 import org.batfish.grammar.mrv.MrvCombinedParser;
 import org.batfish.grammar.mrv.MrvControlPlaneExtractor;
+import org.batfish.grammar.palo_alto.PaloAltoCombinedParser;
+import org.batfish.grammar.palo_alto.PaloAltoControlPlaneExtractor;
 import org.batfish.main.Batfish;
 import org.batfish.main.ParserBatfishException;
 import org.batfish.representation.host.HostConfiguration;
@@ -96,6 +100,7 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
     ParserRuleContext tree = null;
     ControlPlaneExtractor extractor = null;
     ConfigurationFormat format = _format;
+    FlattenerLineMap lineMap = null;
     _logger.infof("Processing: '%s'\n", currentPath);
 
     for (String s : _settings.ignoreFilesWithStrings()) {
@@ -125,6 +130,7 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
             elapsedTime, _logger.getHistory(), _file, _warnings, ParseStatus.IGNORED);
 
       case ARISTA:
+      case ARUBAOS:
       case CADANT:
       case CISCO_ASA:
       case CISCO_IOS:
@@ -147,7 +153,7 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
                 _file,
                 new BatfishException("Error preprocessing banner", e));
           }
-        } while (newFileText != fileText);
+        } while (!newFileText.equals(fileText));
         _logger.info("OK\n");
         CiscoCombinedParser ciscoParser = new CiscoCombinedParser(newFileText, _settings, format);
         combinedParser = ciscoParser;
@@ -164,24 +170,18 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
 
       case VYOS:
         if (_settings.flattenOnTheFly()) {
-          String msg =
-              "Flattening: '"
-                  + currentPath
-                  + "' on-the-fly; line-numbers reported for this file will be spurious\n";
-          _warnings.pedantic(msg);
-          // _logger
-          // .warn("Flattening: \""
-          // + currentPath
-          // +
-          // "\" on-the-fly; line-numbers reported for this file will be
-          // spurious\n");
+          _warnings.pedantic(
+              String.format(
+                  "Flattening: '%s' on-the-fly; line-numbers reported for this file will be spurious\n",
+                  currentPath));
           _fileText =
               Batfish.flatten(
-                  _fileText,
-                  _logger,
-                  _settings,
-                  ConfigurationFormat.VYOS,
-                  VendorConfigurationFormatDetector.BATFISH_FLATTENED_VYOS_HEADER);
+                      _fileText,
+                      _logger,
+                      _settings,
+                      ConfigurationFormat.VYOS,
+                      VendorConfigurationFormatDetector.BATFISH_FLATTENED_VYOS_HEADER)
+                  .getFlattenedConfigurationText();
         } else {
           elapsedTime = System.currentTimeMillis() - startTime;
           return new ParseVendorConfigurationResult(
@@ -189,9 +189,9 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
               _logger.getHistory(),
               _file,
               new BatfishException(
-                  "Vyos configurations must be flattened prior to this stage: '"
-                      + relativePathStr
-                      + "'"));
+                  String.format(
+                      "Vyos configurations must be flattened prior to this stage: '%s'",
+                      relativePathStr)));
         }
         // fall through
       case FLAT_VYOS:
@@ -202,30 +202,28 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
 
       case JUNIPER:
         if (_settings.flattenOnTheFly()) {
-          String msg =
-              "Flattening: '"
-                  + currentPath
-                  + "' on-the-fly; line-numbers reported for this file will be spurious\n";
-          _warnings.pedantic(msg);
-          // _logger
-          // .warn("Flattening: \""
-          // + currentPath
-          // +
-          // "\" on-the-fly; line-numbers reported for this file will be
-          // spurious\n");
+          _warnings.pedantic(
+              String.format(
+                  "Flattening: '%s' on-the-fly; line-numbers reported for this file will be spurious\n",
+                  currentPath));
           try {
-            _fileText =
+            Flattener flattener =
                 Batfish.flatten(
                     _fileText,
                     _logger,
                     _settings,
                     ConfigurationFormat.JUNIPER,
                     VendorConfigurationFormatDetector.BATFISH_FLATTENED_JUNIPER_HEADER);
+            _fileText = flattener.getFlattenedConfigurationText();
+            lineMap = flattener.getOriginalLineMap();
           } catch (BatfishException e) {
-            String error = "Error flattening configuration file: '" + currentPath + "'";
             elapsedTime = System.currentTimeMillis() - startTime;
             return new ParseVendorConfigurationResult(
-                elapsedTime, _logger.getHistory(), _file, new BatfishException(error, e));
+                elapsedTime,
+                _logger.getHistory(),
+                _file,
+                new BatfishException(
+                    String.format("Error flattening configuration file: '%s'", currentPath), e));
           }
         } else {
           elapsedTime = System.currentTimeMillis() - startTime;
@@ -234,16 +232,18 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
               _logger.getHistory(),
               _file,
               new BatfishException(
-                  "Juniper configurations must be flattened prior to this stage: '"
-                      + relativePathStr
-                      + "'"));
+                  String.format(
+                      "Juniper configurations must be flattened prior to this stage: '%s'",
+                      relativePathStr)));
         }
         // fall through
       case FLAT_JUNIPER:
         FlatJuniperCombinedParser flatJuniperParser =
-            new FlatJuniperCombinedParser(_fileText, _settings);
+            new FlatJuniperCombinedParser(_fileText, _settings, lineMap);
         combinedParser = flatJuniperParser;
-        extractor = new FlatJuniperControlPlaneExtractor(_fileText, flatJuniperParser, _warnings);
+        extractor =
+            new FlatJuniperControlPlaneExtractor(
+                _fileText, flatJuniperParser, _warnings, _settings.getUnrecognizedAsRedFlag());
         break;
 
       case IPTABLES:
@@ -260,11 +260,57 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
         extractor = new MrvControlPlaneExtractor(_fileText, mrvParser, _warnings);
         break;
 
+      case PALO_ALTO_NESTED:
+        if (_settings.flattenOnTheFly()) {
+          _warnings.pedantic(
+              String.format(
+                  "Flattening: '%s' on-the-fly; line-numbers reported for this file will be spurious\n",
+                  currentPath));
+          try {
+            Flattener flattener =
+                Batfish.flatten(
+                    _fileText,
+                    _logger,
+                    _settings,
+                    ConfigurationFormat.PALO_ALTO_NESTED,
+                    VendorConfigurationFormatDetector.BATFISH_FLATTENED_PALO_ALTO_HEADER);
+            _fileText = flattener.getFlattenedConfigurationText();
+            lineMap = flattener.getOriginalLineMap();
+          } catch (BatfishException e) {
+            elapsedTime = System.currentTimeMillis() - startTime;
+            return new ParseVendorConfigurationResult(
+                elapsedTime,
+                _logger.getHistory(),
+                _file,
+                new BatfishException(
+                    String.format("Error flattening configuration file: '%s'", currentPath), e));
+          }
+        } else {
+          elapsedTime = System.currentTimeMillis() - startTime;
+          return new ParseVendorConfigurationResult(
+              elapsedTime,
+              _logger.getHistory(),
+              _file,
+              new BatfishException(
+                  String.format(
+                      "Palo Alto nested configurations must be flattened prior to this stage: '%s'",
+                      relativePathStr)));
+        }
+        // fall through
+      case PALO_ALTO:
+        PaloAltoCombinedParser paParser = new PaloAltoCombinedParser(_fileText, _settings, lineMap);
+        combinedParser = paParser;
+        extractor =
+            new PaloAltoControlPlaneExtractor(
+                _fileText, paParser, _warnings, _settings.getUnrecognizedAsRedFlag());
+        break;
+
       case ALCATEL_AOS:
       case AWS:
       case BLADENETWORK:
       case F5:
       case JUNIPER_SWITCH:
+      case METAMAKO:
       case MRV_COMMANDS:
       case MSS:
       case VXWORKS:
@@ -300,7 +346,9 @@ public class ParseVendorConfigurationJob extends BatfishJob<ParseVendorConfigura
       _logger.info("\tParsing...");
       tree = Batfish.parse(combinedParser, _logger, _settings);
       if (_settings.getPrintParseTree()) {
-        _ptSentences = ParseTreePrettyPrinter.getParseTreeSentences(tree, combinedParser);
+        _ptSentences =
+            ParseTreePrettyPrinter.getParseTreeSentences(
+                tree, combinedParser, _settings.getPrintParseTreeLineNums());
       }
       _logger.info("\tPost-processing...");
       extractor.processParseTree(tree);

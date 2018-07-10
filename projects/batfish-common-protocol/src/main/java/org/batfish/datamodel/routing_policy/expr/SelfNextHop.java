@@ -1,36 +1,45 @@
 package org.batfish.datamodel.routing_policy.expr;
 
-import org.batfish.datamodel.BgpNeighbor;
+import javax.annotation.Nullable;
+import org.batfish.datamodel.BgpPeerConfig;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.routing_policy.Environment;
 
+/** Implements BGP next-hop-self semantics */
 public class SelfNextHop extends NextHopExpr {
 
-  /** */
   private static final long serialVersionUID = 1L;
+
+  private static final SelfNextHop _instance = new SelfNextHop();
+
+  public static SelfNextHop getInstance() {
+    return _instance;
+  }
+
+  private SelfNextHop() {}
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    return true;
+    return this == obj || obj instanceof NextHopExpr;
   }
 
   @Override
+  @Nullable
   public Ip getNextHopIp(Environment environment) {
-    // TODO: make work for dynamic sessions
-    Prefix prefix = new Prefix(environment.getPeerAddress(), Prefix.MAX_PREFIX_LENGTH);
-    BgpNeighbor neighbor = environment.getVrf().getBgpProcess().getNeighbors().get(prefix);
-    Ip localIp = neighbor.getLocalIp();
-    return localIp;
+    Prefix peerPrefix = environment.getPeerPrefix();
+    if (peerPrefix == null) {
+      return null;
+    }
+    BgpPeerConfig neighbor =
+        environment.getVrf().getBgpProcess().getActiveNeighbors().get(peerPrefix);
+    if (neighbor == null) {
+      neighbor = environment.getVrf().getBgpProcess().getPassiveNeighbors().get(peerPrefix);
+    }
+    if (neighbor == null) {
+      return null;
+    }
+    return neighbor.getLocalIp();
   }
 
   @Override

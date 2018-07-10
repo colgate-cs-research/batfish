@@ -190,6 +190,7 @@ i_null
       | BANDWIDTH
       | ENCAPSULATION
       | FABRIC_OPTIONS
+      | FORWARDING_CLASS_ACCOUNTING
       | FRAMING
       | HOLD_TIME
       | INTERFACE_TRANSMIT_STATISTICS
@@ -227,7 +228,7 @@ i_unit
 :
    UNIT
    (
-      WILDCARD
+      wildcard
       | num = DEC
    )
    (
@@ -256,6 +257,7 @@ if_bridge
    BRIDGE
    (
       apply
+      | if_storm_control
       | ifbr_filter
       | ifbr_interface_mode
       | ifbr_vlan_id_list
@@ -272,6 +274,7 @@ if_ethernet_switching
    ETHERNET_SWITCHING
    (
       apply
+      | if_storm_control
       | ife_filter
       | ife_interface_mode
       | ife_native_vlan_id
@@ -320,6 +323,11 @@ if_mpls
    )
 ;
 
+if_storm_control
+:
+    STORM_CONTROL null_filler
+;
+
 ifbr_filter
 :
    filter
@@ -337,7 +345,7 @@ ifbr_vlan_id_list
 
 ife_filter
 :
-   FILTER direction name = variable
+   filter
 ;
 
 ife_interface_mode
@@ -369,7 +377,7 @@ ife_vlan
    (
       ALL
       | range
-      | variable
+      | name = variable
    )
 ;
 
@@ -379,7 +387,7 @@ ifi_address
    (
       IP_ADDRESS
       | IP_PREFIX
-      | WILDCARD
+      | wildcard
    )
    (
       ifia_arp
@@ -423,7 +431,10 @@ ifi_rpf_check
 
 ifia_arp
 :
-   ARP IP_ADDRESS
+   ARP ip = IP_ADDRESS
+   (
+      L2_INTERFACE interface_id
+   )?
    (
       MAC
       | MULTICAST_MAC
@@ -450,7 +461,6 @@ ifia_vrrp_group
    VRRP_GROUP
    (
       number = DEC
-      | WILDCARD
       | name = variable
    )
    (
@@ -564,7 +574,7 @@ int_interface_range
 int_named
 :
    (
-      WILDCARD
+      wildcard
       | interface_id
    )
    (

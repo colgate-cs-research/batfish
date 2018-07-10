@@ -1,7 +1,7 @@
 package org.batfish.datamodel;
 
+import static org.batfish.datamodel.matchers.LinkMatchers.hasIp1;
 import static org.batfish.datamodel.matchers.OspfProcessMatchers.hasOspfNeighbors;
-import static org.batfish.datamodel.matchers.PairMatchers.hasFirst;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
@@ -10,8 +10,9 @@ import static org.hamcrest.Matchers.not;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.Set;
-import org.batfish.common.Pair;
 import org.batfish.common.util.CommonUtil;
+import org.batfish.datamodel.ospf.OspfArea;
+import org.batfish.datamodel.ospf.OspfProcess;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -66,11 +67,11 @@ public class OspfNeighborTest {
         .build();
 
     Map<String, Configuration> configurations = ImmutableMap.of(c1.getName(), c1, c2.getName(), c2);
-    Map<Ip, Set<String>> ipOwners = CommonUtil.computeIpOwners(configurations, true);
+    Map<Ip, Set<String>> ipOwners = CommonUtil.computeIpNodeOwners(configurations, true);
     Topology topology = CommonUtil.synthesizeTopology(configurations);
     CommonUtil.initRemoteOspfNeighbors(configurations, ipOwners, topology);
 
-    assertThat(op1, hasOspfNeighbors(hasKey(new Pair<>(ip1, Ip.ZERO))));
-    assertThat(op1, hasOspfNeighbors(not(hasKey(hasFirst(equalTo(ip2))))));
+    assertThat(op1, hasOspfNeighbors(hasKey(new IpLink(ip1, Ip.ZERO))));
+    assertThat(op1, hasOspfNeighbors(not(hasKey(hasIp1(equalTo(ip2))))));
   }
 }

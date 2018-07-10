@@ -32,7 +32,7 @@
         "z2-host1" : "PASSED",
         "z2-host2" : "PASSED"
       },
-      "version" : "0.35.0",
+      "version" : "0.36.0",
       "warnings" : {
         "r1" : {
           "Red flags" : {
@@ -63,7 +63,125 @@
     },
     {
       "class" : "org.batfish.datamodel.answers.ConvertConfigurationAnswerElement",
-      "version" : "0.35.0"
+      "definedStructures" : {
+        "internet-host" : { },
+        "r1" : {
+          "interface" : {
+            "Ethernet0" : {
+              "definitionLines" : [
+                7,
+                8
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet1" : {
+              "definitionLines" : [
+                4,
+                5
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet2" : {
+              "definitionLines" : [
+                1,
+                2
+              ],
+              "numReferrers" : 1
+            }
+          }
+        },
+        "r2" : {
+          "interface" : {
+            "Ethernet0" : {
+              "definitionLines" : [
+                7,
+                8
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet1" : {
+              "definitionLines" : [
+                4,
+                5
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet2" : {
+              "definitionLines" : [
+                1,
+                2
+              ],
+              "numReferrers" : 1
+            }
+          }
+        },
+        "r3" : {
+          "interface" : {
+            "Ethernet0" : {
+              "definitionLines" : [
+                7,
+                8
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet1" : {
+              "definitionLines" : [
+                4,
+                5
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet2" : {
+              "definitionLines" : [
+                1,
+                2
+              ],
+              "numReferrers" : 1
+            }
+          }
+        },
+        "z1-firewall" : {
+          "interface" : {
+            "Ethernet0" : {
+              "definitionLines" : [
+                4,
+                5
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet1" : {
+              "definitionLines" : [
+                1,
+                2
+              ],
+              "numReferrers" : 1
+            }
+          }
+        },
+        "z1-host1" : { },
+        "z1-host2" : { },
+        "z2-firewall" : {
+          "interface" : {
+            "Ethernet0" : {
+              "definitionLines" : [
+                4,
+                5
+              ],
+              "numReferrers" : 1
+            },
+            "Ethernet1" : {
+              "definitionLines" : [
+                1,
+                2
+              ],
+              "numReferrers" : 1
+            }
+          }
+        },
+        "z2-host1" : { },
+        "z2-host2" : { }
+      },
+      "version" : "0.36.0"
     },
     {
       "class" : "org.batfish.datamodel.answers.InitInfoAnswerElement",

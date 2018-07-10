@@ -12,7 +12,7 @@ import java.util.TreeSet;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.answers.AnswerElement;
 
-public class ConfigDiffElement implements AnswerElement {
+public class ConfigDiffElement extends AnswerElement {
 
   private static final String PROP_DIFF_INFO = "diffInfo";
 
@@ -78,7 +78,7 @@ public class ConfigDiffElement implements AnswerElement {
     _inAfterOnly = CommonUtil.difference(after, before, TreeSet::new);
   }
 
-  public Set<String> common() {
+  public final Set<String> common() {
     return CommonUtil.intersection(_before, _after, TreeSet::new);
   }
 

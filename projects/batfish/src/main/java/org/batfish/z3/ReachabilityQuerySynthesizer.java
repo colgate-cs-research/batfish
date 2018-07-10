@@ -1,202 +1,147 @@
 package org.batfish.z3;
 
+import static org.batfish.question.SrcNattedConstraint.UNCONSTRAINED;
+
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.ForwardingAction;
 import org.batfish.datamodel.HeaderSpace;
-import org.batfish.z3.expr.AndExpr;
+import org.batfish.question.SrcNattedConstraint;
 import org.batfish.z3.expr.BasicRuleStatement;
-import org.batfish.z3.expr.BasicStateExpr;
 import org.batfish.z3.expr.BooleanExpr;
-import org.batfish.z3.expr.CurrentIsOriginalExpr;
-import org.batfish.z3.expr.HeaderSpaceMatchExpr;
-import org.batfish.z3.expr.QueryStatement;
+import org.batfish.z3.expr.EqExpr;
+import org.batfish.z3.expr.NotExpr;
 import org.batfish.z3.expr.RuleStatement;
-import org.batfish.z3.expr.SaneExpr;
-import org.batfish.z3.state.Accept;
-import org.batfish.z3.state.Debug;
-import org.batfish.z3.state.Drop;
-import org.batfish.z3.state.DropAcl;
-import org.batfish.z3.state.DropAclIn;
-import org.batfish.z3.state.DropAclOut;
-import org.batfish.z3.state.DropNoRoute;
-import org.batfish.z3.state.DropNullRoute;
-import org.batfish.z3.state.NodeAccept;
-import org.batfish.z3.state.NodeDrop;
-import org.batfish.z3.state.NodeDropAcl;
-import org.batfish.z3.state.NodeDropAclIn;
-import org.batfish.z3.state.NodeDropAclOut;
-import org.batfish.z3.state.NodeDropNoRoute;
-import org.batfish.z3.state.NodeDropNullRoute;
+import org.batfish.z3.expr.TrueExpr;
+import org.batfish.z3.expr.VarIntExpr;
+import org.batfish.z3.state.OriginateInterfaceLink;
 import org.batfish.z3.state.OriginateVrf;
-import org.batfish.z3.state.Query;
 
-public class ReachabilityQuerySynthesizer extends BaseQuerySynthesizer {
+public abstract class ReachabilityQuerySynthesizer extends BaseQuerySynthesizer {
 
-  private Set<ForwardingAction> _actions;
+  public abstract static class Builder<
+      Q extends ReachabilityQuerySynthesizer, T extends Builder<Q, T>> {
+    protected Set<String> _forbiddenTransitNodes;
 
-  private Set<String> _finalNodes;
+    protected HeaderSpace _headerSpace;
 
-  private HeaderSpace _headerSpace;
+    protected Map<IngressLocation, BooleanExpr> _srcIpConstraints;
 
-  private Map<String, Set<String>> _ingressNodeVrfs;
+    protected Set<String> _requiredTransitNodes;
 
-  @SuppressWarnings("unused")
-  private Set<String> _notTransitNodes;
+    protected SrcNattedConstraint _srcNatted;
 
-  @SuppressWarnings("unused")
-  private Set<String> _transitNodes;
+    public Builder() {
+      _forbiddenTransitNodes = ImmutableSet.of();
+      _headerSpace = new HeaderSpace();
+      _srcIpConstraints = ImmutableMap.of();
+      _requiredTransitNodes = ImmutableSet.of();
+      _srcNatted = UNCONSTRAINED;
+    }
 
-  public ReachabilityQuerySynthesizer(
-      Set<ForwardingAction> actions,
-      HeaderSpace headerSpace,
-      Set<String> finalNodes,
-      Map<String, Set<String>> ingressNodeVrfs,
-      Set<String> transitNodes,
-      Set<String> notTransitNodes) {
-    _actions = actions;
-    _finalNodes = finalNodes;
-    _headerSpace = headerSpace;
-    _ingressNodeVrfs = ingressNodeVrfs;
-    _transitNodes = transitNodes;
-    _notTransitNodes = notTransitNodes;
+    public abstract Q build();
+
+    public abstract T getThis();
+
+    public abstract T setActions(Set<ForwardingAction> actions);
+
+    public abstract T setFinalNodes(Set<String> finalNodes);
+
+    public T setForbiddenTransitNodes(Set<String> nonTransitNodes) {
+      _forbiddenTransitNodes = nonTransitNodes;
+      return getThis();
+    }
+
+    public T setHeaderSpace(HeaderSpace headerSpace) {
+      _headerSpace = headerSpace;
+      return getThis();
+    }
+
+    public T setSrcIpConstraints(Map<IngressLocation, BooleanExpr> ingressLocations) {
+      _srcIpConstraints = ImmutableMap.copyOf(ingressLocations);
+      return getThis();
+    }
+
+    public T setSrcNatted(SrcNattedConstraint srcNatted) {
+      _srcNatted = srcNatted;
+      return getThis();
+    }
+
+    public T setRequiredTransitNodes(Set<String> transitNodes) {
+      _requiredTransitNodes = transitNodes;
+      return getThis();
+    }
   }
 
-  @Override
-  public ReachabilityProgram getReachabilityProgram(SynthesizerInput input) {
-    ImmutableList.Builder<BooleanExpr> queryConditionsBuilder = ImmutableList.builder();
+  protected final @Nonnull HeaderSpace _headerSpace;
 
-    // create query condition for action at final node(s)
-    ImmutableList.Builder<BasicStateExpr> finalActions = ImmutableList.builder();
-    ImmutableList.Builder<BasicStateExpr> queryPreconditionPreTransformationStatesBuilder =
-        ImmutableList.builder();
-    for (ForwardingAction action : _actions) {
-      switch (action) {
-        case ACCEPT:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr accept = new NodeAccept(finalNode);
-              finalActions.add(accept);
-            }
-          } else {
-            finalActions.add(Accept.INSTANCE);
-          }
-          break;
+  protected final @Nonnull ImmutableMap<IngressLocation, BooleanExpr> _srcIpConstraints;
 
-        case DEBUG:
-          finalActions.add(Debug.INSTANCE);
-          break;
+  protected final @Nonnull Set<String> _nonTransitNodes;
 
-        case DROP:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr drop = new NodeDrop(finalNode);
-              finalActions.add(drop);
-            }
-          } else {
-            finalActions.add(Drop.INSTANCE);
-          }
-          break;
+  protected final @Nonnull SrcNattedConstraint _srcNatted;
 
-        case DROP_ACL:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr drop = new NodeDropAcl(finalNode);
-              finalActions.add(drop);
-            }
-          } else {
-            finalActions.add(DropAcl.INSTANCE);
-          }
-          break;
+  protected final @Nonnull Set<String> _transitNodes;
 
-        case DROP_ACL_IN:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr drop = new NodeDropAclIn(finalNode);
-              finalActions.add(drop);
-            }
-          } else {
-            finalActions.add(DropAclIn.INSTANCE);
-          }
-          break;
+  public ReachabilityQuerySynthesizer(
+      @Nonnull HeaderSpace headerSpace,
+      @Nonnull Map<IngressLocation, BooleanExpr> srcIpConstraints,
+      @Nonnull SrcNattedConstraint srcNatted,
+      @Nonnull Set<String> transitNodes,
+      @Nonnull Set<String> nonTransitNodes) {
+    _headerSpace = headerSpace;
+    _srcIpConstraints = ImmutableMap.copyOf(srcIpConstraints);
+    _srcNatted = srcNatted;
+    _transitNodes = ImmutableSet.copyOf(transitNodes);
+    _nonTransitNodes = ImmutableSet.copyOf(nonTransitNodes);
+  }
 
-        case DROP_ACL_OUT:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr drop = new NodeDropAclOut(finalNode);
-              finalActions.add(drop);
-            }
-          } else {
-            finalActions.add(DropAclOut.INSTANCE);
-          }
-          break;
-
-        case DROP_NO_ROUTE:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr drop = new NodeDropNoRoute(finalNode);
-              finalActions.add(drop);
-            }
-          } else {
-            finalActions.add(DropNoRoute.INSTANCE);
-          }
-          break;
-
-        case DROP_NULL_ROUTE:
-          if (_finalNodes.size() > 0) {
-            for (String finalNode : _finalNodes) {
-              BasicStateExpr drop = new NodeDropNullRoute(finalNode);
-              finalActions.add(drop);
-            }
-          } else {
-            finalActions.add(DropNullRoute.INSTANCE);
-          }
-          break;
-
-        case FORWARD:
-        default:
-          throw new BatfishException("unsupported action");
-      }
-    }
-
-    ImmutableList.Builder<RuleStatement> rules = ImmutableList.builder();
+  protected final void addOriginateRules(ImmutableList.Builder<RuleStatement> rules) {
     // create rules for injecting symbolic packets into ingress node(s)
-    for (String ingressNode : _ingressNodeVrfs.keySet()) {
-      for (String ingressVrf : _ingressNodeVrfs.get(ingressNode)) {
-        rules.add(
-            new BasicRuleStatement(
-                new AndExpr(
-                    ImmutableList.of(
-                        CurrentIsOriginalExpr.INSTANCE,
-                        new HeaderSpaceMatchExpr(_headerSpace),
-                        SaneExpr.INSTANCE)),
-                new OriginateVrf(ingressNode, ingressVrf)));
-      }
+    BooleanExpr initialConstraint =
+        new EqExpr(new VarIntExpr(Field.SRC_IP), new VarIntExpr(Field.ORIG_SRC_IP));
+
+    _srcIpConstraints.forEach(
+        (ingressLocation, srcIpConstraint) -> {
+          switch (ingressLocation.getType()) {
+            case INTERFACE_LINK:
+              rules.add(
+                  new BasicRuleStatement(
+                      initialConstraint,
+                      new OriginateInterfaceLink(
+                          ingressLocation.getNode(), ingressLocation.getInterface())));
+              break;
+            case VRF:
+              rules.add(
+                  new BasicRuleStatement(
+                      initialConstraint,
+                      new OriginateVrf(ingressLocation.getNode(), ingressLocation.getVrf())));
+
+              break;
+            default:
+              throw new BatfishException(
+                  "Unexpected IngressLocation Type: " + ingressLocation.getType());
+          }
+        });
+  }
+
+  protected final BooleanExpr getSrcNattedConstraint() {
+    BooleanExpr notSrcNatted =
+        new EqExpr(new VarIntExpr(Field.SRC_IP), new VarIntExpr(Field.ORIG_SRC_IP));
+    switch (_srcNatted) {
+      case REQUIRE_NOT_SRC_NATTED:
+        return notSrcNatted;
+      case REQUIRE_SRC_NATTED:
+        return new NotExpr(notSrcNatted);
+      case UNCONSTRAINED:
+        return TrueExpr.INSTANCE;
+      default:
+        throw new BatfishException("Unexpected SrcNattedConstraint: " + _srcNatted);
     }
-    List<BasicStateExpr> queryPreconditionPreTransformationStates =
-        queryPreconditionPreTransformationStatesBuilder.build();
-    BooleanExpr queryConditions = new AndExpr(queryConditionsBuilder.build());
-    finalActions
-        .build()
-        .stream()
-        .map(
-            finalAction ->
-                new BasicRuleStatement(
-                    queryConditions,
-                    ImmutableSet.<BasicStateExpr>builder()
-                        .add(finalAction)
-                        .addAll(queryPreconditionPreTransformationStates)
-                        .build(),
-                    Query.INSTANCE))
-        .forEach(rules::add);
-    return ReachabilityProgram.builder()
-        .setInput(input)
-        .setQueries(ImmutableList.of(new QueryStatement(Query.INSTANCE)))
-        .setRules(rules.build())
-        .build();
   }
 }

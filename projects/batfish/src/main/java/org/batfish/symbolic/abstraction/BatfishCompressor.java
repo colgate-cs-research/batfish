@@ -1,5 +1,7 @@
 package org.batfish.symbolic.abstraction;
 
+import static org.batfish.common.util.CommonUtil.asPositiveIpWildcards;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import java.util.ArrayList;
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.batfish.common.plugin.IBatfish;
-import org.batfish.datamodel.BgpNeighbor;
+import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.IpWildcard;
@@ -29,7 +31,6 @@ import org.batfish.datamodel.routing_policy.expr.AbstractionPrefixSet;
 import org.batfish.datamodel.routing_policy.expr.AsPathSetElem;
 import org.batfish.datamodel.routing_policy.expr.BooleanExpr;
 import org.batfish.datamodel.routing_policy.expr.BooleanExprs;
-import org.batfish.datamodel.routing_policy.expr.BooleanExprs.StaticBooleanExpr;
 import org.batfish.datamodel.routing_policy.expr.Conjunction;
 import org.batfish.datamodel.routing_policy.expr.DestinationNetwork;
 import org.batfish.datamodel.routing_policy.expr.Disjunction;
@@ -42,7 +43,6 @@ import org.batfish.datamodel.routing_policy.expr.RegexAsPathSetElem;
 import org.batfish.datamodel.routing_policy.statement.If;
 import org.batfish.datamodel.routing_policy.statement.Statement;
 import org.batfish.datamodel.routing_policy.statement.Statements;
-import org.batfish.datamodel.routing_policy.statement.Statements.StaticStatement;
 import org.batfish.symbolic.Graph;
 import org.batfish.symbolic.GraphEdge;
 import org.batfish.symbolic.Protocol;
@@ -126,9 +126,7 @@ public class BatfishCompressor {
 
     // get the set of prefixes for this equivalence class.
     TreeSet<Prefix> prefixSet =
-        slice
-            .getHeaderSpace()
-            .getDstIps()
+        asPositiveIpWildcards(slice.getHeaderSpace().getDstIps())
             .stream()
             .map(IpWildcard::toPrefix)
             .collect(Collectors.toCollection(TreeSet::new));
@@ -145,14 +143,14 @@ public class BatfishCompressor {
 
   private String internalRegex() {
     StringBuilder matchInternal = new StringBuilder("(,|\\\\{|\\\\}|^|\\$| )(");
-    Collection<BgpNeighbor> neighbors = _graph.getEbgpNeighbors().values();
-    Set<Integer> allAsns = new HashSet<>();
-    for (BgpNeighbor n : neighbors) {
-      Integer asn = n.getLocalAs();
+    Collection<BgpActivePeerConfig> neighbors = _graph.getEbgpNeighbors().values();
+    Set<Long> allAsns = new HashSet<>();
+    for (BgpActivePeerConfig n : neighbors) {
+      Long asn = n.getLocalAs();
       allAsns.add(asn);
     }
     int i = 0;
-    for (Integer asn : allAsns) {
+    for (Long asn : allAsns) {
       i++;
       matchInternal.append(asn);
       if (i < allAsns.size()) {
@@ -175,14 +173,9 @@ public class BatfishCompressor {
   // Boolean: are the prefixes for the default equivalence class?
   private List<Statement> applyFilters(
       List<Statement> statements, @Nullable EquivalenceClassFilter filter) {
-    If i = new If();
-    List<Statement> newStatements = new ArrayList<>();
-    List<Statement> falseStatements = new ArrayList<>();
-    Statement reject = new StaticStatement(Statements.ExitReject);
-    falseStatements.add(reject);
+    BooleanExpr guard;
     if (filter == null) {
-      StaticBooleanExpr sbe = new StaticBooleanExpr(BooleanExprs.False);
-      i.setGuard(sbe);
+      guard = BooleanExprs.FALSE;
     } else {
       AbstractionPrefixSet eps = new AbstractionPrefixSet(filter._prefixTrie);
       MatchPrefixSet match = new MatchPrefixSet(new DestinationNetwork(), eps);
@@ -190,16 +183,14 @@ public class BatfishCompressor {
         // Let traffic through if it passes the filter or was advertised from outside the network.
         Disjunction pfxOrExternal = new Disjunction();
         pfxOrExternal.setDisjuncts(ImmutableList.of(match, matchExternalTraffic()));
-        i.setGuard(pfxOrExternal);
+        guard = pfxOrExternal;
       } else {
         // Not default equivalence class, so just let traffic through if dest matches the filter
-        i.setGuard(match);
+        guard = match;
       }
     }
-    i.setFalseStatements(falseStatements);
-    i.setTrueStatements(statements);
-    newStatements.add(i);
-    return newStatements;
+    return ImmutableList.of(
+        new If(guard, statements, ImmutableList.of(Statements.ExitReject.toStaticStatement())));
   }
 
   /**
@@ -272,7 +263,7 @@ public class BatfishCompressor {
 
   public Map<String, Configuration> compress(HeaderSpace h) {
     DestinationClasses dcs = DestinationClasses.create(_batfish, _graph, h, true);
-    ArrayList<Supplier<NetworkSlice>> ecs = NetworkSlice.allSlices(dcs, 0);
+    List<Supplier<NetworkSlice>> ecs = NetworkSlice.allSlices(dcs, 0);
     Optional<Map<GraphEdge, EquivalenceClassFilter>> opt =
         ecs.stream().map(Supplier::get).map(this::processSlice).reduce(this::mergeFilters);
     if (!opt.isPresent()) {

@@ -1,50 +1,41 @@
 {
   "answerElements" : [
     {
-      "class" : "org.batfish.datamodel.answers.BdpAnswerElement",
+      "class" : "org.batfish.datamodel.answers.IncrementalBdpAnswerElement",
       "bgpBestPathRibRoutesByIteration" : {
-        "1" : 15,
-        "2" : 28,
-        "3" : 50,
-        "4" : 62,
-        "5" : 69,
-        "6" : 82,
-        "7" : 90,
-        "8" : 92,
-        "9" : 93,
-        "10" : 94,
-        "11" : 94
+        "1" : 20,
+        "2" : 50,
+        "3" : 64,
+        "4" : 72,
+        "5" : 74,
+        "6" : 76,
+        "7" : 76,
+        "8" : 76
       },
       "bgpMultipathRibRoutesByIteration" : {
-        "1" : 15,
-        "2" : 38,
-        "3" : 70,
-        "4" : 83,
-        "5" : 93,
-        "6" : 110,
-        "7" : 119,
-        "8" : 122,
-        "9" : 123,
-        "10" : 124,
-        "11" : 124
+        "1" : 28,
+        "2" : 80,
+        "3" : 102,
+        "4" : 120,
+        "5" : 122,
+        "6" : 124,
+        "7" : 124,
+        "8" : 124
       },
-      "completedOscillationRecoveryAttempts" : 0,
-      "dependentRoutesIterations" : 11,
+      "dependentRoutesIterations" : 8,
       "mainRibRoutesByIteration" : {
-        "1" : 158,
-        "2" : 184,
-        "3" : 235,
-        "4" : 248,
-        "5" : 258,
-        "6" : 275,
-        "7" : 284,
-        "8" : 287,
-        "9" : 288,
-        "10" : 289,
-        "11" : 289
+        "1" : 206,
+        "2" : 285,
+        "3" : 307,
+        "4" : 325,
+        "5" : 327,
+        "6" : 329,
+        "7" : 329,
+        "8" : 329
       },
       "ospfInternalIterations" : 3,
-      "version" : "0.35.0"
+      "version" : "0.36.0",
+      "warnings" : { }
     }
   ],
   "status" : "SUCCESS",

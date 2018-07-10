@@ -29,7 +29,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class NodesQuestionPlugin extends QuestionPlugin {
 
-  public static class NodesAnswerElement implements AnswerElement {
+  public static class NodesAnswerElement extends AnswerElement {
 
     public static class NodeSummary {
 
@@ -54,8 +54,6 @@ public class NodesQuestionPlugin extends QuestionPlugin {
       private SortedSet<String> _ipsecProposals;
 
       private SortedSet<String> _ipsecVpns;
-
-      private SortedSet<String> _roles;
 
       private SortedSet<String> _routeFilterLists;
 
@@ -101,9 +99,6 @@ public class NodesQuestionPlugin extends QuestionPlugin {
         }
         if (!node.getRoutingPolicies().isEmpty()) {
           _routingPolicies = node.getRoutingPolicies().navigableKeySet();
-        }
-        if (!node.getRoles().isEmpty()) {
-          _roles = node.getRoles();
         }
         if (!node.getRouteFilterLists().isEmpty()) {
           _routeFilterLists = node.getRouteFilterLists().navigableKeySet();
@@ -192,10 +187,6 @@ public class NodesQuestionPlugin extends QuestionPlugin {
         return _routingPolicies;
       }
 
-      public SortedSet<String> getRoles() {
-        return _roles;
-      }
-
       public SortedSet<String> getRouteFilterLists() {
         return _routeFilterLists;
       }
@@ -254,10 +245,6 @@ public class NodesQuestionPlugin extends QuestionPlugin {
 
       public void setPolicySortedMaps(SortedSet<String> policySortedMaps) {
         _routingPolicies = policySortedMaps;
-      }
-
-      public void setRoles(SortedSet<String> roles) {
-        _roles = roles;
       }
 
       public void setRouteFilterLists(SortedSet<String> routeFilterLists) {
@@ -331,7 +318,7 @@ public class NodesQuestionPlugin extends QuestionPlugin {
       // initRemoteBgpNeighbors(_batfish, configurations);
 
       SortedMap<String, Configuration> answerNodes = new TreeMap<>();
-      Set<String> nodes = question.getNodeRegex().getMatchingNodes(configurations);
+      Set<String> nodes = question.getNodeRegex().getMatchingNodes(_batfish);
       for (String node : configurations.keySet()) {
         if (nodes.contains(node)) {
           answerNodes.put(node, configurations.get(node));
@@ -365,7 +352,7 @@ public class NodesQuestionPlugin extends QuestionPlugin {
     }
   }
 
-  public static class NodesDiffAnswerElement implements AnswerElement {
+  public static class NodesDiffAnswerElement extends AnswerElement {
 
     private static final String PROP_CONFIG_DIFF = "configDiff";
 

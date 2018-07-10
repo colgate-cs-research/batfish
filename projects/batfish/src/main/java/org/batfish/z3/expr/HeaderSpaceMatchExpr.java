@@ -4,23 +4,28 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.HeaderSpace;
+import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpProtocol;
+import org.batfish.datamodel.IpSpace;
 import org.batfish.datamodel.IpWildcard;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Protocol;
 import org.batfish.datamodel.State;
 import org.batfish.datamodel.SubRange;
 import org.batfish.datamodel.TcpFlags;
-import org.batfish.z3.BasicHeaderField;
+import org.batfish.z3.Field;
 import org.batfish.z3.expr.visitors.ExprVisitor;
 import org.batfish.z3.expr.visitors.GenericBooleanExprVisitor;
+import org.batfish.z3.expr.visitors.IpSpaceBooleanExprTransformer;
 
-public class HeaderSpaceMatchExpr extends BooleanExpr {
+public final class HeaderSpaceMatchExpr extends BooleanExpr {
 
   public static BooleanExpr matchDscp(Set<Integer> dscps) {
     return new OrExpr(
@@ -29,18 +34,20 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
             .map(
                 dscp ->
                     new EqExpr(
-                        new VarIntExpr(BasicHeaderField.DSCP),
-                        new LitIntExpr(dscp, BasicHeaderField.DSCP.getSize())))
+                        new VarIntExpr(Field.DSCP), new LitIntExpr(dscp, Field.DSCP.getSize())))
             .collect(ImmutableList.toImmutableList()));
   }
 
-  public static BooleanExpr matchDstIp(Set<IpWildcard> dstIpWildcards) {
-    return matchIp(dstIpWildcards, false, true);
+  public BooleanExpr matchDstIp(IpSpace ipSpace) {
+    return matchIpSpace(ipSpace, Field.DST_IP);
+  }
+
+  public static BooleanExpr matchDstIp(IpSpace ipSpace, Map<String, IpSpace> namedIpSpaces) {
+    return matchIpSpace(ipSpace, Field.DST_IP, namedIpSpaces);
   }
 
   public static BooleanExpr matchDstPort(Set<SubRange> dstPortRanges) {
-    return RangeMatchExpr.fromSubRanges(
-        BasicHeaderField.DST_PORT, BasicHeaderField.DST_PORT.getSize(), dstPortRanges);
+    return RangeMatchExpr.fromSubRanges(Field.DST_PORT, Field.DST_PORT.getSize(), dstPortRanges);
   }
 
   public static BooleanExpr matchDstProtocol(Set<Protocol> dstProtocols) {
@@ -54,119 +61,79 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
             .map(
                 dscp ->
                     new EqExpr(
-                        new VarIntExpr(BasicHeaderField.ECN),
-                        new LitIntExpr(dscp, BasicHeaderField.ECN.getSize())))
+                        new VarIntExpr(Field.ECN), new LitIntExpr(dscp, Field.ECN.getSize())))
             .collect(ImmutableList.toImmutableList()));
   }
 
   public static BooleanExpr matchFragmentOffset(Set<SubRange> fragmentOffsetRanges) {
     return RangeMatchExpr.fromSubRanges(
-        BasicHeaderField.FRAGMENT_OFFSET,
-        BasicHeaderField.FRAGMENT_OFFSET.getSize(),
-        fragmentOffsetRanges);
+        Field.FRAGMENT_OFFSET, Field.FRAGMENT_OFFSET.getSize(), fragmentOffsetRanges);
   }
 
   public static BooleanExpr matchIcmpCode(Set<SubRange> icmpCodes) {
-    return RangeMatchExpr.fromSubRanges(
-        BasicHeaderField.ICMP_CODE, BasicHeaderField.ICMP_CODE.getSize(), icmpCodes);
+    return RangeMatchExpr.fromSubRanges(Field.ICMP_CODE, Field.ICMP_CODE.getSize(), icmpCodes);
   }
 
   public static BooleanExpr matchIcmpType(Set<SubRange> icmpTypes) {
-    return RangeMatchExpr.fromSubRanges(
-        BasicHeaderField.ICMP_TYPE, BasicHeaderField.ICMP_TYPE.getSize(), icmpTypes);
+    return RangeMatchExpr.fromSubRanges(Field.ICMP_TYPE, Field.ICMP_TYPE.getSize(), icmpTypes);
   }
 
-  public static BooleanExpr matchIp(Set<IpWildcard> ipWildcards, boolean useSrc, boolean useDst) {
-    ImmutableList.Builder<BooleanExpr> matchSomeIpRange = ImmutableList.builder();
-    for (IpWildcard ipWildcard : ipWildcards) {
-      if (ipWildcard.isPrefix()) {
-        Prefix prefix = ipWildcard.toPrefix();
-        long ip = prefix.getStartIp().asLong();
-        int ipWildcardBits = Prefix.MAX_PREFIX_LENGTH - prefix.getPrefixLength();
-        int ipStart = ipWildcardBits;
-        int ipEnd = Prefix.MAX_PREFIX_LENGTH - 1;
-        if (ipStart < Prefix.MAX_PREFIX_LENGTH) {
-          IntExpr extractSrcIp =
-              ExtractExpr.newExtractExpr(BasicHeaderField.SRC_IP, ipStart, ipEnd);
-          IntExpr extractDstIp =
-              ExtractExpr.newExtractExpr(BasicHeaderField.DST_IP, ipStart, ipEnd);
-          LitIntExpr ipMatchLit = new LitIntExpr(ip, ipStart, ipEnd);
-          EqExpr matchSrcIp = new EqExpr(extractSrcIp, ipMatchLit);
-          EqExpr matchDstIp = new EqExpr(extractDstIp, ipMatchLit);
-          BooleanExpr matchSpecifiedIp;
-          if (useSrc) {
-            if (useDst) {
-              matchSpecifiedIp = new OrExpr(ImmutableList.of(matchSrcIp, matchDstIp));
-            } else {
-              matchSpecifiedIp = matchSrcIp;
-            }
-          } else if (useDst) {
-            matchSpecifiedIp = matchDstIp;
-          } else {
-            throw new BatfishException("useSrc and useDst cannot both be false");
-          }
-          matchSomeIpRange.add(matchSpecifiedIp);
-        } else {
-          return TrueExpr.INSTANCE;
-        }
-      } else {
-        long ip = ipWildcard.getIp().asLong();
-        long wildcard = ipWildcard.getWildcard().asLong();
-        ImmutableList.Builder<BooleanExpr> matchSrcIp = ImmutableList.builder();
-        if (useSrc) {
-          for (int currentBitIndex = 0;
-              currentBitIndex < Prefix.MAX_PREFIX_LENGTH;
-              currentBitIndex++) {
-            long mask = 1L << currentBitIndex;
-            long currentWildcardBit = mask & wildcard;
-            boolean useBit = currentWildcardBit == 0;
-            if (useBit) {
-              IntExpr extractSrcIp =
-                  ExtractExpr.newExtractExpr(
-                      BasicHeaderField.SRC_IP, currentBitIndex, currentBitIndex);
-              LitIntExpr srcIpMatchLit = new LitIntExpr(ip, currentBitIndex, currentBitIndex);
-              EqExpr matchSrcIpBit = new EqExpr(extractSrcIp, srcIpMatchLit);
-              matchSrcIp.add(matchSrcIpBit);
-            }
-          }
-        }
-        ImmutableList.Builder<BooleanExpr> matchDstIp = ImmutableList.builder();
-        if (useDst) {
-          for (int currentBitIndex = 0;
-              currentBitIndex < Prefix.MAX_PREFIX_LENGTH;
-              currentBitIndex++) {
-            long mask = 1L << currentBitIndex;
-            long currentWildcardBit = mask & wildcard;
-            boolean useBit = currentWildcardBit == 0;
-            if (useBit) {
-              IntExpr extractDstIp =
-                  ExtractExpr.newExtractExpr(
-                      BasicHeaderField.DST_IP, currentBitIndex, currentBitIndex);
-              LitIntExpr dstIpMatchLit = new LitIntExpr(ip, currentBitIndex, currentBitIndex);
-              EqExpr matchDstIpBit = new EqExpr(extractDstIp, dstIpMatchLit);
-              matchDstIp.add(matchDstIpBit);
-            }
-          }
-        }
-        BooleanExpr matchSpecifiedIp;
-        if (useSrc) {
-          if (useDst) {
-            matchSpecifiedIp =
-                new OrExpr(
-                    ImmutableList.of(
-                        new AndExpr(matchSrcIp.build()), new AndExpr(matchDstIp.build())));
-          } else {
-            matchSpecifiedIp = new AndExpr(matchSrcIp.build());
-          }
-        } else if (useDst) {
-          matchSpecifiedIp = new AndExpr(matchDstIp.build());
-        } else {
-          throw new BatfishException("useSrc and useDst cannot both be false");
-        }
-        matchSomeIpRange.add(matchSpecifiedIp);
+  public BooleanExpr matchIpSpace(IpSpace ipSpace, Field ipField) {
+    return ipSpace.accept(new IpSpaceBooleanExprTransformer(_namedIpSpaces, ipField));
+  }
+
+  public static BooleanExpr matchIpSpace(
+      IpSpace ipSpace, Field ipField, Map<String, IpSpace> namedIpSpaces) {
+    return ipSpace.accept(new IpSpaceBooleanExprTransformer(namedIpSpaces, ipField));
+  }
+
+  public static BooleanExpr matchIp(Ip ip, Field ipField) {
+    assert ipField.getSize() == 32;
+    return new EqExpr(new LitIntExpr(ip), new VarIntExpr(ipField));
+  }
+
+  public static BooleanExpr matchIpWildcards(Set<IpWildcard> ipWildcards, Field ipField) {
+    return new OrExpr(
+        ipWildcards
+            .stream()
+            .map(ipWildcard -> matchIpWildcard(ipWildcard, ipField))
+            .collect(Collectors.toList()));
+  }
+
+  public static BooleanExpr matchPrefix(Prefix prefix, Field ipField) {
+    long ip = prefix.getStartIp().asLong();
+    int ipWildcardBits = Prefix.MAX_PREFIX_LENGTH - prefix.getPrefixLength();
+    int ipStart = ipWildcardBits;
+    int ipEnd = Prefix.MAX_PREFIX_LENGTH - 1;
+    if (ipStart < Prefix.MAX_PREFIX_LENGTH) {
+      IntExpr extractIp = ExtractExpr.newExtractExpr(ipField, ipStart, ipEnd);
+      LitIntExpr ipMatchLit = new LitIntExpr(ip, ipStart, ipEnd);
+      return new EqExpr(extractIp, ipMatchLit);
+    } else {
+      return TrueExpr.INSTANCE;
+    }
+  }
+
+  public static BooleanExpr matchIpWildcard(IpWildcard ipWildcard, Field ipField) {
+    if (ipWildcard.isPrefix()) {
+      return matchPrefix(ipWildcard.toPrefix(), ipField);
+    }
+
+    long ip = ipWildcard.getIp().asLong();
+    long wildcard = ipWildcard.getWildcard().asLong();
+    ImmutableList.Builder<BooleanExpr> matchIp = ImmutableList.builder();
+    for (int currentBitIndex = 0; currentBitIndex < Prefix.MAX_PREFIX_LENGTH; currentBitIndex++) {
+      long mask = 1L << currentBitIndex;
+      long currentWildcardBit = mask & wildcard;
+      boolean useBit = currentWildcardBit == 0;
+      if (useBit) {
+        IntExpr extractIp = ExtractExpr.newExtractExpr(ipField, currentBitIndex, currentBitIndex);
+        LitIntExpr srcIpMatchLit = new LitIntExpr(ip, currentBitIndex, currentBitIndex);
+        EqExpr matchIpBit = new EqExpr(extractIp, srcIpMatchLit);
+        matchIp.add(matchIpBit);
       }
     }
-    return new OrExpr(matchSomeIpRange.build());
+    return new AndExpr(matchIp.build());
   }
 
   public static BooleanExpr matchIpProtocol(Set<IpProtocol> ipProtocols) {
@@ -177,14 +144,18 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
             .map(
                 num ->
                     new EqExpr(
-                        new VarIntExpr(BasicHeaderField.IP_PROTOCOL),
-                        new LitIntExpr(num, BasicHeaderField.IP_PROTOCOL.getSize())))
+                        new VarIntExpr(Field.IP_PROTOCOL),
+                        new LitIntExpr(num, Field.IP_PROTOCOL.getSize())))
             .collect(ImmutableList.toImmutableList()));
+  }
+
+  public BooleanExpr matchOrigSrcIp(IpSpace ipSpace) {
+    return matchIpSpace(ipSpace, Field.ORIG_SRC_IP);
   }
 
   public static BooleanExpr matchPacketLength(Set<SubRange> packetLengths) {
     return RangeMatchExpr.fromSubRanges(
-        BasicHeaderField.PACKET_LENGTH, BasicHeaderField.PACKET_LENGTH.getSize(), packetLengths);
+        Field.PACKET_LENGTH, Field.PACKET_LENGTH.getSize(), packetLengths);
   }
 
   public static BooleanExpr matchProtocol(Set<Protocol> protocols, boolean useSrc, boolean useDst) {
@@ -196,19 +167,18 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
                     protocol -> {
                       int protocolNumber = protocol.getIpProtocol().number();
                       Integer port = protocol.getPort();
-                      VarIntExpr protocolVar = new VarIntExpr(BasicHeaderField.IP_PROTOCOL);
+                      VarIntExpr protocolVar = new VarIntExpr(Field.IP_PROTOCOL);
                       LitIntExpr protocolLit =
-                          new LitIntExpr(protocolNumber, BasicHeaderField.IP_PROTOCOL.getSize());
+                          new LitIntExpr(protocolNumber, Field.IP_PROTOCOL.getSize());
                       EqExpr matchProtocol = new EqExpr(protocolVar, protocolLit);
                       ImmutableList.Builder<BooleanExpr> matchProtocolAndPort =
                           ImmutableList.builder();
                       matchProtocolAndPort.add(matchProtocol);
                       if (port != null) {
 
-                        VarIntExpr dstPortVar = new VarIntExpr(BasicHeaderField.DST_PORT);
-                        VarIntExpr srcPortVar = new VarIntExpr(BasicHeaderField.SRC_PORT);
-                        LitIntExpr portLit =
-                            new LitIntExpr(port, BasicHeaderField.SRC_PORT.getSize());
+                        VarIntExpr dstPortVar = new VarIntExpr(Field.DST_PORT);
+                        VarIntExpr srcPortVar = new VarIntExpr(Field.SRC_PORT);
+                        LitIntExpr portLit = new LitIntExpr(port, Field.SRC_PORT.getSize());
                         EqExpr matchDstPort = new EqExpr(dstPortVar, portLit);
                         EqExpr matchSrcPort = new EqExpr(srcPortVar, portLit);
                         BooleanExpr matchSpecifiedPorts;
@@ -232,12 +202,17 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
     return matchesSomeProtocol;
   }
 
-  public static BooleanExpr matchSrcIp(Set<IpWildcard> srcIpWildcards) {
-    return matchIp(srcIpWildcards, true, false);
+  public BooleanExpr matchSrcIp(IpSpace srcIpSpace) {
+    return matchIpSpace(srcIpSpace, Field.SRC_IP);
   }
 
-  public static BooleanExpr matchSrcOrDstIp(Set<IpWildcard> srcOrDstIppWildcards) {
-    return matchIp(srcOrDstIppWildcards, true, true);
+  public static BooleanExpr matchSrcIp(IpSpace srcIpSpace, Map<String, IpSpace> namedIpSpaces) {
+    return matchIpSpace(srcIpSpace, Field.SRC_IP, namedIpSpaces);
+  }
+
+  public BooleanExpr matchSrcOrDstIp(IpSpace ipSpace) {
+    return ipSpace.accept(
+        new IpSpaceBooleanExprTransformer(_namedIpSpaces, Field.SRC_IP, Field.DST_IP));
   }
 
   public static BooleanExpr matchSrcOrDstPort(Set<SubRange> srcOrDstPorts) {
@@ -249,8 +224,7 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
   }
 
   public static BooleanExpr matchSrcPort(Set<SubRange> srcPortRanges) {
-    return RangeMatchExpr.fromSubRanges(
-        BasicHeaderField.SRC_PORT, BasicHeaderField.SRC_PORT.getSize(), srcPortRanges);
+    return RangeMatchExpr.fromSubRanges(Field.SRC_PORT, Field.SRC_PORT.getSize(), srcPortRanges);
   }
 
   public static BooleanExpr matchSrcProtocol(Set<Protocol> srcProtocols) {
@@ -264,8 +238,8 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
             .map(
                 state ->
                     new EqExpr(
-                        new VarIntExpr(BasicHeaderField.STATE),
-                        new LitIntExpr(state.number(), BasicHeaderField.STATE.getSize())))
+                        new VarIntExpr(Field.STATE),
+                        new LitIntExpr(state.number(), Field.STATE.getSize())))
             .collect(ImmutableList.toImmutableList()));
   }
 
@@ -280,50 +254,42 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
                   ImmutableList.Builder<BooleanExpr> matchCurrentTcpFlags = ImmutableList.builder();
                   if (currentTcpFlags.getUseCwr()) {
                     LitIntExpr bit = currentTcpFlags.getCwr() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_CWR), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_CWR), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUseEce()) {
                     LitIntExpr bit = currentTcpFlags.getEce() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_ECE), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_ECE), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUseUrg()) {
                     LitIntExpr bit = currentTcpFlags.getUrg() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_URG), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_URG), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUseAck()) {
                     LitIntExpr bit = currentTcpFlags.getAck() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_ACK), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_ACK), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUsePsh()) {
                     LitIntExpr bit = currentTcpFlags.getPsh() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_PSH), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_PSH), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUseRst()) {
                     LitIntExpr bit = currentTcpFlags.getRst() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_RST), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_RST), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUseSyn()) {
                     LitIntExpr bit = currentTcpFlags.getSyn() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_SYN), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_SYN), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   if (currentTcpFlags.getUseFin()) {
                     LitIntExpr bit = currentTcpFlags.getFin() ? one : zero;
-                    EqExpr matchFlag =
-                        new EqExpr(new VarIntExpr(BasicHeaderField.TCP_FLAGS_FIN), bit);
+                    EqExpr matchFlag = new EqExpr(new VarIntExpr(Field.TCP_FLAGS_FIN), bit);
                     matchCurrentTcpFlags.add(matchFlag);
                   }
                   return new AndExpr(matchCurrentTcpFlags.build());
@@ -333,7 +299,15 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
 
   private final BooleanExpr _expr;
 
-  public HeaderSpaceMatchExpr(HeaderSpace headerSpace) {
+  private final Map<String, IpSpace> _namedIpSpaces;
+
+  public HeaderSpaceMatchExpr(HeaderSpace headerSpace, Map<String, IpSpace> namedIpSpaces) {
+    this(headerSpace, namedIpSpaces, false);
+  }
+
+  public HeaderSpaceMatchExpr(
+      HeaderSpace headerSpace, Map<String, IpSpace> namedIpSpaces, boolean orig) {
+    _namedIpSpaces = namedIpSpaces;
     ImmutableList.Builder<BooleanExpr> matchBuilder = ImmutableList.builder();
 
     // ipProtocol
@@ -356,11 +330,26 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
         HeaderSpaceMatchExpr::matchSrcOrDstProtocol);
 
     // ip
-    requireMatch(matchBuilder, headerSpace.getSrcIps(), HeaderSpaceMatchExpr::matchSrcIp);
-    requireNoMatch(matchBuilder, headerSpace.getNotSrcIps(), HeaderSpaceMatchExpr::matchSrcIp);
-    requireMatch(matchBuilder, headerSpace.getSrcOrDstIps(), HeaderSpaceMatchExpr::matchSrcOrDstIp);
-    requireMatch(matchBuilder, headerSpace.getDstIps(), HeaderSpaceMatchExpr::matchDstIp);
-    requireNoMatch(matchBuilder, headerSpace.getNotDstIps(), HeaderSpaceMatchExpr::matchDstIp);
+    if (headerSpace.getSrcIps() != null) {
+      requireMatch(
+          matchBuilder, headerSpace.getSrcIps(), orig ? this::matchOrigSrcIp : this::matchSrcIp);
+    }
+    if (headerSpace.getNotSrcIps() != null) {
+      requireNoMatch(
+          matchBuilder, headerSpace.getNotSrcIps(), orig ? this::matchOrigSrcIp : this::matchSrcIp);
+    }
+    if (headerSpace.getSrcOrDstIps() != null) {
+      requireMatch(
+          matchBuilder,
+          headerSpace.getSrcOrDstIps(),
+          orig ? this::matchOrigSrcOrDstIp : this::matchSrcOrDstIp);
+    }
+    if (headerSpace.getDstIps() != null) {
+      requireMatch(matchBuilder, headerSpace.getDstIps(), this::matchDstIp);
+    }
+    if (headerSpace.getNotDstIps() != null) {
+      requireNoMatch(matchBuilder, headerSpace.getNotDstIps(), this::matchDstIp);
+    }
 
     // port
     requireMatch(matchBuilder, headerSpace.getSrcPorts(), HeaderSpaceMatchExpr::matchSrcPort);
@@ -416,6 +405,17 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
     }
   }
 
+  /**
+   * Require that either ORIG_SRC_IP or DST_IP matches the input {@link IpSpace}. If the query
+   * specifies a srcIp or dstIp constraint, we interpret that as meaning the srcIp before any
+   * natting. If that constraint is imposed after src natting has been applied, use this method to
+   * constrain ORIG_SRC_IP.
+   */
+  public BooleanExpr matchOrigSrcOrDstIp(IpSpace ipSpace) {
+    return ipSpace.accept(
+        new IpSpaceBooleanExprTransformer(_namedIpSpaces, Field.ORIG_SRC_IP, Field.DST_IP));
+  }
+
   @Override
   public void accept(ExprVisitor visitor) {
     visitor.visitHeaderSpaceMatchExpr(this);
@@ -427,7 +427,7 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
   }
 
   @Override
-  public boolean exprEquals(Expr e) {
+  protected boolean exprEquals(Expr e) {
     return Objects.equals(_expr, ((HeaderSpaceMatchExpr) e)._expr);
   }
 
@@ -438,6 +438,16 @@ public class HeaderSpaceMatchExpr extends BooleanExpr {
   @Override
   public int hashCode() {
     return Objects.hash(_expr);
+  }
+
+  private void requireMatch(
+      Builder<BooleanExpr> match, IpSpace ipSpace, Function<IpSpace, BooleanExpr> generator) {
+    match.add(generator.apply(ipSpace));
+  }
+
+  private void requireNoMatch(
+      Builder<BooleanExpr> match, IpSpace ipSpace, Function<IpSpace, BooleanExpr> generator) {
+    match.add(new NotExpr(generator.apply(ipSpace)));
   }
 
   private <T, C extends Collection<T>> void requireMatch(

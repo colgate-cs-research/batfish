@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ImmutableSortedSet;
+import com.google.common.collect.Iterables;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
 import java.util.Collections;
 import java.util.Comparator;
@@ -24,6 +26,7 @@ import org.batfish.common.BatfishException;
 import org.batfish.common.Warnings;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
+import org.batfish.datamodel.ospf.OspfProcess;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 import org.batfish.datamodel.vendor_family.VendorFamily;
 
@@ -116,7 +119,15 @@ public final class Configuration extends ComparableStructure<String> {
 
   private static final String PROP_IKE_PROPOSALS = "ikeProposals";
 
+  private static final String PROP_IKE_PHASE1_KEYS = "ikePhase1Keys";
+
+  private static final String PROP_IKE_PHASE1_POLICIES = "ikePhase1Policies";
+
+  private static final String PROP_IKE_PHASE1_PROPOSALS = "ikePhase1Proposals";
+
   private static final String PROP_IP_ACCESS_LISTS = "ipAccessLists";
+
+  private static final String PROP_IP_SPACES = "ipSpaces";
 
   private static final String PROP_IPSEC_POLICIES = "ipsecPolicies";
 
@@ -127,10 +138,6 @@ public final class Configuration extends ComparableStructure<String> {
   private static final String PROP_LOGGING_SOURCE_INTERFACE = "loggingSourceInterface";
 
   private static final String PROP_NTP_SOURCE_INTERFACE = "ntpSourceInterface";
-
-  private static final String PROP_ROLES = "roles";
-
-  private static final String PROP_ROLE_DIMENSIONS = "roleDimensions";
 
   private static final String PROP_ROUTE_FILTER_LISTS = "routeFilterLists";
 
@@ -180,11 +187,19 @@ public final class Configuration extends ComparableStructure<String> {
 
   private NavigableMap<String, IkeProposal> _ikeProposals;
 
+  private @Nonnull NavigableMap<String, IkePhase1Key> _ikePhase1keys;
+
+  private NavigableMap<String, IkePhase1Proposal> _ikePhase1Proposals;
+
+  private NavigableMap<String, IkePhase1Policy> _ikePhase1Policies;
+
   private NavigableMap<String, Interface> _interfaces;
 
   private NavigableMap<String, Ip6AccessList> _ip6AccessLists;
 
   private NavigableMap<String, IpAccessList> _ipAccessLists;
+
+  private NavigableMap<String, IpSpace> _ipSpaces;
 
   private NavigableMap<String, IpsecPolicy> _ipsecPolicies;
 
@@ -214,10 +229,6 @@ public final class Configuration extends ComparableStructure<String> {
   private transient NavigableSet<BgpAdvertisement> _receivedEbgpAdvertisements;
 
   private transient NavigableSet<BgpAdvertisement> _receivedIbgpAdvertisements;
-
-  private SortedSet<String> _roles;
-
-  private NavigableMap<Integer, String> _roleDimensions;
 
   private NavigableMap<String, Route6FilterList> _route6FilterLists;
 
@@ -264,16 +275,19 @@ public final class Configuration extends ComparableStructure<String> {
     _ikeGateways = new TreeMap<>();
     _ikePolicies = new TreeMap<>();
     _ikeProposals = new TreeMap<>();
+    _ikePhase1keys = ImmutableSortedMap.of();
+    _ikePhase1Policies = new TreeMap<>();
+    _ikePhase1Proposals = new TreeMap<>();
     _interfaces = new TreeMap<>();
     _ipAccessLists = new TreeMap<>();
     _ip6AccessLists = new TreeMap<>();
+    _ipSpaces = new TreeMap<>();
     _ipsecPolicies = new TreeMap<>();
     _ipsecProposals = new TreeMap<>();
     _ipsecVpns = new TreeMap<>();
     _loggingServers = new TreeSet<>();
     _normalVlanRange = new SubRange(VLAN_NORMAL_MIN_DEFAULT, VLAN_NORMAL_MAX_DEFAULT);
     _ntpServers = new TreeSet<>();
-    _roles = new TreeSet<>();
     _routeFilterLists = new TreeMap<>();
     _route6FilterLists = new TreeMap<>();
     _routingPolicies = new TreeMap<>();
@@ -302,7 +316,10 @@ public final class Configuration extends ComparableStructure<String> {
     for (Vrf vrf : _vrfs.values()) {
       BgpProcess bgpProcess = vrf.getBgpProcess();
       if (bgpProcess != null) {
-        for (BgpNeighbor neighbor : bgpProcess.getNeighbors().values()) {
+        for (BgpPeerConfig neighbor :
+            Iterables.concat(
+                bgpProcess.getActiveNeighbors().values(),
+                bgpProcess.getPassiveNeighbors().values())) {
           neighbor.setExportPolicySources(getRoutingPolicySources(neighbor.getExportPolicy()));
           neighbor.setImportPolicySources(getRoutingPolicySources(neighbor.getImportPolicy()));
         }
@@ -426,6 +443,24 @@ public final class Configuration extends ComparableStructure<String> {
     return _ikeProposals;
   }
 
+  @JsonProperty(PROP_IKE_PHASE1_KEYS)
+  @JsonPropertyDescription("Dictionary of all IKE phase1 keys for this node.")
+  public NavigableMap<String, IkePhase1Key> getIkePhase1Keys() {
+    return _ikePhase1keys;
+  }
+
+  @JsonProperty(PROP_IKE_PHASE1_POLICIES)
+  @JsonPropertyDescription("Dictionary of all IKE phase1 policies for this node.")
+  public NavigableMap<String, IkePhase1Policy> getIkePhase1Policies() {
+    return _ikePhase1Policies;
+  }
+
+  @JsonProperty(PROP_IKE_PHASE1_PROPOSALS)
+  @JsonPropertyDescription("Dictionary of all IKE phase1 proposals for this node.")
+  public NavigableMap<String, IkePhase1Proposal> getIkePhase1Proposals() {
+    return _ikePhase1Proposals;
+  }
+
   @JsonPropertyDescription("Dictionary of all interfaces across all VRFs for this node.")
   public NavigableMap<String, Interface> getInterfaces() {
     return _interfaces;
@@ -440,6 +475,11 @@ public final class Configuration extends ComparableStructure<String> {
   @JsonPropertyDescription("Dictionary of all IPV4 access-lists for this node.")
   public NavigableMap<String, IpAccessList> getIpAccessLists() {
     return _ipAccessLists;
+  }
+
+  @JsonProperty(PROP_IP_SPACES)
+  public NavigableMap<String, IpSpace> getIpSpaces() {
+    return _ipSpaces;
   }
 
   @JsonProperty(PROP_IPSEC_POLICIES)
@@ -511,18 +551,6 @@ public final class Configuration extends ComparableStructure<String> {
   @JsonIgnore
   public NavigableSet<BgpAdvertisement> getReceivedIbgpAdvertisements() {
     return _receivedIbgpAdvertisements;
-  }
-
-  @JsonProperty(PROP_ROLES)
-  @JsonPropertyDescription("Set of all roles in which this node serves.")
-  public SortedSet<String> getRoles() {
-    return _roles;
-  }
-
-  @JsonProperty(PROP_ROLE_DIMENSIONS)
-  @JsonPropertyDescription("Set of possible role dimensions based on the node name.")
-  public NavigableMap<Integer, String> getRoleDimensions() {
-    return _roleDimensions;
   }
 
   @JsonPropertyDescription("Dictionary of all IPV6 route filter lists for this node.")
@@ -681,6 +709,22 @@ public final class Configuration extends ComparableStructure<String> {
     _ikePolicies = ikePolicies;
   }
 
+  @JsonProperty(PROP_IKE_PHASE1_KEYS)
+  public void setIkePhase1Keys(@Nullable NavigableMap<String, IkePhase1Key> ikePhase1Keys) {
+    _ikePhase1keys =
+        ikePhase1Keys == null ? ImmutableSortedMap.of() : ImmutableSortedMap.copyOf(ikePhase1Keys);
+  }
+
+  @JsonProperty(PROP_IKE_PHASE1_POLICIES)
+  public void setIkePhase1Policies(NavigableMap<String, IkePhase1Policy> ikePhase1Policies) {
+    _ikePhase1Policies = ikePhase1Policies;
+  }
+
+  @JsonProperty(PROP_IKE_PHASE1_PROPOSALS)
+  public void setIkePhase1Proposals(NavigableMap<String, IkePhase1Proposal> ikePhase1Proposals) {
+    _ikePhase1Proposals = ikePhase1Proposals;
+  }
+
   @JsonProperty(PROP_IKE_PROPOSALS)
   public void setIkeProposals(NavigableMap<String, IkeProposal> ikeProposals) {
     _ikeProposals = ikeProposals;
@@ -697,6 +741,11 @@ public final class Configuration extends ComparableStructure<String> {
   @JsonProperty(PROP_IP_ACCESS_LISTS)
   public void setIpAccessLists(NavigableMap<String, IpAccessList> ipAccessLists) {
     _ipAccessLists = ipAccessLists;
+  }
+
+  @JsonProperty(PROP_IP_SPACES)
+  public void setIpSpaces(NavigableMap<String, IpSpace> ipSpaces) {
+    _ipSpaces = ipSpaces;
   }
 
   @JsonProperty(PROP_IPSEC_POLICIES)
@@ -735,14 +784,6 @@ public final class Configuration extends ComparableStructure<String> {
   @JsonProperty(PROP_NTP_SOURCE_INTERFACE)
   public void setNtpSourceInterface(String ntpSourceInterface) {
     _ntpSourceInterface = ntpSourceInterface;
-  }
-
-  public void setRoles(SortedSet<String> roles) {
-    _roles = roles;
-  }
-
-  public void setRoleDimensions(NavigableMap<Integer, String> roleDimensions) {
-    _roleDimensions = roleDimensions;
   }
 
   public void setRoute6FilterLists(NavigableMap<String, Route6FilterList> route6FilterLists) {

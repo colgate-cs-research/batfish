@@ -7,9 +7,4 @@ public interface VoidStatementVisitor {
   void visitComment(Comment comment);
 
   void visitQueryStatement(QueryStatement queryStatement);
-
-  void visitTransformationRuleStatement(TransformationRuleStatement transformationRuleStatement);
-
-  void visitTransformedBasicRuleStatement(
-      TransformedBasicRuleStatement transformedBasicRuleStatement);
 }

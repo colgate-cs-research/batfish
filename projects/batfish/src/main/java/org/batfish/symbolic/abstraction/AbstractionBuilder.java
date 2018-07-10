@@ -2,6 +2,7 @@ package org.batfish.symbolic.abstraction;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,18 +15,18 @@ import java.util.SortedSet;
 import java.util.Stack;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.batfish.common.Pair;
 import org.batfish.common.plugin.IBatfish;
-import org.batfish.datamodel.BgpNeighbor;
+import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.BgpProcess;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.OspfNeighbor;
-import org.batfish.datamodel.OspfProcess;
+import org.batfish.datamodel.IpLink;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Vrf;
+import org.batfish.datamodel.ospf.OspfNeighbor;
+import org.batfish.datamodel.ospf.OspfProcess;
 import org.batfish.symbolic.Graph;
 import org.batfish.symbolic.GraphEdge;
 import org.batfish.symbolic.bdd.BDDNetwork;
@@ -458,7 +459,6 @@ class AbstractionBuilder {
     abstractConf.setNormalVlanRange(conf.getNormalVlanRange());
     abstractConf.setNtpServers(conf.getNtpServers());
     abstractConf.setNtpSourceInterface(conf.getNtpSourceInterface());
-    abstractConf.setRoles(conf.getRoles());
     abstractConf.setSnmpSourceInterface(conf.getSnmpSourceInterface());
     abstractConf.setSnmpTrapServers(conf.getSnmpTrapServers());
     abstractConf.setTacacsServers(conf.getTacacsServers());
@@ -470,8 +470,9 @@ class AbstractionBuilder {
     abstractConf.setRoute6FilterLists(conf.getRoute6FilterLists());
 
     SortedSet<Interface> toRetain = new TreeSet<>();
-    SortedSet<Pair<Ip, Ip>> ipNeighbors = new TreeSet<>();
-    SortedSet<BgpNeighbor> bgpNeighbors = new TreeSet<>();
+    SortedSet<IpLink> ipNeighbors = new TreeSet<>();
+    SortedSet<BgpActivePeerConfig> bgpPeerConfigs =
+        new TreeSet<>(Comparator.comparing(BgpActivePeerConfig::getPeerAddress));
 
     List<GraphEdge> edges = _graph.getEdgeMap().get(conf.getName());
     for (GraphEdge ge : edges) {
@@ -482,11 +483,11 @@ class AbstractionBuilder {
         Ip start = ge.getStart().getAddress().getIp();
         if (!leavesNetwork) {
           Ip end = ge.getEnd().getAddress().getIp();
-          ipNeighbors.add(new Pair<>(start, end));
+          ipNeighbors.add(new IpLink(start, end));
         }
-        BgpNeighbor n = _graph.getEbgpNeighbors().get(ge);
+        BgpActivePeerConfig n = _graph.getEbgpNeighbors().get(ge);
         if (n != null) {
-          bgpNeighbors.add(n);
+          bgpPeerConfigs.add(n);
         }
       }
     }
@@ -532,13 +533,13 @@ class AbstractionBuilder {
         abstractOspf.setReferenceBandwidth(ospf.getReferenceBandwidth());
         abstractOspf.setRouterId(ospf.getRouterId());
         // Copy over neighbors
-        Map<Pair<Ip, Ip>, OspfNeighbor> abstractNeighbors = new HashMap<>();
+        Map<IpLink, OspfNeighbor> abstractNeighbors = new HashMap<>();
         if (ospf.getOspfNeighbors() != null) {
-          for (Entry<Pair<Ip, Ip>, OspfNeighbor> entry2 : ospf.getOspfNeighbors().entrySet()) {
-            Pair<Ip, Ip> pair = entry2.getKey();
+          for (Entry<IpLink, OspfNeighbor> entry2 : ospf.getOspfNeighbors().entrySet()) {
+            IpLink link = entry2.getKey();
             OspfNeighbor neighbor = entry2.getValue();
-            if (ipNeighbors.contains(pair)) {
-              abstractNeighbors.put(pair, neighbor);
+            if (ipNeighbors.contains(link)) {
+              abstractNeighbors.put(link, neighbor);
             }
           }
         }
@@ -553,16 +554,14 @@ class AbstractionBuilder {
         abstractBgp.setMultipathIbgp(bgp.getMultipathIbgp());
         abstractBgp.setRouterId(bgp.getRouterId());
         abstractBgp.setOriginationSpace(bgp.getOriginationSpace());
-        // TODO: set bgp neighbors accordingly
+        // TODO: set bgp neighbors accordingly, support dynamic neighbors
         // Copy over neighbors
-        SortedMap<Prefix, BgpNeighbor> abstractBgpNeighbors = new TreeMap<>();
-        if (bgp.getNeighbors() != null) {
-          for (Entry<Prefix, BgpNeighbor> entry2 : bgp.getNeighbors().entrySet()) {
-            Prefix prefix = entry2.getKey();
-            BgpNeighbor neighbor = entry2.getValue();
-            if (bgpNeighbors.contains(neighbor)) {
-              abstractBgpNeighbors.put(prefix, neighbor);
-            }
+        SortedMap<Prefix, BgpActivePeerConfig> abstractBgpNeighbors = new TreeMap<>();
+        for (Entry<Prefix, BgpActivePeerConfig> entry2 : bgp.getActiveNeighbors().entrySet()) {
+          Prefix prefix = entry2.getKey();
+          BgpActivePeerConfig neighbor = entry2.getValue();
+          if (bgpPeerConfigs.contains(neighbor)) {
+            abstractBgpNeighbors.put(prefix, neighbor);
           }
         }
         abstractBgp.setNeighbors(abstractBgpNeighbors);

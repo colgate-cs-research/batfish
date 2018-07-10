@@ -1,67 +1,57 @@
 package org.batfish.datamodel;
 
-import com.google.common.collect.ImmutableSet;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Set;
+import java.util.Map;
+import javax.annotation.Nonnull;
+import org.batfish.datamodel.visitors.GenericIpSpaceVisitor;
 
-/** Represents a space of IPv4 addresses. */
-public final class IpSpace implements Serializable {
-
-  public static class Builder {
-
-    private final ImmutableSet.Builder<IpWildcard> _blacklistBuilder;
-
-    private final ImmutableSet.Builder<IpWildcard> _whitelistBuilder;
-
-    private Builder() {
-      _blacklistBuilder = ImmutableSet.builder();
-      _whitelistBuilder = ImmutableSet.builder();
-    }
-
-    public IpSpace build() {
-      return new IpSpace(_blacklistBuilder.build(), _whitelistBuilder.build());
-    }
-
-    public Builder excluding(IpWildcard... wildcards) {
-      return excluding(Arrays.asList(wildcards));
-    }
-
-    public Builder excluding(Iterable<IpWildcard> wildcards) {
-      _blacklistBuilder.addAll(wildcards);
-      return this;
-    }
-
-    public Builder including(IpWildcard... wildcards) {
-      return including(Arrays.asList(wildcards));
-    }
-
-    public Builder including(Iterable<IpWildcard> wildcards) {
-      _whitelistBuilder.addAll(wildcards);
-      return this;
-    }
-  }
-
-  public static final IpSpace ANY = IpSpace.builder().including(IpWildcard.ANY).build();
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
+public abstract class IpSpace implements Comparable<IpSpace>, Serializable {
 
   /** */
   private static final long serialVersionUID = 1L;
 
-  public static Builder builder() {
-    return new Builder();
+  public abstract <R> R accept(GenericIpSpaceVisitor<R> visitor);
+
+  public abstract boolean containsIp(@Nonnull Ip ip, @Nonnull Map<String, IpSpace> namedIpSpaces);
+
+  public abstract IpSpace complement();
+
+  @Override
+  public final int compareTo(IpSpace o) {
+    if (this == o) {
+      return 0;
+    }
+    int ret;
+    ret = getClass().getSimpleName().compareTo(o.getClass().getSimpleName());
+    if (ret != 0) {
+      return ret;
+    }
+    return compareSameClass(o);
   }
 
-  private final Set<IpWildcard> _blacklist;
+  protected abstract int compareSameClass(IpSpace o);
 
-  private final Set<IpWildcard> _whitelist;
-
-  private IpSpace(Set<IpWildcard> blacklist, Set<IpWildcard> whitelist) {
-    _blacklist = ImmutableSet.copyOf(blacklist);
-    _whitelist = ImmutableSet.copyOf(whitelist);
+  @Override
+  public final boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null) {
+      return false;
+    }
+    if (!(getClass() == o.getClass())) {
+      return false;
+    }
+    return exprEquals(o);
   }
 
-  public boolean contains(Ip ip) {
-    return _blacklist.stream().noneMatch(w -> w.contains(ip))
-        && _whitelist.stream().anyMatch(w -> w.contains(ip));
-  }
+  protected abstract boolean exprEquals(Object o);
+
+  @Override
+  public abstract int hashCode();
+
+  @Override
+  public abstract String toString();
 }

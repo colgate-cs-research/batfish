@@ -1,11 +1,16 @@
 package org.batfish.main;
 
+import static org.batfish.common.plugin.PluginConsumer.DEFAULT_HEADER_LENGTH_BYTES;
+import static org.batfish.common.plugin.PluginConsumer.detectFormat;
+
 import com.google.common.base.Throwables;
+import com.google.common.io.Closer;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.PushbackInputStream;
 import java.io.Serializable;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -18,12 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 import javax.annotation.Nullable;
+import net.jpountz.lz4.LZ4FrameInputStream;
+import net.jpountz.lz4.LZ4FrameOutputStream;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.Version;
+import org.batfish.common.plugin.PluginConsumer.Format;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.answers.ConvertConfigurationAnswerElement;
@@ -45,6 +52,17 @@ final class BatfishStorage {
   }
 
   /**
+   * Returns the compressed configuration files for the given testrig. If a serialized copy of these
+   * configurations is not already present, then this function returns {@code null}.
+   */
+  @Nullable
+  public SortedMap<String, Configuration> loadCompressedConfigurations(String testrig) {
+    Path testrigDir = getTestrigDir(testrig);
+    Path indepDir = testrigDir.resolve(BfConsts.RELPATH_COMPRESSED_CONFIG_DIR);
+    return loadConfigurations(testrig, indepDir);
+  }
+
+  /**
    * Returns the configuration files for the given testrig. If a serialized copy of these
    * configurations is not already present, then this function returns {@code null}.
    */
@@ -52,7 +70,10 @@ final class BatfishStorage {
   public SortedMap<String, Configuration> loadConfigurations(String testrig) {
     Path testrigDir = getTestrigDir(testrig);
     Path indepDir = testrigDir.resolve(BfConsts.RELPATH_VENDOR_INDEPENDENT_CONFIG_DIR);
+    return loadConfigurations(testrig, indepDir);
+  }
 
+  private SortedMap<String, Configuration> loadConfigurations(String testrig, Path indepDir) {
     // If the directory that would contain these configs does not even exist, no cache exists.
     if (!Files.exists(indepDir)) {
       _logger.debugf("Unable to load configs for %s from disk: no cache directory", testrig);
@@ -78,9 +99,11 @@ final class BatfishStorage {
       throw new BatfishException(
           "Error reading vendor-independent configs directory: '" + indepDir + "'", e);
     }
-    SortedMap<String, Configuration> configurations =
-        deserializeObjects(namesByPath, Configuration.class);
-    return configurations;
+    try {
+      return deserializeObjects(namesByPath, Configuration.class);
+    } catch (BatfishException e) {
+      return null;
+    }
   }
 
   @Nullable
@@ -89,7 +112,36 @@ final class BatfishStorage {
     if (!Files.exists(ccaePath)) {
       return null;
     }
-    return deserializeObject(ccaePath, ConvertConfigurationAnswerElement.class);
+    try {
+      return deserializeObject(ccaePath, ConvertConfigurationAnswerElement.class);
+    } catch (BatfishException e) {
+      _logger.errorf(
+          "Failed to deserialize ConvertConfigurationAnswerElement: %s",
+          Throwables.getStackTraceAsString(e));
+      return null;
+    }
+  }
+
+  /**
+   * Stores the configurations into the compressed config path for the given testrig. Will replace
+   * any previously-stored compressed configurations.
+   */
+  public void storeCompressedConfigurations(
+      Map<String, Configuration> configurations, String testrig) {
+    Path testrigDir = getTestrigDir(testrig);
+
+    if (!testrigDir.toFile().exists() && !testrigDir.toFile().mkdirs()) {
+      throw new BatfishException(
+          String.format("Unable to create testrig directory '%s'", testrigDir));
+    }
+
+    Path outputDir = testrigDir.resolve(BfConsts.RELPATH_COMPRESSED_CONFIG_DIR);
+
+    String batchName =
+        String.format(
+            "Serializing %s compressed configuration structures for testrig %s",
+            configurations.size(), testrig);
+    storeConfigurations(outputDir, batchName, configurations);
   }
 
   /**
@@ -100,13 +152,6 @@ final class BatfishStorage {
       Map<String, Configuration> configurations,
       ConvertConfigurationAnswerElement convertAnswerElement,
       String testrig) {
-    String batchName =
-        String.format(
-            "Serializing %s vendor-independent configuration structures for testrig %s",
-            configurations.size(), testrig);
-    _logger.infof("\n*** %s***\n", batchName.toUpperCase());
-    AtomicInteger progressCount = _newBatch.apply(batchName, configurations.size());
-
     Path testrigDir = getTestrigDir(testrig);
     if (!testrigDir.toFile().exists() && !testrigDir.toFile().mkdirs()) {
       throw new BatfishException(
@@ -120,6 +165,19 @@ final class BatfishStorage {
 
     Path outputDir = testrigDir.resolve(BfConsts.RELPATH_VENDOR_INDEPENDENT_CONFIG_DIR);
 
+    String batchName =
+        String.format(
+            "Serializing %s vendor-independent configuration structures for testrig %s",
+            configurations.size(), testrig);
+
+    storeConfigurations(outputDir, batchName, configurations);
+  }
+
+  private void storeConfigurations(
+      Path outputDir, String batchName, Map<String, Configuration> configurations) {
+    _logger.infof("\n*** %s***\n", batchName.toUpperCase());
+    AtomicInteger progressCount = _newBatch.apply(batchName, configurations.size());
+
     // Delete any existing output, then recreate.
     CommonUtil.deleteDirectory(outputDir);
     if (!outputDir.toFile().exists() && !outputDir.toFile().mkdirs()) {
@@ -127,12 +185,15 @@ final class BatfishStorage {
           String.format("Unable to create output directory '%s'", outputDir));
     }
 
-    configurations.forEach(
-        (name, c) -> {
-          Path currentOutputPath = outputDir.resolve(name);
-          serializeObject(c, currentOutputPath);
-          progressCount.incrementAndGet();
-        });
+    configurations
+        .entrySet()
+        .parallelStream()
+        .forEach(
+            e -> {
+              Path currentOutputPath = outputDir.resolve(e.getKey());
+              serializeObject(e.getValue(), currentOutputPath);
+              progressCount.incrementAndGet();
+            });
   }
 
   /**
@@ -141,11 +202,27 @@ final class BatfishStorage {
    */
   private static <S extends Serializable> S deserializeObject(Path inputFile, Class<S> outputClass)
       throws BatfishException {
-    try (FileInputStream fis = new FileInputStream(inputFile.toFile());
-        GZIPInputStream gis = new GZIPInputStream(fis, 8192 /* enlarge buffer */);
-        ObjectInputStream ois = new ObjectInputStream(gis)) {
+    try (Closer closer = Closer.create()) {
+      FileInputStream fis = closer.register(new FileInputStream(inputFile.toFile()));
+      PushbackInputStream pbstream = new PushbackInputStream(fis, DEFAULT_HEADER_LENGTH_BYTES);
+      Format f = detectFormat(pbstream);
+      ObjectInputStream ois;
+      if (f == Format.GZIP) {
+        GZIPInputStream gis =
+            closer.register(new GZIPInputStream(pbstream, 8192 /* enlarge buffer */));
+        ois = new ObjectInputStream(gis);
+      } else if (f == Format.LZ4) {
+        LZ4FrameInputStream lis = closer.register(new LZ4FrameInputStream(pbstream));
+        ois = new ObjectInputStream(lis);
+      } else if (f == Format.JAVA_SERIALIZED) {
+        ois = new ObjectInputStream(pbstream);
+      } else {
+        throw new BatfishException(
+            String.format("Could not detect format of the file %s", inputFile));
+      }
+      closer.register(ois);
       return outputClass.cast(ois.readObject());
-    } catch (IOException | ClassNotFoundException e) {
+    } catch (IOException | ClassNotFoundException | ClassCastException e) {
       throw new BatfishException(
           String.format(
               "Failed to deserialize object of type %s from file %s",
@@ -186,7 +263,7 @@ final class BatfishStorage {
   private static void serializeObject(Serializable object, Path outputFile) {
     try {
       try (OutputStream out = Files.newOutputStream(outputFile);
-          GZIPOutputStream gos = new GZIPOutputStream(out, 8192 /* enlarged buffer size */);
+          LZ4FrameOutputStream gos = new LZ4FrameOutputStream(out);
           ObjectOutputStream oos = new ObjectOutputStream(gos)) {
         oos.writeObject(object);
       }

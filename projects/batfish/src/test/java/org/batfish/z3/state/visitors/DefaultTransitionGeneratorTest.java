@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -15,27 +16,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Edge;
-import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpWildcard;
+import org.batfish.datamodel.IpWildcardSetIpSpace;
 import org.batfish.datamodel.LineAction;
-import org.batfish.datamodel.collections.FibRow;
-import org.batfish.datamodel.collections.NodeInterfacePair;
+import org.batfish.z3.Field;
+import org.batfish.z3.MockSynthesizerInput;
 import org.batfish.z3.SynthesizerInput;
-import org.batfish.z3.TestSynthesizerInput;
-import org.batfish.z3.TransformationHeaderField;
+import org.batfish.z3.expr.AndExpr;
 import org.batfish.z3.expr.BasicRuleStatement;
 import org.batfish.z3.expr.BooleanExpr;
 import org.batfish.z3.expr.EqExpr;
 import org.batfish.z3.expr.FalseExpr;
 import org.batfish.z3.expr.HeaderSpaceMatchExpr;
+import org.batfish.z3.expr.IntExpr;
+import org.batfish.z3.expr.LitIntExpr;
+import org.batfish.z3.expr.MockBooleanAtom;
+import org.batfish.z3.expr.MockIntAtom;
 import org.batfish.z3.expr.NotExpr;
 import org.batfish.z3.expr.RuleStatement;
-import org.batfish.z3.expr.TestBooleanAtom;
-import org.batfish.z3.expr.TransformationRuleStatement;
-import org.batfish.z3.expr.TransformedBasicRuleStatement;
+import org.batfish.z3.expr.TransformedVarIntExpr;
 import org.batfish.z3.expr.TrueExpr;
 import org.batfish.z3.expr.VarIntExpr;
 import org.batfish.z3.state.Accept;
@@ -49,6 +50,7 @@ import org.batfish.z3.state.DropAclIn;
 import org.batfish.z3.state.DropAclOut;
 import org.batfish.z3.state.DropNoRoute;
 import org.batfish.z3.state.DropNullRoute;
+import org.batfish.z3.state.NeighborUnreachable;
 import org.batfish.z3.state.NodeAccept;
 import org.batfish.z3.state.NodeDrop;
 import org.batfish.z3.state.NodeDropAcl;
@@ -56,17 +58,17 @@ import org.batfish.z3.state.NodeDropAclIn;
 import org.batfish.z3.state.NodeDropAclOut;
 import org.batfish.z3.state.NodeDropNoRoute;
 import org.batfish.z3.state.NodeDropNullRoute;
-import org.batfish.z3.state.Originate;
+import org.batfish.z3.state.NodeInterfaceNeighborUnreachable;
+import org.batfish.z3.state.NodeNeighborUnreachable;
+import org.batfish.z3.state.OriginateInterfaceLink;
 import org.batfish.z3.state.OriginateVrf;
-import org.batfish.z3.state.PostIn;
 import org.batfish.z3.state.PostInInterface;
 import org.batfish.z3.state.PostInVrf;
 import org.batfish.z3.state.PostOutEdge;
 import org.batfish.z3.state.PreInInterface;
-import org.batfish.z3.state.PreOut;
 import org.batfish.z3.state.PreOutEdge;
 import org.batfish.z3.state.PreOutEdgePostNat;
-import org.junit.Before;
+import org.batfish.z3.state.PreOutVrf;
 import org.junit.Test;
 
 public class DefaultTransitionGeneratorTest {
@@ -76,6 +78,10 @@ public class DefaultTransitionGeneratorTest {
   private static final String ACL2 = "acl2";
 
   private static final String ACL3 = "acl3";
+
+  private static final BooleanExpr B1 = b(1);
+
+  private static final BooleanExpr B2 = b(2);
 
   private static final String INTERFACE1 = "interface1";
 
@@ -93,8 +99,6 @@ public class DefaultTransitionGeneratorTest {
 
   private static final Ip IP4 = new Ip("4.4.4.4");
 
-  private static final String LOOPBACK_INTERFACE = "Loopback0";
-
   private static final String NAT_ACL1 = "natacl1";
 
   private static final String NAT_ACL2 = "natacl2";
@@ -103,13 +107,36 @@ public class DefaultTransitionGeneratorTest {
 
   private static final String NODE2 = "node2";
 
-  private static final String NULL_INTERFACE = "Null0";
+  private static final String NODE3 = "node3";
+
+  private static final String NODE4 = "node4";
 
   private static final String VRF1 = "vrf1";
 
   private static final String VRF2 = "vrf2";
 
-  private Map<String, Map<String, List<LineAction>>> aclActions() {
+  private static final Field SRC_INTERFACE_FIELD = new Field("SRC_INTERFACE", 1);
+
+  private static final BooleanExpr NO_SRC_INTERFACE_FIELD =
+      new EqExpr(
+          new VarIntExpr(SRC_INTERFACE_FIELD),
+          new LitIntExpr(
+              DefaultTransitionGenerator.NO_SOURCE_INTERFACE, SRC_INTERFACE_FIELD.getSize()));
+
+  private static final BooleanExpr TRANSIT_NODES_NOT_TRANSITED =
+      new EqExpr(
+          new VarIntExpr(DefaultTransitionGenerator.TRANSITED_TRANSIT_NODES_FIELD),
+          DefaultTransitionGenerator.NOT_TRANSITED);
+
+  private static BooleanExpr b(int num) {
+    return new MockBooleanAtom(num);
+  }
+
+  private static IntExpr i(int num) {
+    return new MockIntAtom(num);
+  }
+
+  private static Map<String, Map<String, List<LineAction>>> aclActions() {
     List<LineAction> acl1ActionsByLine =
         ImmutableList.of(
             LineAction.ACCEPT, LineAction.REJECT, LineAction.ACCEPT, LineAction.REJECT);
@@ -123,7 +150,7 @@ public class DefaultTransitionGeneratorTest {
     return aclActionss;
   }
 
-  private Map<String, Map<String, List<BooleanExpr>>> aclConditions() {
+  private static Map<String, Map<String, List<BooleanExpr>>> aclConditions() {
     List<BooleanExpr> acl1Conditions =
         ImmutableList.of(
             TrueExpr.INSTANCE, FalseExpr.INSTANCE, TrueExpr.INSTANCE, FalseExpr.INSTANCE);
@@ -137,102 +164,10 @@ public class DefaultTransitionGeneratorTest {
     return acl;
   }
 
-  private Map<String, Map<String, Map<String, Map<NodeInterfacePair, BooleanExpr>>>>
-      fibConditions() {
-    return ImmutableMap.of(
-        NODE1,
-        ImmutableMap.of(
-            VRF1,
-            ImmutableMap.of(
-                INTERFACE1,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE2, INTERFACE1),
-                    new TestBooleanAtom(0, null),
-                    new NodeInterfacePair(NODE2, INTERFACE2),
-                    new TestBooleanAtom(1, null)),
-                INTERFACE2,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE2, INTERFACE1),
-                    new TestBooleanAtom(2, null),
-                    new NodeInterfacePair(NODE2, INTERFACE2),
-                    new TestBooleanAtom(3, null)),
-                LOOPBACK_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(4, null)),
-                NULL_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(5, null)),
-                FibRow.DROP_NO_ROUTE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(6, null))),
-            VRF2,
-            ImmutableMap.of(
-                INTERFACE3,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE2, INTERFACE3),
-                    new TestBooleanAtom(7, null),
-                    new NodeInterfacePair(NODE2, INTERFACE4),
-                    new TestBooleanAtom(8, null)),
-                INTERFACE4,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE2, INTERFACE3),
-                    new TestBooleanAtom(9, null),
-                    new NodeInterfacePair(NODE2, INTERFACE4),
-                    new TestBooleanAtom(10, null)),
-                LOOPBACK_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(11, null)),
-                NULL_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(12, null)),
-                FibRow.DROP_NO_ROUTE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(13, null)))),
-        NODE2,
-        ImmutableMap.of(
-            VRF1,
-            ImmutableMap.of(
-                INTERFACE1,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE1, INTERFACE1),
-                    new TestBooleanAtom(14, null),
-                    new NodeInterfacePair(NODE1, INTERFACE2),
-                    new TestBooleanAtom(15, null)),
-                INTERFACE2,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE1, INTERFACE1),
-                    new TestBooleanAtom(16, null),
-                    new NodeInterfacePair(NODE1, INTERFACE2),
-                    new TestBooleanAtom(17, null)),
-                LOOPBACK_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(18, null)),
-                NULL_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(19, null)),
-                FibRow.DROP_NO_ROUTE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(20, null))),
-            VRF2,
-            ImmutableMap.of(
-                INTERFACE3,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE1, INTERFACE3),
-                    new TestBooleanAtom(21, null),
-                    new NodeInterfacePair(NODE1, INTERFACE4),
-                    new TestBooleanAtom(22, null)),
-                INTERFACE4,
-                ImmutableMap.of(
-                    new NodeInterfacePair(NODE1, INTERFACE3),
-                    new TestBooleanAtom(23, null),
-                    new NodeInterfacePair(NODE1, INTERFACE4),
-                    new TestBooleanAtom(24, null)),
-                LOOPBACK_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(25, null)),
-                NULL_INTERFACE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(26, null)),
-                FibRow.DROP_NO_ROUTE,
-                ImmutableMap.of(NodeInterfacePair.NONE, new TestBooleanAtom(27, null)))));
-  }
-
-  @Before
-  public void setup() {}
-
   @Test
   public void testPreOutEdgePostNat() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setEnabledEdges(
                 ImmutableSet.of(
                     new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
@@ -243,119 +178,67 @@ public class DefaultTransitionGeneratorTest {
                     new Edge(NODE2, INTERFACE1, NODE1, INTERFACE2),
                     new Edge(NODE2, INTERFACE2, NODE1, INTERFACE1),
                     new Edge(NODE2, INTERFACE2, NODE1, INTERFACE2)))
-            .setEnabledFlowSinks(
-                ImmutableSet.of(
-                    new NodeInterfacePair(NODE1, INTERFACE3),
-                    new NodeInterfacePair(NODE2, INTERFACE3)))
             .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
                 input, ImmutableSet.of(PreOutEdgePostNat.State.INSTANCE)));
 
-    BooleanExpr newSrcIpEqualsCurrentSrcIp =
-        new EqExpr(
-            new VarIntExpr(TransformationHeaderField.NEW_SRC_IP),
-            new VarIntExpr(TransformationHeaderField.NEW_SRC_IP.getCurrent()));
-    // PreOutEdgePostNatForFlowSinks
-    assertThat(
-        rules,
-        hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(
-                    new PreOutEdge(
-                        NODE1,
-                        INTERFACE3,
-                        Configuration.NODE_NONE_NAME,
-                        Interface.FLOW_SINK_TERMINATION_NAME)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
-                new PreOutEdgePostNat(
-                    NODE1,
-                    INTERFACE3,
-                    Configuration.NODE_NONE_NAME,
-                    Interface.FLOW_SINK_TERMINATION_NAME))));
-
     // PreOutEdgePostNatForTopologyEdges
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1),
                 new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2),
                 new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE1)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE1),
                 new PreOutEdgePostNat(NODE1, INTERFACE2, NODE2, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE2)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE2),
                 new PreOutEdgePostNat(NODE1, INTERFACE2, NODE2, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1),
                 new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE2)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE2),
                 new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE1)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE1),
                 new PreOutEdgePostNat(NODE2, INTERFACE2, NODE1, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
-            new TransformationRuleStatement(
-                newSrcIpEqualsCurrentSrcIp,
-                ImmutableSet.of(new PreOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE2)),
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new PreOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE2),
                 new PreOutEdgePostNat(NODE2, INTERFACE2, NODE1, INTERFACE2))));
   }
 
   @Test
   public void testVisitAccept() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -367,7 +250,7 @@ public class DefaultTransitionGeneratorTest {
 
   @Test
   public void testVisitAclDeny() {
-    SynthesizerInput input = TestSynthesizerInput.builder().setAclActions(aclActions()).build();
+    SynthesizerInput input = MockSynthesizerInput.builder().setAclActions(aclActions()).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -431,7 +314,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitAclLineMatch() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setAclConditions(aclConditions()).build();
+        MockSynthesizerInput.builder().setAclConditions(aclConditions()).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -540,7 +423,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitAclLineNoMatch() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setAclConditions(aclConditions()).build();
+        MockSynthesizerInput.builder().setAclConditions(aclConditions()).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -653,7 +536,7 @@ public class DefaultTransitionGeneratorTest {
 
   @Test
   public void testVisitAclPermit() {
-    SynthesizerInput input = TestSynthesizerInput.builder().setAclActions(aclActions()).build();
+    SynthesizerInput input = MockSynthesizerInput.builder().setAclActions(aclActions()).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -697,7 +580,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitDrop() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -709,7 +592,7 @@ public class DefaultTransitionGeneratorTest {
 
   @Test
   public void testVisitDropAcl() {
-    SynthesizerInput input = TestSynthesizerInput.builder().build();
+    SynthesizerInput input = MockSynthesizerInput.builder().build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -727,7 +610,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitDropAclIn() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -742,7 +625,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitDropAclOut() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -757,7 +640,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitDropNoRoute() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -772,7 +655,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitDropNullRoute() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -787,18 +670,47 @@ public class DefaultTransitionGeneratorTest {
   }
 
   @Test
+  public void testVisitNeighborUnreachable() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
+            .setNeighborUnreachable(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(VRF1, ImmutableMap.of(INTERFACE1, b(1))),
+                    NODE2,
+                    ImmutableMap.of(VRF1, ImmutableMap.of(INTERFACE1, b(2)))))
+            .build();
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(NeighborUnreachable.State.INSTANCE)));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new NodeNeighborUnreachable(NODE1), NeighborUnreachable.INSTANCE)));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new NodeNeighborUnreachable(NODE2), NeighborUnreachable.INSTANCE)));
+  }
+
+  @Test
   public void testVisitNodeAccept() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setEnabledNodes(ImmutableSet.of(NODE1, NODE2))
-            .setEnabledFlowSinks(
-                ImmutableSet.of(
-                    new NodeInterfacePair(NODE1, INTERFACE1),
-                    new NodeInterfacePair(NODE1, INTERFACE2),
-                    new NodeInterfacePair(NODE2, INTERFACE1),
-                    new NodeInterfacePair(NODE2, INTERFACE2)))
-            .setIpsByHostname(
-                ImmutableMap.of(NODE1, ImmutableSet.of(IP1, IP2), NODE2, ImmutableSet.of(IP3, IP4)))
+            .setEnabledVrfs(
+                ImmutableMap.of(NODE1, ImmutableSet.of(VRF1), NODE2, ImmutableSet.of(VRF2)))
+            .setIpsByNodeVrf(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(VRF1, ImmutableSet.of(IP1, IP2)),
+                    NODE2,
+                    ImmutableMap.of(VRF2, ImmutableSet.of(IP3, IP4))))
+            .setNamedIpSpaces(ImmutableMap.of(NODE1, ImmutableMap.of(), NODE2, ImmutableMap.of()))
             .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
@@ -811,39 +723,29 @@ public class DefaultTransitionGeneratorTest {
         hasItem(
             new BasicRuleStatement(
                 HeaderSpaceMatchExpr.matchDstIp(
-                    ImmutableSet.of(new IpWildcard(IP1), new IpWildcard(IP2))),
-                ImmutableSet.of(new PostIn(NODE1)),
+                    IpWildcardSetIpSpace.builder()
+                        .including(ImmutableSet.of(new IpWildcard(IP1), new IpWildcard(IP2)))
+                        .build(),
+                    ImmutableMap.of()),
+                new PostInVrf(NODE1, VRF1),
                 new NodeAccept(NODE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
                 HeaderSpaceMatchExpr.matchDstIp(
-                    ImmutableSet.of(new IpWildcard(IP3), new IpWildcard(IP4))),
-                ImmutableSet.of(new PostIn(NODE2)),
+                    IpWildcardSetIpSpace.builder()
+                        .including(ImmutableSet.of(new IpWildcard(IP3), new IpWildcard(IP4)))
+                        .build(),
+                    ImmutableMap.of()),
+                new PostInVrf(NODE2, VRF2),
                 new NodeAccept(NODE2))));
-
-    // PostOutFlowSinkInterface
-    for (String node : new String[] {NODE1, NODE2}) {
-      for (String iface : new String[] {INTERFACE1, INTERFACE2}) {
-        assertThat(
-            rules,
-            hasItem(
-                new BasicRuleStatement(
-                    new PostOutEdge(
-                        node,
-                        iface,
-                        Configuration.NODE_NONE_NAME,
-                        Interface.FLOW_SINK_TERMINATION_NAME),
-                    new NodeAccept(node))));
-      }
-    }
   }
 
   @Test
   public void testVisitNodeDrop() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -869,7 +771,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitNodeDropAcl() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
+        MockSynthesizerInput.builder().setEnabledNodes(ImmutableSet.of(NODE1, NODE2)).build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -891,7 +793,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitNodeDropAclIn() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setIncomingAcls(
                 ImmutableMap.of(
                     NODE1,
@@ -940,7 +842,7 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitNodeDropAclOut() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setEnabledEdges(
                 ImmutableSet.of(
                     new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
@@ -992,35 +894,62 @@ public class DefaultTransitionGeneratorTest {
     Set<RuleStatement> node2DropAclOutRules =
         rules
             .stream()
-            .map(TransformedBasicRuleStatement.class::cast)
-            .filter(
-                rule ->
-                    rule.getPostconditionPostTransformationState()
-                        .equals(new NodeDropAclOut(NODE2)))
+            .map(BasicRuleStatement.class::cast)
+            .filter(rule -> rule.getPostconditionState().equals(new NodeDropAclOut(NODE2)))
             .collect(Collectors.toSet());
 
     // FailOutgoingAclNoMatchSrcNat
     assertThat(
         node2DropAclOutRules,
         containsInAnyOrder(
-            new TransformedBasicRuleStatement(
+            new BasicRuleStatement(
                 TrueExpr.INSTANCE,
-                ImmutableSet.of(),
-                ImmutableSet.of(new AclDeny(NODE2, ACL1)),
-                ImmutableSet.of(new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE1)),
+                ImmutableSet.of(
+                    new AclDeny(NODE2, ACL1),
+                    new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE1)),
                 new NodeDropAclOut(NODE2)),
-            new TransformedBasicRuleStatement(
+            new BasicRuleStatement(
                 TrueExpr.INSTANCE,
-                ImmutableSet.of(),
-                ImmutableSet.of(new AclDeny(NODE2, ACL2)),
-                ImmutableSet.of(new PreOutEdgePostNat(NODE2, INTERFACE2, NODE1, INTERFACE2)),
+                ImmutableSet.of(
+                    new AclDeny(NODE2, ACL2),
+                    new PreOutEdgePostNat(NODE2, INTERFACE2, NODE1, INTERFACE2)),
                 new NodeDropAclOut(NODE2))));
+  }
+
+  @Test
+  public void testVisitNodeDropAclOut_nonEdgeInterfaces() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
+            .setNeighborUnreachable(
+                ImmutableMap.of(NODE1, ImmutableMap.of(VRF1, ImmutableMap.of(INTERFACE1, b(1)))))
+            .setOutgoingAcls(ImmutableMap.of(NODE1, ImmutableMap.of(INTERFACE1, ACL1)))
+            .build();
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(NodeDropAclOut.State.INSTANCE)));
+
+    // NeighborUnreachable fail OutAcl
+    assertThat(
+        rules,
+        contains(
+            new BasicRuleStatement(
+                b(1),
+                ImmutableSet.of(new AclDeny(NODE1, ACL1), new PreOutVrf(NODE1, VRF1)),
+                new NodeDropAclOut(NODE1))));
   }
 
   @Test
   public void testVisitNodeDropNoRoute() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setFibConditions(fibConditions()).build();
+        MockSynthesizerInput.builder()
+            .setRoutableIps(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(VRF1, B1, VRF2, B2),
+                    NODE2,
+                    ImmutableMap.of(VRF1, B1, VRF2, B2)))
+            .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -1031,36 +960,35 @@ public class DefaultTransitionGeneratorTest {
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(6, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new NodeDropNoRoute(NODE1))));
+                new NotExpr(B1), new PreOutVrf(NODE1, VRF1), new NodeDropNoRoute(NODE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(13, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new NodeDropNoRoute(NODE1))));
+                new NotExpr(B2), new PreOutVrf(NODE1, VRF2), new NodeDropNoRoute(NODE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(20, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new NodeDropNoRoute(NODE2))));
+                new NotExpr(B1), new PreOutVrf(NODE2, VRF1), new NodeDropNoRoute(NODE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(27, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new NodeDropNoRoute(NODE2))));
+                new NotExpr(B2), new PreOutVrf(NODE2, VRF2), new NodeDropNoRoute(NODE2))));
   }
 
   @Test
   public void testVisitNodeDropNullRoute() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setFibConditions(fibConditions()).build();
+        MockSynthesizerInput.builder()
+            .setNullRoutedIps(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(VRF1, B1, VRF2, B2),
+                    NODE2,
+                    ImmutableMap.of(VRF1, B1, VRF2, B2)))
+            .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -1070,136 +998,128 @@ public class DefaultTransitionGeneratorTest {
     assertThat(
         rules,
         hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(4, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new NodeDropNullRoute(NODE1))));
+            new BasicRuleStatement(B1, new PreOutVrf(NODE1, VRF1), new NodeDropNullRoute(NODE1))));
     assertThat(
         rules,
         hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(5, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new NodeDropNullRoute(NODE1))));
+            new BasicRuleStatement(B2, new PreOutVrf(NODE1, VRF2), new NodeDropNullRoute(NODE1))));
     assertThat(
         rules,
         hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(11, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new NodeDropNullRoute(NODE1))));
+            new BasicRuleStatement(B1, new PreOutVrf(NODE2, VRF1), new NodeDropNullRoute(NODE2))));
     assertThat(
         rules,
         hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(12, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new NodeDropNullRoute(NODE1))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(18, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new NodeDropNullRoute(NODE2))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(19, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new NodeDropNullRoute(NODE2))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(25, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new NodeDropNullRoute(NODE2))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(26, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new NodeDropNullRoute(NODE2))));
+            new BasicRuleStatement(B2, new PreOutVrf(NODE2, VRF2), new NodeDropNullRoute(NODE2))));
   }
 
   @Test
-  public void testVisitOriginate() {
+  public void testVisitNodeInterfaceNeighborUnreachable() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
-            .setEnabledVrfs(
-                ImmutableMap.of(
-                    NODE1, ImmutableSet.of(VRF1, VRF2), NODE2, ImmutableSet.of(VRF1, VRF2)))
-            .build();
-    Set<RuleStatement> rules =
-        ImmutableSet.copyOf(
-            DefaultTransitionGenerator.generateTransitions(
-                input, ImmutableSet.of(Originate.State.INSTANCE)));
-
-    // ProjectOriginateVrf
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE1, VRF1), new Originate(NODE1))));
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE1, VRF2), new Originate(NODE1))));
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE2, VRF1), new Originate(NODE2))));
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE2, VRF2), new Originate(NODE2))));
-  }
-
-  @Test
-  public void testVisitPostIn() {
-    SynthesizerInput input =
-        TestSynthesizerInput.builder()
-            .setEnabledNodes(ImmutableSet.of(NODE1, NODE2))
-            .setEnabledInterfaces(
+        MockSynthesizerInput.builder()
+            .setNeighborUnreachable(
                 ImmutableMap.of(
                     NODE1,
-                    ImmutableSet.of(INTERFACE1, INTERFACE2),
+                    ImmutableMap.of(
+                        VRF1,
+                        ImmutableMap.of(INTERFACE1, b(1), INTERFACE2, b(2)),
+                        VRF2,
+                        ImmutableMap.of(INTERFACE3, b(3))),
                     NODE2,
-                    ImmutableSet.of(INTERFACE1, INTERFACE2)))
+                    ImmutableMap.of(VRF1, ImmutableMap.of(INTERFACE1, b(4)))))
             .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
-                input, ImmutableSet.of(PostIn.State.INSTANCE)));
+                input, ImmutableSet.of(NodeInterfaceNeighborUnreachable.State.INSTANCE)));
 
-    // CopyOriginate
-    assertThat(rules, hasItem(new BasicRuleStatement(new Originate(NODE1), new PostIn(NODE1))));
-    assertThat(rules, hasItem(new BasicRuleStatement(new Originate(NODE2), new PostIn(NODE2))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                b(1),
+                new PreOutVrf(NODE1, VRF1),
+                new NodeInterfaceNeighborUnreachable(NODE1, INTERFACE1))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                b(2),
+                new PreOutVrf(NODE1, VRF1),
+                new NodeInterfaceNeighborUnreachable(NODE1, INTERFACE2))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                b(3),
+                new PreOutVrf(NODE1, VRF2),
+                new NodeInterfaceNeighborUnreachable(NODE1, INTERFACE3))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                b(4),
+                new PreOutVrf(NODE2, VRF1),
+                new NodeInterfaceNeighborUnreachable(NODE2, INTERFACE1))));
+  }
 
-    // ProjectPostInInterface
+  @Test
+  public void testVisitNodeNeighborUnreachable() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
+            .setNeighborUnreachable(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(
+                        VRF1,
+                        ImmutableMap.of(INTERFACE1, b(1), INTERFACE2, b(2)),
+                        VRF2,
+                        ImmutableMap.of(INTERFACE3, b(3))),
+                    NODE2,
+                    ImmutableMap.of(VRF1, ImmutableMap.of(INTERFACE1, b(4)))))
+            .build();
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(NodeNeighborUnreachable.State.INSTANCE)));
+
     assertThat(
         rules,
-        hasItem(new BasicRuleStatement(new PostInInterface(NODE1, INTERFACE1), new PostIn(NODE1))));
+        hasItem(
+            new BasicRuleStatement(
+                new NodeInterfaceNeighborUnreachable(NODE1, INTERFACE1),
+                new NodeNeighborUnreachable(NODE1))));
     assertThat(
         rules,
-        hasItem(new BasicRuleStatement(new PostInInterface(NODE1, INTERFACE2), new PostIn(NODE1))));
+        hasItem(
+            new BasicRuleStatement(
+                new NodeInterfaceNeighborUnreachable(NODE1, INTERFACE2),
+                new NodeNeighborUnreachable(NODE1))));
     assertThat(
         rules,
-        hasItem(new BasicRuleStatement(new PostInInterface(NODE2, INTERFACE1), new PostIn(NODE2))));
+        hasItem(
+            new BasicRuleStatement(
+                new NodeInterfaceNeighborUnreachable(NODE1, INTERFACE3),
+                new NodeNeighborUnreachable(NODE1))));
     assertThat(
         rules,
-        hasItem(new BasicRuleStatement(new PostInInterface(NODE2, INTERFACE2), new PostIn(NODE2))));
+        hasItem(
+            new BasicRuleStatement(
+                new NodeInterfaceNeighborUnreachable(NODE2, INTERFACE1),
+                new NodeNeighborUnreachable(NODE2))));
   }
 
   @Test
   public void testVisitPostInInterface() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setIncomingAcls(
                 ImmutableMap.of(
                     NODE1,
                     ImmutableMap.of(INTERFACE1, ACL1, INTERFACE2, ACL2),
                     NODE2,
                     ImmutableMap.of(INTERFACE1, ACL1, INTERFACE2, ACL2)))
-            .setTopologyInterfaces(
+            .setEnabledInterfaces(
                 ImmutableMap.of(
                     NODE1,
                     ImmutableSet.of(INTERFACE1, INTERFACE2, INTERFACE3),
@@ -1249,9 +1169,96 @@ public class DefaultTransitionGeneratorTest {
   }
 
   @Test
-  public void testVisitPostInVrf() {
+  public void testVisitPostInVrf_OriginateVrf() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
+            .setSrcInterfaceField(SRC_INTERFACE_FIELD)
+            .setEnabledVrfs(
+                ImmutableMap.of(
+                    NODE1, ImmutableSet.of(VRF1, VRF2), NODE2, ImmutableSet.of(VRF1, VRF2)))
+            .build();
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(PostInVrf.State.INSTANCE)));
+
+    BooleanExpr preconditions =
+        new AndExpr(
+            ImmutableList.of(
+                NO_SRC_INTERFACE_FIELD,
+                // transit nodes constraint
+                TrueExpr.INSTANCE));
+
+    // CopyOriginateVrf
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                preconditions, new OriginateVrf(NODE1, VRF1), new PostInVrf(NODE1, VRF1))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                preconditions, new OriginateVrf(NODE1, VRF2), new PostInVrf(NODE1, VRF2))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                preconditions, new OriginateVrf(NODE2, VRF1), new PostInVrf(NODE2, VRF1))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                preconditions, new OriginateVrf(NODE2, VRF2), new PostInVrf(NODE2, VRF2))));
+  }
+
+  @Test
+  public void testVisitPostInVrf_OriginateVrf_transitNodes() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
+            .setEnabledVrfs(
+                ImmutableMap.of(
+                    NODE1, ImmutableSet.of(VRF1, VRF2), NODE2, ImmutableSet.of(VRF1, VRF2)))
+            .setEnabledEdges(
+                ImmutableSet.of(
+                    new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
+                    new Edge(NODE2, INTERFACE1, NODE1, INTERFACE1)))
+            .setOutgoingAcls(
+                ImmutableMap.of(
+                    NODE1, ImmutableMap.of(),
+                    NODE2, ImmutableMap.of()))
+            .setSrcInterfaceField(SRC_INTERFACE_FIELD)
+            .setTransitNodes(ImmutableSet.of(NODE1))
+            .setEnabledInterfaces(
+                ImmutableMap.of(
+                    NODE1, ImmutableSet.of(INTERFACE1), NODE2, ImmutableSet.of(INTERFACE1)))
+            .build();
+
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(PostInVrf.State.INSTANCE)));
+
+    BooleanExpr preconditions =
+        new AndExpr(ImmutableList.of(NO_SRC_INTERFACE_FIELD, TRANSIT_NODES_NOT_TRANSITED));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                preconditions, new OriginateVrf(NODE1, VRF1), new PostInVrf(NODE1, VRF1))));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                preconditions, new OriginateVrf(NODE2, VRF1), new PostInVrf(NODE2, VRF1))));
+  }
+
+  @Test
+  public void testVisitPostInVrf_PostInInterface() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
             .setEnabledInterfacesByNodeVrf(
                 ImmutableMap.of(
                     NODE1,
@@ -1271,20 +1278,6 @@ public class DefaultTransitionGeneratorTest {
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
                 input, ImmutableSet.of(PostInVrf.State.INSTANCE)));
-
-    // CopyOriginateVrf
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE1, VRF1), new PostInVrf(NODE1, VRF1))));
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE1, VRF2), new PostInVrf(NODE1, VRF2))));
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE2, VRF1), new PostInVrf(NODE2, VRF1))));
-    assertThat(
-        rules,
-        hasItem(new BasicRuleStatement(new OriginateVrf(NODE2, VRF2), new PostInVrf(NODE2, VRF2))));
 
     // PostInInterfaceCorrespondingVrf
     assertThat(
@@ -1332,12 +1325,13 @@ public class DefaultTransitionGeneratorTest {
   @Test
   public void testVisitPostOutEdge() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setEnabledEdges(
                 ImmutableSet.of(
                     new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
                     new Edge(NODE1, INTERFACE2, NODE2, INTERFACE2),
-                    new Edge(NODE1, INTERFACE3, NODE2, INTERFACE3)))
+                    new Edge(NODE1, INTERFACE3, NODE2, INTERFACE3),
+                    new Edge(NODE2, INTERFACE1, NODE1, INTERFACE1)))
             .setOutgoingAcls(
                 ImmutableMap.of(
                     NODE1,
@@ -1367,6 +1361,15 @@ public class DefaultTransitionGeneratorTest {
                         ImmutableList.of(),
                         INTERFACE3,
                         ImmutableList.of())))
+            .setNodesWithSrcInterfaceConstraints(ImmutableSet.of(NODE1))
+            .setSrcInterfaceField(SRC_INTERFACE_FIELD)
+            .setSrcInterfaceFieldValues(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(
+                        INTERFACE1, i(1),
+                        INTERFACE2, i(2),
+                        INTERFACE3, i(3))))
             .setTopologyInterfaces(
                 ImmutableMap.of(
                     NODE1,
@@ -1382,36 +1385,144 @@ public class DefaultTransitionGeneratorTest {
     assertThat(
         rules,
         hasItem(
-            new TransformedBasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(),
-                ImmutableSet.of(new AclPermit(NODE1, ACL1)),
-                ImmutableSet.of(new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE1)),
+            new BasicRuleStatement(
+                new EqExpr(
+                    new TransformedVarIntExpr(SRC_INTERFACE_FIELD),
+                    new LitIntExpr(0, SRC_INTERFACE_FIELD.getSize())),
+                ImmutableSet.of(
+                    new AclPermit(NODE1, ACL1),
+                    new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE1)),
                 new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
-            new TransformedBasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(),
-                ImmutableSet.of(new AclPermit(NODE1, ACL2)),
-                ImmutableSet.of(new PreOutEdgePostNat(NODE1, INTERFACE2, NODE2, INTERFACE2)),
+            new BasicRuleStatement(
+                new EqExpr(
+                    new TransformedVarIntExpr(SRC_INTERFACE_FIELD),
+                    new LitIntExpr(0, SRC_INTERFACE_FIELD.getSize())),
+                ImmutableSet.of(
+                    new AclPermit(NODE1, ACL2),
+                    new PreOutEdgePostNat(NODE1, INTERFACE2, NODE2, INTERFACE2)),
                 new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
-            new TransformedBasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(),
-                ImmutableSet.of(),
+            new BasicRuleStatement(
+                new EqExpr(
+                    new TransformedVarIntExpr(SRC_INTERFACE_FIELD),
+                    new LitIntExpr(0, SRC_INTERFACE_FIELD.getSize())),
                 ImmutableSet.of(new PreOutEdgePostNat(NODE1, INTERFACE3, NODE2, INTERFACE3)),
                 new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE3))));
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                ImmutableSet.of(
+                    new AclPermit(NODE2, ACL1),
+                    new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE1)),
+                new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1))));
+  }
+
+  @Test
+  public void testVisitPostOutEdge_nonTransitNodes() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
+            .setEnabledEdges(
+                ImmutableSet.of(
+                    new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
+                    new Edge(NODE2, INTERFACE1, NODE1, INTERFACE1)))
+            .setOutgoingAcls(
+                ImmutableMap.of(
+                    NODE1, ImmutableMap.of(),
+                    NODE2, ImmutableMap.of()))
+            .setNonTransitNodes(ImmutableSet.of(NODE1))
+            .setTopologyInterfaces(
+                ImmutableMap.of(
+                    NODE1, ImmutableSet.of(INTERFACE1), NODE2, ImmutableSet.of(INTERFACE1)))
+            .build();
+
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(PostOutEdge.State.INSTANCE)));
+
+    // node1 is a non-transit node, so set its flag in the transitedNonTransitNodesField
+    assertThat(
+        rules,
+        not(
+            hasItem(
+                new BasicRuleStatement(
+                    new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE1),
+                    new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1)))));
+
+    // node2 is not a non-transit node, so don't update transitedNodesField
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE1),
+                new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1))));
+  }
+
+  @Test
+  public void testVisitPostOutEdge_transitNodes() {
+    SynthesizerInput input =
+        MockSynthesizerInput.builder()
+            .setEnabledInterfacesByNodeVrf(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(VRF1, ImmutableSet.of(INTERFACE1)),
+                    NODE2,
+                    ImmutableMap.of(VRF1, ImmutableSet.of(INTERFACE1))))
+            .setEnabledEdges(
+                ImmutableSet.of(
+                    new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
+                    new Edge(NODE2, INTERFACE1, NODE1, INTERFACE1)))
+            .setOutgoingAcls(
+                ImmutableMap.of(
+                    NODE1, ImmutableMap.of(),
+                    NODE2, ImmutableMap.of()))
+            .setTransitNodes(ImmutableSet.of(NODE1))
+            .setTopologyInterfaces(
+                ImmutableMap.of(
+                    NODE1, ImmutableSet.of(INTERFACE1), NODE2, ImmutableSet.of(INTERFACE1)))
+            .build();
+
+    Set<RuleStatement> rules =
+        ImmutableSet.copyOf(
+            DefaultTransitionGenerator.generateTransitions(
+                input, ImmutableSet.of(PostInVrf.State.INSTANCE, PostOutEdge.State.INSTANCE)));
+
+    // node1 is a transit node, so set its flag in the transitedTransitNodesField
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new EqExpr(
+                    new TransformedVarIntExpr(
+                        DefaultTransitionGenerator.TRANSITED_TRANSIT_NODES_FIELD),
+                    new LitIntExpr(1, 1)),
+                new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE1),
+                new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1))));
+
+    // node2 is not a transit node, so don't update transitedNodesField
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new PreOutEdgePostNat(NODE2, INTERFACE1, NODE1, INTERFACE1),
+                new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1))));
   }
 
   @Test
   public void testVisitPreInInterface() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
+            // enabledInterface affects which OriginateInterfaceLink rules are generated
+            .setEnabledInterfaces(
+                ImmutableMap.of(
+                    NODE1, ImmutableSet.of(INTERFACE1, INTERFACE2, INTERFACE3),
+                    NODE2, ImmutableSet.of(INTERFACE1, INTERFACE2, INTERFACE3)))
             .setEnabledEdges(
                 ImmutableSet.of(
                     new Edge(NODE1, INTERFACE1, NODE2, INTERFACE1),
@@ -1432,157 +1543,235 @@ public class DefaultTransitionGeneratorTest {
                     new Edge(NODE2, INTERFACE3, NODE1, INTERFACE1),
                     new Edge(NODE2, INTERFACE3, NODE1, INTERFACE2),
                     new Edge(NODE2, INTERFACE3, NODE1, INTERFACE3)))
-            .setEnabledFlowSinks(
-                ImmutableSet.of(
-                    new NodeInterfacePair(NODE1, INTERFACE3),
-                    new NodeInterfacePair(NODE2, INTERFACE3)))
+            .setNodeInterfaces(
+                ImmutableMap.of(
+                    NODE1, ImmutableList.of(INTERFACE1, INTERFACE2, INTERFACE3),
+                    NODE2, ImmutableList.of(INTERFACE1, INTERFACE2, INTERFACE3)))
+            .setNodesWithSrcInterfaceConstraints(ImmutableSet.of(NODE1))
+            .setSrcInterfaceField(SRC_INTERFACE_FIELD)
+            .setSrcInterfaceFieldValues(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(
+                        INTERFACE1, i(1),
+                        INTERFACE2, i(2),
+                        INTERFACE3, i(3))))
             .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
                 input, ImmutableSet.of(PreInInterface.State.INSTANCE)));
 
+    // PreInInterface
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        new EqExpr(new VarIntExpr(SRC_INTERFACE_FIELD), i(1)),
+                        // transit nodes constraint
+                        TrueExpr.INSTANCE)),
+                new OriginateInterfaceLink(NODE1, INTERFACE1),
+                new PreInInterface(NODE1, INTERFACE1))));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        new EqExpr(new VarIntExpr(SRC_INTERFACE_FIELD), i(2)),
+                        // transit nodes constraint
+                        TrueExpr.INSTANCE)),
+                new OriginateInterfaceLink(NODE1, INTERFACE2),
+                new PreInInterface(NODE1, INTERFACE2))));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        new EqExpr(new VarIntExpr(SRC_INTERFACE_FIELD), i(3)),
+                        // transit nodes constraint
+                        TrueExpr.INSTANCE)),
+                new OriginateInterfaceLink(NODE1, INTERFACE3),
+                new PreInInterface(NODE1, INTERFACE3))));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        NO_SRC_INTERFACE_FIELD,
+                        // transit nodes constraint
+                        TrueExpr.INSTANCE)),
+                new OriginateInterfaceLink(NODE2, INTERFACE1),
+                new PreInInterface(NODE2, INTERFACE1))));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        NO_SRC_INTERFACE_FIELD,
+                        // transit nodes constraint
+                        TrueExpr.INSTANCE)),
+                new OriginateInterfaceLink(NODE2, INTERFACE2),
+                new PreInInterface(NODE2, INTERFACE2))));
+
+    assertThat(
+        rules,
+        hasItem(
+            new BasicRuleStatement(
+                new AndExpr(
+                    ImmutableList.of(
+                        NO_SRC_INTERFACE_FIELD,
+                        // transit nodes constraint
+                        TrueExpr.INSTANCE)),
+                new OriginateInterfaceLink(NODE2, INTERFACE2),
+                new PreInInterface(NODE2, INTERFACE2))));
+
     // PostOutNeighbor
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1)),
+                new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1),
                 new PreInInterface(NODE2, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2)),
+                new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2),
                 new PreInInterface(NODE2, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE3)),
+                new PostOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE3),
                 new PreInInterface(NODE2, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE1)),
+                new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE1),
                 new PreInInterface(NODE2, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE2)),
+                new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE2),
                 new PreInInterface(NODE2, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE3)),
+                new PostOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE3),
                 new PreInInterface(NODE2, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE1)),
+                new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE1),
                 new PreInInterface(NODE2, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE2)),
+                new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE2),
                 new PreInInterface(NODE2, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE3)),
+                new PostOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE3),
                 new PreInInterface(NODE2, INTERFACE3))));
 
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(1)),
+                new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1),
                 new PreInInterface(NODE1, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE2)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(2)),
+                new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE2),
                 new PreInInterface(NODE1, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE3)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(3)),
+                new PostOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE3),
                 new PreInInterface(NODE1, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE1)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(1)),
+                new PostOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE1),
                 new PreInInterface(NODE1, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE2)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(2)),
+                new PostOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE2),
                 new PreInInterface(NODE1, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE3)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(3)),
+                new PostOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE3),
                 new PreInInterface(NODE1, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE1)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(1)),
+                new PostOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE1),
                 new PreInInterface(NODE1, INTERFACE1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE2)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(2)),
+                new PostOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE2),
                 new PreInInterface(NODE1, INTERFACE2))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                TrueExpr.INSTANCE,
-                ImmutableSet.of(new PostOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE3)),
+                new EqExpr(new TransformedVarIntExpr(SRC_INTERFACE_FIELD), i(3)),
+                new PostOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE3),
                 new PreInInterface(NODE1, INTERFACE3))));
   }
 
   @Test
-  public void testVisitPreOut() {
+  public void testVisitPreOutVrf() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
-            .setIpsByHostname(
-                ImmutableMap.of(NODE1, ImmutableSet.of(IP1, IP2), NODE2, ImmutableSet.of(IP3, IP4)))
+        MockSynthesizerInput.builder()
+            .setIpsByNodeVrf(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(VRF1, ImmutableSet.of(IP1, IP2)),
+                    NODE2,
+                    ImmutableMap.of(VRF2, ImmutableSet.of(IP3, IP4))))
+            .setNamedIpSpaces(ImmutableMap.of(NODE1, ImmutableMap.of(), NODE2, ImmutableMap.of()))
             .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
-                input, ImmutableSet.of(PreOut.State.INSTANCE)));
+                input, ImmutableSet.of(PreOutVrf.State.INSTANCE)));
 
     // PostInNotMine
     assertThat(
@@ -1591,24 +1780,54 @@ public class DefaultTransitionGeneratorTest {
             new BasicRuleStatement(
                 new NotExpr(
                     HeaderSpaceMatchExpr.matchDstIp(
-                        ImmutableSet.of(new IpWildcard(IP1), new IpWildcard(IP2)))),
-                ImmutableSet.of(new PostIn(NODE1)),
-                new PreOut(NODE1))));
+                        IpWildcardSetIpSpace.builder()
+                            .including(ImmutableSet.of(new IpWildcard(IP1), new IpWildcard(IP2)))
+                            .build(),
+                        ImmutableMap.of())),
+                new PostInVrf(NODE1, VRF1),
+                new PreOutVrf(NODE1, VRF1))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
                 new NotExpr(
                     HeaderSpaceMatchExpr.matchDstIp(
-                        ImmutableSet.of(new IpWildcard(IP3), new IpWildcard(IP4)))),
-                ImmutableSet.of(new PostIn(NODE2)),
-                new PreOut(NODE2))));
+                        IpWildcardSetIpSpace.builder()
+                            .including(ImmutableSet.of(new IpWildcard(IP3), new IpWildcard(IP4)))
+                            .build(),
+                        ImmutableMap.of())),
+                new PostInVrf(NODE2, VRF2),
+                new PreOutVrf(NODE2, VRF2))));
   }
 
   @Test
   public void testVisitPreOutEdge() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder().setFibConditions(fibConditions()).build();
+        MockSynthesizerInput.builder()
+            .setArpTrueEdge(
+                ImmutableMap.of(
+                    NODE1,
+                    ImmutableMap.of(
+                        VRF1,
+                        ImmutableMap.of(
+                            INTERFACE1,
+                            ImmutableMap.of(
+                                NODE3,
+                                ImmutableMap.of(INTERFACE3, b(1), INTERFACE4, b(2)),
+                                NODE4,
+                                ImmutableMap.of(INTERFACE3, b(3))),
+                            INTERFACE2,
+                            ImmutableMap.of(NODE3, ImmutableMap.of(INTERFACE3, b(4)))),
+                        VRF2,
+                        ImmutableMap.of(
+                            INTERFACE3, ImmutableMap.of(NODE3, ImmutableMap.of(INTERFACE3, b(5))))),
+                    NODE2,
+                    ImmutableMap.of(
+                        VRF1,
+                        ImmutableMap.of(
+                            INTERFACE1,
+                            ImmutableMap.of(NODE3, ImmutableMap.of(INTERFACE3, b(6)))))))
+            .build();
     Set<RuleStatement> rules =
         ImmutableSet.copyOf(
             DefaultTransitionGenerator.generateTransitions(
@@ -1619,121 +1838,51 @@ public class DefaultTransitionGeneratorTest {
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(0, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE1))));
+                b(1),
+                new PreOutVrf(NODE1, VRF1),
+                new PreOutEdge(NODE1, INTERFACE1, NODE3, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(1, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2))));
+                b(2),
+                new PreOutVrf(NODE1, VRF1),
+                new PreOutEdge(NODE1, INTERFACE1, NODE3, INTERFACE4))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(2, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE1))));
+                b(3),
+                new PreOutVrf(NODE1, VRF1),
+                new PreOutEdge(NODE1, INTERFACE1, NODE4, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(3, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF1), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE2, NODE2, INTERFACE2))));
+                b(4),
+                new PreOutVrf(NODE1, VRF1),
+                new PreOutEdge(NODE1, INTERFACE2, NODE3, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(7, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE3))));
+                b(5),
+                new PreOutVrf(NODE1, VRF2),
+                new PreOutEdge(NODE1, INTERFACE3, NODE3, INTERFACE3))));
     assertThat(
         rules,
         hasItem(
             new BasicRuleStatement(
-                new TestBooleanAtom(8, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE3, NODE2, INTERFACE4))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(9, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE4, NODE2, INTERFACE3))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(10, null),
-                ImmutableSet.of(new PostInVrf(NODE1, VRF2), new PreOut(NODE1)),
-                new PreOutEdge(NODE1, INTERFACE4, NODE2, INTERFACE4))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(14, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE1))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(15, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE1, NODE1, INTERFACE2))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(16, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE1))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(17, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF1), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE2, NODE1, INTERFACE2))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(21, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE3))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(22, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE3, NODE1, INTERFACE4))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(23, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE4, NODE1, INTERFACE3))));
-    assertThat(
-        rules,
-        hasItem(
-            new BasicRuleStatement(
-                new TestBooleanAtom(24, null),
-                ImmutableSet.of(new PostInVrf(NODE2, VRF2), new PreOut(NODE2)),
-                new PreOutEdge(NODE2, INTERFACE4, NODE1, INTERFACE4))));
+                b(6),
+                new PreOutVrf(NODE2, VRF1),
+                new PreOutEdge(NODE2, INTERFACE1, NODE3, INTERFACE3))));
   }
 
   /** Test the transitions generated for PreOutEdgePostNat for an edge with a source nat. */
   @Test
   public void testVisitPreOutEdgePostNat_topologyInterfaceWithNAT() {
     SynthesizerInput input =
-        TestSynthesizerInput.builder()
+        MockSynthesizerInput.builder()
             .setEnabledEdges(ImmutableSet.of(new Edge(NODE1, INTERFACE1, NODE2, INTERFACE2)))
             .setTopologyInterfaces(ImmutableMap.of(NODE1, ImmutableSet.of(INTERFACE1)))
             .setSourceNats(
@@ -1741,129 +1890,26 @@ public class DefaultTransitionGeneratorTest {
                     NODE1,
                     ImmutableMap.of(
                         INTERFACE1,
-                        ImmutableList.of(
-                            Maps.immutableEntry(
-                                new AclPermit(NODE1, NAT_ACL1), new TestBooleanAtom(1, null))))))
+                        ImmutableList.of(Maps.immutableEntry(new AclPermit(NODE1, NAT_ACL1), B1)))))
             .build();
     List<RuleStatement> rules =
         DefaultTransitionGenerator.generateTransitions(
             input, ImmutableSet.of(PreOutEdgePostNat.State.INSTANCE));
 
     RuleStatement permitRule =
-        new TransformationRuleStatement(
-            new TestBooleanAtom(1, null),
+        new BasicRuleStatement(
+            B1,
             ImmutableSet.of(
                 new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2),
                 new AclPermit(NODE1, NAT_ACL1)),
-            ImmutableSet.of(),
-            ImmutableSet.of(),
             new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE2));
 
     RuleStatement denyRule =
-        new TransformationRuleStatement(
-            new EqExpr(
-                new VarIntExpr(TransformationHeaderField.NEW_SRC_IP),
-                new VarIntExpr(TransformationHeaderField.NEW_SRC_IP.getCurrent())),
+        new BasicRuleStatement(
             ImmutableSet.of(
                 new PreOutEdge(NODE1, INTERFACE1, NODE2, INTERFACE2), new AclDeny(NODE1, NAT_ACL1)),
-            ImmutableSet.of(),
-            ImmutableSet.of(),
             new PreOutEdgePostNat(NODE1, INTERFACE1, NODE2, INTERFACE2));
 
     assertThat(rules, containsInAnyOrder(permitRule, denyRule));
-  }
-
-  /** Test the transitions generated for PreOutEdgePostNat for a flow sink with NAT */
-  @Test
-  public void testVisitPreOutEdgePostNat_flowSinkNAT() {
-    SynthesizerInput input =
-        TestSynthesizerInput.builder()
-            .setEnabledFlowSinks(ImmutableSet.of(new NodeInterfacePair(NODE1, INTERFACE1)))
-            .setSourceNats(
-                ImmutableMap.of(
-                    NODE1,
-                    ImmutableMap.of(
-                        INTERFACE1,
-                        ImmutableList.of(
-                            Maps.immutableEntry(
-                                new AclPermit(NODE1, NAT_ACL1), new TestBooleanAtom(1, null))))))
-            .build();
-    Set<RuleStatement> rules =
-        ImmutableSet.copyOf(
-            DefaultTransitionGenerator.generateTransitions(
-                input, ImmutableSet.of(PreOutEdgePostNat.State.INSTANCE)));
-
-    RuleStatement permitRule =
-        new TransformationRuleStatement(
-            new TestBooleanAtom(1, null),
-            ImmutableSet.of(
-                new PreOutEdge(
-                    NODE1,
-                    INTERFACE1,
-                    Configuration.NODE_NONE_NAME,
-                    Interface.FLOW_SINK_TERMINATION_NAME),
-                new AclPermit(NODE1, NAT_ACL1)),
-            ImmutableSet.of(),
-            ImmutableSet.of(),
-            new PreOutEdgePostNat(
-                NODE1,
-                INTERFACE1,
-                Configuration.NODE_NONE_NAME,
-                Interface.FLOW_SINK_TERMINATION_NAME));
-
-    RuleStatement denyRule =
-        new TransformationRuleStatement(
-            new EqExpr(
-                new VarIntExpr(TransformationHeaderField.NEW_SRC_IP),
-                new VarIntExpr(TransformationHeaderField.NEW_SRC_IP.getCurrent())),
-            ImmutableSet.of(
-                new PreOutEdge(
-                    NODE1,
-                    INTERFACE1,
-                    Configuration.NODE_NONE_NAME,
-                    Interface.FLOW_SINK_TERMINATION_NAME),
-                new AclDeny(NODE1, NAT_ACL1)),
-            ImmutableSet.of(),
-            ImmutableSet.of(),
-            new PreOutEdgePostNat(
-                NODE1,
-                INTERFACE1,
-                Configuration.NODE_NONE_NAME,
-                Interface.FLOW_SINK_TERMINATION_NAME));
-
-    assertThat(rules, containsInAnyOrder(permitRule, denyRule));
-  }
-
-  /** Test the transitions generated for PreOutEdgePostNat for a flow sink without NAT */
-  @Test
-  public void testVisitPreOutEdgePostNat_flowSinkNoNAT() {
-    SynthesizerInput input =
-        TestSynthesizerInput.builder()
-            .setEnabledFlowSinks(ImmutableSet.of(new NodeInterfacePair(NODE1, INTERFACE1)))
-            .build();
-    Set<RuleStatement> rules =
-        ImmutableSet.copyOf(
-            DefaultTransitionGenerator.generateTransitions(
-                input, ImmutableSet.of(PreOutEdgePostNat.State.INSTANCE)));
-
-    RuleStatement rule =
-        new TransformationRuleStatement(
-            new EqExpr(
-                new VarIntExpr(TransformationHeaderField.NEW_SRC_IP),
-                new VarIntExpr(TransformationHeaderField.NEW_SRC_IP.getCurrent())),
-            ImmutableSet.of(
-                new PreOutEdge(
-                    NODE1,
-                    INTERFACE1,
-                    Configuration.NODE_NONE_NAME,
-                    Interface.FLOW_SINK_TERMINATION_NAME)),
-            ImmutableSet.of(),
-            ImmutableSet.of(),
-            new PreOutEdgePostNat(
-                NODE1,
-                INTERFACE1,
-                Configuration.NODE_NONE_NAME,
-                Interface.FLOW_SINK_TERMINATION_NAME));
-    assertThat(rules, contains(rule));
   }
 }

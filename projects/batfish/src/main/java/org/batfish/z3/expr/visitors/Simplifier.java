@@ -6,11 +6,9 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.batfish.z3.expr.AndExpr;
 import org.batfish.z3.expr.BasicRuleStatement;
-import org.batfish.z3.expr.BasicStateExpr;
 import org.batfish.z3.expr.BitVecExpr;
 import org.batfish.z3.expr.BooleanExpr;
 import org.batfish.z3.expr.Comment;
-import org.batfish.z3.expr.CurrentIsOriginalExpr;
 import org.batfish.z3.expr.EqExpr;
 import org.batfish.z3.expr.Expr;
 import org.batfish.z3.expr.ExtractExpr;
@@ -19,7 +17,9 @@ import org.batfish.z3.expr.GenericStatementVisitor;
 import org.batfish.z3.expr.HeaderSpaceMatchExpr;
 import org.batfish.z3.expr.IdExpr;
 import org.batfish.z3.expr.IfExpr;
+import org.batfish.z3.expr.IfThenElse;
 import org.batfish.z3.expr.IntExpr;
+import org.batfish.z3.expr.IpSpaceMatchExpr;
 import org.batfish.z3.expr.ListExpr;
 import org.batfish.z3.expr.LitIntExpr;
 import org.batfish.z3.expr.NotExpr;
@@ -27,11 +27,9 @@ import org.batfish.z3.expr.OrExpr;
 import org.batfish.z3.expr.PrefixMatchExpr;
 import org.batfish.z3.expr.QueryStatement;
 import org.batfish.z3.expr.RangeMatchExpr;
-import org.batfish.z3.expr.SaneExpr;
+import org.batfish.z3.expr.StateExpr;
 import org.batfish.z3.expr.Statement;
-import org.batfish.z3.expr.TransformationRuleStatement;
-import org.batfish.z3.expr.TransformationStateExpr;
-import org.batfish.z3.expr.TransformedBasicRuleStatement;
+import org.batfish.z3.expr.TransformedVarIntExpr;
 import org.batfish.z3.expr.TrueExpr;
 import org.batfish.z3.expr.VarIntExpr;
 
@@ -98,7 +96,7 @@ public class Simplifier
       }
     }
     List<BooleanExpr> newConjuncts = newConjunctsBuilder.build();
-    if (newConjuncts.size() == 0) {
+    if (newConjuncts.isEmpty()) {
       return TrueExpr.INSTANCE;
     } else if (newConjuncts.size() == 1) {
       return newConjuncts.get(0);
@@ -111,28 +109,23 @@ public class Simplifier
 
   @Override
   public Statement visitBasicRuleStatement(BasicRuleStatement basicRuleStatement) {
-    /** TODO: something smarter */
+    /* TODO: something smarter */
     BooleanExpr originalPreconditionStateIndependentConstraints =
         basicRuleStatement.getPreconditionStateIndependentConstraints();
     BooleanExpr simplifiedPreconditionStateIndependentConstraints =
         simplifyBooleanExpr(originalPreconditionStateIndependentConstraints);
-    if (originalPreconditionStateIndependentConstraints
+    if (simplifiedPreconditionStateIndependentConstraints == FalseExpr.INSTANCE) {
+      return VACUOUS_RULE;
+    } else if (originalPreconditionStateIndependentConstraints
         != simplifiedPreconditionStateIndependentConstraints) {
       return simplifyStatement(
           new BasicRuleStatement(
               simplifiedPreconditionStateIndependentConstraints,
               basicRuleStatement.getPreconditionStates(),
               basicRuleStatement.getPostconditionState()));
-    } else if (simplifiedPreconditionStateIndependentConstraints == FalseExpr.INSTANCE) {
-      return VACUOUS_RULE;
     } else {
       return basicRuleStatement;
     }
-  }
-
-  @Override
-  public BasicStateExpr visitBasicStateExpr(BasicStateExpr basicStateExpr) {
-    return basicStateExpr;
   }
 
   @Override
@@ -144,11 +137,6 @@ public class Simplifier
   @Override
   public Statement visitComment(Comment comment) {
     return comment;
-  }
-
-  @Override
-  public BooleanExpr visitCurrentIsOriginalExpr(CurrentIsOriginalExpr currentIsOriginalExpr) {
-    return simplifyBooleanExpr(currentIsOriginalExpr.getExpr());
   }
 
   @Override
@@ -206,6 +194,43 @@ public class Simplifier
   }
 
   @Override
+  public BooleanExpr visitIfThenElse(IfThenElse ifThenElse) {
+    BooleanExpr condition = ifThenElse.getCondition().accept(this);
+
+    if (condition == TrueExpr.INSTANCE) {
+      return ifThenElse.getThen().accept(this);
+    } else if (condition == FalseExpr.INSTANCE) {
+      return ifThenElse.getElse().accept(this);
+    } else {
+      BooleanExpr then = ifThenElse.getThen().accept(this);
+      BooleanExpr els = ifThenElse.getElse().accept(this);
+      if (then == els) {
+        return then;
+      } else if (then == TrueExpr.INSTANCE && els == FalseExpr.INSTANCE) {
+        return condition;
+      } else if (then == FalseExpr.INSTANCE && els == TrueExpr.INSTANCE) {
+        return new NotExpr(condition);
+      } else if (then == TrueExpr.INSTANCE) {
+        return new OrExpr(ImmutableList.of(condition, els));
+      } else if (then == FalseExpr.INSTANCE) {
+        return new AndExpr(ImmutableList.of(new NotExpr(condition), els));
+      } else if (els == TrueExpr.INSTANCE) {
+        return new OrExpr(ImmutableList.of(new NotExpr(condition), then));
+      } else if (els == FalseExpr.INSTANCE) {
+        return new AndExpr(ImmutableList.of(condition, then));
+      }
+      // No nice simplifications, return a new ITE if any of the three components is simpler.
+      if (condition != ifThenElse.getCondition()
+          || then != ifThenElse.getThen()
+          || els != ifThenElse.getElse()) {
+        return new IfThenElse(condition, then, els);
+      } else {
+        return ifThenElse;
+      }
+    }
+  }
+
+  @Override
   public Expr visitListExpr(ListExpr listExpr) {
     throw new UnsupportedOperationException(
         "no implementation for generated method"); // TODO Auto-generated method stub
@@ -215,6 +240,11 @@ public class Simplifier
   public IntExpr visitLitIntExpr(LitIntExpr litIntExpr) {
     throw new UnsupportedOperationException(
         "no implementation for generated method"); // TODO Auto-generated method stub
+  }
+
+  @Override
+  public BooleanExpr visitMatchIpSpaceExpr(IpSpaceMatchExpr matchIpSpaceExpr) {
+    return matchIpSpaceExpr.getExpr().accept(this);
   }
 
   @Override
@@ -269,7 +299,7 @@ public class Simplifier
       }
     }
     List<BooleanExpr> newDisjuncts = newDisjunctsBuilder.build();
-    if (newDisjuncts.size() == 0) {
+    if (newDisjuncts.isEmpty()) {
       return FalseExpr.INSTANCE;
     } else if (newDisjuncts.size() == 1) {
       return newDisjuncts.get(0);
@@ -296,62 +326,13 @@ public class Simplifier
   }
 
   @Override
-  public BooleanExpr visitSaneExpr(SaneExpr saneExpr) {
-    return simplifyBooleanExpr(saneExpr.getExpr());
+  public StateExpr visitStateExpr(StateExpr stateExpr) {
+    return stateExpr;
   }
 
   @Override
-  public Statement visitTransformationRuleStatement(
-      TransformationRuleStatement transformationRuleStatement) {
-    /** TODO: something smarter */
-    BooleanExpr originalPreconditionStateIndependentConstraints =
-        transformationRuleStatement.getPreconditionStateIndependentConstraints();
-    BooleanExpr simplifiedPreconditionStateIndependentConstraints =
-        simplifyBooleanExpr(originalPreconditionStateIndependentConstraints);
-    if (originalPreconditionStateIndependentConstraints
-        != simplifiedPreconditionStateIndependentConstraints) {
-      return simplifyStatement(
-          new TransformationRuleStatement(
-              simplifiedPreconditionStateIndependentConstraints,
-              transformationRuleStatement.getPreconditionPreTransformationStates(),
-              transformationRuleStatement.getPreconditionPostTransformationStates(),
-              transformationRuleStatement.getPreconditionTransformationStates(),
-              transformationRuleStatement.getPostconditionTransformationState()));
-    } else if (simplifiedPreconditionStateIndependentConstraints == FalseExpr.INSTANCE) {
-      return VACUOUS_RULE;
-    } else {
-      return transformationRuleStatement;
-    }
-  }
-
-  @Override
-  public TransformationStateExpr visitTransformationStateExpr(
-      TransformationStateExpr transformationStateExpr) {
-    return transformationStateExpr;
-  }
-
-  @Override
-  public Statement visitTransformedBasicRuleStatement(
-      TransformedBasicRuleStatement transformedBasicRuleStatement) {
-    /** TODO: something smarter */
-    BooleanExpr originalPreconditionStateIndependentConstraints =
-        transformedBasicRuleStatement.getPreconditionStateIndependentConstraints();
-    BooleanExpr simplifiedPreconditionStateIndependentConstraints =
-        simplifyBooleanExpr(originalPreconditionStateIndependentConstraints);
-    if (originalPreconditionStateIndependentConstraints
-        != simplifiedPreconditionStateIndependentConstraints) {
-      return simplifyStatement(
-          new TransformedBasicRuleStatement(
-              simplifiedPreconditionStateIndependentConstraints,
-              transformedBasicRuleStatement.getPreconditionPreTransformationStates(),
-              transformedBasicRuleStatement.getPreconditionPostTransformationStates(),
-              transformedBasicRuleStatement.getPreconditionTransformationStates(),
-              transformedBasicRuleStatement.getPostconditionPostTransformationState()));
-    } else if (simplifiedPreconditionStateIndependentConstraints == FalseExpr.INSTANCE) {
-      return VACUOUS_RULE;
-    } else {
-      return transformedBasicRuleStatement;
-    }
+  public IntExpr visitTransformedVarIntExpr(TransformedVarIntExpr transformedVarIntExpr) {
+    return transformedVarIntExpr;
   }
 
   @Override
@@ -361,7 +342,6 @@ public class Simplifier
 
   @Override
   public IntExpr visitVarIntExpr(VarIntExpr varIntExpr) {
-    throw new UnsupportedOperationException(
-        "no implementation for generated method"); // TODO Auto-generated method stub
+    return varIntExpr;
   }
 }

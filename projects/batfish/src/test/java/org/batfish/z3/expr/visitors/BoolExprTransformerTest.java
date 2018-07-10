@@ -7,13 +7,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Context;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.IpAccessListLine;
 import org.batfish.datamodel.IpProtocol;
 import org.batfish.datamodel.IpWildcard;
 import org.batfish.datamodel.Prefix;
@@ -21,31 +21,28 @@ import org.batfish.datamodel.Protocol;
 import org.batfish.datamodel.State;
 import org.batfish.datamodel.SubRange;
 import org.batfish.datamodel.TcpFlags;
-import org.batfish.z3.BasicHeaderField;
+import org.batfish.z3.Field;
+import org.batfish.z3.MockSynthesizerInput;
 import org.batfish.z3.NodContext;
 import org.batfish.z3.ReachabilityProgram;
 import org.batfish.z3.SynthesizerInput;
-import org.batfish.z3.TestSynthesizerInput;
 import org.batfish.z3.expr.AndExpr;
 import org.batfish.z3.expr.BasicRuleStatement;
-import org.batfish.z3.expr.BasicStateExpr;
 import org.batfish.z3.expr.BooleanExpr;
-import org.batfish.z3.expr.CurrentIsOriginalExpr;
 import org.batfish.z3.expr.EqExpr;
 import org.batfish.z3.expr.FalseExpr;
 import org.batfish.z3.expr.HeaderSpaceMatchExpr;
 import org.batfish.z3.expr.IfExpr;
 import org.batfish.z3.expr.IntExpr;
+import org.batfish.z3.expr.MockBooleanAtom;
+import org.batfish.z3.expr.MockIntAtom;
 import org.batfish.z3.expr.NotExpr;
 import org.batfish.z3.expr.OrExpr;
 import org.batfish.z3.expr.PrefixMatchExpr;
 import org.batfish.z3.expr.RangeMatchExpr;
-import org.batfish.z3.expr.SaneExpr;
-import org.batfish.z3.expr.TestBooleanAtom;
-import org.batfish.z3.expr.TestIntAtom;
-import org.batfish.z3.expr.TransformationRuleStatement;
-import org.batfish.z3.expr.TransformationStateExpr;
+import org.batfish.z3.expr.StateExpr;
 import org.batfish.z3.expr.TrueExpr;
+import org.batfish.z3.expr.VarIntExpr;
 import org.batfish.z3.state.Accept;
 import org.batfish.z3.state.PreOutEdgePostNat;
 import org.junit.After;
@@ -57,7 +54,7 @@ public class BoolExprTransformerTest {
 
   private int _atomCounter;
 
-  private BasicStateExpr _basicStateExpr;
+  private StateExpr _stateExpr;
 
   private Context _ctx;
 
@@ -65,22 +62,22 @@ public class BoolExprTransformerTest {
 
   private NodContext _nodContext;
 
-  private TransformationStateExpr _transformationStateExpr;
+  private StateExpr _transformationStateExpr;
 
   private BooleanExpr newBooleanAtom() {
-    return new TestBooleanAtom(_atomCounter++, _ctx);
+    return new MockBooleanAtom(_atomCounter++, _ctx);
   }
 
   private IntExpr newIntAtom() {
-    return new TestIntAtom(_atomCounter++, 32, _ctx);
+    return new MockIntAtom(_atomCounter++, 32, _ctx);
   }
 
   @Before
   public void setup() {
-    _basicStateExpr = Accept.INSTANCE;
+    _stateExpr = Accept.INSTANCE;
     _transformationStateExpr = new PreOutEdgePostNat("host1", "interface1", "host2", "interface2");
     _ctx = new Context();
-    _input = TestSynthesizerInput.builder().build();
+    _input = MockSynthesizerInput.builder().build();
     _nodContext =
         new NodContext(
             _ctx,
@@ -88,14 +85,27 @@ public class BoolExprTransformerTest {
                 .setInput(_input)
                 .setRules(
                     of(
-                        new BasicRuleStatement(_basicStateExpr),
-                        new TransformationRuleStatement(_transformationStateExpr)))
+                        new BasicRuleStatement(_stateExpr),
+                        new BasicRuleStatement(_transformationStateExpr)))
                 .build());
   }
 
   @After
   public void tearDown() {
     _ctx.close();
+  }
+
+  @Test
+  public void testStateExprToBoolExpr() {
+    // TODO: better test
+    assertThat(toBoolExpr(_stateExpr, _input, _nodContext), instanceOf(BoolExpr.class));
+  }
+
+  @Test
+  public void testTransformationStateExprToBoolExpr() {
+    // TODO: better test
+    assertThat(
+        toBoolExpr(_transformationStateExpr, _input, _nodContext), instanceOf(BoolExpr.class));
   }
 
   @Test
@@ -108,19 +118,6 @@ public class BoolExprTransformerTest {
     assertThat(
         toBoolExpr(new AndExpr(of(p1Batfish, p2Batfish)), _input, _nodContext),
         equalTo(_ctx.mkAnd(p1Z3, p2Z3)));
-  }
-
-  @Test
-  public void testVisitBasicStateExpr() {
-    // TODO: better test
-    assertThat(toBoolExpr(_basicStateExpr, _input, _nodContext), instanceOf(BoolExpr.class));
-  }
-
-  @Test
-  public void testVisitCurrentIsOriginalExpr() {
-    assertThat(
-        toBoolExpr(CurrentIsOriginalExpr.INSTANCE, _input, _nodContext),
-        instanceOf(BoolExpr.class));
   }
 
   @Test
@@ -144,7 +141,7 @@ public class BoolExprTransformerTest {
   public void testVisitHeaderSpaceMatchExpr() {
     long ipCounter = 1L;
     int intCounter = 1;
-    HeaderSpace.Builder<?, ?> hb = IpAccessListLine.builder();
+    HeaderSpace.Builder hb = HeaderSpace.builder();
 
     BooleanExpr expr =
         new HeaderSpaceMatchExpr(
@@ -232,9 +229,18 @@ public class BoolExprTransformerTest {
                     ImmutableSet.of(
                         TcpFlags.builder().setAck(true).setUseAck(true).build(),
                         TcpFlags.builder().setUseCwr(true).build()))
-                .build());
+                .build(),
+            ImmutableMap.of());
 
-    assertThat(toBoolExpr(expr, _input, _nodContext), instanceOf(BoolExpr.class));
+    NodContext nodContext =
+        new NodContext(
+            _ctx,
+            ReachabilityProgram.builder()
+                .setInput(_input)
+                .setRules(of(new BasicRuleStatement(_stateExpr)))
+                .setSmtConstraint(expr)
+                .build());
+    assertThat(toBoolExpr(expr, _input, nodContext), instanceOf(BoolExpr.class));
   }
 
   @Test
@@ -271,8 +277,7 @@ public class BoolExprTransformerTest {
 
   @Test
   public void testVisitPrefixMatchExpr() {
-    BooleanExpr expr = new PrefixMatchExpr(BasicHeaderField.SRC_IP, Prefix.parse("1.2.3.4/5"));
-
+    BooleanExpr expr = new PrefixMatchExpr(new VarIntExpr(Field.SRC_IP), Prefix.parse("1.2.3.4/5"));
     assertThat(toBoolExpr(expr, _input, _nodContext), instanceOf(BoolExpr.class));
   }
 
@@ -280,23 +285,11 @@ public class BoolExprTransformerTest {
   public void testVisitRangeMatchExpr() {
     BooleanExpr expr =
         RangeMatchExpr.fromSubRanges(
-            BasicHeaderField.DSCP,
-            BasicHeaderField.DSCP.getSize(),
+            Field.DSCP,
+            Field.DSCP.getSize(),
             ImmutableSet.of(new SubRange(1, 3), new SubRange(5, 7)));
 
     assertThat(toBoolExpr(expr, _input, _nodContext), instanceOf(BoolExpr.class));
-  }
-
-  @Test
-  public void testVisitSaneExpr() {
-    assertThat(toBoolExpr(SaneExpr.INSTANCE, _input, _nodContext), instanceOf(BoolExpr.class));
-  }
-
-  @Test
-  public void testVisitTransformationStateExpr() {
-    // TODO: better test
-    assertThat(
-        toBoolExpr(_transformationStateExpr, _input, _nodContext), instanceOf(BoolExpr.class));
   }
 
   @Test

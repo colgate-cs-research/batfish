@@ -1,5 +1,9 @@
 package org.batfish.question;
 
+import static org.batfish.datamodel.IsisInterfaceMode.ACTIVE;
+import static org.batfish.datamodel.IsisInterfaceMode.PASSIVE;
+import static org.batfish.datamodel.IsisInterfaceMode.UNSET;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
 import java.util.Map;
@@ -14,6 +18,7 @@ import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.IsisInterfaceMode;
+import org.batfish.datamodel.IsisInterfaceSettings;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
@@ -21,7 +26,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class IsisLoopbacksQuestionPlugin extends QuestionPlugin {
 
-  public static class IsisLoopbacksAnswerElement implements AnswerElement {
+  public static class IsisLoopbacksAnswerElement extends AnswerElement {
 
     private SortedMap<String, SortedSet<String>> _inactive;
 
@@ -134,7 +139,7 @@ public class IsisLoopbacksQuestionPlugin extends QuestionPlugin {
 
       IsisLoopbacksAnswerElement answerElement = new IsisLoopbacksAnswerElement();
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
-      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(_batfish);
       for (Entry<String, Configuration> e : configurations.entrySet()) {
         String hostname = e.getKey();
         if (!includeNodes.contains(hostname)) {
@@ -145,25 +150,36 @@ public class IsisLoopbacksQuestionPlugin extends QuestionPlugin {
             .forEach(
                 (interfaceName, iface) -> {
                   if (iface.isLoopback(c.getConfigurationFormat())) {
-                    IsisInterfaceMode l1Mode = iface.getIsisL1InterfaceMode();
-                    IsisInterfaceMode l2Mode = iface.getIsisL2InterfaceMode();
+                    IsisInterfaceSettings ifaceSettings = iface.getIsis();
+                    IsisInterfaceMode l1Mode =
+                        ifaceSettings != null
+                            ? ifaceSettings.getLevel1() != null
+                                ? ifaceSettings.getLevel1().getMode()
+                                : UNSET
+                            : UNSET;
+                    IsisInterfaceMode l2Mode =
+                        ifaceSettings != null
+                            ? ifaceSettings.getLevel2() != null
+                                ? ifaceSettings.getLevel2().getMode()
+                                : UNSET
+                            : UNSET;
                     boolean l1 = false;
                     boolean l2 = false;
                     boolean isis = false;
-                    if (l1Mode == IsisInterfaceMode.ACTIVE) {
+                    if (l1Mode == ACTIVE) {
                       l1 = true;
                       isis = true;
                       answerElement.add(answerElement.getL1Active(), hostname, interfaceName);
-                    } else if (l1Mode == IsisInterfaceMode.PASSIVE) {
+                    } else if (l1Mode == PASSIVE) {
                       l1 = true;
                       isis = true;
                       answerElement.add(answerElement.getL1Passive(), hostname, interfaceName);
                     }
-                    if (l2Mode == IsisInterfaceMode.ACTIVE) {
+                    if (l2Mode == ACTIVE) {
                       l2 = true;
                       isis = true;
                       answerElement.add(answerElement.getL2Active(), hostname, interfaceName);
-                    } else if (l2Mode == IsisInterfaceMode.PASSIVE) {
+                    } else if (l2Mode == PASSIVE) {
                       l2 = true;
                       isis = true;
                       answerElement.add(answerElement.getL2Passive(), hostname, interfaceName);

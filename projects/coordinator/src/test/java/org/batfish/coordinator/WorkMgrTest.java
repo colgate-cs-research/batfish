@@ -1,5 +1,6 @@
 package org.batfish.coordinator;
 
+import static org.batfish.coordinator.WorkMgr.generateFileDateString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.hasSize;
@@ -8,6 +9,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -15,20 +17,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.batfish.common.BatfishException;
-import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.Container;
 import org.batfish.common.WorkItem;
+import org.batfish.common.util.BatfishObjectMapper;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.common.util.WorkItemBuilder;
 import org.batfish.coordinator.AnalysisMetadataMgr.AnalysisType;
-import org.batfish.coordinator.config.Settings;
+import org.batfish.datamodel.TestrigMetadata;
+import org.batfish.datamodel.pojo.Node;
+import org.batfish.datamodel.pojo.Topology;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,11 +54,17 @@ public class WorkMgrTest {
 
   @Before
   public void initManager() throws Exception {
-    Settings settings = new Settings(new String[] {});
-    BatfishLogger logger = new BatfishLogger("debug", false);
-    Main.mainInit(new String[] {"-containerslocation", _folder.getRoot().toString()});
-    Main.setLogger(logger);
-    _manager = new WorkMgr(settings, logger);
+    WorkMgrTestUtils.initWorkManager(_folder);
+    _manager = Main.getWorkMgr();
+  }
+
+  private static void createTestrigWithMetadata(String container, String testrig)
+      throws IOException {
+    Path containerDir =
+        Main.getSettings().getContainersLocation().resolve(container).toAbsolutePath();
+    Files.createDirectories(containerDir.resolve(BfConsts.RELPATH_TESTRIGS_DIR).resolve(testrig));
+    TestrigMetadataMgr.writeMetadata(
+        new TestrigMetadata(new Date().toInstant(), "env"), container, testrig);
   }
 
   @Test
@@ -136,6 +150,40 @@ public class WorkMgrTest {
     _manager.initContainer("container", null);
     Container container = _manager.getContainer("container");
     assertThat(container, equalTo(Container.of("container", new TreeSet<>())));
+  }
+
+  @Test
+  public void getLatestTestrig() throws IOException {
+    _manager.initContainer("container", null);
+
+    // empty should be returned if no testrigs exist
+    assertThat(_manager.getLatestTestrig("container"), equalTo(Optional.empty()));
+
+    // create testrig1, which should be returned
+    createTestrigWithMetadata("container", "testrig1");
+    assertThat(_manager.getLatestTestrig("container"), equalTo(Optional.of("testrig1")));
+
+    // create a second testrig, which should be returned
+    createTestrigWithMetadata("container", "testrig2");
+    assertThat(_manager.getLatestTestrig("container"), equalTo(Optional.of("testrig2")));
+  }
+
+  @Test
+  public void getNodes() throws IOException {
+    _manager.initContainer("container", null);
+
+    // create a testrig and write a topology object for it
+    createTestrigWithMetadata("container", "testrig1");
+    Topology topology = new Topology("testrig1");
+    topology.setNodes(ImmutableSet.of(new Node("a1"), new Node("b1")));
+    CommonUtil.writeFile(
+        _manager
+            .getdirTestrig("container", "testrig1")
+            .resolve(BfConsts.RELPATH_TESTRIG_POJO_TOPOLOGY_PATH),
+        BatfishObjectMapper.mapper().writeValueAsString(topology));
+
+    // should get the nodes of the topology when we ask for it
+    assertThat(_manager.getNodes("container", "testrig1"), equalTo(ImmutableSet.of("a1", "b1")));
   }
 
   @Test
@@ -395,5 +443,20 @@ public class WorkMgrTest {
     } catch (IOException e) {
       throw new BatfishException("Failed to read metadata", e);
     }
+  }
+
+  @Test
+  public void testGenerateDateString() {
+    assertThat(
+        generateFileDateString("foo", Instant.parse("2018-04-19T12:34:56Z")),
+        equalTo("foo_2018-04-19T12-34-56.000"));
+
+    assertThat(
+        generateFileDateString(
+            "foo",
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                .parse("2018-04-19T12:34:56-08:00")
+                .query(Instant::from)),
+        equalTo("foo_2018-04-19T20-34-56.000"));
   }
 }

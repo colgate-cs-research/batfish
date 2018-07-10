@@ -11,7 +11,17 @@ a_application
    APPLICATION name = variable
    (
       aa_common
+      | aa_description
       | aa_term
+   )
+;
+
+a_application_set
+:
+   APPLICATION_SET name = variable
+   (
+      aas_application
+      | aas_application_set
    )
 ;
 
@@ -31,9 +41,32 @@ aa_common
    | aat_uuid
 ;
 
+aa_description
+:
+   DESCRIPTION null_filler
+;
+
 aa_term
 :
-   TERM name = variable aa_common
+   TERM name = variable aa_common+
+;
+
+aas_application
+:
+   APPLICATION
+   (
+      junos_application
+      | name = variable
+   )
+;
+
+aas_application_set
+:
+   APPLICATION_SET
+   (
+      junos_application_set
+      | name = variable
+   )
 ;
 
 aat_alg
@@ -129,5 +162,9 @@ application_protocol
 
 s_applications
 :
-   APPLICATIONS a_application
+   APPLICATIONS
+   (
+      a_application
+      | a_application_set
+   )
 ;

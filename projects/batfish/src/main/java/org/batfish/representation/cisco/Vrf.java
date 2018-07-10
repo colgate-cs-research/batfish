@@ -3,13 +3,18 @@ package org.batfish.representation.cisco;
 import java.util.HashSet;
 import java.util.Set;
 import org.batfish.common.util.ComparableStructure;
+import org.batfish.representation.cisco.nx.CiscoNxBgpVrfConfiguration;
 
 public final class Vrf extends ComparableStructure<String> {
 
   /** */
   private static final long serialVersionUID = 1L;
 
+  private CiscoNxBgpVrfConfiguration _bgpNxConfig;
+
   private BgpProcess _bgpProcess;
+
+  private String _description;
 
   private IsisProcess _isisProcess;
 
@@ -24,8 +29,16 @@ public final class Vrf extends ComparableStructure<String> {
     _staticRoutes = new HashSet<>();
   }
 
+  public CiscoNxBgpVrfConfiguration getBgpNxConfig() {
+    return _bgpNxConfig;
+  }
+
   public BgpProcess getBgpProcess() {
     return _bgpProcess;
+  }
+
+  public String getDescription() {
+    return _description;
   }
 
   public IsisProcess getIsisProcess() {
@@ -44,8 +57,16 @@ public final class Vrf extends ComparableStructure<String> {
     return _staticRoutes;
   }
 
+  public void setBgpNxConfig(CiscoNxBgpVrfConfiguration bgpNxConfig) {
+    _bgpNxConfig = bgpNxConfig;
+  }
+
   public void setBgpProcess(BgpProcess bgpProcess) {
     _bgpProcess = bgpProcess;
+  }
+
+  public void setDescription(String description) {
+    _description = description;
   }
 
   public void setIsisProcess(IsisProcess isisProcess) {

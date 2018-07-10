@@ -1,110 +1,268 @@
 package org.batfish.question;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.auto.service.AutoService;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
+import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
-import java.util.Optional;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 import org.batfish.common.Answerer;
 import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
-import org.batfish.datamodel.NodeRoleSpecifier;
+import org.batfish.common.util.BatfishObjectMapper;
 import org.batfish.datamodel.answers.AnswerElement;
+import org.batfish.datamodel.answers.Schema;
 import org.batfish.datamodel.collections.NamedStructureOutlierSet;
 import org.batfish.datamodel.collections.OutlierSet;
 import org.batfish.datamodel.collections.RoleBasedOutlierSet;
-import org.batfish.datamodel.questions.IRoleConsistencyQuestion;
+import org.batfish.datamodel.questions.AbstractRoleConsistencyQuestion;
+import org.batfish.datamodel.questions.DisplayHints;
+import org.batfish.datamodel.questions.DisplayHints.Composition;
+import org.batfish.datamodel.questions.DisplayHints.Extraction;
 import org.batfish.datamodel.questions.Question;
+import org.batfish.datamodel.questions.Question.InstanceData;
 import org.batfish.question.NamedStructureRoleConsistencyQuestionPlugin.NamedStructureRoleConsistencyQuestion;
 import org.batfish.question.OutliersQuestionPlugin.OutliersAnswerElement;
 import org.batfish.question.OutliersQuestionPlugin.OutliersQuestion;
 import org.batfish.question.PerRoleQuestionPlugin.PerRoleAnswerElement;
 import org.batfish.question.PerRoleQuestionPlugin.PerRoleQuestion;
 import org.batfish.question.RoleConsistencyQuestionPlugin.RoleConsistencyQuestion;
+import org.batfish.question.jsonpath.JsonPathExtractionHint;
+import org.batfish.question.jsonpath.JsonPathExtractionHint.UseType;
+import org.batfish.question.jsonpath.JsonPathQuery;
+import org.batfish.question.jsonpath.JsonPathQuestionPlugin.JsonPathQuestion;
 import org.batfish.role.OutliersHypothesis;
 
 @AutoService(Plugin.class)
 public class InferPoliciesQuestionPlugin extends QuestionPlugin {
 
-  public static class InferPoliciesAnswerElement implements AnswerElement {
+  /** Helper to generate a name for a role consistency question. */
+  private static String getInstanceNameForQuestion(AbstractRoleConsistencyQuestion roleQ) {
+    switch (roleQ.getHypothesis()) {
+      case SAME_DEFINITION:
+      case SAME_NAME:
+        {
+          NamedStructureRoleConsistencyQuestion q = (NamedStructureRoleConsistencyQuestion) roleQ;
+          return q.getHypothesis().hypothesisName() + " " + q.getStructType();
+        }
+      case SAME_SERVERS:
+        {
+          RoleConsistencyQuestion q = (RoleConsistencyQuestion) roleQ;
+          return q.getHypothesis().hypothesisName() + " " + q.getPropertyName();
+        }
+      default:
+        return "Unknown question for hypothesis: " + roleQ.getHypothesis().hypothesisName();
+    }
+  }
+
+  /** Helper to generate display hints for a role question. */
+  private static DisplayHints getDisplayHintsForQuestion(AbstractRoleConsistencyQuestion roleQ) {
+    ImmutableMap.Builder<String, Extraction> extractions = ImmutableMap.builder();
+
+    /////// All role consistency questions have outliers.
+    JsonPathExtractionHint outliers = new JsonPathExtractionHint();
+    outliers.setUse(UseType.SUFFIXOFSUFFIX);
+    outliers.setFilter("$.outliers[*]");
+    Extraction outliersEx = new Extraction();
+    try {
+      outliersEx.setMethod(
+          BatfishObjectMapper.clone(outliers, new TypeReference<Map<String, JsonNode>>() {}));
+    } catch (IOException e) {
+      throw new BatfishException("Error creating extraction", e);
+    }
+    outliersEx.setSchema(Schema.list(Schema.STRING));
+    extractions.put("outlierNames", outliersEx);
+
+    /////// All role consistency questions have a role in the answer.
+    JsonPathExtractionHint role = new JsonPathExtractionHint();
+    role.setUse(UseType.SUFFIXOFSUFFIX);
+    role.setFilter("$.role");
+    Extraction roleEx = new Extraction();
+    try {
+      roleEx.setMethod(
+          BatfishObjectMapper.clone(role, new TypeReference<Map<String, JsonNode>>() {}));
+    } catch (IOException e) {
+      throw new BatfishException("Error creating extraction", e);
+    }
+    roleEx.setSchema(Schema.STRING);
+    extractions.put("role", roleEx);
+
+    String hypothesisSpecificDesc;
+
+    switch (roleQ.getHypothesis()) {
+      case SAME_NAME:
+        {
+          JsonPathExtractionHint name = new JsonPathExtractionHint();
+          name.setUse(UseType.SUFFIXOFSUFFIX);
+          name.setFilter("$.name");
+          Extraction nameEx = new Extraction();
+          try {
+            nameEx.setMethod(
+                BatfishObjectMapper.clone(name, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          nameEx.setSchema(Schema.STRING);
+          extractions.put("name", nameEx);
+
+          JsonPathExtractionHint struct = new JsonPathExtractionHint();
+          struct.setUse(UseType.SUFFIXOFSUFFIX);
+          struct.setFilter("$.structType");
+          Extraction structEx = new Extraction();
+          try {
+            structEx.setMethod(
+                BatfishObjectMapper.clone(struct, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          structEx.setSchema(Schema.STRING);
+          extractions.put("structType", structEx);
+
+          hypothesisSpecificDesc = "define a ${structType} named ${name}";
+          break;
+        }
+
+      case SAME_SERVERS:
+        {
+          JsonPathExtractionHint name = new JsonPathExtractionHint();
+          name.setUse(UseType.SUFFIXOFSUFFIX);
+          name.setFilter("$.name");
+          Extraction nameEx = new Extraction();
+          try {
+            nameEx.setMethod(
+                BatfishObjectMapper.clone(name, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          nameEx.setSchema(Schema.STRING);
+          extractions.put("name", nameEx);
+
+          JsonPathExtractionHint definition = new JsonPathExtractionHint();
+          definition.setUse(UseType.SUFFIXOFSUFFIX);
+          definition.setFilter("$.definition[*]");
+          Extraction definitionEx = new Extraction();
+          try {
+            definitionEx.setMethod(
+                BatfishObjectMapper.clone(
+                    definition, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          definitionEx.setSchema(Schema.list(Schema.IP));
+          extractions.put("definition", definitionEx);
+          hypothesisSpecificDesc = "have ${name} equal to ${definition}";
+          break;
+        }
+
+      case SAME_DEFINITION:
+        {
+          JsonPathExtractionHint name = new JsonPathExtractionHint();
+          name.setUse(UseType.SUFFIXOFSUFFIX);
+          name.setFilter("$.name");
+          Extraction nameEx = new Extraction();
+          try {
+            nameEx.setMethod(
+                BatfishObjectMapper.clone(name, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          nameEx.setSchema(Schema.STRING);
+          extractions.put("name", nameEx);
+
+          JsonPathExtractionHint struct = new JsonPathExtractionHint();
+          struct.setUse(UseType.SUFFIXOFSUFFIX);
+          struct.setFilter("$.structType");
+          Extraction structEx = new Extraction();
+          try {
+            structEx.setMethod(
+                BatfishObjectMapper.clone(struct, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          structEx.setSchema(Schema.STRING);
+          extractions.put("structType", structEx);
+
+          JsonPathExtractionHint definition = new JsonPathExtractionHint();
+          definition.setUse(UseType.SUFFIXOFSUFFIX);
+          definition.setFilter("$.structDefinition");
+          Extraction definitionEx = new Extraction();
+          try {
+            definitionEx.setMethod(
+                BatfishObjectMapper.clone(
+                    definition, new TypeReference<Map<String, JsonNode>>() {}));
+          } catch (IOException e) {
+            throw new BatfishException("Error creating extraction", e);
+          }
+          definitionEx.setSchema(Schema.OBJECT);
+          extractions.put("structDefinition", definitionEx);
+
+          hypothesisSpecificDesc =
+              "define a ${structType} named ${name} with definition ${structDefinition}";
+          break;
+        }
+
+      default:
+        hypothesisSpecificDesc = "[WARN: unhandled hypothesis type]";
+    }
+
+    Composition nodeComp = new Composition();
+    nodeComp.setSchema(Schema.list(Schema.NODE));
+    nodeComp.setDictionary(ImmutableMap.of("name", "outlierNames"));
+
+    return new DisplayHints(
+        ImmutableMap.of("outliers", nodeComp),
+        extractions.build(),
+        String.format(
+            "Hypothesis %s for role ${role}: all nodes should %s, but ${outliers} do not.",
+            roleQ.getHypothesis(), hypothesisSpecificDesc));
+  }
+
+  private static JsonPathQuestion makeQuestionWithHints(AbstractRoleConsistencyQuestion roleQ) {
+    JsonPathQuestion ret = new JsonPathQuestion();
+
+    ret.setInnerQuestion(roleQ);
+
+    JsonPathQuery path = new JsonPathQuery("$.answers[?(@.outliers)]", true);
+    path.setDisplayHints(getDisplayHintsForQuestion(roleQ));
+    ret.setPaths(Collections.singletonList(path));
+
+    InstanceData instance = new InstanceData();
+    instance.setInstanceName(getInstanceNameForQuestion(roleQ));
+    ret.setInstance(instance);
+
+    return ret;
+  }
+
+  public static class InferPoliciesAnswerElement extends AnswerElement {
 
     private static final String PROP_ROLE_CONSISTENCY_QUESTIONS = "roleConsistencyQuestions";
 
-    private List<IRoleConsistencyQuestion> _roleConsistencyQuestions;
+    @JsonProperty(PROP_ROLE_CONSISTENCY_QUESTIONS)
+    private List<JsonPathQuestion> _roleConsistencyQuestions;
 
     public InferPoliciesAnswerElement() {
       _roleConsistencyQuestions = new LinkedList<>();
     }
 
-    @Override
-    public String prettyPrint() {
-      StringBuilder sb = new StringBuilder("Results for infer policies\n");
-
-      for (IRoleConsistencyQuestion question : _roleConsistencyQuestions) {
-
-        sb.append("Policy: nodes in the same role should have ");
-        switch (question.getHypothesis()) {
-          case SAME_DEFINITION:
-            NamedStructureRoleConsistencyQuestion nsrcq =
-                (NamedStructureRoleConsistencyQuestion) question;
-            sb.append(
-                "the same definition for same-named structures of type " + nsrcq.getStructType());
-            break;
-          case SAME_NAME:
-            NamedStructureRoleConsistencyQuestion nsrcq2 =
-                (NamedStructureRoleConsistencyQuestion) question;
-            sb.append("same-named structures of type " + nsrcq2.getStructType());
-            break;
-          case SAME_SERVERS:
-            RoleConsistencyQuestion rcq = (RoleConsistencyQuestion) question;
-            sb.append("the same " + rcq.getPropertyName());
-            break;
-          default:
-            throw new BatfishException("Unrecognized hypothesis " + question.getHypothesis());
-        }
-        sb.append("\n");
-        Optional<NodeRoleSpecifier> specifierOpt = question.getRoleSpecifier();
-        if (specifierOpt.isPresent()) {
-          NodeRoleSpecifier specifier = specifierOpt.get();
-          List<String> roleRegexes = specifier.getRoleRegexes();
-          SortedMap<String, SortedSet<String>> roleMap = specifier.getRoleMap();
-
-          sb.append("Role specifier:\n");
-          if (!roleRegexes.isEmpty()) {
-            sb.append("  Role regexes: \n");
-            for (String regex : roleRegexes) {
-              sb.append("    " + regex + "\n");
-            }
-          }
-          if (!roleMap.isEmpty()) {
-            sb.append("  Role map: \n");
-            for (Map.Entry<String, SortedSet<String>> entry : specifier.getRoleMap().entrySet()) {
-              sb.append("    " + entry + "\n");
-            }
-          }
-        }
-      }
-
-      return sb.toString();
-    }
-
-    @JsonProperty(PROP_ROLE_CONSISTENCY_QUESTIONS)
-    public List<IRoleConsistencyQuestion> getRoleConsistencyQuestions() {
-      return _roleConsistencyQuestions;
-    }
-
     public void addRoleConsistencyQuestions(
-        List<IRoleConsistencyQuestion> roleConsistencyQuestions) {
-      _roleConsistencyQuestions.addAll(roleConsistencyQuestions);
+        List<AbstractRoleConsistencyQuestion> roleConsistencyQuestions) {
+      roleConsistencyQuestions
+          .stream()
+          .map(InferPoliciesQuestionPlugin::makeQuestionWithHints)
+          .forEach(_roleConsistencyQuestions::add);
     }
   }
 
@@ -134,7 +292,7 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
       return _answerElement;
     }
 
-    private List<IRoleConsistencyQuestion> serverConsistencyPolicies() {
+    private List<AbstractRoleConsistencyQuestion> serverConsistencyPolicies() {
 
       OutliersHypothesis hypothesis = OutliersHypothesis.SAME_SERVERS;
 
@@ -162,7 +320,7 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
       return policiesAboveThreshold(outliersPerPropertyName, hypothesis);
     }
 
-    private List<IRoleConsistencyQuestion> namedStructureConsistencyPolicies(
+    private List<AbstractRoleConsistencyQuestion> namedStructureConsistencyPolicies(
         OutliersHypothesis hypothesis) {
 
       SortedMap<String, AnswerElement> roleAnswers = perRoleOutlierInfo(hypothesis);
@@ -182,10 +340,10 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
       innerQ.setHypothesis(hypothesis);
       innerQ.setVerbose(true);
 
-      PerRoleQuestionPlugin outerPlugin = new PerRoleQuestionPlugin();
-      PerRoleQuestion outerQ = outerPlugin.createQuestion();
-      outerQ.setQuestion(innerQ);
+      InferPoliciesQuestion question = (InferPoliciesQuestion) _question;
+      PerRoleQuestion outerQ = new PerRoleQuestion(null, innerQ, question.getRoleDimension(), null);
 
+      PerRoleQuestionPlugin outerPlugin = new PerRoleQuestionPlugin();
       PerRoleAnswerElement roleAE = outerPlugin.createAnswerer(outerQ, _batfish).answer();
 
       SortedMap<String, AnswerElement> answers = roleAE.getAnswers();
@@ -216,10 +374,11 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
       return outliersPerProperty;
     }
 
-    private <T extends RoleBasedOutlierSet> List<IRoleConsistencyQuestion> policiesAboveThreshold(
-        Multimap<String, T> outliersPerPropertyName, OutliersHypothesis hypothesis) {
-      NodeRoleSpecifier nodeRoleSpecifier = _batfish.getNodeRoleSpecifier(false);
-      List<IRoleConsistencyQuestion> policies = new LinkedList<>();
+    private <T extends RoleBasedOutlierSet>
+        List<AbstractRoleConsistencyQuestion> policiesAboveThreshold(
+            Multimap<String, T> outliersPerPropertyName, OutliersHypothesis hypothesis) {
+      InferPoliciesQuestion question = (InferPoliciesQuestion) _question;
+      List<AbstractRoleConsistencyQuestion> policies = new LinkedList<>();
       for (String name : outliersPerPropertyName.keySet()) {
         Collection<T> outlierSets = outliersPerPropertyName.get(name);
         int conformers = outlierSets.stream().mapToInt(oset -> oset.getConformers().size()).sum();
@@ -230,16 +389,13 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
             case SAME_DEFINITION:
             case SAME_NAME:
               NamedStructureRoleConsistencyQuestion policy =
-                  new NamedStructureRoleConsistencyQuestion();
-              policy.setHypothesis(hypothesis);
-              policy.setRoleSpecifier(nodeRoleSpecifier);
-              policy.setStructType(name);
+                  new NamedStructureRoleConsistencyQuestion(
+                      name, hypothesis, question.getRoleDimension());
               policies.add(policy);
               break;
             case SAME_SERVERS:
-              RoleConsistencyQuestion rcpolicy = new RoleConsistencyQuestion();
-              rcpolicy.setRoleSpecifier(nodeRoleSpecifier);
-              rcpolicy.setPropertyName(name);
+              RoleConsistencyQuestion rcpolicy =
+                  new RoleConsistencyQuestion(question.getRoleDimension(), name);
               policies.add(rcpolicy);
               break;
             default:
@@ -267,7 +423,14 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
    */
   public static final class InferPoliciesQuestion extends Question {
 
-    public InferPoliciesQuestion() {}
+    private static final String PROP_ROLE_DIMENSION = "roleDimension";
+
+    @Nullable private String _roleDimension;
+
+    @JsonCreator
+    public InferPoliciesQuestion(@JsonProperty(PROP_ROLE_DIMENSION) String roleDimension) {
+      _roleDimension = roleDimension;
+    }
 
     @Override
     public boolean getDataPlane() {
@@ -278,6 +441,11 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
     public String getName() {
       return "InferPolicies";
     }
+
+    @JsonProperty(PROP_ROLE_DIMENSION)
+    public String getRoleDimension() {
+      return _roleDimension;
+    }
   }
 
   @Override
@@ -287,6 +455,6 @@ public class InferPoliciesQuestionPlugin extends QuestionPlugin {
 
   @Override
   protected Question createQuestion() {
-    return new InferPoliciesQuestion();
+    return new InferPoliciesQuestion(null);
   }
 }

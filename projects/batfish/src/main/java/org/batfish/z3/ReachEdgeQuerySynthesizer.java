@@ -1,16 +1,18 @@
 package org.batfish.z3;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.batfish.datamodel.Edge;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.z3.expr.AndExpr;
 import org.batfish.z3.expr.BasicRuleStatement;
-import org.batfish.z3.expr.BasicStateExpr;
-import org.batfish.z3.expr.CurrentIsOriginalExpr;
+import org.batfish.z3.expr.EqExpr;
 import org.batfish.z3.expr.HeaderSpaceMatchExpr;
 import org.batfish.z3.expr.QueryStatement;
-import org.batfish.z3.expr.SaneExpr;
+import org.batfish.z3.expr.StateExpr;
+import org.batfish.z3.expr.TrueExpr;
+import org.batfish.z3.expr.VarIntExpr;
 import org.batfish.z3.state.Accept;
 import org.batfish.z3.state.OriginateVrf;
 import org.batfish.z3.state.PreInInterface;
@@ -35,17 +37,17 @@ public class ReachEdgeQuerySynthesizer extends BaseQuerySynthesizer {
       Edge edge,
       boolean requireAcceptance,
       HeaderSpace headerSpace) {
-    _originationNode = originationNode;
-    _ingressVrf = ingressVrf;
     _edge = edge;
-    _requireAcceptance = requireAcceptance;
     _headerSpace = headerSpace;
+    _ingressVrf = ingressVrf;
+    _originationNode = originationNode;
+    _requireAcceptance = requireAcceptance;
   }
 
   @Override
   public ReachabilityProgram getReachabilityProgram(SynthesizerInput input) {
-    ImmutableSet.Builder<BasicStateExpr> queryPreconditionPreTransformationStates =
-        ImmutableSet.<BasicStateExpr>builder()
+    ImmutableSet.Builder<StateExpr> queryPreconditionPreTransformationStates =
+        ImmutableSet.<StateExpr>builder()
             .add(new PreOutEdge(_edge))
             .add(new PreInInterface(_edge.getNode2(), _edge.getInt2()));
     if (_requireAcceptance) {
@@ -59,9 +61,11 @@ public class ReachEdgeQuerySynthesizer extends BaseQuerySynthesizer {
                 new BasicRuleStatement(
                     new AndExpr(
                         ImmutableList.of(
-                            CurrentIsOriginalExpr.INSTANCE,
-                            new HeaderSpaceMatchExpr(_headerSpace),
-                            SaneExpr.INSTANCE)),
+                            new EqExpr(
+                                new VarIntExpr(Field.ORIG_SRC_IP), new VarIntExpr(Field.SRC_IP)),
+                            _headerSpace == null
+                                ? TrueExpr.INSTANCE
+                                : new HeaderSpaceMatchExpr(_headerSpace, ImmutableMap.of()))),
                     new OriginateVrf(_originationNode, _ingressVrf)),
                 new BasicRuleStatement(
                     queryPreconditionPreTransformationStates.build(), Query.INSTANCE)))

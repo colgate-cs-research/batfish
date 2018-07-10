@@ -244,6 +244,11 @@ ACTIVATE_SERVICE_WHITELIST
    'activate-service-whitelist'
 ;
 
+ACTIVATED_SERVICE_TEMPLATE
+:
+   'activated-service-template'
+;
+
 ACTIVATION_CHARACTER
 :
    'activation-character'
@@ -394,6 +399,11 @@ ADVERTISE_INACTIVE
    'advertise-inactive'
 ;
 
+ADVERTISE_MAP
+:
+   'advertise-map'
+;
+
 AES
 :
    'aes'
@@ -522,6 +532,21 @@ AGGREGATE_ADDRESS
 AGING
 :
    'aging'
+;
+
+AH
+:
+   'ah'
+;
+
+AH_MD5_HMAC
+:
+   'ah-md5-hmac'
+;
+
+AH_SHA_HMAC
+:
+   'ah-sha-hmac'
 ;
 
 AHP
@@ -677,6 +702,11 @@ AM_SCAN_PROFILE
 AMON
 :
    'amon'
+;
+
+AMT
+:
+   'amt'
 ;
 
 AND
@@ -846,6 +876,11 @@ ARP
 
 ;
 
+AS_NUMBER
+:
+   'as-number'
+;
+
 AS_OVERRIDE
 :
    'as-override'
@@ -1011,6 +1046,11 @@ AUTH_SERVER
    'auth-server'
 ;
 
+AUTH_TYPE
+:
+   'auth-type'
+;
+
 AUTHENTICATE
 :
    'authenticate'
@@ -1039,6 +1079,11 @@ AUTHENTICATION_MAC
 AUTHENTICATION_PORT
 :
    'authentication-port'
+;
+
+AUTHENTICATION_RESTART
+:
+   'authentication-restart'
 ;
 
 AUTHENTICATION_RETRIES
@@ -1071,9 +1116,24 @@ AUTHORIZATION_REQUIRED
    'authorization-required'
 ;
 
+AUTHORIZATION_STATUS
+:
+   'authorization-status'
+;
+
 AUTHORIZATION_SERVER_GROUP
 :
    'authorization-server-group'
+;
+
+AUTHORIZE
+:
+   'authorize'
+;
+
+AUTHORIZED
+:
+   'authorized'
 ;
 
 AUTO
@@ -1099,6 +1159,11 @@ AUTO_CERT_PROV
 AUTO_COST
 :
    'auto-cost'
+;
+
+AUTO_DISCARD
+:
+   'auto-discard'
 ;
 
 AUTO_IMPORT
@@ -1241,6 +1306,66 @@ BASH
    'bash'
 ;
 
+BASIC_1_0
+:
+  'basic-1.0'
+;
+
+BASIC_2_0
+:
+  'basic-2.0'
+;
+
+BASIC_5_5
+:
+  'basic-5.5'
+;
+
+BASIC_6_0
+:
+  'basic-6.0'
+;
+
+BASIC_9_0
+:
+  'basic-9.0'
+;
+
+BASIC_11_0
+:
+  'basic-11.0'
+;
+
+BASIC_12_0
+:
+  'basic-12.0'
+;
+
+BASIC_18_0
+:
+  'basic-18.0'
+;
+
+BASIC_24_0
+:
+  'basic-24.0'
+;
+
+BASIC_36_0
+:
+  'basic-36.0'
+;
+
+BASIC_48_0
+:
+  'basic-48.0'
+;
+
+BASIC_54_0
+:
+  'basic-54.0'
+;
+
 BCMC_OPTIMIZATION
 :
    'bcmc-optimization'
@@ -1259,6 +1384,11 @@ BEACON
 BESTPATH
 :
    'bestpath'
+;
+
+BESTPATH_LIMIT
+:
+   'bestpath-limit'
 ;
 
 BEYOND_SCOPE
@@ -1791,14 +1921,19 @@ CLASS
    'class'
 ;
 
-CLASSLESS
+CLASS_DEFAULT
 :
-   'classless'
+   'class-default'
 ;
 
 CLASS_MAP
 :
    'class-map'
+;
+
+CLASSLESS
+:
+   'classless'
 ;
 
 CLEANUP
@@ -1809,6 +1944,11 @@ CLEANUP
 CLEAR
 :
    'clear'
+;
+
+CLEAR_SESSION
+:
+   'clear-session'
 ;
 
 CLI
@@ -1938,6 +2078,11 @@ COMMON
    'common'
 ;
 
+COMMON_NAME
+:
+   'common-name'
+;
+
 COMMUNITY
 :
    'community'
@@ -1958,7 +2103,7 @@ COMMUNITY_LIST
 
 COMMUNITY_MAP
 :
-   'community-map'
+   'community-map' -> pushMode ( M_Name )
 ;
 
 COMMUNITY_SET
@@ -2076,6 +2221,11 @@ CONNECTION
    'connection'
 ;
 
+CONNECTION_MODE
+:
+   'connection-mode'
+;
+
 CONNECTION_REUSE
 :
    'connection-reuse'
@@ -2101,6 +2251,11 @@ CONTACT_NAME
    'contact-name' -> pushMode ( M_Description )
 ;
 
+CONTENT_TYPE
+:
+   'content-type'
+;
+
 CONTEXT
 :
    'context'
@@ -2120,6 +2275,11 @@ CONTINUE
 CONTRACT_ID
 :
    'contract-id'
+;
+
+CONTROL
+:
+   'control'
 ;
 
 CONTROL_APPS_USE_MGMT_PORT
@@ -2182,6 +2342,11 @@ COPY
    'copy'
 ;
 
+COPY_ATTRIBUTES
+:
+   'copy-attributes'
+;
+
 COS
 :
    'cos'
@@ -2200,6 +2365,11 @@ COS_QUEUE_GROUP
 COST
 :
    'cost'
+;
+
+COST_COMMUNITY
+:
+   'cost-community'
 ;
 
 COUNT
@@ -2332,6 +2502,11 @@ CSNP_INTERVAL
    'csnp-interval'
 ;
 
+CSR_PARAMS
+:
+   'csr-params'
+;
+
 CTIQBE
 :
    'ctiqbe'
@@ -2350,6 +2525,11 @@ CTS
 CURRENT_CONFIGURATION
 :
    'Current configuration'
+;
+
+CUSTOM
+:
+   'custom'
 ;
 
 CUSTOMER_ID
@@ -3092,6 +3272,11 @@ DO
    'do'
 ;
 
+DO_UNTIL_FAILURE
+:
+   'do-until-failure'
+;
+
 DOCSIS_ENABLE
 :
    'docsis-enable'
@@ -3232,6 +3417,11 @@ DOWNSTREAM_START_THRESHOLD
    'downstream-start-threshold'
 ;
 
+DPG
+:
+    'dpg'
+;
+
 DR_PRIORITY
 :
    'dr-priority'
@@ -3307,9 +3497,19 @@ DTMF_RELAY
    'dtmf-relay'
 ;
 
+DTP
+:
+   'dtp'
+;
+
 DUAL_ACTIVE
 :
    'dual-active'
+;
+
+DUAL_AS
+:
+   'dual-as'
 ;
 
 DUAL_MODE_DEFAULT_VLAN
@@ -3347,6 +3547,11 @@ DYNAMIC_ACCESS_POLICY_RECORD
    'dynamic-access-policy-record'
 ;
 
+DYNAMIC_AUTHOR
+:
+   'dynamic-author'
+;
+
 DYNAMIC_CAPABILITY
 :
    'dynamic-capability'
@@ -3370,6 +3575,16 @@ DYNAMIC_MCAST_OPTIMIZATION
 DYNAMIC_MCAST_OPTIMIZATION_THRESH
 :
    'dynamic-mcast-optimization-thresh'
+;
+
+E164
+:
+    'e164'
+;
+
+E164_PATTERN_MAP
+:
+    'e164-pattern-map'
 ;
 
 EAP_PASSTHROUGH
@@ -3667,6 +3882,11 @@ EOU
    'eou'
 ;
 
+EPM
+:
+   'epm'
+;
+
 EQ
 :
    'eq'
@@ -3737,9 +3957,60 @@ ESP_AES
    'esp-aes'
 ;
 
+ESP_AES128
+:
+   'esp-aes128'
+;
+
+ESP_AES192
+:
+   'esp-aes192'
+;
+
+ESP_AES256
+:
+   'esp-aes256'
+;
+
+
+ESP_DES
+:
+   'esp-des'
+;
+
+ESP_GCM
+:
+   'esp-gcm'
+;
+
+ESP_AES128_GCM
+:
+   'esp-aes128-gcm'
+;
+
+ESP_AES256_GCM
+:
+   'esp-aes256-gcm'
+;
+
+ESP_GMAC
+:
+   'esp-gmac'
+;
+
 ESP_MD5_HMAC
 :
    'esp-md5-hmac'
+;
+
+ESP_NULL
+:
+   'esp-null'
+;
+
+ESP_SEAL
+:
+   'esp-seal'
 ;
 
 ESP_SHA_HMAC
@@ -3750,6 +4021,11 @@ ESP_SHA_HMAC
 ESP_SHA256_HMAC
 :
    'esp-sha256-hmac'
+;
+
+ESP_SHA512_HMAC
+:
+   'esp-sha512-hmac'
 ;
 
 ESSID
@@ -3865,6 +4141,16 @@ EXEC_TIMEOUT
 EXECUTE
 :
    'execute' -> pushMode ( M_Execute )
+;
+
+EXEMPT
+:
+   'exempt'
+;
+
+EXIST_MAP
+:
+   'exist-map'
 ;
 
 EXIT
@@ -4281,9 +4567,19 @@ FLUSH_R1_ON_NEW_R0
    'flush-r1-on-new-r0'
 ;
 
+FLUSH_ROUTES
+:
+   'flush-routes'
+;
+
 FORCE
 :
    'force'
+;
+
+FORCED
+:
+   'forced'
 ;
 
 FOR
@@ -4294,6 +4590,16 @@ FOR
 FORMAT
 :
    'format'
+;
+
+FORTYG_FULL
+:
+  '40gfull'
+;
+
+FORWARD
+:
+   'forward'
 ;
 
 FORWARD_DIGITS
@@ -4481,6 +4787,11 @@ GRACEFUL_RESTART
    'graceful-restart'
 ;
 
+GRACEFUL_RESTART_HELPER
+:
+   'graceful-restart-helper'
+;
+
 GRACETIME
 :
    'gracetime'
@@ -4556,9 +4867,49 @@ GROUP1
    'group1'
 ;
 
+GROUP14
+:
+   'group14'
+;
+
+GROUP15
+:
+   'group15'
+;
+
+GROUP16
+:
+   'group16'
+;
+
+GROUP19
+:
+   'group19'
+;
+
 GROUP2
 :
    'group2'
+;
+
+GROUP20
+:
+   'group20'
+;
+
+GROUP21
+:
+   'group21'
+;
+
+GROUP24
+:
+   'group24'
+;
+
+GROUP5
+:
+   'group5'
 ;
 
 GSHUT
@@ -4571,9 +4922,9 @@ GT
    'gt'
 ;
 
-GW_TYPE_PREFIX
+GUARANTEED
 :
-   'gw-type-prefix'
+   'guaranteed'
 ;
 
 GUARD
@@ -4594,6 +4945,11 @@ GUEST_LOGON
 GUEST_MODE
 :
    'guest-mode'
+;
+
+GW_TYPE_PREFIX
+:
+   'gw-type-prefix'
 ;
 
 H225
@@ -4654,6 +5010,11 @@ HASH
 HASH_ALGORITHM
 :
    'hash-algorithm'
+;
+
+HEADER_COMPRESSION
+:
+   'header-compression'
 ;
 
 HEADER_PASSING
@@ -4921,6 +5282,11 @@ IDENT
    'ident'
 ;
 
+IDENTIFIER
+:
+   'identifier'
+;
+
 IDENTITY
 :
    'identity'
@@ -4954,6 +5320,11 @@ IDS_PROFILE
 IEC
 :
    'iec'
+;
+
+IETF_FORMAT
+:
+   'ietf-format'
 ;
 
 IF
@@ -5009,6 +5380,11 @@ IGRP
 IGNORE
 :
    'ignore'
+;
+
+IGNORE_ATTACHED_BIT
+:
+   'ignore-attached-bit'
 ;
 
 IGP
@@ -5181,6 +5557,11 @@ INITIAL_ROLE
    'initial-role'
 ;
 
+INJECT_MAP
+:
+   'inject-map'
+;
+
 INPUT
 :
    'input'
@@ -5298,6 +5679,11 @@ IPENACL
    'ipenacl'
 ;
 
+IPHC_FORMAT
+:
+   'iphc-format'
+;
+
 IPINIP
 :
    'ipinip'
@@ -5311,6 +5697,11 @@ IPSEC
 IPSEC_ISAKMP
 :
    'ipsec-isakmp'
+;
+
+IPSEC_MANUAL
+:
+   'ipsec-manual'
 ;
 
 IPSEC_OVER_TCP
@@ -5371,6 +5762,11 @@ IRDP
 ISAKMP
 :
    'isakmp'
+;
+
+ISAKMP_PROFILE
+:
+   'isakmp-profile'
 ;
 
 ISDN
@@ -5436,6 +5832,11 @@ JUMBO
 JUMBOMTU
 :
    'jumbomtu'
+;
+
+KBPS
+:
+   'kbps'
 ;
 
 KEEPALIVE
@@ -5511,6 +5912,21 @@ KEYSTORE
 KLOGIN
 :
    'klogin'
+;
+
+KRB5
+:
+   'krb5'
+;
+
+KRB5_TELNET
+:
+   'krb5-telnet'
+;
+
+KOD
+:
+   'kod'
 ;
 
 KRON
@@ -5608,6 +6024,11 @@ LAPB
    'lapb'
 ;
 
+LARGE
+:
+   'large'
+;
+
 LAST_AS
 :
    'last-as'
@@ -5651,6 +6072,11 @@ LDP
 LE
 :
    'le'
+;
+
+LEAK_MAP
+:
+   'leak-map'
 ;
 
 LEASE
@@ -5783,9 +6209,19 @@ LINK_TYPE
    'link-type'
 ;
 
+LINKSEC
+:
+   'linksec'
+;
+
 LINKDEBOUNCE
 :
    'linkdebounce'
+;
+
+LISP
+:
+   'lisp'
 ;
 
 LIST
@@ -5848,6 +6284,11 @@ LOCAL
    'local'
 ;
 
+LOCALITY
+:
+   'locality'
+;
+
 LOCAL_ADDRESS
 :
    'local-address'
@@ -5861,6 +6302,11 @@ LOCAL_AS
 LOCAL_ASA
 :
    'LOCAL'
+;
+
+LOCAL_CASE
+:
+   'local-case'
 ;
 
 LOCAL_INTERFACE
@@ -6003,6 +6449,11 @@ LOTUSNOTES
    'lotusnotes'
 ;
 
+LOW_MEMORY
+:
+   'low-memory'
+;
+
 LPD
 :
    'lpd'
@@ -6046,6 +6497,101 @@ LSP_REFRESH_INTERVAL
 LT
 :
    'lt'
+;
+
+M0_7
+:
+  'm0-7'
+;
+
+M0_DOT
+:
+  'm0.'
+;
+
+M1_DOT
+:
+  'm1.'
+;
+
+M2_DOT
+:
+  'm2.'
+;
+
+M3_DOT
+:
+  'm3.'
+;
+
+M4_DOT
+:
+  'm4.'
+;
+
+M5_DOT
+:
+  'm5.'
+;
+
+M6_DOT
+:
+  'm6.'
+;
+
+M7_DOT
+:
+  'm7.'
+;
+
+M8_DOT
+:
+  'm8.'
+;
+
+M8_15
+:
+  'm8-15'
+;
+
+M9_DOT
+:
+  'm9.'
+;
+
+M10_DOT
+:
+  'm10.'
+;
+
+M11_DOT
+:
+  'm11.'
+;
+
+M12_DOT
+:
+  'm12.'
+;
+
+M13_DOT
+:
+  'm13.'
+;
+
+M14_DOT
+:
+  'm14.'
+;
+
+M15_DOT
+:
+  'm15.'
+;
+
+MAB
+:
+   'mab'
 ;
 
 MAC
@@ -6203,6 +6749,11 @@ MATCH_ANY
    'match-any'
 ;
 
+MATCH_NONE
+:
+   'match-none'
+;
+
 MATCHES_ANY
 :
    'matches-any'
@@ -6211,6 +6762,11 @@ MATCHES_ANY
 MATCHES_EVERY
 :
    'matches-every'
+;
+
+MAXAS_LIMIT
+:
+   'maxas-limit'
 ;
 
 MAX_ASSOCIATIONS
@@ -6608,6 +7164,16 @@ MIRROR
    'mirror'
 ;
 
+MISMATCH
+:
+   'mismatch'
+;
+
+MISSING_AS_WORST
+:
+   'missing-as-worst'
+;
+
 MLAG
 :
    'mlag'
@@ -6858,6 +7424,16 @@ MULTI_TOPOLOGY
    'multi-topology'
 ;
 
+MUST_SECURE
+:
+    'must-secure'
+;
+
+MVPN
+:
+   'mvpn'
+;
+
 MVR
 :
    'mvr'
@@ -6931,6 +7507,11 @@ NATIVE
 NATPOOL
 :
    'natpool'
+;
+
+NBAR
+:
+   'nbar'
 ;
 
 ND
@@ -7091,6 +7672,11 @@ NETWORK_DELAY
 NETWORK_OBJECT
 :
    'network-object'
+;
+
+NETWORK_QOS
+:
+   'network-qos'
 ;
 
 NETWORK_UNKNOWN
@@ -7258,9 +7844,29 @@ NON_CLIENT_NRT
    'non-client-nrt'
 ;
 
+NON_CRITICAL
+:
+   'non-critical'
+;
+
+NON_DETERMINISTIC
+:
+   'non-deterministic'
+;
+
 NON_DETERMINISTIC_MED
 :
    'non-deterministic-med'
+;
+
+NON_EXIST_MAP
+:
+   'non-exist-map'
+;
+
+NON_SILENT
+:
+    'non-silent'
 ;
 
 NONE
@@ -7360,7 +7966,22 @@ OBJECT
 
 OBJECT_GROUP
 :
-   'object-group'
+   'object-group' -> pushMode(M_ObjectGroup)
+;
+
+OBJSTORE
+:
+   'objstore'
+;
+
+OFDM
+:
+  'ofdm'
+;
+
+OFDM_THROUGHPUT
+:
+  'ofdm-throughput'
 ;
 
 ON
@@ -7393,14 +8014,34 @@ ONE
    'one'
 ;
 
+ONE_HUNDRED_FULL
+:
+  '100full'
+;
+
+ONE_HUNDREDG_FULL
+:
+  '100gfull'
+;
+
 ONE_OUT_OF
 :
    'one-out-of'
 ;
 
+ONE_THOUSAND_FULL
+:
+  '1000full'
+;
+
 ONEP
 :
    'onep'
+;
+
+ONLY_OFDM
+:
+  'only-ofdm'
 ;
 
 OPEN
@@ -7463,6 +8104,16 @@ OR
    'or'
 ;
 
+ORGANIZATION_NAME
+:
+   'organization-name'
+;
+
+ORGANIZATION_UNIT
+:
+   'organization-unit'
+;
+
 ORIGIN
 :
    'origin'
@@ -7491,6 +8142,11 @@ ORIGINATOR_ID
 OSPF
 :
    'ospf'
+;
+
+OSPF3
+:
+   'ospf3'
 ;
 
 OSPF_EXTERNAL_TYPE_1
@@ -7616,6 +8272,11 @@ PACKETSIZE
 PAGER
 :
    'pager'
+;
+
+PAGP
+:
+   'pagp'
 ;
 
 PAN
@@ -7768,6 +8429,11 @@ PAUSE
    'pause'
 ;
 
+PBR
+:
+  'pbr'
+;
+
 PCANYWHERE_DATA
 :
    'pcanywhere-data'
@@ -7801,6 +8467,11 @@ PEAKDETECT
 PEER
 :
    'peer'
+;
+
+PEERS
+:
+   'peers'
 ;
 
 PEER_ADDRESS
@@ -7863,6 +8534,11 @@ PENALTY_PERIOD
    'penalty-period'
 ;
 
+PERCENT_LITERAL
+:
+   'percent'
+;
+
 PERIODIC
 :
    'periodic'
@@ -7871,6 +8547,11 @@ PERIODIC
 PERIODIC_INVENTORY
 :
    'periodic-inventory'
+;
+
+PERIODIC_REFRESH
+:
+   'periodic-refresh'
 ;
 
 PERMANENT
@@ -8223,6 +8904,16 @@ PREFIX_LIST
    'prefix-list'
 ;
 
+PREFIX_PEER_TIMEOUT
+:
+   'prefix-peer-timeout'
+;
+
+PREFIX_PEER_WAIT
+:
+   'prefix-peer-wait'
+;
+
 PREFIX_SET
 :
    'prefix-set'
@@ -8398,6 +9089,11 @@ PROTOCOL
    'protocol'
 ;
 
+PROTOCOL_DISCOVERY
+:
+   'protocol-discovery'
+;
+
 PROTOCOL_HTTP
 :
    'protocol-http'
@@ -8556,6 +9252,16 @@ QUEUE_MONITOR
 QUEUE_SET
 :
    'queue-set'
+;
+
+QUEUEING
+:
+   'queueing'
+;
+
+QUEUING
+:
+   'queuing'
 ;
 
 QUIT
@@ -8768,6 +9474,11 @@ REDUNDANCY
    'redundancy'
 ;
 
+REDUNDANCY_GROUP
+:
+   'redundancy-group'
+;
+
 REFERENCE_BANDWIDTH
 :
    'reference-bandwidth'
@@ -8776,6 +9487,11 @@ REFERENCE_BANDWIDTH
 REFLECT
 :
    'reflect'
+;
+
+REFLECTION
+:
+   'reflection'
 ;
 
 REFLEXIVE_LIST
@@ -8878,9 +9594,9 @@ REMOTE_SPAN
    'remote-span'
 ;
 
-REMOVED
+REMOVE
 :
-   '<removed>'
+   'remove'
 ;
 
 REPLACE_AS
@@ -8896,6 +9612,11 @@ REPLY_TO
 REOPTIMIZE
 :
    'reoptimize'
+;
+
+REQ_RESP
+:
+   'req-resp'
 ;
 
 REQ_TRANS_POLICY
@@ -8943,9 +9664,34 @@ RESPONSE
    'response'
 ;
 
+RESTART
+:
+   'restart'
+;
+
+RESTART_TIME
+:
+   'restart-time'
+;
+
+RESTRICT
+:
+   'restrict'
+;
+
 RESTRICTED
 :
    'restricted'
+;
+
+RESULT_TYPE
+:
+   'result-type'
+;
+
+RESUME
+:
+   'resume'
 ;
 
 RETRANSMIT
@@ -9278,6 +10024,11 @@ RTP
    'rtp'
 ;
 
+RTP_PORT
+:
+   'rtp-port'
+;
+
 RTR
 :
    'rtr'
@@ -9503,6 +10254,11 @@ SELECT
    'select'
 ;
 
+SELECTION
+:
+   'selection'
+;
+
 SELECTIVE
 :
    'selective'
@@ -9511,6 +10267,11 @@ SELECTIVE
 SELF
 :
    'self'
+;
+
+SELF_IDENTITY
+:
+   'self-identity'
 ;
 
 SEND
@@ -9613,9 +10374,9 @@ SERVER_GROUP
    'server-group'
 ;
 
-SERVERFARM
+SERVER_KEY
 :
-   'serverfarm'
+   'server-key'
 ;
 
 SERVER_PRIVATE
@@ -9626,6 +10387,11 @@ SERVER_PRIVATE
 SERVER_TYPE
 :
    'server-type'
+;
+
+SERVERFARM
+:
+   'serverfarm'
 ;
 
 SERVICE
@@ -9663,6 +10429,11 @@ SERVICE_QUEUE
    'service-queue'
 ;
 
+SERVICE_TEMPLATE
+:
+   'service-template'
+;
+
 SERVICE_TYPE
 :
    'service-type'
@@ -9691,6 +10462,11 @@ SESSION_GROUP
 SESSION_ID
 :
    'session-id'
+;
+
+SESSION_KEY
+:
+   'session-key'
 ;
 
 SESSION_LIMIT
@@ -9813,6 +10589,11 @@ SHORT_TXT
    'short-txt'
 ;
 
+SHOULD_SECURE
+:
+    'should-secure'
+;
+
 SHOW
 :
    'show'
@@ -9866,6 +10647,11 @@ SIGNATURE_PROFILE
 SIGNING
 :
    'signing'
+;
+
+SILENT
+:
+    'silent'
 ;
 
 SINGLE_CONNECTION
@@ -9938,6 +10724,11 @@ SITE_ID
    'site-id'
 ;
 
+SIZE
+:
+   'size'
+;
+
 SLA
 :
    'sla'
@@ -9951,6 +10742,11 @@ SLOT
 SLOT_TABLE_COS
 :
    'slot-table-cos'
+;
+
+SMALL
+:
+   'small'
 ;
 
 SMALL_HELLO
@@ -10021,6 +10817,11 @@ SNR_MIN
 SNTP
 :
    'sntp'
+;
+
+SOO
+:
+   'soo'
 ;
 
 SORT_BY
@@ -10148,6 +10949,11 @@ SPEED_DUPLEX
    'speed-duplex'
 ;
 
+SPLIT_HORIZON
+:
+   'split-horizon'
+;
+
 SPLIT_TUNNEL_NETWORK_LIST
 :
    'split-tunnel-network-list'
@@ -10243,6 +11049,11 @@ STACK_UNIT
    'stack-unit'
 ;
 
+STALEPATH_TIME
+:
+   'stalepath-time'
+;
+
 STALE_ROUTE
 :
    'stale-route'
@@ -10323,6 +11134,11 @@ STCAPP
 STICKY
 :
    'sticky'
+;
+
+STICKY_ARP
+:
+   'sticky-arp'
 ;
 
 STOP
@@ -10510,9 +11326,19 @@ SUPPRESS_ARP
    'suppress-arp'
 ;
 
+SUPPRESS_INACTIVE
+:
+   'suppress-inactive'
+;
+
 SUPPRESS_FIB_PENDING
 :
    'suppress-fib-pending'
+;
+
+SUPPRESS_MAP
+:
+   'suppress-map'
 ;
 
 SUPPRESSED
@@ -10815,6 +11641,11 @@ TEMPLATE
    'template'
 ;
 
+TEN_THOUSAND_FULL
+:
+  '10000full'
+;
+
 TERMINAL
 :
    'terminal'
@@ -10823,6 +11654,11 @@ TERMINAL
 TERMINAL_TYPE
 :
    'terminal-type'
+;
+
+TERMINATE
+:
+   'terminate'
 ;
 
 TERMINATION
@@ -10878,6 +11714,11 @@ THREE_DES_SHA1
 THRESHOLD
 :
    'threshold'
+;
+
+THROUGHPUT
+:
+  'throughput'
 ;
 
 THU
@@ -11030,6 +11871,11 @@ TRAFFIC_ENG
    'traffic-eng'
 ;
 
+TRAFFIC_EXPORT
+:
+   'traffic-export'
+;
+
 TRAFFIC_INDEX
 :
    'traffic-index'
@@ -11128,6 +11974,11 @@ TRAPS
 TRIGGER
 :
    'trigger'
+;
+
+TRIGGER_DELAY
+:
+   'trigger-delay'
 ;
 
 TRIMODE
@@ -11300,6 +12151,11 @@ UNABLE
    'Unable'
 ;
 
+UNAUTHORIZED
+:
+   'unauthorized'
+;
+
 UNAUTHORIZED_DEVICE_PROFILE
 :
    'unauthorized-device-profile'
@@ -11333,6 +12189,16 @@ UNREACHABLE
 UNREACHABLES
 :
    'unreachables'
+;
+
+UNSUPPRESS_MAP
+:
+   'unsuppress-map'
+;
+
+UNSUPPRESS_ROUTE
+:
+   'unsuppress-route'
 ;
 
 UNICAST
@@ -11393,6 +12259,16 @@ UPSTREAM_START_THRESHOLD
 URG
 :
    'urg'
+;
+
+URI
+:
+    'uri'
+;
+
+URL
+:
+    'url'
 ;
 
 URL_LIST
@@ -11892,6 +12768,11 @@ WAIT_FOR
   'wait-for'
 ;
 
+WAIT_IGP_CONVERGENCE
+:
+   'wait-igp-convergence'
+;
+
 WAIT_START
 :
    'wait-start'
@@ -11900,6 +12781,11 @@ WAIT_START
 WARNINGS
 :
    'warnings'
+;
+
+WARNING_ONLY
+:
+   'warning-only'
 ;
 
 WARNTIME
@@ -11945,6 +12831,11 @@ WEB_MAX_CLIENTS
 WEB_SERVER
 :
    'web-server'
+;
+
+WEBAUTH
+:
+   'webauth'
 ;
 
 WEBVPN
@@ -12166,7 +13057,19 @@ YELLOW
 ZONE
 :
    'zone'
-; // Other Tokens
+;
+
+ZONE_MEMBER
+:
+   'zone-member'
+;
+
+ZONE_PAIR
+:
+  'zone-pair'
+;
+
+/* Other Tokens */
 
 MULTICONFIGPART
 :
@@ -12480,6 +13383,11 @@ FLOAT
 FORWARD_SLASH
 :
    '/'
+;
+
+FOUR_BYTE_AS
+:
+   '4-byte-as'
 ;
 
 IP_ADDRESS
@@ -13332,11 +14240,6 @@ M_CertificateText_QUIT
    'quit' -> type ( QUIT ) , mode ( DEFAULT_MODE )
 ;
 
-M_CertificateText_REMOVED
-:
-   '<removed>' -> type ( REMOVED ) , mode ( DEFAULT_MODE )
-;
-
 M_CertificateText_HEX_FRAGMENT
 :
    [A-Fa-f0-9]+ -> type ( HEX_FRAGMENT )
@@ -13519,6 +14422,11 @@ M_Interface_DEFAULT
 M_Interface_DOLLAR
 :
    '$' -> type ( DOLLAR ) , popMode
+;
+
+M_Interface_EIGRP
+:
+   'eigrp' -> type ( EIGRP ) , popMode
 ;
 
 M_Interface_EQ
@@ -13884,6 +14792,49 @@ M_NEIGHBOR_NEWLINE
 ;
 
 M_NEIGHBOR_WS
+:
+   F_Whitespace+ -> channel ( HIDDEN )
+;
+
+mode M_ObjectGroup;
+
+M_ObjectGroup_IP
+:
+  'ip' -> type ( IP ) , popMode
+;
+
+M_ObjectGroup_NETWORK
+:
+  'network' -> type ( NETWORK ) , popMode
+;
+
+M_ObjectGroup_PROTOCOL
+:
+  'protocol' -> type ( PROTOCOL ) , popMode
+;
+
+M_ObjectGroup_SERVICE
+:
+  'service' -> type ( SERVICE ) , popMode
+;
+
+M_ObjectGroup_USER
+:
+  'user' -> type ( USER ) , popMode
+;
+
+/* Do not reorder above literals */
+M_ObjectGroup_NAME
+:
+   F_NonWhitespace+ -> type ( VARIABLE ) , popMode
+;
+
+M_ObjectGroup_NEWLINE
+:
+   F_Newline+ -> type ( NEWLINE ) , popMode
+;
+
+M_ObjectGroup_WS
 :
    F_Whitespace+ -> channel ( HIDDEN )
 ;

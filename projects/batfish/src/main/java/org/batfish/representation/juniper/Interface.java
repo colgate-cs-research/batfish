@@ -1,7 +1,7 @@
 package org.batfish.representation.juniper;
 
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,23 +33,25 @@ public class Interface extends ComparableStructure<String> {
     }
   }
 
-  private int _accessVlan;
+  private String _accessVlan;
 
   private boolean _active;
 
-  private final ArrayList<SubRange> _allowedVlans;
+  private Set<Ip> _additionalArpIps;
 
   private final Set<InterfaceAddress> _allAddresses;
 
   private final Set<Ip> _allAddressIps;
 
+  private final List<SubRange> _allowedVlans;
+
   private double _bandwidth;
 
   private final int _definitionLine;
 
-  private String _incomingFilter;
+  private String _description;
 
-  private int _incomingFilterLine;
+  private String _incomingFilter;
 
   private transient boolean _inherited;
 
@@ -61,7 +63,7 @@ public class Interface extends ComparableStructure<String> {
 
   private int _nativeVlan;
 
-  private Ip _ospfActiveArea;
+  private Ip _ospfArea;
 
   private Integer _ospfCost;
 
@@ -69,11 +71,9 @@ public class Interface extends ComparableStructure<String> {
 
   private int _ospfHelloMultiplier;
 
-  private final Set<Ip> _ospfPassiveAreas;
+  private boolean _ospfPassive;
 
   private String _outgoingFilter;
-
-  private int _outgoingFilterLine;
 
   private Interface _parent;
 
@@ -99,6 +99,7 @@ public class Interface extends ComparableStructure<String> {
   public Interface(String name, int definitionLine) {
     super(name);
     _active = true;
+    _additionalArpIps = ImmutableSet.of();
     _allAddresses = new LinkedHashSet<>();
     _allAddressIps = new LinkedHashSet<>();
     _bandwidth = getDefaultBandwidthByName(name);
@@ -109,7 +110,6 @@ public class Interface extends ComparableStructure<String> {
     _switchportTrunkEncapsulation = SwitchportEncapsulationType.DOT1Q;
     _allowedVlans = new ArrayList<>();
     _ospfCost = null;
-    _ospfPassiveAreas = new HashSet<>();
     _units = new TreeMap<>();
     _vrrpGroups = new TreeMap<>();
   }
@@ -118,7 +118,7 @@ public class Interface extends ComparableStructure<String> {
     _allowedVlans.addAll(ranges);
   }
 
-  public int getAccessVlan() {
+  public String getAccessVlan() {
     return _accessVlan;
   }
 
@@ -126,8 +126,8 @@ public class Interface extends ComparableStructure<String> {
     return _active;
   }
 
-  public List<SubRange> getAllowedVlans() {
-    return _allowedVlans;
+  public Set<Ip> getAdditionalArpIps() {
+    return _additionalArpIps;
   }
 
   public Set<InterfaceAddress> getAllAddresses() {
@@ -138,6 +138,10 @@ public class Interface extends ComparableStructure<String> {
     return _allAddressIps;
   }
 
+  public List<SubRange> getAllowedVlans() {
+    return _allowedVlans;
+  }
+
   public double getBandwidth() {
     return _bandwidth;
   }
@@ -146,12 +150,12 @@ public class Interface extends ComparableStructure<String> {
     return _definitionLine;
   }
 
-  public String getIncomingFilter() {
-    return _incomingFilter;
+  public String getDescription() {
+    return _description;
   }
 
-  public int getIncomingFilterLine() {
-    return _incomingFilterLine;
+  public String getIncomingFilter() {
+    return _incomingFilter;
   }
 
   public IsisInterfaceSettings getIsisSettings() {
@@ -170,8 +174,8 @@ public class Interface extends ComparableStructure<String> {
     return _nativeVlan;
   }
 
-  public Ip getOspfActiveArea() {
-    return _ospfActiveArea;
+  public Ip getOspfArea() {
+    return _ospfArea;
   }
 
   public Integer getOspfCost() {
@@ -186,16 +190,12 @@ public class Interface extends ComparableStructure<String> {
     return _ospfHelloMultiplier;
   }
 
-  public Set<Ip> getOspfPassiveAreas() {
-    return _ospfPassiveAreas;
+  public boolean getOspfPassive() {
+    return _ospfPassive;
   }
 
   public String getOutgoingFilter() {
     return _outgoingFilter;
-  }
-
-  public int getOutgoingFilterLine() {
-    return _outgoingFilterLine;
   }
 
   public Interface getParent() {
@@ -231,17 +231,26 @@ public class Interface extends ComparableStructure<String> {
   }
 
   public void inheritUnsetFields() {
-    if (_parent == null || !_inherited) {
+    if (_parent == null || _inherited) {
       return;
     }
     _inherited = true;
     _parent.inheritUnsetFields();
+    if (_description == null) {
+      _description = _parent._description;
+    }
     if (_mtu == null) {
       _mtu = _parent._mtu;
     }
+    if (_ospfCost == null) {
+      _ospfCost = _parent._ospfCost;
+    }
+    if (_ospfArea == null) {
+      _ospfArea = _parent._ospfArea;
+    }
   }
 
-  public void setAccessVlan(int vlan) {
+  public void setAccessVlan(String vlan) {
     _accessVlan = vlan;
   }
 
@@ -249,16 +258,20 @@ public class Interface extends ComparableStructure<String> {
     _active = active;
   }
 
+  public void setAdditionalArpIps(Iterable<Ip> additionalArpIps) {
+    _additionalArpIps = ImmutableSet.copyOf(additionalArpIps);
+  }
+
   public void setBandwidth(Double bandwidth) {
     _bandwidth = bandwidth;
   }
 
-  public void setIncomingFilter(String accessListName) {
-    _incomingFilter = accessListName;
+  public void setDescription(String description) {
+    _description = description;
   }
 
-  public void setIncomingFilterLine(int incomingFilterLine) {
-    _incomingFilterLine = incomingFilterLine;
+  public void setIncomingFilter(String accessListName) {
+    _incomingFilter = accessListName;
   }
 
   public void setIsoAddress(IsoAddress address) {
@@ -273,12 +286,12 @@ public class Interface extends ComparableStructure<String> {
     _nativeVlan = vlan;
   }
 
-  public void setOspfActiveArea(Ip ospfActiveArea) {
-    _ospfActiveArea = ospfActiveArea;
+  public void setOspfArea(Ip ospfArea) {
+    _ospfArea = ospfArea;
   }
 
-  public void setOspfCost(int defaultOspfCost) {
-    _ospfCost = defaultOspfCost;
+  public void setOspfCost(int ospfCost) {
+    _ospfCost = ospfCost;
   }
 
   public void setOspfDeadInterval(int seconds) {
@@ -289,12 +302,12 @@ public class Interface extends ComparableStructure<String> {
     _ospfHelloMultiplier = multiplier;
   }
 
-  public void setOutgoingFilter(String accessListName) {
-    _outgoingFilter = accessListName;
+  public void setOspfPassive(boolean ospfPassive) {
+    _ospfPassive = true;
   }
 
-  public void setOutgoingFilterLine(int outgoingFilterLine) {
-    _outgoingFilterLine = outgoingFilterLine;
+  public void setOutgoingFilter(String accessListName) {
+    _outgoingFilter = accessListName;
   }
 
   public void setParent(Interface parent) {

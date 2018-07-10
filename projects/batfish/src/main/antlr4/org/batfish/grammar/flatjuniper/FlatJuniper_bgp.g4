@@ -41,6 +41,16 @@ b_authentication_key_chain
    AUTHENTICATION_KEY_CHAIN name = string
 ;
 
+b_allow
+:
+   ALLOW
+   (
+      IP_PREFIX
+      | IPV6_PREFIX
+      | ALL
+   )
+;
+
 b_as_override
 :
    AS_OVERRIDE
@@ -65,6 +75,7 @@ b_common
    | b_damping
    | b_description
    | b_disable_4byte_as
+   | b_enforce_first_as
    | b_export
    | b_family
    | b_import
@@ -102,6 +113,11 @@ b_enable
    ENABLE
 ;
 
+b_enforce_first_as
+:
+   ENFORCE_FIRST_AS
+;
+
 b_export
 :
    EXPORT expr = policy_expression
@@ -119,14 +135,11 @@ b_family
 
 b_group
 :
-   GROUP
-   (
-      name = variable
-      | WILDCARD
-   )
+   GROUP name = variable
    (
       b_common
       | b_neighbor
+      | b_allow
    )
 ;
 
@@ -170,7 +183,7 @@ b_neighbor
    (
       IP_ADDRESS
       | IPV6_ADDRESS
-      | WILDCARD
+      | wildcard
    ) b_common
 ;
 
@@ -221,6 +234,12 @@ b_peer_as
 b_remove_private
 :
    REMOVE_PRIVATE
+   (
+     ALL
+     | NEAREST
+     | REPLACE
+     | NO_PEER_LOOP_CHECK
+   )?
 ;
 
 b_tcp_mss

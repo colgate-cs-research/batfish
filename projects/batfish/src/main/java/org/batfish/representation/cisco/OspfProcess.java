@@ -14,10 +14,10 @@ import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.OspfAreaSummary;
-import org.batfish.datamodel.OspfMetricType;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.RoutingProtocol;
+import org.batfish.datamodel.ospf.OspfAreaSummary;
+import org.batfish.datamodel.ospf.OspfMetricType;
 
 public class OspfProcess extends ComparableStructure<String> {
 
@@ -51,6 +51,8 @@ public class OspfProcess extends ComparableStructure<String> {
 
   private Integer _defaultInformationOriginateMapLine;
 
+  private Long _defaultMetric;
+
   private Set<String> _interfaceBlacklist;
 
   private Set<String> _interfaceWhitelist;
@@ -65,7 +67,9 @@ public class OspfProcess extends ComparableStructure<String> {
 
   private Set<OspfNetwork> _networks;
 
-  private Map<Long, Boolean> _nssas;
+  private Map<Long, NssaSettings> _nssas;
+
+  private Map<Long, StubSettings> _stubs;
 
   private boolean _passiveInterfaceDefault;
 
@@ -86,6 +90,7 @@ public class OspfProcess extends ComparableStructure<String> {
       case ARISTA: // EOS manual, Chapter 27, "auto-cost reference-bandwidth (OSPFv2)"
         return DEFAULT_REFERENCE_BANDWIDTH_10_MBPS;
 
+      case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
       case CADANT: // Internet claims they use the Cisco defaults.
       case CISCO_ASA: // ASA uses 100 Mbps, switches to 40 Gbps for OSPF v3
       case CISCO_IOS: // https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/iproute_ospf/command/iro-cr-book/ospf-a1.html#wp3271966058
@@ -102,6 +107,38 @@ public class OspfProcess extends ComparableStructure<String> {
     }
   }
 
+  public long getDefaultMetric(ConfigurationFormat format, RoutingProtocol protocol) {
+    if (this._defaultMetric != null) {
+      return this._defaultMetric;
+    }
+
+    switch (format) {
+      case ARISTA:
+        // Inferred from Arista manual OSPF v3 default-metric comment.
+        return 10;
+
+      case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
+      case CADANT: // Vetted IOS and NXOS; assuming the rest use IOS defaults.
+      case CISCO_ASA:
+      case CISCO_IOS:
+      case CISCO_IOS_XR:
+      case CISCO_NX:
+      case FORCE10:
+      case FOUNDRY:
+        // https://www.cisco.com/c/en/us/support/docs/ip/open-shortest-path-first-ospf/7039-1.html
+        // "the cost allocated to the external route is 20 (the default is 1 for BGP)."
+        switch (protocol) {
+          case BGP:
+            return 1;
+          default:
+            return 20;
+        }
+
+      default:
+        throw new BatfishException("Unknown default OSPF reference bandwidth for format " + format);
+    }
+  }
+
   public OspfProcess(String name, ConfigurationFormat format) {
     super(name);
     _referenceBandwidth = getReferenceOspfBandwidth(format);
@@ -111,6 +148,7 @@ public class OspfProcess extends ComparableStructure<String> {
     _nssas = new HashMap<>();
     _interfaceBlacklist = new HashSet<>();
     _interfaceWhitelist = new HashSet<>();
+    _stubs = new HashMap<>();
     _wildcardNetworks = new TreeSet<>();
     _redistributionPolicies = new EnumMap<>(RoutingProtocol.class);
     _summaries = new TreeMap<>();
@@ -169,6 +207,10 @@ public class OspfProcess extends ComparableStructure<String> {
     return _defaultInformationOriginateMapLine;
   }
 
+  public Long getDefaultMetric() {
+    return _defaultMetric;
+  }
+
   public Long getMaxMetricExternalLsa() {
     return _maxMetricExternalLsa;
   }
@@ -189,7 +231,7 @@ public class OspfProcess extends ComparableStructure<String> {
     return _networks;
   }
 
-  public Map<Long, Boolean> getNssas() {
+  public Map<Long, NssaSettings> getNssas() {
     return _nssas;
   }
 
@@ -215,6 +257,10 @@ public class OspfProcess extends ComparableStructure<String> {
 
   public Ip getRouterId() {
     return _routerId;
+  }
+
+  public Map<Long, StubSettings> getStubs() {
+    return _stubs;
   }
 
   public Map<Long, Map<Prefix, OspfAreaSummary>> getSummaries() {
@@ -247,6 +293,10 @@ public class OspfProcess extends ComparableStructure<String> {
 
   public void setDefaultInformationOriginateMapLine(Integer defaultInformationOriginateMapLine) {
     _defaultInformationOriginateMapLine = defaultInformationOriginateMapLine;
+  }
+
+  public void setDefaultMetric(Long metric) {
+    _defaultMetric = metric;
   }
 
   public void setMaxMetricExternalLsa(Long maxMetricExternalLsa) {

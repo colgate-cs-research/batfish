@@ -2,21 +2,19 @@ package org.batfish.z3.expr;
 
 import java.util.Objects;
 import org.batfish.datamodel.Prefix;
-import org.batfish.z3.HeaderField;
 import org.batfish.z3.expr.visitors.ExprVisitor;
 import org.batfish.z3.expr.visitors.GenericBooleanExprVisitor;
 
-public class PrefixMatchExpr extends BooleanExpr {
+public final class PrefixMatchExpr extends BooleanExpr {
 
   private BooleanExpr _expr;
 
-  public PrefixMatchExpr(HeaderField var, Prefix prefix) {
-    VarIntExpr varExpr = new VarIntExpr(var);
+  public PrefixMatchExpr(IntExpr var, Prefix prefix) {
     int length = prefix.getPrefixLength();
     if (length == 0) {
       _expr = TrueExpr.INSTANCE;
     } else if (length == Prefix.MAX_PREFIX_LENGTH) {
-      _expr = new EqExpr(varExpr, new LitIntExpr(prefix.getStartIp()));
+      _expr = new EqExpr(var, new LitIntExpr(prefix.getStartIp()));
     } else {
       int low = Prefix.MAX_PREFIX_LENGTH - length;
       int high = Prefix.MAX_PREFIX_LENGTH - 1;
@@ -37,7 +35,7 @@ public class PrefixMatchExpr extends BooleanExpr {
   }
 
   @Override
-  public boolean exprEquals(Expr e) {
+  protected boolean exprEquals(Expr e) {
     return Objects.equals(_expr, ((PrefixMatchExpr) e)._expr);
   }
 

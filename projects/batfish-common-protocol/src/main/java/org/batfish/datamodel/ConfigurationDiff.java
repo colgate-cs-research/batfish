@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.datamodel.answers.AnswerElement;
 
-public class ConfigurationDiff implements AnswerElement {
+public class ConfigurationDiff extends AnswerElement {
 
   private static final String PROP_AS_PATH_ACCESS_LISTS_DIFF = "asPathAccessListsDiff";
 
@@ -35,7 +35,7 @@ public class ConfigurationDiff implements AnswerElement {
 
   private VrfsDiff _vrfsDiff;
 
-  @JsonCreator()
+  @JsonCreator
   private ConfigurationDiff() {}
 
   public ConfigurationDiff(Configuration before, Configuration after) {

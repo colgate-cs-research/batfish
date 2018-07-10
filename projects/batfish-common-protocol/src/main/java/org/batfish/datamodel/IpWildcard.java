@@ -2,6 +2,8 @@ package org.batfish.datamodel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import java.util.Objects;
+import javax.annotation.Nonnull;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 
@@ -58,7 +60,8 @@ public class IpWildcard extends Pair<Ip, Ip> {
   }
 
   public IpWildcard(Ip address, Ip wildcardMask) {
-    super(address, wildcardMask);
+    // Canonicalize the address before passing it to parent, so that #equals works.
+    super(new Ip(address.asLong() & ~wildcardMask.asLong()), wildcardMask);
     if (!wildcardMask.valid()) {
       throw new BatfishException("Invalid wildcard: " + wildcardMask);
     }
@@ -70,10 +73,10 @@ public class IpWildcard extends Pair<Ip, Ip> {
 
   @JsonCreator
   public IpWildcard(String str) {
-    super(parseAddress(str), parseMask(str));
+    this(parseAddress(str), parseMask(str));
   }
 
-  public boolean contains(Ip ip) {
+  public boolean containsIp(@Nonnull Ip ip) {
     long wildcardIpAsLong = getIp().asLong();
     long wildcardMask = getWildcard().asLong();
     long ipAsLong = ip.asLong();
@@ -90,11 +93,8 @@ public class IpWildcard extends Pair<Ip, Ip> {
       return false;
     }
     IpWildcard other = (IpWildcard) o;
-    if (other.getFirst().equals(this.getFirst()) && other.getSecond().equals(this.getSecond())) {
-      return true;
-    } else {
-      return false;
-    }
+    return Objects.equals(this.getFirst(), other.getFirst())
+        && Objects.equals(this.getSecond(), other.getSecond());
   }
 
   public Ip getIp() {
@@ -105,12 +105,56 @@ public class IpWildcard extends Pair<Ip, Ip> {
     return _second;
   }
 
+  /**
+   * @param other another IpWildcard
+   * @return whether the set of IPs matched by this intersects the set of those matched by other.
+   */
+  public boolean intersects(IpWildcard other) {
+    long differentIpBits = getIp().asLong() ^ other.getIp().asLong();
+    long canDiffer = getWildcard().asLong() | other.getWildcard().asLong();
+
+    /*
+     * All IP bits that different must be wild in either this or other.
+     */
+    return (differentIpBits & canDiffer) == differentIpBits;
+  }
+
   public boolean isPrefix() {
     long w = _second.asLong();
     long wp = w + 1L;
     int numTrailingZeros = Long.numberOfTrailingZeros(wp);
     long check = 1L << numTrailingZeros;
     return wp == check;
+  }
+
+  /**
+   * @param other another IpWildcard
+   * @return whether the set of IPs matched by this is a subset of those matched by other.
+   */
+  public boolean subsetOf(IpWildcard other) {
+    return other.supersetOf(this);
+  }
+
+  /**
+   * @param other another IpWildcard
+   * @return whether the set of IPs matched by this is a superset of those matched by other.
+   */
+  public boolean supersetOf(IpWildcard other) {
+    long wildToThis = getWildcard().asLong();
+    long wildToOther = other.getWildcard().asLong();
+    long differentIpBits = getIp().asLong() ^ other.getIp().asLong();
+
+    /*
+     * 1. Any bits wild in other must be wild in this (i.e. other's wild bits must be a subset
+     *    of this' wild bits).
+     * 2. Any IP bits that differ must be wild in this.
+     */
+    return (wildToThis & wildToOther) == wildToOther
+        && (wildToThis & differentIpBits) == differentIpBits;
+  }
+
+  public IpWildcardIpSpace toIpSpace() {
+    return new IpWildcardIpSpace(this);
   }
 
   public Prefix toPrefix() {

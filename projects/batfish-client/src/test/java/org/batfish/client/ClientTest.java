@@ -90,6 +90,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.difflib.algorithm.DiffException;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.io.File;
@@ -117,7 +119,6 @@ import org.batfish.datamodel.questions.Question.InstanceData.Variable;
 import org.batfish.datamodel.questions.Question.InstanceData.Variable.Type;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -134,7 +135,7 @@ public class ClientTest {
 
   @Rule public TemporaryFolder _folder = new TemporaryFolder();
   @Rule public ExpectedException _thrown = ExpectedException.none();
-  private BatfishObjectMapper _mapper;
+  private ObjectMapper _mapper = BatfishObjectMapper.mapper();
 
   private void checkProcessCommandErrorMessage(
       Command command, String[] parameters, String expected) throws Exception {
@@ -152,27 +153,6 @@ public class ClientTest {
   public void checkTestInvalidParas() throws Exception {
     String[] parameters = new String[] {"parameter1"};
     testInvalidInput(TEST, new String[] {}, parameters);
-  }
-
-  @Test
-  public void checkTestValidParas() throws Exception {
-    Path tempFilePath = _folder.newFolder("temp").toPath();
-    String[] parameters = new String[] {tempFilePath.toString(), GET.commandName()};
-    Pair<String, String> usage = Command.getUsageMap().get(GET);
-    String expected =
-        String.format(
-            "Invalid arguments: [] []\n%s %s\n\t%s\n\n",
-            GET.commandName(), usage.getFirst(), usage.getSecond());
-    String additionalMessage =
-        String.format(
-            "Test: 'get' matches %s: Fail\nCopied output to %s.testout\n",
-            tempFilePath.toString(), tempFilePath.toString());
-    testProcessCommandWithValidInput(TEST, parameters, expected + additionalMessage);
-  }
-
-  @Before
-  public void initMapper() {
-    _mapper = new BatfishObjectMapper();
   }
 
   @Test
@@ -847,7 +827,15 @@ public class ClientTest {
         "instance",
         new JSONObject()
             .put("instanceName", "testQuestionName")
-            .put("description", "test question description"));
+            .put("description", "test question description")
+            .put(
+                "variables",
+                new JSONObject()
+                    .put(
+                        "var1",
+                        new JSONObject()
+                            .put("description", "test var1 description")
+                            .put("longDescription", "test var1 long description"))));
     JSONObject question = Client.loadQuestionFromText(testQuestion.toString(), "testquestion");
 
     // checking if actual and loaded JSONs are same
@@ -857,6 +845,20 @@ public class ClientTest {
     assertEquals(
         "test question description",
         question.getJSONObject(BfConsts.PROP_INSTANCE).getString(BfConsts.PROP_DESCRIPTION));
+    assertEquals(
+        "test var1 description",
+        question
+            .getJSONObject(BfConsts.PROP_INSTANCE)
+            .getJSONObject(BfConsts.PROP_VARIABLES)
+            .getJSONObject("var1")
+            .getString(BfConsts.PROP_DESCRIPTION));
+    assertEquals(
+        "test var1 long description",
+        question
+            .getJSONObject(BfConsts.PROP_INSTANCE)
+            .getJSONObject(BfConsts.PROP_VARIABLES)
+            .getJSONObject("var1")
+            .getString(BfConsts.PROP_LONG_DESCRIPTION));
   }
 
   @Test
@@ -884,11 +886,10 @@ public class ClientTest {
     client._logger = new BatfishLogger("output", false);
     client.processCommand(
         new String[] {LOAD_QUESTIONS.commandName(), questionJsonPath.getParent().toString()}, null);
-    BatfishObjectMapper mapper = new BatfishObjectMapper();
 
     // Reading the answer written by load-questions
     Answer answerLoadQuestions =
-        mapper.readValue(
+        _mapper.readValue(
             client.getLogger().getHistory().toString(BatfishLogger.LEVEL_OUTPUT), Answer.class);
     LoadQuestionAnswerElement ae =
         (LoadQuestionAnswerElement) answerLoadQuestions.getAnswerElements().get(0);
@@ -1150,7 +1151,7 @@ public class ClientTest {
   }
 
   @Test
-  public void testPromtValidParas() throws Exception {
+  public void testPromptValidParas() throws Exception {
     testProcessCommandWithValidInput(PROMPT, new String[] {}, "");
   }
 
@@ -1749,5 +1750,21 @@ public class ClientTest {
   private void validateTypeWithInvalidInput(String input, String expectedMessage, Type type)
       throws IOException {
     validateTypeWithInvalidInput(input, BatfishException.class, expectedMessage, type);
+  }
+
+  @Test
+  public void getPatch() throws DiffException {
+    String expected = "1\n2\n3";
+    String actual = "1\n2";
+
+    assertThat(
+        Client.getPatch(expected, actual, "expected.txt", "actual.txt"),
+        equalTo(
+            "--- expected.txt\n"
+                + "+++ actual.txt\n"
+                + "@@ -1,3 +1,2 @@\n"
+                + " 1\n"
+                + " 2\n"
+                + "-3"));
   }
 }

@@ -1,8 +1,8 @@
 package org.batfish.representation.juniper;
 
 import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
 import org.batfish.datamodel.BgpAuthenticationAlgorithm;
 import org.batfish.datamodel.Ip;
 
@@ -32,13 +32,17 @@ public class BgpGroup implements Serializable {
 
   private String _description;
 
+  private boolean _dynamic;
+
   private Boolean _ebgpMultihop;
 
-  private final Map<String, Integer> _exportPolicies;
+  private Boolean _enforceFirstAs;
+
+  private final List<String> _exportPolicies;
 
   protected String _groupName;
 
-  private final Map<String, Integer> _importPolicies;
+  private final List<String> _importPolicies;
 
   protected transient boolean _inherited;
 
@@ -46,7 +50,7 @@ public class BgpGroup implements Serializable {
 
   private Ip _localAddress;
 
-  private Integer _localAs;
+  private Long _localAs;
 
   private Integer _loops;
 
@@ -56,15 +60,15 @@ public class BgpGroup implements Serializable {
 
   private BgpGroup _parent;
 
-  private Integer _peerAs;
+  private Long _peerAs;
 
   private Boolean _removePrivate;
 
   private BgpGroupType _type;
 
   public BgpGroup() {
-    _exportPolicies = new LinkedHashMap<>();
-    _importPolicies = new LinkedHashMap<>();
+    _exportPolicies = new LinkedList<>();
+    _importPolicies = new LinkedList<>();
   }
 
   public final void cascadeInheritance() {
@@ -98,17 +102,20 @@ public class BgpGroup implements Serializable {
       if (_description == null) {
         _description = _parent._description;
       }
+      if (_enforceFirstAs == null) {
+        _enforceFirstAs = _parent._enforceFirstAs;
+      }
       if (_ebgpMultihop == null) {
         _ebgpMultihop = _parent._ebgpMultihop;
       }
-      if (_exportPolicies.size() == 0) {
-        _exportPolicies.putAll(_parent._exportPolicies);
+      if (_exportPolicies.isEmpty()) {
+        _exportPolicies.addAll(_parent._exportPolicies);
       }
       if (_groupName == null) {
         _groupName = _parent._groupName;
       }
-      if (_importPolicies.size() == 0) {
-        _importPolicies.putAll(_parent._importPolicies);
+      if (_importPolicies.isEmpty()) {
+        _importPolicies.addAll(_parent._importPolicies);
       }
       if (_localAs == null) {
         _localAs = _parent._localAs;
@@ -166,11 +173,19 @@ public class BgpGroup implements Serializable {
     return _description;
   }
 
+  public boolean getDynamic() {
+    return _dynamic;
+  }
+
   public Boolean getEbgpMultihop() {
     return _ebgpMultihop;
   }
 
-  public final Map<String, Integer> getExportPolicies() {
+  public Boolean getEnforceFirstAs() {
+    return _enforceFirstAs;
+  }
+
+  public final List<String> getExportPolicies() {
     return _exportPolicies;
   }
 
@@ -178,7 +193,7 @@ public class BgpGroup implements Serializable {
     return _groupName;
   }
 
-  public final Map<String, Integer> getImportPolicies() {
+  public final List<String> getImportPolicies() {
     return _importPolicies;
   }
 
@@ -190,7 +205,7 @@ public class BgpGroup implements Serializable {
     return _localAddress;
   }
 
-  public final Integer getLocalAs() {
+  public final Long getLocalAs() {
     return _localAs;
   }
 
@@ -210,7 +225,7 @@ public class BgpGroup implements Serializable {
     return _parent;
   }
 
-  public Integer getPeerAs() {
+  public Long getPeerAs() {
     return _peerAs;
   }
 
@@ -254,8 +269,16 @@ public class BgpGroup implements Serializable {
     _description = description;
   }
 
+  public void setDynamic(boolean dynamic) {
+    this._dynamic = dynamic;
+  }
+
   public void setEbgpMultihop(boolean ebgpMultihop) {
     _ebgpMultihop = ebgpMultihop;
+  }
+
+  public void setEnforceFirstAs(Boolean enforceFirstAs) {
+    _enforceFirstAs = enforceFirstAs;
   }
 
   public void setIpv6(boolean ipv6) {
@@ -266,7 +289,7 @@ public class BgpGroup implements Serializable {
     _localAddress = localAddress;
   }
 
-  public final void setLocalAs(int localAs) {
+  public final void setLocalAs(long localAs) {
     _localAs = localAs;
   }
 
@@ -286,7 +309,7 @@ public class BgpGroup implements Serializable {
     _parent = parent;
   }
 
-  public void setPeerAs(int peerAs) {
+  public void setPeerAs(long peerAs) {
     _peerAs = peerAs;
   }
 

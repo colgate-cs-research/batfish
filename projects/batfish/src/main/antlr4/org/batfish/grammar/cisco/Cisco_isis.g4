@@ -170,7 +170,7 @@ null_iis_stanza
       | HELLO_PADDING
       | HELLO_PASSWORD
       | POINT_TO_POINT
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 null_is_stanza
@@ -184,6 +184,7 @@ null_is_stanza
       | ENABLE
       | FAST_FLOOD
       | HELLO
+      | IGNORE_ATTACHED_BIT
       | ISPF
       | LOG
       | LOG_ADJACENCY_CHANGES
@@ -211,7 +212,7 @@ null_is_stanza
       | SET_OVERLOAD_BIT
       | SINGLE_TOPOLOGY
       | SPF_INTERVAL
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 passive_iis_stanza

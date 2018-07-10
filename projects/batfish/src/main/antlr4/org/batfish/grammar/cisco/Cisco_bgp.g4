@@ -1,6 +1,6 @@
 parser grammar Cisco_bgp;
 
-import Cisco_common;
+import Cisco_bgp_nxos, Cisco_common;
 
 options {
    tokenVocab = CiscoLexer;
@@ -170,9 +170,19 @@ bgp_listen_range_rb_stanza
    )? NEWLINE
 ;
 
+bgp_maxas_limit_rb_stanza
+:
+   BGP MAXAS_LIMIT limit = DEC NEWLINE
+;
+
 bgp_redistribute_internal_rb_stanza
 :
    BGP REDISTRIBUTE_INTERNAL NEWLINE
+;
+
+bgp_scan_time_bgp_tail
+:
+   BGP SCAN_TIME secs = DEC NEWLINE
 ;
 
 bgp_tail
@@ -182,6 +192,7 @@ bgp_tail
    | allowas_in_bgp_tail
    | as_override_bgp_tail
    | cluster_id_bgp_tail
+   | bgp_scan_time_bgp_tail
    | default_metric_bgp_tail
    | default_originate_bgp_tail
    | default_shutdown_bgp_tail
@@ -200,6 +211,7 @@ bgp_tail
    | prefix_list_bgp_tail
    | redistribute_aggregate_bgp_tail
    | redistribute_connected_bgp_tail
+   | redistribute_eigrp_bgp_tail
    | redistribute_ospf_bgp_tail
    | redistribute_ospfv3_bgp_tail
    | redistribute_rip_bgp_tail
@@ -212,6 +224,7 @@ bgp_tail
    | send_community_bgp_tail
    | shutdown_bgp_tail
    | subnet_bgp_tail
+   | unsuppress_map_bgp_tail
    | update_source_bgp_tail
    | weight_bgp_tail
 ;
@@ -273,7 +286,7 @@ disable_peer_as_check_bgp_tail
 
 distribute_list_bgp_tail
 :
-   DISTRIBUTE_LIST ~NEWLINE* NEWLINE
+   DISTRIBUTE_LIST null_rest_of_line
 ;
 
 ebgp_multihop_bgp_tail
@@ -371,6 +384,9 @@ locals
    )
    (
       REMOTE_AS asnum = DEC
+   )?
+   (
+      REMOTE_AS ROUTE_MAP mapname = variable
    )? NEWLINE
    (
       bgp_tail
@@ -458,7 +474,9 @@ vrf_block_rb_stanza
    VRF name = ~NEWLINE NEWLINE
    (
       address_family_rb_stanza
+      | aggregate_address_rb_stanza
       | always_compare_med_rb_stanza
+      | as_path_multipath_relax_rb_stanza
       | bgp_listen_range_rb_stanza
       | bgp_tail
       | neighbor_flat_rb_stanza
@@ -513,7 +531,7 @@ no_neighbor_shutdown_rb_stanza
 
 no_network_bgp_tail
 :
-   NO NETWORK ~NEWLINE* NEWLINE
+   NO NETWORK null_rest_of_line
 ;
 
 no_redistribute_connected_rb_stanza
@@ -522,7 +540,7 @@ no_redistribute_connected_rb_stanza
    (
       CONNECTED
       | DIRECT
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 no_shutdown_rb_stanza
@@ -588,7 +606,6 @@ null_bgp_tail
             | NEXTHOP
             | NON_DETERMINISTIC_MED
             | REDISTRIBUTE_INTERNAL
-            | SCAN_TIME
          )
       )
       | CAPABILITY
@@ -639,6 +656,7 @@ null_bgp_tail
       | TABLE_MAP
       | TIMERS
       | TRANSPORT
+      | UPDATE
       |
       (
          USE
@@ -647,7 +665,7 @@ null_bgp_tail
          )
       )
       | VERSION
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 null_no_neighbor_rb_stanza
@@ -759,9 +777,14 @@ redistribute_connected_bgp_tail
    )* NEWLINE
 ;
 
+redistribute_eigrp_bgp_tail
+:
+   REDISTRIBUTE EIGRP id = DEC null_rest_of_line
+;
+
 redistribute_ospf_bgp_tail
 :
-   REDISTRIBUTE OSPF procnum = DEC
+   REDISTRIBUTE OSPF (procnum = DEC)?
    (
       (
          ROUTE_MAP map = variable
@@ -783,7 +806,7 @@ redistribute_ospf_bgp_tail
 
 redistribute_ospfv3_bgp_tail
 :
-   REDISTRIBUTE OSPFV3 procnum = DEC
+   REDISTRIBUTE (OSPFV3 | OSPF3) (procnum = DEC)?
    (
       (
          ROUTE_MAP map = variable
@@ -840,7 +863,10 @@ router_bgp_stanza
    ROUTER BGP
    (
       procnum = DEC
-   )? NEWLINE router_bgp_stanza_tail+
+   )? NEWLINE (
+      {!_nxos}? router_bgp_stanza_tail
+      | {_nxos}? router_bgp_nxos_toplevel
+   )*
 ;
 
 router_bgp_stanza_tail
@@ -855,6 +881,7 @@ router_bgp_stanza_tail
    | bgp_advertise_inactive_rb_stanza
    | bgp_confederation_rb_stanza
    | bgp_listen_range_rb_stanza
+   | bgp_maxas_limit_rb_stanza
    | bgp_redistribute_internal_rb_stanza
    | bgp_tail
    | cluster_id_rb_stanza
@@ -1003,6 +1030,11 @@ template_peer_session_rb_stanza
    (
       EXIT_PEER_SESSION NEWLINE
    )?
+;
+
+unsuppress_map_bgp_tail
+:
+    UNSUPPRESS_MAP mapname = variable_permissive NEWLINE
 ;
 
 update_source_bgp_tail

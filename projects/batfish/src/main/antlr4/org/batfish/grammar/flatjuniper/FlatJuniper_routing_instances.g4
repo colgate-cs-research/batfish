@@ -1,6 +1,7 @@
 parser grammar FlatJuniper_routing_instances;
 
-import FlatJuniper_common, FlatJuniper_forwarding_options, FlatJuniper_protocols, FlatJuniper_snmp;
+import
+FlatJuniper_common, FlatJuniper_forwarding_options, FlatJuniper_protocols, FlatJuniper_snmp;
 
 options {
    tokenVocab = FlatJuniperLexer;
@@ -25,6 +26,7 @@ ri_instance_type
    (
       FORWARDING
       | L2VPN
+      | VIRTUAL_ROUTER
       | VIRTUAL_SWITCH
       | VRF
    )
@@ -37,10 +39,7 @@ ri_interface
 
 ri_named_routing_instance
 :
-   (
-      WILDCARD
-      | name = variable
-   )
+   name = variable
    (
       ri_common
       | ri_instance_type
@@ -153,7 +152,11 @@ ro_autonomous_system
    AUTONOMOUS_SYSTEM as = DEC?
    (
       apply
-      | roas_loops
+      |
+      (
+         roas_asdot_notation
+         | roas_loops
+      )*
    )
 ;
 
@@ -220,11 +223,7 @@ ro_null
 
 ro_rib
 :
-   RIB
-   (
-      name = VARIABLE
-      | WILDCARD
-   )
+   RIB name = VARIABLE
    (
       apply
       | ro_aggregate
@@ -270,7 +269,8 @@ roa_as_path
 :
    AS_PATH?
    (
-      roaa_origin
+      roaa_aggregator
+      | roaa_origin
       | roaa_path
    )
 ;
@@ -290,6 +290,11 @@ roa_tag
    TAG tag = DEC
 ;
 
+roaa_aggregator
+:
+   AGGREGATOR as = DEC ip = IP_ADDRESS
+;
+
 roaa_origin
 :
    ORIGIN IGP
@@ -298,6 +303,11 @@ roaa_origin
 roaa_path
 :
    PATH path = as_path_expr
+;
+
+roas_asdot_notation
+:
+   ASDOT_NOTATION
 ;
 
 roas_loops
@@ -383,9 +393,19 @@ roifi_export
 :
    EXPORT
    (
-      LAN
-      | POINT_TO_POINT
+      roifie_lan
+      | roifie_point_to_point
    )
+;
+
+roifie_lan
+:
+   LAN
+;
+
+roifie_point_to_point
+:
+   POINT_TO_POINT
 ;
 
 roir_inet

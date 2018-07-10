@@ -247,15 +247,20 @@ netservice_alg
    | VOCERA
 ;
 
+null_rest_of_line
+:
+    ~NEWLINE* NEWLINE
+;
+
 ospf_route_type
 :
    (
-      EXTERNAL DEC
+      EXTERNAL DEC?
    )
    | INTERNAL
    |
    (
-      NSSA_EXTERNAL DEC
+      NSSA_EXTERNAL DEC?
    )
 ;
 
@@ -391,7 +396,8 @@ prefix_set_elem
 
 protocol
 :
-   AHP
+   AH
+   | AHP
    | DEC
    | EIGRP
    | ESP
@@ -467,6 +473,33 @@ rp_subrange
    )
 ;
 
+service_specifier
+:
+   service_specifier_icmp
+   | service_specifier_tcp_udp
+   | service_specifier_protocol
+;
+
+service_specifier_icmp
+:
+   ICMP icmp_object_type?
+;
+
+service_specifier_protocol
+:
+   protocol
+;
+
+service_specifier_tcp_udp
+:
+   (
+      TCP
+      | TCP_UDP
+      | UDP
+   )
+   (SOURCE src_ps = port_specifier)? (DESTINATION dst_ps = port_specifier)?
+;
+
 subrange
 :
    low = DEC
@@ -490,14 +523,14 @@ variable
 variable_aclname
 :
    (
-      ~( ETH | EXTENDED | NEWLINE | STANDARD | SESSION | WS )
+      ~( ETH | EXTENDED | NEWLINE | REMARK | STANDARD | SESSION | WS )
    )+
 ;
 
 variable_community_name
 :
    ~( NEWLINE | DOUBLE_QUOTE | GROUP | IPV4 | IPV6 | RO | RW | SDROWNER |
-   SYSTEMOWNER | USE_IPV4_ACL | USE_IPV6_ACL | VIEW )+
+   SYSTEMOWNER | USE_ACL | USE_IPV4_ACL | USE_IPV6_ACL | VIEW )
 ;
 
 variable_hostname

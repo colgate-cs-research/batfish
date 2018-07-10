@@ -15,6 +15,8 @@ public final class Zone extends ComparableStructure<String> {
 
   private FirewallFilter _fromHostFilter;
 
+  private final Map<String, FirewallFilter> _fromZonePolicies;
+
   private final FirewallFilter _inboundFilter;
 
   private final Map<Interface, FirewallFilter> _inboundInterfaceFilters;
@@ -28,9 +30,10 @@ public final class Zone extends ComparableStructure<String> {
   public Zone(String name, Map<String, AddressBook> globalAddressBooks) {
     super(name);
     _addressBook = new AddressBook(name, globalAddressBooks);
-    _inboundFilter = new FirewallFilter("~INBOUND_ZONE_FILTER~" + name, Family.INET, -1);
+    _inboundFilter = new FirewallFilter("~INBOUND_ZONE_FILTER~" + name, Family.INET);
     _inboundInterfaceFilters = new TreeMap<>();
     _interfaces = new TreeSet<>();
+    _fromZonePolicies = new TreeMap<>();
     _toZonePolicies = new TreeMap<>();
   }
 
@@ -40,6 +43,10 @@ public final class Zone extends ComparableStructure<String> {
 
   public FirewallFilter getFromHostFilter() {
     return _fromHostFilter;
+  }
+
+  public Map<String, FirewallFilter> getFromZonePolicies() {
+    return _fromZonePolicies;
   }
 
   public FirewallFilter getInboundFilter() {

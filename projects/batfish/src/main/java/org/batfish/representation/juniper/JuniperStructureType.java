@@ -3,6 +3,9 @@ package org.batfish.representation.juniper;
 import org.batfish.vendor.StructureType;
 
 public enum JuniperStructureType implements StructureType {
+  APPLICATION("application"),
+  APPLICATION_OR_APPLICATION_SET("application or application-set"),
+  APPLICATION_SET("application-set"),
   AUTHENTICATION_KEY_CHAIN("authentication-key-chain"),
   BGP_GROUP("bgp group"),
   DHCP_RELAY_SERVER_GROUP("dhcp-relay server-group"),
@@ -15,7 +18,8 @@ public enum JuniperStructureType implements StructureType {
   IPSEC_PROPOSAL("ipsec proposal"),
   POLICY_STATEMENT("policy-statement"),
   PREFIX_LIST("prefix-list"),
-  SECURE_TUNNEL_INTERFACE("secure tunnel interface");
+  SECURE_TUNNEL_INTERFACE("secure tunnel interface"),
+  VLAN("vlan");
 
   private final String _description;
 

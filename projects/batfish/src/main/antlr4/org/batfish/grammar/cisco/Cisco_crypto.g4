@@ -13,7 +13,7 @@ cc_certificate_chain
 
 cc_lookup
 :
-   LOOKUP ~NEWLINE* NEWLINE
+   LOOKUP null_rest_of_line
 ;
 
 cc_server
@@ -57,7 +57,7 @@ ccs_null
       | ISSUER_NAME
       | SHUTDOWN
       | SMTP
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cctpoint_null
@@ -70,7 +70,7 @@ cctpoint_null
       | KEYPAIR
       | SUBJECT_NAME
       | VALIDATION_USAGE
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cctpool_null
@@ -78,7 +78,12 @@ cctpool_null
    NO?
    (
       AUTO_IMPORT
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
+;
+
+cd_match_address
+:
+   MATCH ADDRESS name = variable NEWLINE
 ;
 
 cd_null
@@ -86,12 +91,49 @@ cd_null
    NO?
    (
       VERSION
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cd_set
 :
-   SET ~NEWLINE* NEWLINE
+   SET
+   (
+      cd_set_isakmp_profile
+      | cd_set_null
+      | cd_set_peer
+      | cd_set_pfs
+      | cd_set_transform_set
+   )
+;
+
+cd_set_isakmp_profile
+:
+    ISAKMP_PROFILE name = variable NEWLINE
+;
+
+cd_set_null
+:
+    (
+       SECURITY_ASSOCIATION
+    ) null_rest_of_line
+;
+
+cd_set_peer
+:
+    PEER address = IP_ADDRESS NEWLINE
+;
+
+cd_set_pfs
+:
+    PFS dh_group NEWLINE
+;
+
+cd_set_transform_set
+:
+   TRANSFORM_SET
+   (
+      transforms += variable
+   )+ NEWLINE
 ;
 
 certificate
@@ -105,7 +147,7 @@ ci1_null
       AM_DISABLE
       | ENABLE
       | IPSEC_OVER_TCP
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ci1_policy
@@ -125,7 +167,7 @@ ci1p_null
       | GROUP
       | HASH
       | LIFETIME
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ci2_keyring
@@ -141,7 +183,7 @@ ci2_null
    (
       ENABLE
       | REMOTE_ACCESS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ci2_policy
@@ -182,7 +224,7 @@ ci2kp_null
    (
       ADDRESS
       | PRE_SHARED_KEY
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ci2pol_null
@@ -195,7 +237,7 @@ ci2pol_null
       | LIFETIME
       | PRF
       | PROPOSAL
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ci2prf_null
@@ -205,7 +247,7 @@ ci2prf_null
       AUTHENTICATION
       | KEYRING
       | MATCH
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ci2prp_null
@@ -215,7 +257,7 @@ ci2prp_null
       ENCRYPTION
       | GROUP
       | INTEGRITY
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cip_ikev2
@@ -230,7 +272,7 @@ cip_null
       | IKEV1
       | NAT_TRANSPARENCY
       | SECURITY_ASSOCIATION
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cip_profile
@@ -243,7 +285,12 @@ cip_profile
 
 cip_transform_set
 :
-   TRANSFORM_SET name = variable ipsec_encryption ipsec_authentication NEWLINE
+   TRANSFORM_SET name = variable
+   (
+      ipsec_encryption
+      | ipsec_encryption_aruba
+   )
+      ipsec_authentication? NEWLINE
    (
       cipt_mode
    )*
@@ -262,24 +309,31 @@ cipi2ip_null
    NO?
    (
       PROTOCOL
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cipprf_set
 :
    SET
    (
-      cipprf_set_null
+      cipprf_set_isakmp_profile
+      | cipprf_set_null
       | cipprf_set_pfs
       | cipprf_set_transform_set
    )
+;
+
+cipprf_set_isakmp_profile
+:
+    ISAKMP_PROFILE name = variable NEWLINE
 ;
 
 cipprf_set_null
 :
    (
       IKEV2_PROFILE
-   ) ~NEWLINE* NEWLINE
+      | SECURITY_ASSOCIATION
+   ) null_rest_of_line
 ;
 
 cipprf_set_pfs
@@ -289,7 +343,10 @@ cipprf_set_pfs
 
 cipprf_set_transform_set
 :
-   TRANSFORM_SET name = variable NEWLINE
+   TRANSFORM_SET
+      (
+          transforms += variable
+      )+ NEWLINE
 ;
 
 cipt_mode
@@ -312,12 +369,12 @@ cis_null
       | KEY
       | NAT
       | NAT_TRAVERSAL
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cis_policy
 :
-   POLICY name = variable NEWLINE
+   POLICY priority = DEC NEWLINE
    (
       cispol_authentication
       | cispol_encr        //cisco
@@ -337,6 +394,7 @@ cis_profile
       | cisprf_local_address
       | cisprf_match
       | cisprf_null
+      | cisprf_self_identity
    )*
 ;
 
@@ -369,6 +427,7 @@ cispol_hash
    HASH
    (
       MD5
+      | SHA
       | SHA2_256_128
    ) NEWLINE
 ;
@@ -384,7 +443,7 @@ cispol_null
    (
       PRF
       | VERSION
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cisprf_keyring
@@ -394,7 +453,11 @@ cisprf_keyring
 
 cisprf_local_address
 :
-   LOCAL_ADDRESS IP_ADDRESS NEWLINE
+    LOCAL_ADDRESS
+    (
+       IP_ADDRESS
+       | interface_name
+    ) NEWLINE
 ;
 
 cisprf_match
@@ -406,22 +469,29 @@ cisprf_null
 :
    NO?
    (
-      REVERSE_ROUTE
+      KEEPALIVE
+      | REVERSE_ROUTE
       | VRF
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
+
+cisprf_self_identity
+:
+   SELF_IDENTITY IP_ADDRESS NEWLINE
+;
+
 
 ck_null
 :
    (
       GENERATE
       | PARAM
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ck_pubkey_chain
 :
-   PUBKEY_CHAIN ~NEWLINE* NEWLINE ckp_named_key*
+   PUBKEY_CHAIN null_rest_of_line ckp_named_key*
 ;
 
 ckp_named_key
@@ -443,17 +513,21 @@ ckpn_null
    NO?
    (
       ADDRESS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ckr_local_address
 :
-   LOCAL_ADDRESS IP_ADDRESS NEWLINE
+   LOCAL_ADDRESS
+   (
+      IP_ADDRESS
+      | interface_name
+   ) NEWLINE
 ;
 
 ckr_psk
 :
-   PRE_SHARED_KEY ADDRESS IP_ADDRESS KEY variable_permissive NEWLINE
+   PRE_SHARED_KEY ADDRESS ip_address = IP_ADDRESS (wildcard_mask = IP_ADDRESS)? KEY variable_permissive NEWLINE
 ;
 
 cpki_certificate_chain
@@ -468,7 +542,7 @@ cpki_null
 :
    (
       TOKEN
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cpki_server
@@ -503,7 +577,7 @@ cpkis_null
       | DATABASE
       | GRANT
       | ISSUER_NAME
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 cpkit_null
@@ -516,7 +590,7 @@ cpkit_null
       | SERIAL_NUMBER
       | SUBJECT_NAME
       | VALIDATION_USAGE
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 crypto_ca
@@ -531,25 +605,47 @@ crypto_ca
    )
 ;
 
+crypto_csr_params
+:
+   CSR_PARAMS name = variable_permissive NEWLINE
+   (
+      (
+         COMMON_NAME
+         | COUNTRY
+         | EMAIL
+         | LOCALITY
+         | ORGANIZATION_NAME
+         | ORGANIZATION_UNIT
+         | SERIAL_NUMBER
+         | STATE
+      ) null_rest_of_line
+   )*
+;
+
 crypto_dynamic_map
 :
-   DYNAMIC_MAP name = variable num = DEC
+   DYNAMIC_MAP name = variable seq_num = DEC crypto_dynamic_map_null?
    (
-      cd_set
-      |
-      (
-         NEWLINE
-         (
-            cd_null
-            | cd_set
-         )*
-      )
+     NEWLINE
+       (
+          cd_match_address
+          | cd_null
+          | cd_set
+       )*
    )
+;
+
+crypto_dynamic_map_null
+:
+   (
+     MATCH
+     | SET
+   ) ~NEWLINE*
 ;
 
 crypto_engine
 :
-   ENGINE ~NEWLINE* NEWLINE
+   ENGINE null_rest_of_line
 ;
 
 crypto_ikev1
@@ -614,49 +710,107 @@ crypto_keyring
 
 crypto_map
 :
-   MAP name = variable num = DEC?
+   MAP name = variable
    (
-      crypto_map_ipsec_isakmp
-      | crypto_map_null
+      crypto_map_null
+      | seq_num = DEC crypto_map_tail
    )
-;
-
-crypto_map_ii_match_address
-:
-   MATCH ADDRESS name = variable NEWLINE
-;
-
-crypto_map_ii_null
-:
-   NO?
-   (
-      DESCRIPTION
-      | REVERSE_ROUTE
-      | SET
-   ) ~NEWLINE* NEWLINE
-;
-
-crypto_map_ipsec_isakmp
-:
-   IPSEC_ISAKMP NEWLINE
-   (
-      crypto_map_ii_match_address
-      | crypto_map_ii_null
-   )*
 ;
 
 crypto_map_null
 :
    (
       INTERFACE
-      |
-      (
-         IPSEC_ISAKMP DYNAMIC
-      )
-      | MATCH
       | REDUNDANCY
+   ) null_rest_of_line
+;
+
+crypto_map_tail
+:
+   (
+      crypto_map_t_ipsec_isakmp
+      | crypto_map_t_null
+   )
+;
+
+crypto_map_t_ii_match_address
+:
+   MATCH ADDRESS name = variable NEWLINE
+;
+
+crypto_map_t_ii_null
+:
+   NO?
+   (
+      DESCRIPTION
+      | REVERSE_ROUTE
+   ) null_rest_of_line
+;
+
+crypto_map_t_ii_set
+:
+    SET
+    (
+       crypto_map_t_ii_set_isakmp_profile
+       | crypto_map_t_ii_set_null
+       | crypto_map_t_ii_set_peer
+       | crypto_map_t_ii_set_pfs
+       | crypto_map_t_ii_set_transform_set
+
+    )
+;
+
+crypto_map_t_ii_set_isakmp_profile
+:
+    ISAKMP_PROFILE name = variable NEWLINE
+;
+
+crypto_map_t_ii_set_null
+:
+    (
+       SECURITY_ASSOCIATION
+    ) null_rest_of_line
+;
+
+crypto_map_t_ii_set_peer
+:
+    PEER address = IP_ADDRESS NEWLINE
+;
+
+crypto_map_t_ii_set_pfs
+:
+    PFS dh_group NEWLINE
+;
+
+crypto_map_t_ii_set_transform_set
+:
+   TRANSFORM_SET
+   (
+      transforms += variable
+   )+ NEWLINE
+;
+
+crypto_map_t_ipsec_isakmp
+:
+   IPSEC_ISAKMP
+   (
+      DYNAMIC crypto_dynamic_map_name = variable
+   )?
+   NEWLINE
+   (
+      crypto_map_t_ii_match_address
+      | crypto_map_t_ii_null
+      | crypto_map_t_ii_set
+   )*
+;
+
+crypto_map_t_null
+:
+   (
+      IPSEC_MANUAL
+      | MATCH
       | SET
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 crypto_pki
@@ -673,7 +827,14 @@ crypto_pki
 dh_group
 :
    GROUP1
+   | GROUP14
+   | GROUP15
+   | GROUP16
+   | GROUP19
    | GROUP2
+   | GROUP21
+   | GROUP24
+   | GROUP5
 ;
 
 key_key
@@ -692,41 +853,65 @@ kk_null
       | CRYPTOGRAPHIC_ALGORITHM
       | KEY_STRING
       | SEND_LIFETIME
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ike_encryption
 :
    (
-      AES
-      | THREE_DES
+      AES strength = DEC?
    )
+   | DES
+   | THREE_DES
 ;
 
 ike_encryption_aruba
 :
-   (
-      AES128
-      | AES192
-      | AES256
-   )
+   AES128
+   | AES192
+   | AES256
+   | DES
+   | THREE_DES
 ;
 
 ipsec_authentication
 :
-   (
-      ESP_MD5_HMAC
-      | ESP_SHA_HMAC
-      | ESP_SHA256_HMAC
-   )
+   AH_MD5_HMAC
+   | AH_SHA_HMAC
+   | ESP_MD5_HMAC
+   | ESP_SHA_HMAC
+   | ESP_SHA256_HMAC
+   | ESP_SHA512_HMAC
 ;
 
 ipsec_encryption
 :
    (
-      ESP_AES
-      | ESP_3DES
+      ESP_AES strength = DEC?
    )
+   | ESP_DES
+   | ESP_3DES
+   |
+   (
+      ESP_GCM strength = DEC?
+   )
+   |
+   (
+      ESP_GMAC strength = DEC?
+   )
+   | ESP_NULL
+   | ESP_SEAL
+;
+
+ipsec_encryption_aruba
+:
+   ESP_AES128
+   | ESP_AES192
+   | ESP_AES256
+   | ESP_AES128_GCM
+   | ESP_AES256_GCM
+   | ESP_DES
+   | ESP_3DES
 ;
 
 s_crypto
@@ -734,6 +919,7 @@ s_crypto
    NO? CRYPTO
    (
       crypto_ca
+      | crypto_csr_params
       | crypto_dynamic_map
       | crypto_engine
       | crypto_ikev1

@@ -7,25 +7,25 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.sameInstance;
 
+import com.google.common.collect.ImmutableMap;
+import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.IpAccessListLine;
 import org.batfish.datamodel.Prefix;
-import org.batfish.z3.BasicHeaderField;
+import org.batfish.z3.Field;
 import org.batfish.z3.expr.AndExpr;
 import org.batfish.z3.expr.BooleanExpr;
-import org.batfish.z3.expr.CurrentIsOriginalExpr;
 import org.batfish.z3.expr.EqExpr;
 import org.batfish.z3.expr.FalseExpr;
 import org.batfish.z3.expr.HeaderSpaceMatchExpr;
 import org.batfish.z3.expr.IfExpr;
+import org.batfish.z3.expr.IfThenElse;
 import org.batfish.z3.expr.IntExpr;
 import org.batfish.z3.expr.LitIntExpr;
+import org.batfish.z3.expr.MockBooleanAtom;
 import org.batfish.z3.expr.NotExpr;
 import org.batfish.z3.expr.OrExpr;
 import org.batfish.z3.expr.PrefixMatchExpr;
 import org.batfish.z3.expr.RangeMatchExpr;
-import org.batfish.z3.expr.SaneExpr;
-import org.batfish.z3.expr.TestBooleanAtom;
 import org.batfish.z3.expr.TrueExpr;
 import org.batfish.z3.expr.VarIntExpr;
 import org.junit.Test;
@@ -35,7 +35,7 @@ public class SimplifierTest {
   private int _atomCounter;
 
   private BooleanExpr newAtom() {
-    return new TestBooleanAtom(_atomCounter++, null);
+    return new MockBooleanAtom(_atomCounter++, null);
   }
 
   /** Test that we keep simplifying until no more simplifications are possible. */
@@ -133,8 +133,8 @@ public class SimplifierTest {
    */
   @Test
   public void testSimplifyEqPreserveUnalteredInstance() {
-    IntExpr i1 = new VarIntExpr(BasicHeaderField.DST_IP);
-    IntExpr i2 = new VarIntExpr(BasicHeaderField.SRC_IP);
+    IntExpr i1 = new VarIntExpr(Field.DST_IP);
+    IntExpr i2 = new VarIntExpr(Field.SRC_IP);
     EqExpr eq = new EqExpr(i1, i2);
 
     assertThat(simplifyBooleanExpr(eq), sameInstance(eq));
@@ -143,7 +143,7 @@ public class SimplifierTest {
   /** Test that an EQ node with syntactically equal LHS and RHS simplifies to TRUE. */
   @Test
   public void testSimplifyEqSame() {
-    IntExpr i1 = new VarIntExpr(BasicHeaderField.DST_IP);
+    IntExpr i1 = new VarIntExpr(Field.DST_IP);
     EqExpr eq = new EqExpr(i1, i1);
 
     assertThat(simplifyBooleanExpr(eq), equalTo(TrueExpr.INSTANCE));
@@ -217,6 +217,46 @@ public class SimplifierTest {
     assertThat(simplifyBooleanExpr(ifExpr), sameInstance(ifExpr));
   }
 
+  /** IfThenElse(A,True,B) --> Or(A,B) */
+  @Test
+  public void testIfThenElse_thenTrue() {
+    BooleanExpr a = newAtom();
+    BooleanExpr b = newAtom();
+    assertThat(
+        simplifyBooleanExpr(new IfThenElse(a, TrueExpr.INSTANCE, b)),
+        equalTo(new OrExpr(of(a, b))));
+  }
+
+  /** IfThenElse(A,False,B) --> And(Not(A),B) */
+  @Test
+  public void testIfThenElse_thenFalse() {
+    BooleanExpr a = newAtom();
+    BooleanExpr b = newAtom();
+    assertThat(
+        simplifyBooleanExpr(new IfThenElse(a, FalseExpr.INSTANCE, b)),
+        equalTo(new AndExpr(of(new NotExpr(a), b))));
+  }
+
+  /** IfThenElse(A,B,False) --> And(A,B) */
+  @Test
+  public void testIfThenElse_elseFalse() {
+    BooleanExpr a = newAtom();
+    BooleanExpr b = newAtom();
+    assertThat(
+        simplifyBooleanExpr(new IfThenElse(a, b, FalseExpr.INSTANCE)),
+        equalTo(new AndExpr(of(a, b))));
+  }
+
+  /** IfThenElse(A,B,True) --> Or(Not(A),B) */
+  @Test
+  public void testIfThenElse_elseTrue() {
+    BooleanExpr a = newAtom();
+    BooleanExpr b = newAtom();
+    assertThat(
+        simplifyBooleanExpr(new IfThenElse(a, b, TrueExpr.INSTANCE)),
+        equalTo(new OrExpr(of(new NotExpr(a), b))));
+  }
+
   /** Test that NOT FALSE == TRUE. */
   @Test
   public void testSimplifyNotFalse() {
@@ -270,17 +310,13 @@ public class SimplifierTest {
   /** Test that wrapper expressions are changed by simplification */
   @Test
   public void testSimplifyWrappers() {
-    BooleanExpr headerSpaceMatchExpr = new HeaderSpaceMatchExpr(IpAccessListLine.builder().build());
-    BooleanExpr prefixMatchExpr = new PrefixMatchExpr(BasicHeaderField.DST_IP, Prefix.ZERO);
-    BooleanExpr rangeMatchExpr =
-        RangeMatchExpr.greaterThanOrEqualTo(BasicHeaderField.DST_IP, 123456L, 10);
+    BooleanExpr headerSpaceMatchExpr =
+        new HeaderSpaceMatchExpr(HeaderSpace.builder().build(), ImmutableMap.of());
+    BooleanExpr prefixMatchExpr = new PrefixMatchExpr(new VarIntExpr(Field.DST_IP), Prefix.ZERO);
+    BooleanExpr rangeMatchExpr = RangeMatchExpr.greaterThanOrEqualTo(Field.DST_IP, 123456L, 10);
 
-    assertThat(
-        simplifyBooleanExpr(CurrentIsOriginalExpr.INSTANCE),
-        not(equalTo(CurrentIsOriginalExpr.INSTANCE)));
     assertThat(simplifyBooleanExpr(headerSpaceMatchExpr), not(equalTo(headerSpaceMatchExpr)));
     assertThat(simplifyBooleanExpr(prefixMatchExpr), not(equalTo(prefixMatchExpr)));
     assertThat(simplifyBooleanExpr(rangeMatchExpr), not(equalTo(rangeMatchExpr)));
-    assertThat(simplifyBooleanExpr(SaneExpr.INSTANCE), not(equalTo(SaneExpr.INSTANCE)));
   }
 }

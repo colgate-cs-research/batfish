@@ -1,5 +1,7 @@
 package org.batfish.symbolic.smt;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.microsoft.z3.ArithExpr;
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BoolExpr;
@@ -15,36 +17,31 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import javax.annotation.Nullable;
-import org.batfish.common.BatfishException;
-import org.batfish.datamodel.BgpNeighbor;
+import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpAccessList;
-import org.batfish.datamodel.IpAccessListLine;
-import org.batfish.datamodel.IpProtocol;
 import org.batfish.datamodel.IpWildcard;
-import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.PrefixRange;
 import org.batfish.datamodel.RoutingProtocol;
 import org.batfish.datamodel.StaticRoute;
 import org.batfish.datamodel.SubRange;
-import org.batfish.datamodel.TcpFlags;
+import org.batfish.datamodel.acl.MatchHeaderSpace;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
-import org.batfish.datamodel.routing_policy.expr.BooleanExpr;
 import org.batfish.datamodel.routing_policy.expr.MatchProtocol;
 import org.batfish.datamodel.routing_policy.statement.If;
 import org.batfish.datamodel.routing_policy.statement.Statement;
 import org.batfish.datamodel.routing_policy.statement.Statements;
+import org.batfish.datamodel.visitors.IpSpaceMayIntersectWildcard;
 import org.batfish.symbolic.CommunityVar;
 import org.batfish.symbolic.Graph;
 import org.batfish.symbolic.GraphEdge;
 import org.batfish.symbolic.OspfType;
 import org.batfish.symbolic.Protocol;
 import org.batfish.symbolic.collections.Table2;
-import org.batfish.symbolic.utils.PrefixUtils;
 
 /**
  * A class responsible for building a symbolic encoding of the network for a particular packet. The
@@ -405,7 +402,11 @@ class EncoderSlice {
    * Checks if a prefix could possible be relevant for encoding
    */
   boolean relevantPrefix(Prefix p) {
-    return PrefixUtils.overlap(_headerSpace, p);
+    if (_headerSpace.getDstIps() == null) {
+      return true;
+    }
+    return new IpSpaceMayIntersectWildcard(new IpWildcard(p), ImmutableMap.of())
+        .visit(_headerSpace.getDstIps());
   }
 
   /*
@@ -687,7 +688,7 @@ class EncoderSlice {
               Interface i = e.getStart();
               Prefix p = i.getAddress().getPrefix();
 
-              boolean doModel = !(proto.isConnected() && p != null && !relevantPrefix(p));
+              boolean doModel = !(proto.isConnected() && !relevantPrefix(p));
               // PolicyQuotient: Don't model the connected interfaces that aren't relevant
               if (doModel) {
                 if (notNeeded) {
@@ -819,7 +820,7 @@ class EncoderSlice {
             for (LogicalEdge e : eList) {
               if (e.getEdgeType() == EdgeType.IMPORT) {
                 GraphEdge ge = e.getEdge();
-                BgpNeighbor n = getGraph().getEbgpNeighbors().get(ge);
+                BgpActivePeerConfig n = getGraph().getEbgpNeighbors().get(ge);
                 if (n != null && ge.getEnd() == null) {
 
                   if (!isMainSlice()) {
@@ -828,10 +829,10 @@ class EncoderSlice {
                     _logicalGraph.getEnvironmentVars().put(e, r);
                   } else {
                     String address;
-                    if (n.getAddress() == null) {
+                    if (n.getPeerAddress() == null) {
                       address = "null";
                     } else {
-                      address = n.getAddress().toString();
+                      address = n.getPeerAddress().toString();
                     }
                     String ifaceName = "ENV-" + address;
                     String name =
@@ -1633,231 +1634,17 @@ class EncoderSlice {
   }
 
   /*
-   * Convert a set of wildcards and a packet field to a symbolic boolean expression
-   */
-  private BoolExpr computeWildcardMatch(Set<IpWildcard> wcs, BitVecExpr field) {
-    BoolExpr acc = mkFalse();
-    for (IpWildcard wc : wcs) {
-      ipWildCardBound(field, wc);
-      acc = mkOr(acc, ipWildCardBound(field, wc));
-    }
-    return (BoolExpr) acc.simplify();
-  }
-
-  /*
-   * Convert a set of ranges and a packet field to a symbolic boolean expression
-   */
-  private BoolExpr computeValidRange(Set<SubRange> ranges, ArithExpr field) {
-    BoolExpr acc = mkFalse();
-    for (SubRange range : ranges) {
-      int start = range.getStart();
-      int end = range.getEnd();
-      if (start == end) {
-        BoolExpr val = mkEq(field, mkInt(start));
-        acc = mkOr(acc, val);
-      } else {
-        BoolExpr val1 = mkGe(field, mkInt(start));
-        BoolExpr val2 = mkLe(field, mkInt(end));
-        acc = mkOr(acc, mkAnd(val1, val2));
-      }
-    }
-    return (BoolExpr) acc.simplify();
-  }
-
-  /*
-   * Convert a Tcp flag to a boolean expression on the symbolic packet
-   */
-  private BoolExpr computeTcpFlags(TcpFlags flags) {
-    BoolExpr acc = mkTrue();
-    if (flags.getUseAck()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpAck(), mkBool(flags.getAck())));
-    }
-    if (flags.getUseCwr()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpCwr(), mkBool(flags.getCwr())));
-    }
-    if (flags.getUseEce()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpEce(), mkBool(flags.getEce())));
-    }
-    if (flags.getUseFin()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpFin(), mkBool(flags.getFin())));
-    }
-    if (flags.getUsePsh()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpPsh(), mkBool(flags.getPsh())));
-    }
-    if (flags.getUseRst()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpRst(), mkBool(flags.getRst())));
-    }
-    if (flags.getUseSyn()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpSyn(), mkBool(flags.getSyn())));
-    }
-    if (flags.getUseUrg()) {
-      acc = mkAnd(acc, mkEq(_symbolicPacket.getTcpUrg(), mkBool(flags.getUrg())));
-    }
-    return (BoolExpr) acc.simplify();
-  }
-
-  /*
-   * Convert Tcp flags to a boolean expression on the symbolic packet
-   */
-  private BoolExpr computeTcpFlags(List<TcpFlags> flags) {
-    BoolExpr acc = mkFalse();
-    for (TcpFlags fs : flags) {
-      acc = mkOr(acc, computeTcpFlags(fs));
-    }
-    return (BoolExpr) acc.simplify();
-  }
-
-  /*
-   * Convert a set of ip protocols to a boolean expression on the symbolic packet
-   */
-  private BoolExpr computeIpProtocols(Set<IpProtocol> ipProtos) {
-    BoolExpr acc = mkFalse();
-    for (IpProtocol proto : ipProtos) {
-      ArithExpr protoNum = mkInt(proto.number());
-      acc = mkOr(acc, mkEq(protoNum, _symbolicPacket.getIpProtocol()));
-    }
-    return (BoolExpr) acc.simplify();
-  }
-
-  /*
    * Convert an Access Control List (ACL) to a symbolic boolean expression.
    * The default action in an ACL is to deny all traffic.
    */
   private BoolExpr computeACL(IpAccessList acl) {
+
     // Check if there is an ACL first
     if (acl == null) {
       return mkTrue();
     }
 
-    BoolExpr acc = mkFalse();
-
-    List<IpAccessListLine> lines = new ArrayList<>(acl.getLines());
-    Collections.reverse(lines);
-
-    for (IpAccessListLine l : lines) {
-      BoolExpr local = null;
-
-      if (l.getDstIps() != null) {
-        BoolExpr val = computeWildcardMatch(l.getDstIps(), _symbolicPacket.getDstIp());
-        val = l.getDstIps().isEmpty() ? mkTrue() : val;
-        local = val;
-      }
-
-      if (l.getSrcIps() != null) {
-        BoolExpr val = computeWildcardMatch(l.getSrcIps(), _symbolicPacket.getSrcIp());
-        val = l.getDstIps().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getDscps() != null && !l.getDscps().isEmpty()) {
-        throw new BatfishException("detected dscps");
-      }
-
-      if (l.getDstPorts() != null) {
-        BoolExpr val = computeValidRange(l.getDstPorts(), _symbolicPacket.getDstPort());
-        val = l.getDstPorts().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getSrcPorts() != null) {
-        BoolExpr val = computeValidRange(l.getSrcPorts(), _symbolicPacket.getSrcPort());
-        val = l.getSrcPorts().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getEcns() != null && !l.getEcns().isEmpty()) {
-        throw new BatfishException("detected ecns");
-      }
-
-      if (l.getTcpFlags() != null) {
-        BoolExpr val = computeTcpFlags(l.getTcpFlags());
-        val = l.getTcpFlags().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getFragmentOffsets() != null && !l.getFragmentOffsets().isEmpty()) {
-        throw new BatfishException("detected fragment offsets");
-      }
-
-      if (l.getIcmpCodes() != null) {
-        BoolExpr val = computeValidRange(l.getIcmpCodes(), _symbolicPacket.getIcmpCode());
-        val = l.getIcmpCodes().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getIcmpTypes() != null) {
-        BoolExpr val = computeValidRange(l.getIcmpTypes(), _symbolicPacket.getIcmpType());
-        val = l.getIcmpTypes().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getStates() != null && !l.getStates().isEmpty()) {
-        throw new BatfishException("detected states");
-      }
-
-      if (l.getIpProtocols() != null) {
-        BoolExpr val = computeIpProtocols(l.getIpProtocols());
-        val = l.getIpProtocols().isEmpty() ? mkTrue() : val;
-        local = (local == null ? val : mkAnd(local, val));
-      }
-
-      if (l.getNotDscps() != null && !l.getNotDscps().isEmpty()) {
-        throw new BatfishException("detected NOT dscps");
-      }
-
-      if (l.getNotDstIps() != null && !l.getNotDstIps().isEmpty()) {
-        throw new BatfishException("detected NOT dst ip");
-      }
-
-      if (l.getNotSrcIps() != null && !l.getNotSrcIps().isEmpty()) {
-        throw new BatfishException("detected NOT src ip");
-      }
-
-      if (l.getNotDstPorts() != null && !l.getNotDstPorts().isEmpty()) {
-        throw new BatfishException("detected NOT dst port");
-      }
-
-      if (l.getNotSrcPorts() != null && !l.getNotSrcPorts().isEmpty()) {
-        throw new BatfishException("detected NOT src port");
-      }
-
-      if (l.getNotEcns() != null && !l.getNotEcns().isEmpty()) {
-        throw new BatfishException("detected NOT ecns");
-      }
-
-      if (l.getNotIcmpCodes() != null && !l.getNotIcmpCodes().isEmpty()) {
-        throw new BatfishException("detected NOT icmp codes");
-      }
-
-      if (l.getNotIcmpTypes() != null && !l.getNotIcmpTypes().isEmpty()) {
-        throw new BatfishException("detected NOT icmp types");
-      }
-
-      if (l.getNotFragmentOffsets() != null && !l.getNotFragmentOffsets().isEmpty()) {
-        throw new BatfishException("detected NOT fragment offset");
-      }
-
-      if (l.getNotIpProtocols() != null && !l.getNotIpProtocols().isEmpty()) {
-        throw new BatfishException("detected NOT ip protocols");
-      }
-
-      if (local != null) {
-        BoolExpr ret;
-        if (l.getAction() == LineAction.ACCEPT) {
-          ret = mkTrue();
-        } else {
-          ret = mkFalse();
-        }
-
-        if (l.getNegate()) {
-          local = mkNot(local);
-        }
-
-        acc = mkIf(local, ret, acc);
-      }
-    }
-
-    return acc;
+    return new IpAccessListToBoolExpr(_encoder.getCtx(), _symbolicPacket).toBoolExpr(acl);
   }
 
   private boolean otherSliceHasEdge(EncoderSlice slice, String r, GraphEdge ge) {
@@ -2207,19 +1994,20 @@ class EncoderSlice {
 
         // We have to wrap this with the right thing for some reason
         List<Statement> statements;
-        Statements.StaticStatement s1 = new Statements.StaticStatement(Statements.ExitAccept);
-        Statements.StaticStatement s2 = new Statements.StaticStatement(Statements.ExitReject);
         if (proto.isOspf()) {
-          If i = new If();
-          List<Statement> stmts =
-              (pol == null ? Collections.singletonList(s2) : pol.getStatements());
-          i.setTrueStatements(Collections.singletonList(s1));
-          i.setFalseStatements(stmts);
-          BooleanExpr expr = new MatchProtocol(RoutingProtocol.OSPF);
-          i.setGuard(expr);
+          If i =
+              new If(
+                  new MatchProtocol(RoutingProtocol.OSPF),
+                  ImmutableList.of(Statements.ExitAccept.toStaticStatement()),
+                  pol != null
+                      ? pol.getStatements()
+                      : ImmutableList.of(new Statements.StaticStatement(Statements.ExitReject)));
           statements = Collections.singletonList(i);
         } else {
-          statements = (pol == null ? Collections.singletonList(s1) : pol.getStatements());
+          statements =
+              (pol == null
+                  ? Collections.singletonList(new Statements.StaticStatement(Statements.ExitAccept))
+                  : pol.getStatements());
         }
 
         TransferSSA f =
@@ -2460,193 +2248,14 @@ class EncoderSlice {
   }
 
   /*
-   * Create boolean expression for a variable being within a bound.
-   */
-  private BoolExpr boundConstraint(ArithExpr e, long lower, long upper) {
-    if (lower > upper) {
-      throw new BatfishException("Invalid range: " + lower + "-" + upper);
-    } else if (lower == upper) {
-      return mkEq(e, mkInt(lower));
-    } else {
-      BoolExpr x = mkGe(e, mkInt(lower));
-      BoolExpr y = mkLe(e, mkInt(upper));
-      return mkAnd(x, y);
-    }
-  }
-
-  /*
-   * Create a boolean expression for a variable being withing an IpWildCard bound
-   */
-  private BoolExpr ipWildCardBound(BitVecExpr field, IpWildcard wc) {
-    BitVecExpr ip = getCtx().mkBV(wc.getIp().asLong(), 32);
-    BitVecExpr mask = getCtx().mkBV(~wc.getWildcard().asLong(), 32);
-    return mkEq(getCtx().mkBVAND(field, mask), getCtx().mkBVAND(ip, mask));
-  }
-
-  /*
-   * Create a boolean expression for a variable being within a particular subrange.
-   */
-  private BoolExpr subRangeBound(ArithExpr e, SubRange r) {
-    long lower = r.getStart();
-    long upper = r.getEnd();
-    return boundConstraint(e, lower, upper);
-  }
-
-  /*
    * Add constraints for the type of packets we will consider in the model.
    * This can include restrictions on any packet field such as dstIp, protocol etc.
    */
   private void addHeaderSpaceConstraint() {
-
-    BoolExpr acc;
-
-    if (_headerSpace.getDstIps().size() > 0) {
-      acc = mkFalse();
-      for (IpWildcard ipWildcard : _headerSpace.getDstIps()) {
-        BoolExpr bound = ipWildCardBound(_symbolicPacket.getDstIp(), ipWildcard);
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotDstIps().size() > 0) {
-      acc = mkTrue();
-      for (IpWildcard ipWildcard : _headerSpace.getNotDstIps()) {
-        BoolExpr bound = ipWildCardBound(_symbolicPacket.getDstIp(), ipWildcard);
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getSrcIps().size() > 0) {
-      acc = mkFalse();
-      for (IpWildcard ipWildcard : _headerSpace.getSrcIps()) {
-        BoolExpr bound = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotSrcIps().size() > 0) {
-      acc = mkTrue();
-      for (IpWildcard ipWildcard : _headerSpace.getNotSrcIps()) {
-        BoolExpr bound = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getSrcOrDstIps().size() > 0) {
-      acc = mkFalse();
-      for (IpWildcard ipWildcard : _headerSpace.getSrcOrDstIps()) {
-        BoolExpr bound1 = ipWildCardBound(_symbolicPacket.getDstIp(), ipWildcard);
-        BoolExpr bound2 = ipWildCardBound(_symbolicPacket.getSrcIp(), ipWildcard);
-        acc = mkOr(acc, bound1, bound2);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getDstPorts().size() > 0) {
-      acc = mkFalse();
-      for (SubRange subRange : _headerSpace.getDstPorts()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotDstPorts().size() > 0) {
-      acc = mkTrue();
-      for (SubRange subRange : _headerSpace.getNotDstPorts()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getSrcPorts().size() > 0) {
-      acc = mkFalse();
-      for (SubRange subRange : _headerSpace.getSrcPorts()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotSrcPorts().size() > 0) {
-      acc = mkTrue();
-      for (SubRange subRange : _headerSpace.getNotSrcPorts()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getDstPort(), subRange);
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getSrcOrDstPorts().size() > 0) {
-      acc = mkFalse();
-      for (SubRange subRange : _headerSpace.getSrcOrDstPorts()) {
-        BoolExpr bound1 = subRangeBound(_symbolicPacket.getDstPort(), subRange);
-        BoolExpr bound2 = subRangeBound(_symbolicPacket.getSrcPort(), subRange);
-        acc = mkOr(acc, bound1, bound2);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getIcmpTypes().size() > 0) {
-      acc = mkFalse();
-      for (SubRange subRange : _headerSpace.getIcmpTypes()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpType(), subRange);
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotIcmpTypes().size() > 0) {
-      acc = mkTrue();
-      for (SubRange subRange : _headerSpace.getNotIcmpTypes()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpType(), subRange);
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getIcmpCodes().size() > 0) {
-      acc = mkFalse();
-      for (SubRange subRange : _headerSpace.getIcmpCodes()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpCode(), subRange);
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotIcmpCodes().size() > 0) {
-      acc = mkTrue();
-      for (SubRange subRange : _headerSpace.getNotIcmpCodes()) {
-        BoolExpr bound = subRangeBound(_symbolicPacket.getIcmpCode(), subRange);
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getIpProtocols().size() > 0) {
-      acc = mkFalse();
-      for (IpProtocol ipProtocol : _headerSpace.getIpProtocols()) {
-        BoolExpr bound = mkEq(_symbolicPacket.getIpProtocol(), mkInt(ipProtocol.number()));
-        acc = mkOr(acc, bound);
-      }
-      add(acc);
-    }
-
-    if (_headerSpace.getNotIpProtocols().size() > 0) {
-      acc = mkTrue();
-      for (IpProtocol ipProtocol : _headerSpace.getNotIpProtocols()) {
-        BoolExpr bound = mkEq(_symbolicPacket.getIpProtocol(), mkInt(ipProtocol.number()));
-        acc = mkAnd(acc, mkNot(bound));
-      }
-      add(acc);
-    }
-
-    // TODO: need to implement fragment offsets, Ecns, states, etc
+    Context ctx = _encoder.getCtx();
+    add(
+        new IpAccessListToBoolExpr(ctx, _symbolicPacket)
+            .visitMatchHeaderSpace(new MatchHeaderSpace(_headerSpace)));
   }
 
   /*

@@ -1,10 +1,12 @@
 package org.batfish.grammar.flatjuniper;
 
+import static org.batfish.grammar.flatjuniper.ConfigurationBuilder.unquote;
+
+import com.google.common.base.Throwables;
 import java.util.ArrayList;
 import java.util.List;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Warnings;
 import org.batfish.grammar.flatjuniper.FlatJuniperParser.Apply_groupsContext;
@@ -46,49 +48,49 @@ public class ApplyGroupsApplicator extends FlatJuniperParserBaseListener {
     _w = warnings;
   }
 
+  private String applyGroupsExceptionMessage(
+      HierarchyPath currentPath, String groupName, Throwable e) {
+    return String.format(
+        "Exception processing apply-groups statement at %s with group '%s': %s: caused by: %s",
+        pathString(), groupName, e.getMessage(), Throwables.getStackTraceAsString(e));
+  }
+
   @Override
   public void enterApply_groups(Apply_groupsContext ctx) {
     if (_inGroup) {
       return;
     }
-    String groupName = ctx.name.getText();
+    String groupName = unquote(ctx.name.getText());
+    if (groupName.equals("${node}")) {
+      processGroup("node0", true, false);
+      processGroup("node1", true, true);
+    } else {
+      processGroup(groupName, false, true);
+    }
+  }
+
+  private void processGroup(String groupName, boolean clusterGroup, boolean removeApplyLine) {
     try {
       List<ParseTree> applyGroupsLines =
-          _hierarchy.getApplyGroupsLines(groupName, _currentPath, _configurationContext);
+          _hierarchy.getApplyGroupsLines(
+              groupName, _currentPath, _configurationContext, clusterGroup);
       int insertionIndex = _newConfigurationLines.indexOf(_currentSetLine);
       _newConfigurationLines.addAll(insertionIndex, applyGroupsLines);
     } catch (PartialGroupMatchException e) {
-      String message =
-          "Exception processing apply-groups statement at path: \""
-              + _currentPath.pathString()
-              + "\" with group \""
-              + groupName
-              + "\": "
-              + e.getMessage()
-              + ": caused by: "
-              + ExceptionUtils.getStackTrace(e);
-      _w.pedantic(message);
+      _w.pedantic(applyGroupsExceptionMessage(_currentPath, groupName, e));
     } catch (UndefinedGroupBatfishException e) {
       String message =
-          "apply-groups statement at path: \""
-              + _currentPath.pathString()
-              + "\" refers to non-existent group \""
-              + groupName
-              + "\n";
+          String.format(
+              "apply-groups statement at %s refers to non-existent group: '%s'\n",
+              pathString(), groupName);
+
       _w.redFlag(message);
     } catch (BatfishException e) {
-      String message =
-          "Exception processing apply-groups statement at path: \""
-              + _currentPath.pathString()
-              + "\" with group \""
-              + groupName
-              + "\": "
-              + e.getMessage()
-              + ": caused by: "
-              + ExceptionUtils.getStackTrace(e);
-      _w.redFlag(message);
+      _w.redFlag(applyGroupsExceptionMessage(_currentPath, groupName, e));
     }
-    _newConfigurationLines.remove(_currentSetLine);
+    if (removeApplyLine) {
+      _newConfigurationLines.remove(_currentSetLine);
+    }
     _changed = true;
   }
 
@@ -164,6 +166,13 @@ public class ApplyGroupsApplicator extends FlatJuniperParserBaseListener {
 
   public boolean getChanged() {
     return _changed;
+  }
+
+  private String pathString() {
+    String currentPathString = _currentPath.pathString();
+    return currentPathString.isEmpty()
+        ? "top level"
+        : String.format("path: '%s'", currentPathString);
   }
 
   @Override

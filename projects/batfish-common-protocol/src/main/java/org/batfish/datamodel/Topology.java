@@ -3,6 +3,8 @@ package org.batfish.datamodel;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -11,7 +13,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.batfish.datamodel.collections.NodeInterfacePair;
 
-public class Topology implements Serializable {
+public final class Topology implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
@@ -41,6 +43,15 @@ public class Topology implements Serializable {
   @JsonIgnore
   public Map<NodeInterfacePair, SortedSet<Edge>> getInterfaceEdges() {
     return _interfaceEdges;
+  }
+
+  public Set<NodeInterfacePair> getNeighbors(NodeInterfacePair iface) {
+    return getInterfaceEdges()
+        .getOrDefault(iface, ImmutableSortedSet.of())
+        .stream()
+        .filter(e -> e.getFirst().equals(iface))
+        .map(Edge::getSecond)
+        .collect(ImmutableSet.toImmutableSet());
   }
 
   @JsonIgnore

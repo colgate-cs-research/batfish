@@ -27,7 +27,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class BgpAdvertisementsQuestionPlugin extends QuestionPlugin {
 
-  public static class BgpAdvertisementsAnswerElement implements AnswerElement {
+  public static class BgpAdvertisementsAnswerElement extends AnswerElement {
 
     private static final String PROP_BGP_ADVERTISEMENTS = "bgpAdvertisements";
 
@@ -135,9 +135,8 @@ public class BgpAdvertisementsQuestionPlugin extends QuestionPlugin {
     public String prettyPrint() {
       StringBuilder sb = new StringBuilder();
       _bgpAdvertisements.forEach(
-          (hostname, adverts) -> {
-            adverts.forEach(advert -> sb.append(advert.prettyPrint(hostname + " ")));
-          });
+          (hostname, adverts) ->
+              adverts.forEach(advert -> sb.append(advert.prettyPrint(hostname + " "))));
       return sb.toString();
     }
   }
@@ -152,7 +151,7 @@ public class BgpAdvertisementsQuestionPlugin extends QuestionPlugin {
     public BgpAdvertisementsAnswerElement answer() {
       BgpAdvertisementsQuestion question = (BgpAdvertisementsQuestion) _question;
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
-      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(_batfish);
       BgpAdvertisementsAnswerElement answerElement;
       if (question._fromEnvironment) {
         Set<BgpAdvertisement> externalAdverts =
@@ -229,7 +228,6 @@ public class BgpAdvertisementsQuestionPlugin extends QuestionPlugin {
     private boolean _sent;
 
     public BgpAdvertisementsQuestion() {
-      _nodeRegex = NodesSpecifier.ALL;
       _ebgp = true;
       _ibgp = true;
       _nodeRegex = NodesSpecifier.ALL;

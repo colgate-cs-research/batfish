@@ -21,7 +21,7 @@ public class NetworkSlice {
   /**
    * Indicates whether this slice is for the catch-all destination equivalence class.
    *
-   * @see DestinationClasses#addCatchAllCase(List, List, Map)
+   * @see DestinationClasses#addCatchAllCase
    */
   private boolean _isDefaultCase;
 
@@ -32,7 +32,7 @@ public class NetworkSlice {
     this._isDefaultCase = isDefaultCase;
   }
 
-  public static ArrayList<Supplier<NetworkSlice>> allSlices(DestinationClasses dcs, int fails) {
+  public static List<Supplier<NetworkSlice>> allSlices(DestinationClasses dcs, int fails) {
     BDDNetwork network = BDDNetwork.create(dcs.getGraph());
     ArrayList<Supplier<NetworkSlice>> classes = new ArrayList<>();
     for (Entry<Set<String>, Tuple<HeaderSpace, Tuple<List<Prefix>, Boolean>>> entry :

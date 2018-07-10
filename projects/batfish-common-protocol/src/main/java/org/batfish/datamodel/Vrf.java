@@ -1,10 +1,14 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.google.common.collect.ImmutableSortedSet;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.SortedSet;
@@ -12,6 +16,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
+import org.batfish.datamodel.ospf.OspfProcess;
 
 @JsonSchemaDescription("A virtual routing and forwarding (VRF) instance on a node.")
 public class Vrf extends ComparableStructure<String> {
@@ -49,6 +54,8 @@ public class Vrf extends ComparableStructure<String> {
 
   private static final String PROP_BGP_PROCESS = "bgpProcess";
 
+  private static final String PROP_DESCRIPTION = "description";
+
   private static final String PROP_GENERATED_ROUTES = "aggregateRoutes";
 
   private static final String PROP_INTERFACES = "interfaces";
@@ -67,6 +74,8 @@ public class Vrf extends ComparableStructure<String> {
   private transient NavigableSet<BgpAdvertisement> _bgpAdvertisements;
 
   private BgpProcess _bgpProcess;
+
+  private String _description;
 
   private NavigableSet<GeneratedRoute6> _generatedIpv6Routes;
 
@@ -126,6 +135,12 @@ public class Vrf extends ComparableStructure<String> {
     return _bgpProcess;
   }
 
+  @JsonProperty(PROP_DESCRIPTION)
+  @JsonPropertyDescription("Description for this VRF")
+  public String getDescription() {
+    return _description;
+  }
+
   @JsonPropertyDescription("Generated IPV6 routes for this VRF")
   public NavigableSet<GeneratedRoute6> getGeneratedIpv6Routes() {
     return _generatedIpv6Routes;
@@ -143,12 +158,12 @@ public class Vrf extends ComparableStructure<String> {
     if (_interfaces != null && !_interfaces.isEmpty()) {
       return new TreeSet<>(_interfaces.keySet());
     } else {
-      return _interfaceNames;
+      return firstNonNull(_interfaceNames, ImmutableSortedSet.of());
     }
   }
 
   @JsonIgnore
-  public NavigableMap<String, Interface> getInterfaces() {
+  public Map<String, Interface> getInterfaces() {
     return _interfaces;
   }
 
@@ -257,6 +272,11 @@ public class Vrf extends ComparableStructure<String> {
   @JsonProperty(PROP_BGP_PROCESS)
   public void setBgpProcess(BgpProcess process) {
     _bgpProcess = process;
+  }
+
+  @JsonProperty(PROP_DESCRIPTION)
+  public void setDescription(String description) {
+    _description = description;
   }
 
   public void setGeneratedIpv6Routes(NavigableSet<GeneratedRoute6> generatedIpv6Routes) {

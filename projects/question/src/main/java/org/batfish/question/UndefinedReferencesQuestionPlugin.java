@@ -22,19 +22,13 @@ public class UndefinedReferencesQuestionPlugin extends QuestionPlugin {
 
   public static class UndefinedReferencesAnswerElement extends ProblemsAnswerElement {
 
-    private AnswerSummary _summary = new AnswerSummary();
-
     private SortedMap<
             String, SortedMap<String, SortedMap<String, SortedMap<String, SortedSet<Integer>>>>>
         _undefinedReferences;
 
     public UndefinedReferencesAnswerElement() {
       _undefinedReferences = new TreeMap<>();
-    }
-
-    @Override
-    public AnswerSummary getSummary() {
-      return _summary;
+      setSummary(new AnswerSummary());
     }
 
     public SortedMap<
@@ -56,18 +50,12 @@ public class UndefinedReferencesQuestionPlugin extends QuestionPlugin {
                       (name, byUsage) -> {
                         sb.append("    " + name + ":\n");
                         byUsage.forEach(
-                            (usage, lines) -> {
-                              sb.append("      " + usage + ": lines " + lines + "\n");
-                            });
+                            (usage, lines) ->
+                                sb.append("      " + usage + ": lines " + lines + "\n"));
                       });
                 });
           });
       return sb.toString();
-    }
-
-    @Override
-    public void setSummary(AnswerSummary summary) {
-      _summary = summary;
     }
 
     public void setUndefinedReferences(
@@ -101,8 +89,7 @@ public class UndefinedReferencesQuestionPlugin extends QuestionPlugin {
       UndefinedReferencesAnswerElement answerElement = new UndefinedReferencesAnswerElement();
       ConvertConfigurationAnswerElement ccae =
           _batfish.loadConvertConfigurationAnswerElementOrReparse();
-      Set<String> includeNodes =
-          question.getNodeRegex().getMatchingNodes(_batfish.loadConfigurations());
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(_batfish);
 
       ccae.getUndefinedReferences()
           .forEach(
@@ -121,31 +108,30 @@ public class UndefinedReferencesQuestionPlugin extends QuestionPlugin {
                 String filename = hostnameFilenameMap.get(hostname);
                 if (filename != null) {
                   byType.forEach(
-                      (type, byName) -> {
-                        byName.forEach(
-                            (name, byUsage) -> {
-                              byUsage.forEach(
-                                  (usage, lines) -> {
-                                    String problemShort =
-                                        "undefined:" + type + ":usage:" + usage + ":" + name;
-                                    Problem problem = answerElement.getProblems().get(problemShort);
-                                    if (problem == null) {
-                                      problem = new Problem();
-                                      String problemLong =
-                                          "Undefined reference to structure of type: '"
-                                              + type
-                                              + "' with usage: '"
-                                              + usage
-                                              + "' named '"
-                                              + name
-                                              + "'";
-                                      problem.setDescription(problemLong);
-                                      answerElement.getProblems().put(problemShort, problem);
-                                    }
-                                    problem.getFiles().put(filename, lines);
-                                  });
-                            });
-                      });
+                      (type, byName) ->
+                          byName.forEach(
+                              (name, byUsage) ->
+                                  byUsage.forEach(
+                                      (usage, lines) -> {
+                                        String problemShort =
+                                            "undefined:" + type + ":usage:" + usage + ":" + name;
+                                        Problem problem =
+                                            answerElement.getProblems().get(problemShort);
+                                        if (problem == null) {
+                                          problem = new Problem();
+                                          String problemLong =
+                                              "Undefined reference to structure of type: '"
+                                                  + type
+                                                  + "' with usage: '"
+                                                  + usage
+                                                  + "' named '"
+                                                  + name
+                                                  + "'";
+                                          problem.setDescription(problemLong);
+                                          answerElement.getProblems().put(problemShort, problem);
+                                        }
+                                        problem.getFiles().put(filename, lines);
+                                      })));
                 }
               });
       answerElement.updateSummary();

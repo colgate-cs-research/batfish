@@ -1,5 +1,6 @@
 package org.batfish.symbolic.smt;
 
+import com.google.common.collect.ImmutableMap;
 import com.microsoft.z3.ArithExpr;
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Expr;
@@ -16,9 +17,9 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 import org.batfish.datamodel.AsPath;
+import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.BgpAdvertisement;
 import org.batfish.datamodel.BgpAdvertisement.BgpAdvertisementType;
-import org.batfish.datamodel.BgpNeighbor;
 import org.batfish.datamodel.Edge;
 import org.batfish.datamodel.FilterResult;
 import org.batfish.datamodel.Flow;
@@ -170,16 +171,16 @@ class CounterExample {
           int pathLength = intVal(r.getMetric());
 
           // Create dummy information
-          BgpNeighbor n = slice.getGraph().getEbgpNeighbors().get(lge.getEdge());
+          BgpActivePeerConfig n = slice.getGraph().getEbgpNeighbors().get(lge.getEdge());
           String srcNode = "as" + n.getRemoteAs();
           Ip zeroIp = new Ip(0);
           Ip dstIp = n.getLocalIp();
 
           // Recover AS path
-          List<SortedSet<Integer>> asSets = new ArrayList<>();
+          List<SortedSet<Long>> asSets = new ArrayList<>();
           for (int i = 0; i < pathLength; i++) {
-            SortedSet<Integer> asSet = new TreeSet<>();
-            asSet.add(-1);
+            SortedSet<Long> asSet = new TreeSet<>();
+            asSet.add(-1L);
             asSets.add(asSet);
           }
           AsPath path = new AsPath(asSets);
@@ -234,7 +235,7 @@ class CounterExample {
     Edge edge = new Edge(node1, int1, node2, int2);
     SortedSet<String> routes = new TreeSet<>();
     routes.add(route);
-    return new FlowTraceHop(edge, routes, null);
+    return new FlowTraceHop(edge, routes, null, null, null);
   }
 
   /*
@@ -332,7 +333,7 @@ class CounterExample {
           if (isFalse(aexpr)) {
             Interface i = ge.getEnd();
             IpAccessList acl = i.getIncomingFilter();
-            FilterResult fr = acl.filter(f);
+            FilterResult fr = acl.filter(f, null, ImmutableMap.of(), ImmutableMap.of());
             String line = "default deny";
             if (fr.getMatchLine() != null) {
               line = acl.getLines().get(fr.getMatchLine()).getName();
@@ -373,7 +374,7 @@ class CounterExample {
           hops.add(buildFlowTraceHop(ge, route));
           Interface i = ge.getStart();
           IpAccessList acl = i.getOutgoingFilter();
-          FilterResult fr = acl.filter(f);
+          FilterResult fr = acl.filter(f, null, ImmutableMap.of(), ImmutableMap.of());
           IpAccessListLine line = acl.getLines().get(fr.getMatchLine());
           String note = String.format("DENIED_OUT{%s}{%s}", acl.getName(), line.getName());
           FlowTrace ft = new FlowTrace(FlowDisposition.DENIED_OUT, hops, note);

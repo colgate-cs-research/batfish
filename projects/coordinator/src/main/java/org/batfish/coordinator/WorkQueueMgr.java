@@ -1,5 +1,6 @@
 package org.batfish.coordinator;
 
+import com.google.common.base.Throwables;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -9,7 +10,6 @@ import java.util.Set;
 import java.util.UUID;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts.TaskStatus;
@@ -207,7 +207,7 @@ public class WorkQueueMgr {
     }
   }
 
-  private QueuedWork getBlockerForDataplaneIndependentWork(
+  private QueuedWork getBlockerForParsingDependentWork(
       QueuedWork work, String testrig, String environment) throws IOException {
 
     WorkItem wItem = work.getWorkItem();
@@ -225,7 +225,7 @@ public class WorkQueueMgr {
         if (parsingWork == null) {
           throw new BatfishException(
               String.format(
-                  "Cannot queue dataplane independent work for %s / %s: "
+                  "Cannot queue parsing dependent work for %s / %s: "
                       + "Status is %s but no incomplete parsing work exists",
                   testrig, environment, envMetadata.getProcessingStatus()));
         }
@@ -369,7 +369,7 @@ public class WorkQueueMgr {
   }
 
   // when assignment attempt ends in error, we do not try to reassign
-  public synchronized void markAssignmentError(QueuedWork work) throws Exception {
+  public synchronized void markAssignmentError(QueuedWork work) {
     _queueIncompleteWork.delete(work);
     _queueCompletedWork.enque(work);
     work.setStatus(WorkStatusCode.ASSIGNMENTERROR);
@@ -481,7 +481,7 @@ public class WorkQueueMgr {
                       "Failed to requeue previously blocked work " + requeueWork.getId());
                 }
               } catch (Exception e) {
-                String stackTrace = ExceptionUtils.getStackTrace(e);
+                String stackTrace = Throwables.getStackTraceAsString(e);
                 _logger.errorf("exception: %s\n", stackTrace);
                 // put this work back on incomplete queue and process as if it terminatedabnormally
                 // people may be checking its status and this work may be blocking others
@@ -555,13 +555,14 @@ public class WorkQueueMgr {
     }
   }
 
-  private boolean queueAnsweringWork(QueuedWork work, boolean dataplaneDependent) throws Exception {
+  private boolean queueDependentAnsweringWork(QueuedWork work, boolean dataplaneDependent)
+      throws Exception {
     WorkDetails wDetails = work.getDetails();
 
     QueuedWork baseBlocker =
         dataplaneDependent
             ? getBlockerForDataplaneDependentWork(work, wDetails.baseTestrig, wDetails.baseEnv)
-            : getBlockerForDataplaneIndependentWork(work, wDetails.baseTestrig, wDetails.baseEnv);
+            : getBlockerForParsingDependentWork(work, wDetails.baseTestrig, wDetails.baseEnv);
 
     if (baseBlocker != null) {
       return queueBlockedWork(work, baseBlocker);
@@ -569,8 +570,7 @@ public class WorkQueueMgr {
       QueuedWork deltaBlocker =
           dataplaneDependent
               ? getBlockerForDataplaneDependentWork(work, wDetails.deltaTestrig, wDetails.deltaEnv)
-              : getBlockerForDataplaneIndependentWork(
-                  work, wDetails.deltaTestrig, wDetails.deltaEnv);
+              : getBlockerForParsingDependentWork(work, wDetails.deltaTestrig, wDetails.deltaEnv);
       if (deltaBlocker != null) {
         return queueBlockedWork(work, deltaBlocker);
       }
@@ -578,7 +578,7 @@ public class WorkQueueMgr {
     return _queueIncompleteWork.enque(work);
   }
 
-  private boolean queueBlockedWork(QueuedWork work, QueuedWork blocker) throws Exception {
+  private boolean queueBlockedWork(QueuedWork work, QueuedWork blocker) {
     _blockingWork.add(blocker.getId());
     work.setStatus(WorkStatusCode.BLOCKED);
     return _queueIncompleteWork.enque(work);
@@ -667,10 +667,13 @@ public class WorkQueueMgr {
         return queueParsingWork(work);
       case DATAPLANING:
         return queueDataplaningWork(work);
+      case INDEPENDENT_ANSWERING:
+        // assume that this type of work shouldn't be blocked at all
+        return _queueIncompleteWork.enque(work);
+      case PARSING_DEPENDENT_ANSWERING:
+        return queueDependentAnsweringWork(work, false);
       case DATAPLANE_DEPENDENT_ANSWERING:
-        return queueAnsweringWork(work, true);
-      case DATAPLANE_INDEPENDENT_ANSWERING:
-        return queueAnsweringWork(work, false);
+        return queueDependentAnsweringWork(work, true);
       case UNKNOWN:
         return _queueIncompleteWork.enque(work);
       default:

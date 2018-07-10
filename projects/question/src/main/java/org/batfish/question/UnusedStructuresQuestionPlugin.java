@@ -22,18 +22,12 @@ public class UnusedStructuresQuestionPlugin extends QuestionPlugin {
 
   public static class UnusedStructuresAnswerElement extends ProblemsAnswerElement {
 
-    private AnswerSummary _summary = new AnswerSummary();
-
     private SortedMap<String, SortedMap<String, SortedMap<String, SortedSet<Integer>>>>
         _unusedStructures;
 
     public UnusedStructuresAnswerElement() {
       _unusedStructures = new TreeMap<>();
-    }
-
-    @Override
-    public AnswerSummary getSummary() {
-      return _summary;
+      setSummary(new AnswerSummary());
     }
 
     public SortedMap<String, SortedMap<String, SortedMap<String, SortedSet<Integer>>>>
@@ -51,17 +45,10 @@ public class UnusedStructuresQuestionPlugin extends QuestionPlugin {
                 (type, members) -> {
                   sb.append("  " + type + ":\n");
                   members.forEach(
-                      (member, lines) -> {
-                        sb.append("    " + member + " lines " + lines + "\n");
-                      });
+                      (member, lines) -> sb.append("    " + member + " lines " + lines + "\n"));
                 });
           });
       return sb.toString();
-    }
-
-    @Override
-    public void setSummary(AnswerSummary summary) {
-      _summary = summary;
     }
 
     public void setUnusedStructures(
@@ -94,15 +81,29 @@ public class UnusedStructuresQuestionPlugin extends QuestionPlugin {
       UnusedStructuresAnswerElement answerElement = new UnusedStructuresAnswerElement();
       ConvertConfigurationAnswerElement ccae =
           _batfish.loadConvertConfigurationAnswerElementOrReparse();
-      Set<String> includeNodes =
-          question.getNodeRegex().getMatchingNodes(_batfish.loadConfigurations());
+      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(_batfish);
 
-      ccae.getUnusedStructures()
+      // this is an ugly hack to convert defined structures into unused structures of the old type
+      ccae.getDefinedStructures()
           .forEach(
               (hostname, byType) -> {
-                if (includeNodes.contains(hostname)) {
-                  answerElement.getUnusedStructures().put(hostname, byType);
+                if (!includeNodes.contains(hostname)) {
+                  return;
                 }
+                byType.forEach(
+                    (structType, byName) ->
+                        byName.forEach(
+                            (structName, info) -> {
+                              if (info.getNumReferrers() == 0) {
+                                SortedMap<String, SortedMap<String, SortedSet<Integer>>> newByType =
+                                    answerElement
+                                        .getUnusedStructures()
+                                        .computeIfAbsent(hostname, e -> new TreeMap<>());
+                                SortedMap<String, SortedSet<Integer>> newByName =
+                                    newByType.computeIfAbsent(structType, e -> new TreeMap<>());
+                                newByName.put(structName, info.getDefinitionLines());
+                              }
+                            }));
               });
 
       ParseVendorConfigurationAnswerElement pvcae =
@@ -115,25 +116,24 @@ public class UnusedStructuresQuestionPlugin extends QuestionPlugin {
                 String filename = hostnameFilenameMap.get(hostname);
                 if (filename != null) {
                   byType.forEach(
-                      (type, byName) -> {
-                        byName.forEach(
-                            (name, lines) -> {
-                              String problemShort = "unused:" + type + ":" + name;
-                              Problem problem = answerElement.getProblems().get(problemShort);
-                              if (problem == null) {
-                                problem = new Problem();
-                                String problemLong =
-                                    "Unused structure of type: '"
-                                        + type
-                                        + "' with name: '"
-                                        + name
-                                        + "'";
-                                problem.setDescription(problemLong);
-                                answerElement.getProblems().put(problemShort, problem);
-                              }
-                              problem.getFiles().put(filename, lines);
-                            });
-                      });
+                      (type, byName) ->
+                          byName.forEach(
+                              (name, lines) -> {
+                                String problemShort = "unused:" + type + ":" + name;
+                                Problem problem = answerElement.getProblems().get(problemShort);
+                                if (problem == null) {
+                                  problem = new Problem();
+                                  String problemLong =
+                                      "Unused structure of type: '"
+                                          + type
+                                          + "' with name: '"
+                                          + name
+                                          + "'";
+                                  problem.setDescription(problemLong);
+                                  answerElement.getProblems().put(problemShort, problem);
+                                }
+                                problem.getFiles().put(filename, lines);
+                              }));
                 }
               });
       answerElement.updateSummary();
