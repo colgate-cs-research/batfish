@@ -1,0 +1,5 @@
+p1
+IMPORT edge-6 Serial0 BGP
+EXPORT edge-6 Serial0 BGP
+IMPORT aggregation-4 Serial2 BGP
+EXPORT aggregation-4 Serial2 BGP
