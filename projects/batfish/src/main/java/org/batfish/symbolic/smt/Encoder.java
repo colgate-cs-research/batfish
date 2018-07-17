@@ -1458,4 +1458,8 @@ public class Encoder {
   public void addVariables(Map<String, Expr> addedConstraints) {
     _allVariables.putAll(addedConstraints);
   }
+
+  public boolean shouldSplitITEs(){
+    return _settings.shouldSplitITEs();
+  }
 }

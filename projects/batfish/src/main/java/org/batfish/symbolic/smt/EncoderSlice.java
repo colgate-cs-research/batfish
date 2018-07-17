@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import javax.annotation.Nullable;
+
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.BgpNeighbor;
 import org.batfish.datamodel.Configuration;
@@ -203,10 +204,6 @@ class EncoderSlice {
 
   // Symbolic equality
   BoolExpr mkEq(Expr e1, Expr e2) {
-    //System.out.println("making expression");
-    //System.out.println(e1.toString()); //THIS DOES NOTHING
-    //System.out.println(e2);
-    //System.out.println(ExprPrinter.print(e1));
     return getCtx().mkEq(e1, e2);
   }
 
@@ -1991,7 +1988,7 @@ class EncoderSlice {
     ArithExpr failed = getSymbolicFailures().getFailedVariable(e.getEdge());
     assert (failed != null);
     BoolExpr notFailed = mkEq(failed, mkInt(0));
-    PredicateLabel label=new PredicateLabel(labels.IMPORT,router,iface,proto);
+    PredicateLabel importLabel=new PredicateLabel(labels.IMPORT,router,iface,proto);
 
     if (vars.getIsUsed()) {
 
@@ -2008,7 +2005,7 @@ class EncoderSlice {
         BoolExpr lp = safeEq(vars.getLocalPref(), mkInt(0));
         BoolExpr met = safeEq(vars.getMetric(), mkInt(0));
         BoolExpr values = mkAnd(per, len, ad, lp, met);
-        add(mkIf(relevant, values, mkNot(vars.getPermitted())), label);
+        add(mkIf(relevant, values, mkNot(vars.getPermitted())), importLabel);
       }
 
       if (proto.isStatic()) {
@@ -2030,7 +2027,7 @@ class EncoderSlice {
           BoolExpr values = mkAnd(per, len, ad, lp, met);
           acc = mkIf(relevant, values, acc);
         }
-        add(acc, label);
+        add(acc, importLabel);
       }
 
       if (proto.isOspf() || proto.isBgp()) {
@@ -2141,6 +2138,8 @@ class EncoderSlice {
           importFunction = f.compute();
 
           BoolExpr acc = mkIf(usable, importFunction, val);
+          BoolExpr branchTrue = mkImplies(usable, importFunction);
+          BoolExpr branchFalse = mkImplies(mkNot(usable), val);
 
           if (Encoder.ENABLE_DEBUGGING) {
             System.out.println("IMPORT FUNCTION: " + router + " " + varsOther.getName());
@@ -2148,10 +2147,21 @@ class EncoderSlice {
             System.out.println("\n\n");
           }
 
-          add(acc, label);
+          if (_encoder.shouldSplitITEs()){
+            List<BoolExpr> branchTrueClauses = breakITEs(branchTrue);
+            List<BoolExpr> branchFalseClauses = breakITEs(branchFalse);
 
+            for (BoolExpr expr: branchTrueClauses){
+              add(expr, importLabel);
+            }
+            for (BoolExpr expr: branchFalseClauses){
+              add(expr, importLabel);
+            }
+          }else {
+            add(acc, importLabel);
+          }
         } else {
-          add(val, label);
+          add(val, importLabel);
         }
       }
     }
@@ -2162,6 +2172,7 @@ class EncoderSlice {
    * between two symbolic records. The import filter depends
    * heavily on the protocol.
    */
+
   private void addExportConstraint(
       LogicalEdge e,
       SymbolicRoute varsOther,
@@ -2174,6 +2185,7 @@ class EncoderSlice {
       boolean usedExport,
       Set<Prefix> originations) {
 
+
     SymbolicRoute vars = e.getSymbolicRecord();
 
     Interface iface = ge.getStart();
@@ -2181,19 +2193,19 @@ class EncoderSlice {
     ArithExpr failed = getSymbolicFailures().getFailedVariable(e.getEdge());
     assert (failed != null);
     BoolExpr notFailed = mkEq(failed, mkInt(0));
-    PredicateLabel label= new PredicateLabel(labels.EXPORT, router, ge.getStart(), proto);
+    PredicateLabel exportLabel= new PredicateLabel(labels.EXPORT, router, ge.getStart(), proto);
 
     // only add constraints once when using a single copy of export variables
     if (!_optimizations.getSliceCanKeepSingleExportVar().get(router).get(proto) || !usedExport) {
 
       if (proto.isConnected()) {
         BoolExpr val = mkNot(vars.getPermitted());
-        add(val, label);
+        add(val, exportLabel);
       }
 
       if (proto.isStatic()) {
         BoolExpr val = mkNot(vars.getPermitted());
-        add(val, label);
+        add(val, exportLabel);
       }
 
       if (proto.isOspf() || proto.isBgp()) {
@@ -2325,9 +2337,28 @@ class EncoderSlice {
             }
 
             acc = mkIf(relevant, values, acc);
+
           }
         }
-        add(acc, label);
+
+        Expr[] iteArgs = acc.getArgs();
+
+        if (_encoder.shouldSplitITEs()){
+          System.out.println("splittingItes");
+          BoolExpr branchTrue = mkImplies((BoolExpr) iteArgs[0], (BoolExpr)iteArgs[1]);
+          BoolExpr branchFalse = mkImplies(mkNot((BoolExpr) iteArgs[0]), (BoolExpr) iteArgs[2]);
+          List<BoolExpr> branchTrueClauses = breakITEs(branchTrue);
+          List<BoolExpr> branchFalseClauses = breakITEs(branchFalse);
+
+          for (BoolExpr expr: branchTrueClauses) {
+            add(expr, exportLabel);
+          }
+          for(BoolExpr expr: branchFalseClauses) {
+            add(expr, exportLabel);
+          }
+        }else{
+          add(acc, exportLabel);
+        }
 
         if (Encoder.ENABLE_DEBUGGING) {
           System.out.println("EXPORT: " + router + " " + varsOther.getName() + " " + ge);
@@ -2336,6 +2367,33 @@ class EncoderSlice {
         }
       }
     }
+  }
+
+  /**
+   * Helper method to recursively split implications where the consequent is an ITE statement.
+   * @param expr BoolExpr object that is an implication.
+   * @return List of BoolExpr objects obtained by breaking down the implication.
+   */
+  private List<BoolExpr> breakITEs(BoolExpr expr){
+
+    if (!expr.isImplies()){
+      return new ArrayList<>(Arrays.asList(expr));
+    }
+    List<BoolExpr> clauses = new ArrayList<>();
+    BoolExpr antecedant = (BoolExpr) expr.getArgs()[0];
+    BoolExpr consequent = (BoolExpr) expr.getArgs()[1];
+    if (consequent.isITE()){
+      BoolExpr iteCondition = (BoolExpr)consequent.getArgs()[0];
+      BoolExpr iteTrueClause = (BoolExpr)consequent.getArgs()[1];
+      BoolExpr iteFalseClause = (BoolExpr)consequent.getArgs()[2];
+      BoolExpr clausePositive = mkImplies(mkAnd(antecedant, iteCondition),iteTrueClause);
+      BoolExpr clauseNegative = mkImplies(mkAnd(antecedant, mkNot(iteCondition)), iteFalseClause);
+      clauses.addAll(breakITEs(clausePositive));
+      clauses.addAll(breakITEs(clauseNegative));
+    }else{
+      clauses.add(expr);
+    }
+    return clauses;
   }
 
   /*

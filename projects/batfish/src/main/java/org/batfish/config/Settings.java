@@ -526,6 +526,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_MINIMIZE_UNSAT_CORE = "minimizeUnsatCore";
 
+  private static final String ARG_SPLIT_ITE = "splitITE";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -1025,6 +1027,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_MINIMIZE_UNSAT_CORE);
   }
 
+  public boolean shouldSplitITEs(){
+      return _config.getBoolean(ARG_SPLIT_ITE);
+  }
+
   public boolean shouldPrintCounterExampleDiffs(){
     return _config.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
   }
@@ -1125,6 +1131,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_PRINT_UNSAT_EXPR, false);
     setDefaultProperty(ARG_NO_FILTER_UNSAT_CORE, false);
     setDefaultProperty(ARG_MINIMIZE_UNSAT_CORE, false);
+    setDefaultProperty(ARG_SPLIT_ITE, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
@@ -1426,6 +1433,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(ARG_MINIMIZE_UNSAT_CORE, "minimize unsat core");
 
+    addBooleanOption(ARG_SPLIT_ITE, "split if then else statements");
+
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
@@ -1543,6 +1552,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(ARG_PRINT_UNSAT_EXPR);
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
     getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
+    getBooleanOptionValue(ARG_SPLIT_ITE);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
 
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
