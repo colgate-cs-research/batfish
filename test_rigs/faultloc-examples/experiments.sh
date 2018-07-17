@@ -20,13 +20,13 @@ mkdir -p $RESULTDIR
 declare -A OPTIONS=(["c"]="includeComputable" \
                     ["m"]="minimizeUnsatCore" \
                     ["s"]="enableSlicing")
-declare -a SETUPS=("" "c" "m" "s" "cm" "cs" "sm" "csm")
+declare -a SETUPS=("" "c" "m" "cm" "cs" "csm")
 
 # Clean-up from last experiment
 rm -rf $BASEDIR/containers
 
 # Run experiment for each setup
-for SETUP in "${SETUPS[@]}"; do 
+for SETUP in "${SETUPS[@]}"; do
     echo $SETUP
 
     # Prepare options file
