@@ -18,7 +18,7 @@ png("extraconfig(scenario).png",width = 800)
 boxplot (mydata$extraconfigpred~mydata$scenario, main="numbers of extraconfig", xlab="scenario", ylab="numbers")
 dev.off()
 
-for (exp in mydata$experiment){
+for (exp in unique(mydata$experiment)){
   temp<-subset(mydata,experiment==exp)
   png(paste("foundpred-", exp, ".png"),width = 800)
   boxplot (temp$percentfound~temp$scenario, main="percent of foundpred", xlab="different network", ylab="percentage")
