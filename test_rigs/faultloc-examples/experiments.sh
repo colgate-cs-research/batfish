@@ -19,8 +19,9 @@ mkdir -p $RESULTDIR
 # Configure experimental setups
 declare -A OPTIONS=(["c"]="includeComputable" \
                     ["m"]="minimizeUnsatCore" \
-                    ["s"]="enableSlicing")
-declare -a SETUPS=("" "c" "m" "cm" "cs" "csm")
+                    ["s"]="enableSlicing" \
+                    ["i"]="splitITE")
+declare -a SETUPS=("" "c" "m" "cm" "cs" "csm" "ic" "icm" "ics" "icsm")
 
 # Clean-up from last experiment
 rm -rf $BASEDIR/containers
