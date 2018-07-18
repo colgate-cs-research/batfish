@@ -930,6 +930,7 @@ public class Encoder {
 
   public Set<String> computeBackwardSlice(Collection<String> unsatCore, 
       Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
+
     List<String> worklist = new ArrayList<String>(unsatCore);
 
 
@@ -1045,19 +1046,25 @@ public class Encoder {
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
+    long time_slice=0;
+    long time_minimization=0;
+    long time_check=0;
+    
 
     // History of values assigned to variables in different (counter)examples
     Map<String, Set<String>> variableHistoryMap = new HashMap<String, Set<String>>();
 
-    long start = System.currentTimeMillis();
 
     if (_settings.shouldInvertSatFormula()) { //create a new solver with negated formula
       negateSolverAssertions();
     }
-
+    long start = System.currentTimeMillis();
+    
     Status status = _solver.check();
 
     long time = System.currentTimeMillis() - start;
+    
+    time_check=time;
 
     VerificationStats stats = null;
     if (_question.getBenchmark()) {
@@ -1163,8 +1170,9 @@ public class Encoder {
         if (_settings.shouldInvertSatFormula()) { //create a new solver with negated formula
           negateSolverAssertions();
         }
-
+        long check_start=System.currentTimeMillis();
         Status s = _solver.check();
+        time_check+=System.currentTimeMillis()-check_start;
         if (s == Status.UNSATISFIABLE) {
           HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
           HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
@@ -1177,7 +1185,9 @@ public class Encoder {
 
           // Minimize unsat core, if requested
           if (_settings.shouldMinimizeUnsatCore()) {
+            long start_mini=System.currentTimeMillis();
             unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
+            time_minimization=System.currentTimeMillis()-start_mini;
           }          
        
           // Compute predicates in not unsat core
@@ -1236,7 +1246,9 @@ public class Encoder {
           // If requested, compute a backward slice from all predicates in the (not) unsat
           // core and add everything in the slice to the list of predicates for fault localization.
           if (_settings.shouldEnableSlicing()) {
+            long start_slice=System.currentTimeMillis();
             Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
+            time_slice=System.currentTimeMillis()-start_slice;
             faultCandidates = backwardSlice;
             System.out.println("\nBackward slice:");
             System.out.println("-------------------------------------------");
@@ -1304,7 +1316,7 @@ public class Encoder {
             for (PredicateLabel label:unfound.get(q))
             unfoundpred+=label.toString()+";";            
           }
-          String FILE_HEADER="examples,foundpreds,unfoundpreds,extraconfigpred,extracomputepred,includecomputable,notnegating,minimize,slice,unfoundpred";
+          String FILE_HEADER="examples,foundpreds,unfoundpreds,extraconfigpred,extracomputepred,includecomputable,notnegating,minimize,slice,unfoundpred,slicetime,minimizationtime,checktime";
           String COMMA=",";
           String NEW_LINE="\n";
           try {
@@ -1332,6 +1344,12 @@ public class Encoder {
             filewriter1.append(Boolean.toString(_settings.shouldEnableSlicing()));
             filewriter1.append(COMMA);
             filewriter1.append(unfoundpred);
+            filewriter1.append(COMMA);
+            filewriter1.append(Long.toString(time_slice));
+            filewriter1.append(COMMA);
+            filewriter1.append(Long.toString(time_minimization));
+            filewriter1.append(COMMA);
+            filewriter1.append(Long.toString(time_check));
             filewriter1.append(NEW_LINE);        
           }
           catch (Exception e) {
