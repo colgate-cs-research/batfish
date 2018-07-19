@@ -510,8 +510,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
 
-  private static final String ARG_INVERT_SAT_FORMULA_FAULTLOC = "invertSat";
-
   private static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
 
   private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
@@ -999,10 +997,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getInt(ARG_NUM_ITERS_FAULTLOC);
   }
 
-  public boolean shouldInvertSatFormula() {
-    return _config.getBoolean(ARG_INVERT_SAT_FORMULA_FAULTLOC);
-  }
-
   public boolean shouldNotNegateProperty(){
     return _config.getBoolean(ARG_NO_NEGATE_PROPERTY);
   }
@@ -1126,7 +1120,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(BfConsts.COMMAND_REPORT, false);
     setDefaultProperty(BfConsts.COMMAND_VALIDATE_ENVIRONMENT, false);
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
-    setDefaultProperty(ARG_INVERT_SAT_FORMULA_FAULTLOC, false);
     setDefaultProperty(ARG_NO_NEGATE_PROPERTY, false);
     setDefaultProperty(ARG_PRINT_UNSAT_EXPR, false);
     setDefaultProperty(ARG_NO_FILTER_UNSAT_CORE, false);
@@ -1418,9 +1411,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     addBooleanOption(
         BfConsts.COMMAND_VALIDATE_ENVIRONMENT, "validate an environment that has been initialized");
 
-    addBooleanOption(
-        ARG_INVERT_SAT_FORMULA_FAULTLOC, "invert boolean formula to be solved by solver");
-
     addBooleanOption(ARG_NO_NEGATE_PROPERTY, "do not negate property being checked by Minesweeper");
 
     addBooleanOption(ARG_PRINT_UNSAT_EXPR, "print expressions in the UnsatCore");
@@ -1547,7 +1537,6 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(BfConsts.ARG_UNRECOGNIZED_AS_RED_FLAG);
     getBooleanOptionValue(BfConsts.COMMAND_VALIDATE_ENVIRONMENT);
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
-    getBooleanOptionValue(ARG_INVERT_SAT_FORMULA_FAULTLOC);
     getBooleanOptionValue(ARG_NO_NEGATE_PROPERTY);
     getBooleanOptionValue(ARG_PRINT_UNSAT_EXPR);
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);

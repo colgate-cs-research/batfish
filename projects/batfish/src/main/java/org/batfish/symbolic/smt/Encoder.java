@@ -814,18 +814,6 @@ public class Encoder {
   }
 
   /**
-   * Negates boolean formula being asserted by the solver object.
-   */
-  private void negateSolverAssertions(){
-    BoolExpr[] assertions = _solver.getAssertions();
-    BoolExpr negFormula = _ctx.mkAnd(assertions);
-    negFormula = _ctx.mkNot(negFormula);
-    _solver.reset();
-    _solver.add(negFormula);
-  }
-
-
-  /**
    * Adds solver constraints that need not be varied for fault localization,
    * like Packet variables.
    * @param staticVars Symbolic Packet variables from the main slice.
@@ -1042,16 +1030,9 @@ public class Encoder {
     // History of values assigned to variables in different (counter)examples
     Map<String, Set<String>> variableHistoryMap = new HashMap<String, Set<String>>();
 
-
-    if (_settings.shouldInvertSatFormula()) { //create a new solver with negated formula
-      negateSolverAssertions();
-    }
     long start = System.currentTimeMillis();
-    
     Status status = _solver.check();
-
     long time = System.currentTimeMillis() - start;
-    
     time_check=time;
 
     VerificationStats stats = null;
@@ -1155,9 +1136,6 @@ public class Encoder {
           add(blocking, newlabel);
         }
 
-        if (_settings.shouldInvertSatFormula()) { //create a new solver with negated formula
-          negateSolverAssertions();
-        }
         long check_start=System.currentTimeMillis();
         Status s = _solver.check();
         time_check+=System.currentTimeMillis()-check_start;
