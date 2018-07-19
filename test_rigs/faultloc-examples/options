@@ -1,2 +1,3 @@
 add-batfish-option numIters 20
 add-batfish-option minimizeUnsatCore
+add-batfish-option includeComputable

@@ -16,7 +16,7 @@ batfish_build_all || exit 1
 
 # Run faultloc examples
 echo -e "\n  ..... Running faultloc examples"
-test_rigs/faultloc-examples/run.sh || exit 1
+test_rigs/faultloc-examples/run_all.sh || exit 1
 
 ## Configure arguments for allinone throughout later runs.
 #export ALLINONE_JAVA_ARGS="-enableassertions -DbatfishCoordinatorPropertiesPath=${BATFISH_ROOT}/.travis/travis_coordinator.properties"
