@@ -26,6 +26,10 @@ public class PredicateLabel{
     BEST_OVERALL,
     CONTROL_FORWARDING,
     DATA_FORWARDING,
+    REACHABILITY,
+    PATH_LENGTH,
+    LOOP,
+    LOAD,
     // Predicates derived from configuration
     IMPORT,
     EXPORT,
