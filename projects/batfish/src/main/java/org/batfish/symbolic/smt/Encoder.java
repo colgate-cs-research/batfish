@@ -1028,16 +1028,6 @@ public class Encoder {
    * @return A VerificationResult indicating the status of the check.
    */
   public Tuple<VerificationResult, Model> verify() {
-    Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
-    Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
-    
-    // Mapping from variable names to predicates in which a value is assigned to the variable
-    Map<Expr, List<String>> assignedTo = new HashMap<Expr, List<String>>();
-    // Mapping from predicates to the variables that are referenced in the predicate
-    Map<String, List<Expr>> referencedTo = new HashMap<String, List<Expr>>();
-    // Compute variable/predicate mappings required for computing slices
-    computeVarAssignmentsReferences(assignedTo, referencedTo, predicatesNameToExprMap);
-
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
@@ -1046,8 +1036,6 @@ public class Encoder {
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
-    long time_slice=0;
-    long time_minimization=0;
     long time_check=0;
     
 
@@ -1174,196 +1162,7 @@ public class Encoder {
         Status s = _solver.check();
         time_check+=System.currentTimeMillis()-check_start;
         if (s == Status.UNSATISFIABLE) {
-          HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
-          HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
-          System.out.println("\nPOLICY VIOLATED");
-          System.out.println("=====================================================");
-          System.out.println("\n" + numCounterexamples + " counterexamples");
-          
-          // Get unsat core
-          List<String> unsatCore = this.getUnsatCorePredNames();
-
-          // Minimize unsat core, if requested
-          if (_settings.shouldMinimizeUnsatCore()) {
-            long start_mini=System.currentTimeMillis();
-            unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
-            time_minimization=System.currentTimeMillis()-start_mini;
-          }          
-       
-          // Compute predicates in not unsat core
-          List<String> notUnsatCore = new ArrayList<String>();
-          for (String predicate : predicatesNameToLabelMap.keySet()) {
-            PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-            if (!unsatCore.contains(predicate) 
-                  && (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable() 
-                      || (_settings.shouldIncludeComputable() && label.isComputable()))) {
-                notUnsatCore.add(predicate);
-             }
-          }
-          
-          // Display not unsat core
-          System.out.println("\nNot Unsat Core:");
-          System.out.println("-------------------------------------------");
-          for (String predicate : notUnsatCore) {
-            PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-            if (_settings.shouldPrintUnsatExpr()) {
-            System.out.println(label + ": " 
-                    + predicatesNameToExprMap.get(predicate));
-            } else {
-                System.out.println(label);
-            }
-          }
-          System.out.println("-------------------------------------------");
-          
-          // Display unsat core
-          System.out.println("\nUnsat Core:");
-          System.out.println("-------------------------------------------");
-          for (String predicate : unsatCore) {
-            PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-            if (_settings.shouldPrintUnsatExpr()) {
-              System.out.println(label + ": " 
-                      + predicatesNameToExprMap.get(predicate));
-            } else {
-              System.out.println(label);
-            }
-          }
-          System.out.println("-------------------------------------------");
-          
-          // Determine whether to use unsat core or not unsat core for fault localization
-          // A solution to Minesweeeper's constraints is a counterexample, and the
-          // unsat core is the reason a counterexample cannot be found---i.e., 
-          // the unsat core contains "good" predicates. Hence, the not unsat
-          // core should be used to localize faults.
-          Set<String> faultCandidates = new HashSet<String>(notUnsatCore);
-          // If normal Minesweeper behavior is inverted, then a solution to the constraints
-          // is a satisfying example, and the unsat core is the reason no satisfying example
-          // can found---i.e., the unsat core contains "bad" predicates.
-          if (_settings.shouldNotNegateProperty()) {
-            faultCandidates = new HashSet<String>(unsatCore);
-          }
-          
-          
-          // If requested, compute a backward slice from all predicates in the (not) unsat
-          // core and add everything in the slice to the list of predicates for fault localization.
-          if (_settings.shouldEnableSlicing()) {
-            long start_slice=System.currentTimeMillis();
-            Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
-            time_slice=System.currentTimeMillis()-start_slice;
-            faultCandidates = backwardSlice;
-            System.out.println("\nBackward slice:");
-            System.out.println("-------------------------------------------");
-            for (String predicate : backwardSlice) {
-              // Only output constraints we can change
-              PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-              if (_settings.shouldRemoveUnsatCoreFilters() 
-                      || label.isConfigurable() || label.isComputable()) {
-                  if (_settings.shouldPrintUnsatExpr()) {
-                    System.out.println(label + ": " 
-                            + predicatesNameToExprMap.get(predicate));
-                  } else {
-                    System.out.println(label);
-                  }
-              }
-            }
-            System.out.println("-------------------------------------------");
-          } 
-           
-          // Determine which labels are not found
-          int extraComputable = 0;
-          int extraConfigurable = 0;
-          List<PredicateLabel> combination= new ArrayList<PredicateLabel> ();
-          for (String predicate : faultCandidates) {
-            PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-            combination.add(label);}
-          combination.addAll(edgeToLabel());
-          for (PredicateLabel label:combination)
-            for (String q: Faultloc.keySet()) {
-                unfound.get(q).remove(label);
-                if (!Faultloc.get(q).contains(label)) {
-                  if (label.isComputable())
-                    extraComputable+=1;
-                  if (label.isConfigurable())
-                    extraConfigurable+=1;
-              }
-            }
-          
-          
-          // Print out found and unfound items in faultloc list
-          int unfoundCount = 0;
-          int foundCount = 0;
-          for (String q:Faultloc.keySet()) {
-            unfoundCount = unfound.get(q).size();
-            foundCount = Faultloc.get(q).size()-unfoundCount;
-            System.out.println("\nFaulty predicates for " + q + ": " 
-                    + foundCount + " found, " + unfoundCount + " unfound");
-            if (unfoundCount > 0) {
-              System.out.println("Unfound faulty predicates for " + q + ":");
-              System.out.println("-------------------------------------------");
-              for (PredicateLabel label : unfound.get(q)) {
-                  System.out.println(label);
-              }
-              System.out.println("-------------------------------------------");
-            }
-          }
-          
-          Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
-          Path filepath = testrigpath.resolve("experiment.csv");
-          File file = filepath.toFile();
-          System.out.println(filepath);
-          FileWriter filewriter1=null;
-          String unfoundpred="";
-          for (String q:Faultloc.keySet()) {
-            for (PredicateLabel label:unfound.get(q))
-            unfoundpred+=label.toString()+";";            
-          }
-          String FILE_HEADER="examples,foundpreds,unfoundpreds,extraconfigpred,extracomputepred,includecomputable,notnegating,minimize,slice,unfoundpred,slicetime,minimizationtime,checktime";
-          String COMMA=",";
-          String NEW_LINE="\n";
-          try {
-            filewriter1 = new FileWriter(file, true);
-            filewriter1.append(_question.prettyPrint());
-            filewriter1.append(NEW_LINE);
-            filewriter1.append(FILE_HEADER.toString());
-            filewriter1.append(NEW_LINE);
-            filewriter1.append(Integer.toString(numCounterexamples));
-            filewriter1.append(COMMA);
-            filewriter1.append(Integer.toString(foundCount));
-            filewriter1.append(COMMA);
-            filewriter1.append(Integer.toString(unfoundCount));
-            filewriter1.append(COMMA);
-            filewriter1.append(Integer.toString(extraConfigurable));
-            filewriter1.append(COMMA);
-            filewriter1.append(Integer.toString(extraComputable));
-            filewriter1.append(COMMA);
-            filewriter1.append(Boolean.toString(_settings.shouldIncludeComputable()));
-            filewriter1.append(COMMA);
-            filewriter1.append(Boolean.toString(_settings.shouldNotNegateProperty()));
-            filewriter1.append(COMMA);
-            filewriter1.append(Boolean.toString(_settings.shouldMinimizeUnsatCore()));
-            filewriter1.append(COMMA);
-            filewriter1.append(Boolean.toString(_settings.shouldEnableSlicing()));
-            filewriter1.append(COMMA);
-            filewriter1.append(unfoundpred);
-            filewriter1.append(COMMA);
-            filewriter1.append(Long.toString(time_slice));
-            filewriter1.append(COMMA);
-            filewriter1.append(Long.toString(time_minimization));
-            filewriter1.append(COMMA);
-            filewriter1.append(Long.toString(time_check));
-            filewriter1.append(NEW_LINE);        
-          }
-          catch (Exception e) {
-            System.out.println("Error in creating csv file");
-          } finally {
-            try {
-              filewriter1.flush();
-              filewriter1.close();
-            } catch(IOException e) {
-              System.out.println("Error in flusing/closing filewriter");
-            }
-          }
-
-          System.out.println("=====================================================");
+          localizeFaults(numCounterexamples, time_check);
           break;
         }
         if (s == Status.UNKNOWN) {
@@ -1382,6 +1181,215 @@ public class Encoder {
       }
       return new Tuple<>(result, m);
     }
+  }
+  
+  void localizeFaults(int numCounterexamples, long time_check) {
+    Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
+    Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
+    
+    long time_slice=0;
+    long time_minimization=0;
+    
+    HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
+    HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
+    
+    System.out.println("\nLOCALIZE FAULTS");
+    System.out.println("=====================================================");
+    System.out.println("\n" + numCounterexamples + " counterexamples");
+    
+    // Get unsat core
+    List<String> unsatCore = this.getUnsatCorePredNames();
+
+    // Minimize unsat core, if requested
+    if (_settings.shouldMinimizeUnsatCore()) {
+      long start_mini=System.currentTimeMillis();
+      unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
+      time_minimization=System.currentTimeMillis()-start_mini;
+    }          
+ 
+    // Compute predicates in not unsat core
+    List<String> notUnsatCore = new ArrayList<String>();
+    for (String predicate : predicatesNameToLabelMap.keySet()) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      if (!unsatCore.contains(predicate) 
+            && (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable() 
+                || (_settings.shouldIncludeComputable() && label.isComputable()))) {
+          notUnsatCore.add(predicate);
+       }
+    }
+    
+    // Display not unsat core
+    System.out.println("\nNot Unsat Core:");
+    System.out.println("-------------------------------------------");
+    for (String predicate : notUnsatCore) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      if (_settings.shouldPrintUnsatExpr()) {
+      System.out.println(label + ": " 
+              + predicatesNameToExprMap.get(predicate));
+      } else {
+          System.out.println(label);
+      }
+    }
+    System.out.println("-------------------------------------------");
+    
+    // Display unsat core
+    System.out.println("\nUnsat Core:");
+    System.out.println("-------------------------------------------");
+    for (String predicate : unsatCore) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      if (_settings.shouldPrintUnsatExpr()) {
+        System.out.println(label + ": " 
+                + predicatesNameToExprMap.get(predicate));
+      } else {
+        System.out.println(label);
+      }
+    }
+    System.out.println("-------------------------------------------");
+    
+    // Determine whether to use unsat core or not unsat core for fault localization
+    // A solution to Minesweeeper's constraints is a counterexample, and the
+    // unsat core is the reason a counterexample cannot be found---i.e., 
+    // the unsat core contains "good" predicates. Hence, the not unsat
+    // core should be used to localize faults.
+    Set<String> faultCandidates = new HashSet<String>(notUnsatCore);
+    // If normal Minesweeper behavior is inverted, then a solution to the constraints
+    // is a satisfying example, and the unsat core is the reason no satisfying example
+    // can found---i.e., the unsat core contains "bad" predicates.
+    if (_settings.shouldNotNegateProperty()) {
+      faultCandidates = new HashSet<String>(unsatCore);
+    }
+    
+    
+    // If requested, compute a backward slice from all predicates in the (not) unsat
+    // core and add everything in the slice to the list of predicates for fault localization.
+    if (_settings.shouldEnableSlicing()) {
+      long start_slice=System.currentTimeMillis();
+      
+      // Mapping from variable names to predicates in which a value is assigned to the variable
+      Map<Expr, List<String>> assignedTo = new HashMap<Expr, List<String>>();
+      // Mapping from predicates to the variables that are referenced in the predicate
+      Map<String, List<Expr>> referencedTo = new HashMap<String, List<Expr>>();
+      // Compute variable/predicate mappings required for computing slices
+      computeVarAssignmentsReferences(assignedTo, referencedTo, predicatesNameToExprMap);
+      
+      // Compute Slice
+      Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
+      time_slice=System.currentTimeMillis()-start_slice;
+      faultCandidates = backwardSlice;
+      System.out.println("\nBackward slice:");
+      System.out.println("-------------------------------------------");
+      for (String predicate : backwardSlice) {
+        // Only output constraints we can change
+        PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+        if (_settings.shouldRemoveUnsatCoreFilters() 
+                || label.isConfigurable() || label.isComputable()) {
+            if (_settings.shouldPrintUnsatExpr()) {
+              System.out.println(label + ": " 
+                      + predicatesNameToExprMap.get(predicate));
+            } else {
+              System.out.println(label);
+            }
+        }
+      }
+      System.out.println("-------------------------------------------");
+    } 
+     
+    // Determine which labels are not found
+    int extraComputable = 0;
+    int extraConfigurable = 0;
+    List<PredicateLabel> combination= new ArrayList<PredicateLabel> ();
+    for (String predicate : faultCandidates) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      combination.add(label);}
+    combination.addAll(edgeToLabel());
+    for (PredicateLabel label:combination)
+      for (String q: Faultloc.keySet()) {
+          unfound.get(q).remove(label);
+          if (!Faultloc.get(q).contains(label)) {
+            if (label.isComputable())
+              extraComputable+=1;
+            if (label.isConfigurable())
+              extraConfigurable+=1;
+        }
+      }
+    
+    
+    // Print out found and unfound items in faultloc list
+    int unfoundCount = 0;
+    int foundCount = 0;
+    for (String q:Faultloc.keySet()) {
+      unfoundCount = unfound.get(q).size();
+      foundCount = Faultloc.get(q).size()-unfoundCount;
+      System.out.println("\nFaulty predicates for " + q + ": " 
+              + foundCount + " found, " + unfoundCount + " unfound");
+      if (unfoundCount > 0) {
+        System.out.println("Unfound faulty predicates for " + q + ":");
+        System.out.println("-------------------------------------------");
+        for (PredicateLabel label : unfound.get(q)) {
+            System.out.println(label);
+        }
+        System.out.println("-------------------------------------------");
+      }
+    }
+    
+    Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
+    Path filepath = testrigpath.resolve("experiment.csv");
+    File file = filepath.toFile();
+    System.out.println(filepath);
+    FileWriter filewriter1=null;
+    String unfoundpred="";
+    for (String q:Faultloc.keySet()) {
+      for (PredicateLabel label:unfound.get(q))
+      unfoundpred+=label.toString()+";";            
+    }
+    String FILE_HEADER="examples,foundpreds,unfoundpreds,extraconfigpred,extracomputepred,includecomputable,notnegating,minimize,slice,unfoundpred,slicetime,minimizationtime,checktime";
+    String COMMA=",";
+    String NEW_LINE="\n";
+    try {
+      filewriter1 = new FileWriter(file, true);
+      filewriter1.append(_question.prettyPrint());
+      filewriter1.append(NEW_LINE);
+      filewriter1.append(FILE_HEADER.toString());
+      filewriter1.append(NEW_LINE);
+      filewriter1.append(Integer.toString(numCounterexamples));
+      filewriter1.append(COMMA);
+      filewriter1.append(Integer.toString(foundCount));
+      filewriter1.append(COMMA);
+      filewriter1.append(Integer.toString(unfoundCount));
+      filewriter1.append(COMMA);
+      filewriter1.append(Integer.toString(extraConfigurable));
+      filewriter1.append(COMMA);
+      filewriter1.append(Integer.toString(extraComputable));
+      filewriter1.append(COMMA);
+      filewriter1.append(Boolean.toString(_settings.shouldIncludeComputable()));
+      filewriter1.append(COMMA);
+      filewriter1.append(Boolean.toString(_settings.shouldNotNegateProperty()));
+      filewriter1.append(COMMA);
+      filewriter1.append(Boolean.toString(_settings.shouldMinimizeUnsatCore()));
+      filewriter1.append(COMMA);
+      filewriter1.append(Boolean.toString(_settings.shouldEnableSlicing()));
+      filewriter1.append(COMMA);
+      filewriter1.append(unfoundpred);
+      filewriter1.append(COMMA);
+      filewriter1.append(Long.toString(time_slice));
+      filewriter1.append(COMMA);
+      filewriter1.append(Long.toString(time_minimization));
+      filewriter1.append(COMMA);
+      filewriter1.append(Long.toString(time_check));
+      filewriter1.append(NEW_LINE);        
+    }
+    catch (Exception e) {
+      System.out.println("Error in creating csv file");
+    } finally {
+      try {
+        filewriter1.flush();
+        filewriter1.close();
+      } catch(IOException e) {
+        System.out.println("Error in flusing/closing filewriter");
+      }
+    }
+
+    System.out.println("=====================================================");
   }
 
   /**
