@@ -44,7 +44,7 @@ for SETUP in "${SETUPS[@]}"; do
     echo $SETUP
 
     # Run experiment
-    $BASEDIR/run.sh 2>&1 | tee $LOGDIR/$SETUP.log
+    $BASEDIR/run_all.sh 2>&1 | tee $LOGDIR/$SETUP.log
 
     # Save output
     mkdir -p $RESULTDIR/$SETUP
