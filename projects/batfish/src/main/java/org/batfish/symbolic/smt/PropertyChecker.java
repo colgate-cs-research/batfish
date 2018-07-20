@@ -470,15 +470,7 @@ public class PropertyChecker {
                     }
                     allProp = enc.mkAnd(allProp, r);
                   }
-                  if (_settings.shouldNotNegateProperty()) {
-                    // faultloc option to not negate property of interest
-                    System.out.println("Leaving property unnegated");
-                    enc.add(allProp, label);
-                  }else{
-                    // Default minesweeper: negate property of interest
-                    System.out.println("Negating property");
-                    enc.add(enc.mkNot(allProp), label);
-                  }
+                  enc.add(enc.mkNot(allProp), label);
                 }
 
                 addFailureConstraints(enc, destPorts, failOptions);

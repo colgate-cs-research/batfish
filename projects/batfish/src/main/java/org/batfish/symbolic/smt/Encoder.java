@@ -67,6 +67,10 @@ public class Encoder {
 
   private UnsatCore _unsatCore;
 
+  private Solver _faultlocSolver;
+
+  private UnsatCore _faultlocUnsatCore;
+
   private Settings _settings;
 
   /**
@@ -172,6 +176,9 @@ public class Encoder {
     }
 
     _unsatCore = new UnsatCore(ENABLE_UNSAT_CORE,this._settings);
+
+    _faultlocSolver = _ctx.mkSolver();
+    _faultlocUnsatCore = new UnsatCore(true,this._settings);
 
     initFailedLinkVariables();
     initSlices(_question.getHeaderSpace(), graph);
@@ -388,6 +395,16 @@ public class Encoder {
 
   void add(BoolExpr e, PredicateLabel caller) {
     _unsatCore.track(_solver, _ctx, e, caller);
+    // Invert policy for faultloc, if requested
+    if (caller.gettype() == labels.POLICY) {
+      if  (_settings.shouldNotNegateProperty()) {
+        System.out.println("Assert P");
+        e = _ctx.mkNot(e);
+      } else {
+        System.out.println("Assert !P");
+      }
+    }
+    _faultlocUnsatCore.track(_faultlocSolver, _ctx, e, caller);
   }
 
   /*
@@ -836,7 +853,7 @@ public class Encoder {
     }
 
     BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _unsatCore.track(_solver, _ctx,andPcktVars, label);
+    _faultlocUnsatCore.track(_faultlocSolver, _ctx,andPcktVars, label);
   }
 
 
@@ -859,16 +876,16 @@ public class Encoder {
     }
 //    System.out.println(builder.toString());
     BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _unsatCore.track(_solver,_ctx, _ctx.mkNot(andAllEq),label);
+    _faultlocUnsatCore.track(_faultlocSolver,_ctx, _ctx.mkNot(andAllEq),label);
   }
   
   /**
    * Gets the names of the predicates in the unsat core 
    * @return names of the predicates in the unsat core
    */
-  private List<String> getUnsatCorePredNames() {
+  private List<String> getFaultlocUnsatCorePredNames() {
     // Get unsat core
-    BoolExpr[] unsatCore = _solver.getUnsatCore();
+    BoolExpr[] unsatCore = _faultlocSolver.getUnsatCore();
     
     // Each predicate in the unsat core is a label, e.g. Pred22
     List<String> predNames = new ArrayList<String>();
@@ -1024,16 +1041,10 @@ public class Encoder {
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
-    long time_check=0;
-    
-
-    // History of values assigned to variables in different (counter)examples
-    Map<String, Set<String>> variableHistoryMap = new HashMap<String, Set<String>>();
 
     long start = System.currentTimeMillis();
     Status status = _solver.check();
     long time = System.currentTimeMillis() - start;
-    time_check=time;
 
     VerificationStats stats = null;
     if (_question.getBenchmark()) {
@@ -1055,8 +1066,6 @@ public class Encoder {
       stats.setMinSolverTime(time);
     }
 
-
-
     if (status == Status.UNSATISFIABLE) {
       VerificationResult res = new VerificationResult(true, null, null, null, null, null, stats);
       return new Tuple<>(res, null);
@@ -1065,17 +1074,69 @@ public class Encoder {
     } else {
       VerificationResult result;
       Model m;
-      int numCounterexamples = 0;
-
-      SortedSet<Expr> staticVars =
-              this.getMainSlice()
-                      .getSymbolicPacket()
-                      .getSymbolicPacketVars(); // should be added to solver during the first iteration.
-
-
-
-      do {
+      while (true) {
         m = _solver.getModel();
+        SortedMap<String, String> model = new TreeMap<>();
+        SortedMap<String, String> packetModel = new TreeMap<>();
+        SortedSet<String> fwdModel = new TreeSet<>();
+        SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
+        SortedSet<String> failures = new TreeSet<>();
+        buildCounterExample(this, m, model, packetModel, fwdModel, envModel, failures, new TreeMap<>(), new TreeMap<>());
+
+        if (_previousEncoder != null) {
+          buildCounterExample(
+              _previousEncoder, m, model, packetModel, fwdModel, envModel, failures, new TreeMap<>(), new TreeMap<>());
+        }
+
+        result =
+            new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
+        
+        // Localize faults
+        localizeFaults();
+        
+        if (!_question.getMinimize()) {
+          break;
+        }
+
+        BoolExpr blocking = environmentBlockingClause(m);
+        add(blocking, new PredicateLabel(labels.ENVIRONMENT));
+
+        Status s = _solver.check();
+        if (s == Status.UNSATISFIABLE) {
+          break;
+        }
+        if (s == Status.UNKNOWN) {
+          throw new BatfishException("ERROR: satisfiability unknown");
+        }
+      }
+
+      return new Tuple<>(result, m);
+    }
+  }
+  
+  void localizeFaults() {
+    long time_check = 0;
+    int numCounterexamples = 0;
+    // History of values assigned to variables in different (counter)examples
+    Map<String, Set<String>> variableHistoryMap = new HashMap<String, Set<String>>();
+    SortedSet<Expr> staticVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
+    
+    do {
+      // Solve
+      long check_start = System.currentTimeMillis();
+      Status s = _faultlocSolver.check();
+      time_check += System.currentTimeMillis() - check_start;
+      
+      if (s == Status.UNKNOWN) {
+        throw new BatfishException("ERROR: satisfiability unknown");
+      } 
+      else if (s == Status.UNSATISFIABLE) {
+        localizeFaultsUsingUnsat(numCounterexamples, time_check);
+        break;
+      }
+      else if (s == Status.SATISFIABLE) {
+        numCounterexamples++;
+        Model m = _faultlocSolver.getModel();
         SortedMap<String, String> model = new TreeMap<>();
         SortedMap<String, String> packetModel = new TreeMap<>();
         SortedSet<String> fwdModel = new TreeSet<>();
@@ -1084,12 +1145,11 @@ public class Encoder {
 
         SortedMap<Expr, Expr> nonStaticVariableAssignments = new TreeMap<>();
         SortedMap<Expr, Expr> staticVariableAssignments = new TreeMap<>();
-        HashMap<String, String> ce =
-                buildCounterExample(
-                        this, m, model, packetModel, fwdModel, envModel, failures, nonStaticVariableAssignments,staticVariableAssignments);
+        HashMap<String, String> ce = buildCounterExample(this, m, model, packetModel, fwdModel, 
+            envModel, failures, nonStaticVariableAssignments,staticVariableAssignments);
 
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
-        if (numCounterexamples == 0) {
+        if (numCounterexamples == 1) {
           for (String key : ce.keySet()) {
             // first values assigned to counter-example variables...
             variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
@@ -1100,68 +1160,26 @@ public class Encoder {
           }
         }
 
-        if (_previousEncoder != null) {
-          ce =
-                  buildCounterExample(
-                          _previousEncoder,
-                          m,
-                          model,
-                          packetModel,
-                          fwdModel,
-                          envModel,
-                          failures,
-                          nonStaticVariableAssignments,
-                          staticVariableAssignments);
-          for (String varName : ce.keySet()) {
-            variableHistoryMap.get(varName).add(ce.get(varName));
-          }
+        if (numCounterexamples == 1) {
+          addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
         }
-
-        result = new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
-
-        numCounterexamples++;
-
-        if (_settings.getNumIters() > 1) {
-          // the 15 data plane packet variables + other static variables (eg:- reachable_id) need to be fixed.
-          if (numCounterexamples == 1) {
-            addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
-          }
-          addCounterExampleConstraints(staticVars, nonStaticVariableAssignments);
-        }
-
-        // Find the smallest possible counterexample
-        if (_question.getMinimize()) {
-          PredicateLabel newlabel=new PredicateLabel(labels.ENVIRONMENT);
-          BoolExpr blocking = environmentBlockingClause(m);
-          add(blocking, newlabel);
-        }
-
-        long check_start=System.currentTimeMillis();
-        Status s = _solver.check();
-        time_check+=System.currentTimeMillis()-check_start;
-        if (s == Status.UNSATISFIABLE) {
-          localizeFaults(numCounterexamples, time_check);
-          break;
-        }
-        if (s == Status.UNKNOWN) {
-          throw new BatfishException("ERROR: satisfiability unknown");
-        }
-      } while (_question.getMinimize() || numCounterexamples < _settings.getNumIters());
+        addCounterExampleConstraints(staticVars, nonStaticVariableAssignments);
+      }
+    } while (numCounterexamples < _settings.getNumIters());
+    
+    if (_settings.shouldPrintCounterExampleDiffs()) {
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
-
-      if (_settings.shouldPrintCounterExampleDiffs()) {
-        System.out.println("Changes in Model Variables");
-        for (String variableName : variableNames) {
-          System.out.println(
-                  variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
-        }
+      System.out.println("Changes in Model Variables");
+      for (String variableName : variableNames) {
+        System.out.println(
+              variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
       }
-      return new Tuple<>(result, m);
     }
+
   }
   
-  void localizeFaults(int numCounterexamples, long time_check) {
+  void localizeFaultsUsingUnsat(int numCounterexamples, long time_check) {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
     
@@ -1176,7 +1194,7 @@ public class Encoder {
     System.out.println("\n" + numCounterexamples + " counterexamples");
     
     // Get unsat core
-    List<String> unsatCore = this.getUnsatCorePredNames();
+    List<String> unsatCore = this.getFaultlocUnsatCorePredNames();
 
     // Minimize unsat core, if requested
     if (_settings.shouldMinimizeUnsatCore()) {
