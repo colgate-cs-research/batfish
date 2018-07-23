@@ -1166,7 +1166,7 @@ public class Encoder {
         addCounterExampleConstraints(staticVars, nonStaticVariableAssignments);
       }
     } while (numCounterexamples < _settings.getNumIters());
-    
+    System.out.println("Number of Counter Examples generated: " +numCounterexamples);
     if (_settings.shouldPrintCounterExampleDiffs()) {
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
