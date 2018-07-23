@@ -2,7 +2,6 @@ package org.batfish.symbolic.smt;
 
 import com.microsoft.z3.*;
 import org.batfish.common.BatfishException;
-import org.batfish.common.Directory;
 import org.batfish.common.Pair;
 import org.batfish.config.Settings;
 import org.batfish.datamodel.*;
@@ -19,7 +18,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -72,6 +70,8 @@ public class Encoder {
   private UnsatCore _faultlocUnsatCore;
 
   private Settings _settings;
+
+  private FaultlocStats _faultlocStats;
 
   /**
    * Create an encoder object that will consider all packets in the provided headerspace.
@@ -182,6 +182,8 @@ public class Encoder {
 
     initFailedLinkVariables();
     initSlices(_question.getHeaderSpace(), graph);
+
+    _faultlocStats = new FaultlocStats(_settings, _question.prettyPrint());
   }
 
   /*
@@ -901,10 +903,6 @@ public class Encoder {
    * from an unsatisfiable boolean formula makes it satisfiable and append it
    * to a growing UnsatCore if this change makes the formula satisfiable.
    *
-   * @param predicatesNameToExprMap Map from predicate name strings (eg:- Pred22)
-   * to Z3 BoolExpr objects corresponding to the predicate.
-   * @param minCorePredNameToExprMap Map from only the predicates present in the
-   * computed minimal UnsatCore to Z3 BoolExpr objects.
    */
   private List<String> minimizeUnsatCore(List<String> unsatCoreNames, Map<String, BoolExpr> predNameToExpr){
 
@@ -1090,9 +1088,12 @@ public class Encoder {
 
         result =
             new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
-        
+
+
         // Localize faults
         localizeFaults();
+        _faultlocStats.writeOut();
+
         
         if (!_question.getMinimize()) {
           break;
@@ -1118,7 +1119,7 @@ public class Encoder {
     long time_check = 0;
     int numCounterexamples = 0;
     // History of values assigned to variables in different (counter)examples
-    Map<String, Set<String>> variableHistoryMap = new HashMap<String, Set<String>>();
+    Map<String, Set<String>> variableHistoryMap = new HashMap<>();
     SortedSet<Expr> staticVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
     
     do {
@@ -1131,7 +1132,13 @@ public class Encoder {
         throw new BatfishException("ERROR: satisfiability unknown");
       } 
       else if (s == Status.UNSATISFIABLE) {
-        localizeFaultsUsingUnsat(numCounterexamples, time_check);
+        _faultlocStats.setNumCounterExamples(numCounterexamples);
+        _faultlocStats.setCheckTime(time_check);
+
+        System.out.println("\nLOCALIZE FAULTS");
+        System.out.println("=====================================================");
+        System.out.println("\n" + numCounterexamples + " counterexamples");
+        localizeFaultsUsingUnsat();
         break;
       }
       else if (s == Status.SATISFIABLE) {
@@ -1154,15 +1161,14 @@ public class Encoder {
             // first values assigned to counter-example variables...
             variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
           }
+          addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
+
         } else {
           for (String varName : ce.keySet()) {
             variableHistoryMap.get(varName).add(ce.get(varName));
           }
         }
 
-        if (numCounterexamples == 1) {
-          addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
-        }
         addCounterExampleConstraints(staticVars, nonStaticVariableAssignments);
       }
     } while (numCounterexamples < _settings.getNumIters());
@@ -1179,19 +1185,13 @@ public class Encoder {
 
   }
   
-  void localizeFaultsUsingUnsat(int numCounterexamples, long time_check) {
+  void localizeFaultsUsingUnsat() {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
-    
-    long time_slice=0;
-    long time_minimization=0;
-    
+
     HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
     HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
-    
-    System.out.println("\nLOCALIZE FAULTS");
-    System.out.println("=====================================================");
-    System.out.println("\n" + numCounterexamples + " counterexamples");
+
     
     // Get unsat core
     List<String> unsatCore = this.getFaultlocUnsatCorePredNames();
@@ -1200,11 +1200,12 @@ public class Encoder {
     if (_settings.shouldMinimizeUnsatCore()) {
       long start_mini=System.currentTimeMillis();
       unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
-      time_minimization=System.currentTimeMillis()-start_mini;
-    }          
+      long time_minimization=System.currentTimeMillis()-start_mini;
+      _faultlocStats.setMinimizeTime(time_minimization);
+    }
  
     // Compute predicates in not unsat core
-    List<String> notUnsatCore = new ArrayList<String>();
+    List<String> notUnsatCore = new ArrayList<>();
     for (String predicate : predicatesNameToLabelMap.keySet()) {
       PredicateLabel label = predicatesNameToLabelMap.get(predicate);
       if (!unsatCore.contains(predicate) 
@@ -1247,12 +1248,12 @@ public class Encoder {
     // unsat core is the reason a counterexample cannot be found---i.e., 
     // the unsat core contains "good" predicates. Hence, the not unsat
     // core should be used to localize faults.
-    Set<String> faultCandidates = new HashSet<String>(notUnsatCore);
+    Set<String> faultCandidates = new HashSet<>(notUnsatCore);
     // If normal Minesweeper behavior is inverted, then a solution to the constraints
     // is a satisfying example, and the unsat core is the reason no satisfying example
     // can found---i.e., the unsat core contains "bad" predicates.
     if (_settings.shouldNotNegateProperty()) {
-      faultCandidates = new HashSet<String>(unsatCore);
+      faultCandidates = new HashSet<>(unsatCore);
     }
     
     
@@ -1262,15 +1263,16 @@ public class Encoder {
       long start_slice=System.currentTimeMillis();
       
       // Mapping from variable names to predicates in which a value is assigned to the variable
-      Map<Expr, List<String>> assignedTo = new HashMap<Expr, List<String>>();
+      Map<Expr, List<String>> assignedTo = new HashMap<>();
       // Mapping from predicates to the variables that are referenced in the predicate
-      Map<String, List<Expr>> referencedTo = new HashMap<String, List<Expr>>();
+      Map<String, List<Expr>> referencedTo = new HashMap<>();
       // Compute variable/predicate mappings required for computing slices
       computeVarAssignmentsReferences(assignedTo, referencedTo, predicatesNameToExprMap);
       
       // Compute Slice
       Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
-      time_slice=System.currentTimeMillis()-start_slice;
+      long time_slice=System.currentTimeMillis()-start_slice;
+      _faultlocStats.setSliceTime(time_slice);
       faultCandidates = backwardSlice;
       System.out.println("\nBackward slice:");
       System.out.println("-------------------------------------------");
@@ -1293,23 +1295,26 @@ public class Encoder {
     // Determine which labels are not found
     int extraComputable = 0;
     int extraConfigurable = 0;
-    List<PredicateLabel> combination= new ArrayList<PredicateLabel> ();
+    List<PredicateLabel> combination= new ArrayList<> ();
     for (String predicate : faultCandidates) {
       PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-      combination.add(label);}
+      combination.add(label);
+    }
     combination.addAll(edgeToLabel());
-    for (PredicateLabel label:combination)
-      for (String q: Faultloc.keySet()) {
-          unfound.get(q).remove(label);
-          if (!Faultloc.get(q).contains(label)) {
-            if (label.isComputable())
-              extraComputable+=1;
-            if (label.isConfigurable())
-              extraConfigurable+=1;
+    for (PredicateLabel label:combination) {
+      for (String q : Faultloc.keySet()) {
+        unfound.get(q).remove(label);
+        if (!Faultloc.get(q).contains(label)) {
+          if (label.isComputable())
+            extraComputable += 1;
+          if (label.isConfigurable())
+            extraConfigurable += 1;
         }
       }
-    
-    
+    }
+    _faultlocStats.setNumExtraConfigPreds(extraConfigurable);
+    _faultlocStats.setNumExtraComputePreds(extraComputable);
+
     // Print out found and unfound items in faultloc list
     int unfoundCount = 0;
     int foundCount = 0;
@@ -1327,6 +1332,12 @@ public class Encoder {
         System.out.println("-------------------------------------------");
       }
     }
+
+
+    _faultlocStats.setNumFoundPreds(foundCount);
+    _faultlocStats.setNumUnfoundPreds(unfoundCount);
+
+
     
     Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
     Path filepath = testrigpath.resolve("experiment.csv");
@@ -1338,52 +1349,8 @@ public class Encoder {
       for (PredicateLabel label:unfound.get(q))
       unfoundpred+=label.toString()+";";            
     }
-    String FILE_HEADER="examples,foundpreds,unfoundpreds,extraconfigpred,extracomputepred,includecomputable,notnegating,minimize,slice,unfoundpred,slicetime,minimizationtime,checktime";
-    String COMMA=",";
-    String NEW_LINE="\n";
-    try {
-      filewriter1 = new FileWriter(file, true);
-      filewriter1.append(_question.prettyPrint());
-      filewriter1.append(NEW_LINE);
-      filewriter1.append(FILE_HEADER.toString());
-      filewriter1.append(NEW_LINE);
-      filewriter1.append(Integer.toString(numCounterexamples));
-      filewriter1.append(COMMA);
-      filewriter1.append(Integer.toString(foundCount));
-      filewriter1.append(COMMA);
-      filewriter1.append(Integer.toString(unfoundCount));
-      filewriter1.append(COMMA);
-      filewriter1.append(Integer.toString(extraConfigurable));
-      filewriter1.append(COMMA);
-      filewriter1.append(Integer.toString(extraComputable));
-      filewriter1.append(COMMA);
-      filewriter1.append(Boolean.toString(_settings.shouldIncludeComputable()));
-      filewriter1.append(COMMA);
-      filewriter1.append(Boolean.toString(_settings.shouldNotNegateProperty()));
-      filewriter1.append(COMMA);
-      filewriter1.append(Boolean.toString(_settings.shouldMinimizeUnsatCore()));
-      filewriter1.append(COMMA);
-      filewriter1.append(Boolean.toString(_settings.shouldEnableSlicing()));
-      filewriter1.append(COMMA);
-      filewriter1.append(unfoundpred);
-      filewriter1.append(COMMA);
-      filewriter1.append(Long.toString(time_slice));
-      filewriter1.append(COMMA);
-      filewriter1.append(Long.toString(time_minimization));
-      filewriter1.append(COMMA);
-      filewriter1.append(Long.toString(time_check));
-      filewriter1.append(NEW_LINE);        
-    }
-    catch (Exception e) {
-      System.out.println("Error in creating csv file");
-    } finally {
-      try {
-        filewriter1.flush();
-        filewriter1.close();
-      } catch(IOException e) {
-        System.out.println("Error in flusing/closing filewriter");
-      }
-    }
+    _faultlocStats.setUnfoundPreds(unfoundpred);
+
 
     System.out.println("=====================================================");
   }
