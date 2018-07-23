@@ -39,6 +39,10 @@ public class Encoder {
 
   static final Boolean ENABLE_DEBUGGING = false;
   static final String MAIN_SLICE_NAME = "SLICE-MAIN_";
+
+  static final String UNSATCORE_OUT_FILE = "unsat.out";
+  static final String NOT_UNSATCORE_OUT_FILE = "not_unsat.out";
+
   private static final boolean ENABLE_UNSAT_CORE = true;
 
   private int _encodingId;
@@ -1215,34 +1219,7 @@ public class Encoder {
        }
     }
     
-    // Display not unsat core
-    System.out.println("\nNot Unsat Core:");
-    System.out.println("-------------------------------------------");
-    for (String predicate : notUnsatCore) {
-      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-      if (_settings.shouldPrintUnsatExpr()) {
-      System.out.println(label + ": " 
-              + predicatesNameToExprMap.get(predicate));
-      } else {
-          System.out.println(label);
-      }
-    }
-    System.out.println("-------------------------------------------");
-    
-    // Display unsat core
-    System.out.println("\nUnsat Core:");
-    System.out.println("-------------------------------------------");
-    for (String predicate : unsatCore) {
-      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-      if (_settings.shouldPrintUnsatExpr()) {
-        System.out.println(label + ": " 
-                + predicatesNameToExprMap.get(predicate));
-      } else {
-        System.out.println(label);
-      }
-    }
-    System.out.println("-------------------------------------------");
-    
+    processCores(unsatCore, notUnsatCore, predicatesNameToExprMap, predicatesNameToLabelMap);
     // Determine whether to use unsat core or not unsat core for fault localization
     // A solution to Minesweeeper's constraints is a counterexample, and the
     // unsat core is the reason a counterexample cannot be found---i.e., 
@@ -1353,6 +1330,69 @@ public class Encoder {
 
 
     System.out.println("=====================================================");
+  }
+
+  /**
+   * Print and process the produced UnsatCore and the complement for storage.
+   * Predicate Labels are written out seperated by commas.
+   */
+  void processCores(List<String> unsatCore, List<String> notUnsatCore,
+                    Map<String, BoolExpr> predicatesNameToExprMap,
+                    Map<String, PredicateLabel> predicatesNameToLabelMap){
+    List<String> notUnsatLabels = new ArrayList<>();
+    List<String> unsatLabels = new ArrayList<>();
+
+    // Display not unsat core
+    System.out.println("\nNot Unsat Core:");
+    System.out.println("-------------------------------------------");
+    for (String predicate : notUnsatCore) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      notUnsatLabels.add(label.toString());
+      if (_settings.shouldPrintUnsatExpr()) {
+        System.out.println(label + ": "
+                + predicatesNameToExprMap.get(predicate));
+      } else {
+        System.out.println(label);
+      }
+    }
+    System.out.println("-------------------------------------------");
+
+    // Display unsat core
+    System.out.println("\nUnsat Core:");
+    System.out.println("-------------------------------------------");
+    for (String predicate : unsatCore) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      unsatLabels.add(label.toString());
+      if (_settings.shouldPrintUnsatExpr()) {
+        System.out.println(label + ": "
+                + predicatesNameToExprMap.get(predicate));
+      } else {
+        System.out.println(label);
+      }
+    }
+    System.out.println("-------------------------------------------");
+
+    // Write Out UnsatCore to unsat.out && NotUnsatCore to not_unsat.out
+    Path unsatCorePath = _settings.getActiveTestrigSettings()
+            .getTestRigPath()
+            .resolve(UNSATCORE_OUT_FILE);
+    Path notUnsatCorePath = _settings.getActiveTestrigSettings()
+            .getTestRigPath()
+            .resolve(NOT_UNSATCORE_OUT_FILE);
+    try{
+      FileWriter coreWriter = new FileWriter(unsatCorePath.toFile(), true);
+      coreWriter.append(String.join(",", unsatLabels));
+      coreWriter.append(",");
+      coreWriter.flush();
+      coreWriter.close();
+      coreWriter = new FileWriter(notUnsatCorePath.toFile(), true);
+      coreWriter.append(String.join(",", unsatLabels));
+      coreWriter.append(",");
+      coreWriter.flush();
+      coreWriter.close();
+    }catch(IOException ioe){
+      ioe.printStackTrace();
+    }
   }
 
   /**
