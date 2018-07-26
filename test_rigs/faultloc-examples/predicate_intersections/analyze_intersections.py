@@ -24,9 +24,6 @@ def analyze(dir, network, testrig):
 			print dir, network, testrig
 		else:
 			fault_occurences_count_not_unsat[fault] = 0
-	print fault_occurences_count_not_unsat
-	print not_unsat_list	
-	print unsat_list	
 	with open(os.path.join(dir,'fault_count_unsat.json'), 'w') as f:
 		json.dump(fault_occurences_count_unsat, f)
 	
@@ -45,16 +42,23 @@ def parse_faultloc_file(faultloc_path):
 	with open(faultloc_path, 'r') as f:
 		content = f.readlines()
 		fault_list = [i.rstrip('\n') for i in content if ' ' in i] #Remove 'q1' strings.
+	for i in range(len(fault_list)):
+		#Getting rid of nulls.
+		fault = fault_list[i]
+		tokens = fault.split()
+		tokens = [j for j in tokens if j!='null']
+		fault_list[i] = ' '.join(tokens)
 	return fault_list
 
 def count_occurences(pred_list):
-	return  dict(Counter(pred_list))	
+	count_dic =  dict(Counter(pred_list))	
+	return count_dic
 
 BASE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"containers")
-NETWORKS = ["bgp-triangle","enterprise-campus","fattree","ospf-line","ospf-triangle","redistribute-triangle"]
-VARIATIONS =  ["add-acl", "add-routemap","rm-network", "rm-neighbor","disable-interface"]
-#NETWORKS = ["ospf-triangle"]
-#VARIATIONS = ["add-acl"]
+#NETWORKS = ["bgp-triangle","enterprise-campus","fattree","ospf-line","ospf-triangle","redistribute-triangle"]
+#VARIATIONS =  ["add-acl", "add-routemap","rm-network", "rm-neighbor","disable-interface"]
+NETWORKS = ["ospf-triangle"]
+VARIATIONS = ["add-acl"]
 
 
 for network in NETWORKS: 
@@ -64,3 +68,6 @@ for network in NETWORKS:
 		if os.path.exists(results_dir):
 			if "unsat.out" in os.listdir(results_dir):
 				analyze(results_dir, network, testrig)
+
+
+print ''
