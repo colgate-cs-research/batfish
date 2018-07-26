@@ -1386,7 +1386,7 @@ public class Encoder {
       coreWriter.flush();
       coreWriter.close();
       coreWriter = new FileWriter(notUnsatCorePath.toFile(), true);
-      coreWriter.append(String.join(",", unsatLabels));
+      coreWriter.append(String.join(",", notUnsatLabels));
       coreWriter.append(",");
       coreWriter.flush();
       coreWriter.close();
