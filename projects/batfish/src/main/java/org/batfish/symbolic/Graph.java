@@ -560,8 +560,6 @@ public class Graph {
         }
       }
     }
-    System.out.println("Test:");  
-    System.out.println(_ebgppossible);
   }
 
   /*
