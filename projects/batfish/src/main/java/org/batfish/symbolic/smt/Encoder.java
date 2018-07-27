@@ -41,7 +41,11 @@ public class Encoder {
   static final String MAIN_SLICE_NAME = "SLICE-MAIN_";
 
   static final String UNSATCORE_OUT_FILE = "unsat.out";
+  static final String UNSATCORE_OUT_FILE_NO_NEGATE = "unsat_no_negate.out";
+
   static final String NOT_UNSATCORE_OUT_FILE = "not_unsat.out";
+  static final String NOT_UNSATCORE_OUT_FILE_NO_NEGATE = "not_unsat_no_negate.out";
+
 
   private static final boolean ENABLE_UNSAT_CORE = true;
 
@@ -1339,8 +1343,8 @@ public class Encoder {
   void processCores(List<String> unsatCore, List<String> notUnsatCore,
                     Map<String, BoolExpr> predicatesNameToExprMap,
                     Map<String, PredicateLabel> predicatesNameToLabelMap){
-    List<String> notUnsatLabels = new ArrayList<>();
-    List<String> unsatLabels = new ArrayList<>();
+    Set<String> notUnsatLabels = new HashSet<>();
+    Set<String> unsatLabels = new HashSet<>();
 
     // Display not unsat core
     System.out.println("\nNot Unsat Core:");
@@ -1375,10 +1379,13 @@ public class Encoder {
     // Write Out UnsatCore to unsat.out && NotUnsatCore to not_unsat.out
     Path unsatCorePath = _settings.getActiveTestrigSettings()
             .getTestRigPath()
-            .resolve(UNSATCORE_OUT_FILE);
+            .resolve(_settings.shouldNotNegateProperty()?
+                    UNSATCORE_OUT_FILE_NO_NEGATE:UNSATCORE_OUT_FILE);
+
     Path notUnsatCorePath = _settings.getActiveTestrigSettings()
             .getTestRigPath()
-            .resolve(NOT_UNSATCORE_OUT_FILE);
+            .resolve(_settings.shouldNotNegateProperty()?
+                    NOT_UNSATCORE_OUT_FILE_NO_NEGATE:NOT_UNSATCORE_OUT_FILE);
     try{
       FileWriter coreWriter = new FileWriter(unsatCorePath.toFile(), true);
       coreWriter.append(String.join(",", unsatLabels));
