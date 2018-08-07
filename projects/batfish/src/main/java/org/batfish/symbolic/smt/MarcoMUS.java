@@ -125,4 +125,82 @@ public class MarcoMUS {
         }
 
     }
+
+    private static class MapSolver{
+        private Solver solver;
+        private int n;
+        private Set<Integer> fullSet;
+        private Context context;
+
+        MapSolver(int n, Context ctx){
+            this.context = ctx;
+            this.solver = context.mkSolver();
+            this.n = n;
+            fullSet = new HashSet<>();
+            for (int i = 0; i<n;i++){
+                fullSet.add(i);
+            }
+        }
+
+        private List<Integer> nextSeed(){
+            if (solver.check()==Status.UNSATISFIABLE){
+                return null; //TODO: Ensure this works or return an empty list.
+            }
+            Set<Integer> seed = new HashSet<>();
+            seed.addAll(fullSet);
+
+            Model model = solver.getModel();
+            //the first `x` are consts, followed by FuncDecls
+            /**
+             * if _is_int(idx):
+                if idx >= len(self):
+                     raise IndexError
+                     num_consts = Z3_model_get_num_consts(self.ctx.ref(), self.model)
+                     if (idx < num_consts):
+                        return FuncDeclRef(Z3_model_get_const_decl(self.ctx.ref(), self.model, idx), self.ctx)
+                     else:
+                        return FuncDeclRef(Z3_model_get_func_decl(self.ctx.ref(), self.model, idx - num_consts), self.ctx)
+             */
+            for (FuncDecl c :  model.getConstDecls()){
+                if (model.getConstInterp(c).isFalse()){
+//                    seed.remove(Integer.parseInt(c.getName().toString()));
+                    seed.remove(c.getId()); //TODO : Prevent hazard here
+                }
+            }
+            for (FuncDecl f : model.getFuncDecls()){
+                if (model.getConstInterp(f).isFalse()) {
+                    seed.remove(f.getId());
+                }
+            }
+
+            return new ArrayList<>(seed);
+        }
+
+        private Set<Integer> complement(Set<Integer> set){
+            Set<Integer> retSet = new HashSet<Integer>();
+            retSet.addAll(fullSet);
+            retSet.removeAll(set);
+            return retSet;
+        }
+
+        private void blockDown(Set<Integer> fromPoint){
+            Set<Integer> comp = complement(fromPoint);
+            List<BoolExpr> blockConstraints = new ArrayList<>();
+            for (int i: comp){
+                blockConstraints.add(context.mkBoolConst(Integer.toString(i)));
+            }
+            solver.add(context.mkOr(blockConstraints.toArray(new BoolExpr[blockConstraints.size()])));
+        }
+
+        private void blockUp(Set<Integer> fromPoint){
+            List<BoolExpr> blockConstraints = new ArrayList<>();
+            for (int i : fromPoint){
+                blockConstraints.add(context.mkNot(context.mkBoolConst(Integer.toString(i))));
+            }
+            solver.add(context.mkOr(blockConstraints.toArray(new BoolExpr[blockConstraints.size()])));
+        }
+    }
+
+
+
 }
