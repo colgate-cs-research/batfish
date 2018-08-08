@@ -1146,7 +1146,12 @@ public class Encoder {
         System.out.println("\nLOCALIZE FAULTS");
         System.out.println("=====================================================");
         System.out.println("\n" + numCounterexamples + " counterexamples");
-        localizeFaultsUsingUnsat();
+
+        if(_settings.shouldUseMarco()){
+          localizeFaultsUsingMarco();
+        }else {
+          localizeFaultsUsingUnsat();
+        }
         break;
       }
       else if (s == Status.SATISFIABLE) {
@@ -1334,6 +1339,14 @@ public class Encoder {
 
 
     System.out.println("=====================================================");
+  }
+
+  void localizeFaultsUsingMarco(){
+    System.out.println("Using MARCO");
+    BoolExpr[] assertions = _solver.getAssertions();
+    Solver solver = _ctx.mkSolver();
+    solver.add(assertions);
+    System.out.println(solver.check());
   }
 
   /**
