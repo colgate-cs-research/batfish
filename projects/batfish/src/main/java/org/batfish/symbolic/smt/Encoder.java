@@ -1,6 +1,7 @@
 package org.batfish.symbolic.smt;
 
 import com.microsoft.z3.*;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
 import org.batfish.config.Settings;
@@ -1342,11 +1343,30 @@ public class Encoder {
   }
 
   void localizeFaultsUsingMarco(){
-    System.out.println("Using MARCO");
-    BoolExpr[] assertions = _solver.getAssertions();
-    Solver solver = _ctx.mkSolver();
-    solver.add(assertions);
-    System.out.println(solver.check());
+    Map<String, BoolExpr> assertionsMap = _faultlocUnsatCore.getTrackingVars();
+    BoolExpr[] constraints = new BoolExpr[assertionsMap.size()];
+    String[] trackingNames = new String[assertionsMap.size()];
+    Map<String, PredicateLabel> predicateLabelMap = _faultlocUnsatCore.getTrackingLabels();
+    int i=0;
+    for (String key: assertionsMap.keySet()){
+      constraints[i] = assertionsMap.get(key);
+      trackingNames[i] = key;
+      i++;
+    }
+
+
+    List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints, _ctx);
+
+    int musCount = 1;
+    for (Set<Integer> mus: listMUSes){
+      System.out.printf("MUS #%d\n", musCount);
+      for(int id: mus){
+        System.out.println(predicateLabelMap.get(trackingNames[id]));
+      }
+      System.out.println("=====================================================");
+      musCount++;
+    }
+
   }
 
   /**

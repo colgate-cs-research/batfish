@@ -13,6 +13,9 @@ import java.util.*;
 
 public class MarcoMUS {
 
+
+    private static final int MAX_MUS_COUNT = 5;
+    private static final int MAX_MSS_COUNT = 500;
     /**
      * Demo.
      */
@@ -43,16 +46,20 @@ public class MarcoMUS {
      * @param ctx Context object required for creating MapSolver and SubsetSolver objects.
      * @return List of MUSes of the unsatisfiable constraint system.
      */
-    private static List<List<Expr>> enumerate(BoolExpr[] constraints, Context ctx){
+    public static List<Set<Integer>> enumerate(BoolExpr[] constraints, Context ctx){
         SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
         MapSolver mapSolver = new MapSolver(constraints.length, ctx);
 
         List<List<Expr>> MSSes = new ArrayList<>();
         List<List<Expr>> MUSes = new ArrayList<>();
 
+        List<Set<Integer>> indexOfMUSes = new ArrayList<>();
+
         while (true){
             List<Integer> seed  = mapSolver.nextSeed();
             if (seed==null)
+                break;
+            if (MSSes.size()>=MAX_MSS_COUNT || MUSes.size()>=MAX_MUS_COUNT)
                 break;
 
             Set<Integer> seedSet= new HashSet<>();
@@ -61,32 +68,35 @@ public class MarcoMUS {
                 Set<Integer> mss = subsetSolver.grow(seed);
                 List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
                 MSSes.add(mssLits);
+                System.out.println("Found MSS #" +MSSes.size() );
                 mapSolver.blockDown(mss);
             }else{
                 Set<Integer> mus = subsetSolver.shrink(seed);
+                indexOfMUSes.add(mus);
                 List<Expr> musLits = subsetSolver.toIndicatorLiterals(mus);
                 MUSes.add(musLits);
+                System.out.println("Found MUS #" +MUSes.size() );
                 mapSolver.blockUp(mus);
             }
         }
 
         System.out.printf("List of MSSes (%d) \n", MSSes.size());
-        for(List<Expr> mss: MSSes){
-            for (Expr e : mss){
-                System.out.print(e.toString() + " ");
-            }
-            System.out.println();
-        }
+//        for(List<Expr> mss: MSSes){
+//            for (Expr e : mss){
+//                System.out.print(e.toString() + " ");
+//            }
+//            System.out.println();
+//        }
 
         System.out.printf("List of MUSes (%d) \n", MUSes.size());
-        for(List<Expr> mus: MUSes){
-            for (Expr e : mus){
-                System.out.print(e.toString() + " ");
-            }
-            System.out.println();
-        }
+//        for(List<Expr> mus: MUSes){
+//            for (Expr e : mus){
+//                System.out.print(e.toString() + " ");
+//            }
+//            System.out.println();
+//        }
 
-        return MUSes;
+        return indexOfMUSes;
     }
 
     /**
