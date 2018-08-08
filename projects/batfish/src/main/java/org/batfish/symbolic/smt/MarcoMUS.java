@@ -4,8 +4,18 @@ import com.microsoft.z3.*;
 
 import java.util.*;
 
+/**
+ * Implementation of algorithm for enumerating multiple MUSes/MSSes of an unsatisfiable
+ * constraint system as described in
+ * @see <a href="https://sun.iwu.edu/~mliffito/publications/cpaior13_liffiton_MARCO.pdf">this paper</a> and demonstrated
+ * in <a href ="https://github.com/Z3Prover/z3/blob/master/examples/python/mus/marco.py"> this example</a>
+ */
+
 public class MarcoMUS {
 
+    /**
+     * Demo.
+     */
     public static void testMarco(){
         System.out.println("Testing Marco");
         Context ctx = new Context();
@@ -22,15 +32,21 @@ public class MarcoMUS {
         //List of constraints in the test constraint system.
         BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
 
-        SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
-        MapSolver mapSolver = new MapSolver(constraints.length, ctx);
-
-
-        enumerate(subsetSolver, mapSolver);
+        enumerate(constraints,ctx);
 
     }
 
-    private static void enumerate(SubsetSolver subsetSolver, MapSolver mapSolver){
+    /**
+     * Core algorithm to enumerate MUSes/MSSes. Note: MUSes/MSSes are yielded
+     * as they are generated in the original algorithm (and sample implementation in python)
+     * @param constraints Set of constraints in the infeasible constraints system
+     * @param ctx Context object required for creating MapSolver and SubsetSolver objects.
+     * @return List of MUSes of the unsatisfiable constraint system.
+     */
+    private static List<List<Expr>> enumerate(BoolExpr[] constraints, Context ctx){
+        SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
+        MapSolver mapSolver = new MapSolver(constraints.length, ctx);
+
         List<List<Expr>> MSSes = new ArrayList<>();
         List<List<Expr>> MUSes = new ArrayList<>();
 
@@ -45,7 +61,6 @@ public class MarcoMUS {
                 Set<Integer> mss = subsetSolver.grow(seed);
                 List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
                 MSSes.add(mssLits);
-
                 mapSolver.blockDown(mss);
             }else{
                 Set<Integer> mus = subsetSolver.shrink(seed);
@@ -70,10 +85,15 @@ public class MarcoMUS {
             }
             System.out.println();
         }
+
+        return MUSes;
     }
 
-
-    private static class SubsetSolver{
+    /**
+     * Helper Class for MARCO for growing satisfying subsets to MSSes and shrinking
+     * unsatisfiable subsets to MUSes.
+     */
+    public static class SubsetSolver{
         private Context ctx;
         private BoolExpr[] constraints;
         private int n;
@@ -82,7 +102,12 @@ public class MarcoMUS {
         private Map<Integer,BoolExpr> varCache; //TODO : Decrypt this.
         private Map<Integer, Integer> idCache; //TODO : Decrypt this.
 
-        SubsetSolver(BoolExpr[] constraints, Context ctx){
+        /**
+         * Constructor
+         * @param constraints Set of all constraints.
+         * @param ctx Z3 Context object
+         */
+        public SubsetSolver(BoolExpr[] constraints, Context ctx){
             this.constraints = constraints;
             this.n = constraints.length;
             varCache = new HashMap<>();
@@ -90,11 +115,11 @@ public class MarcoMUS {
             solver = ctx.mkSolver();
             this.ctx = ctx;
             for (int i=0;i<n;i++){
+                //Add unique indicator variable for each constraint.
                 solver.add(ctx.mkImplies(getIndicatorVariable(i),constraints[i]));
             }
         }
 
-        //c_var(self, i) in python.
         private BoolExpr getIndicatorVariable(int i){
             if (!varCache.containsKey(i)){
                 BoolExpr v = ctx.mkBoolConst(constraints[Math.abs(i)].toString());
@@ -108,14 +133,19 @@ public class MarcoMUS {
             return varCache.get(i);
         }
 
-        private boolean checkSubset(Set<Integer> seed){
+        /**
+         * Check if a subset of assertions is satisfiable.
+         * @param seed Set of indexes of assertions that are to be checked for satisfiability
+         * @return True if subset satisfiable.
+         */
+        public boolean checkSubset(Set<Integer> seed){
             List<Expr> assumptions = toIndicatorLiterals(seed);
             return (Status.SATISFIABLE ==
                     solver.check(assumptions.toArray(new Expr[assumptions.size()])));
         }
 
         //to_c_lits(self, seed) in python
-        private List<Expr> toIndicatorLiterals(Set<Integer> seed){
+        public List<Expr> toIndicatorLiterals(Set<Integer> seed){
             List<Expr> retList = new ArrayList<>();
             for (int i: seed){
                 retList.add(getIndicatorVariable(i));
@@ -143,6 +173,12 @@ public class MarcoMUS {
             return retList;
         }
 
+
+        /**
+         * Minimize an unsatisfying subset of constraints into a MUS.
+         * @param seed List of indexes of the constraints in the unsatisfiable subset.
+         * @return MUS obtained by minimizing input unsatisfying subset.
+         */
         private Set<Integer> shrink(List<Integer> seed){
             Set<Integer> current = new HashSet<>(seed);
             for (int i:seed){
@@ -159,8 +195,12 @@ public class MarcoMUS {
             return current;
         }
 
-        //Maximizing a satisfying subset
-        private Set<Integer> grow(List<Integer> seed){
+        /**
+         * Maximize a satisfying subset of constraints into a MSS.
+         * @param seed List of indexes of the constraints in the satisfiable subset.
+         * @return MSS obtained by maximizing input satisfying subset.
+         */
+        public Set<Integer> grow(List<Integer> seed){
             Set<Integer> current = new HashSet<>(seed);
             Set<Integer> currentComplement = complement(current);
             for (int i: currentComplement){
@@ -179,13 +219,23 @@ public class MarcoMUS {
         testMarco();
     }
 
-    private static class MapSolver{
+    /**
+     * Helper class to explore the power set (from the set of constraints)
+     * to find new seeds that are not supersets of discovered unsatisfiable subsets
+     * or subsets of discovered satisfiable subsets.
+     */
+    public static class MapSolver{
         private Solver solver;
         private int n;
         private Set<Integer> fullSet;
         private Context context;
 
-        MapSolver(int n, Context ctx){
+        /**
+         * Constructor for MapSolver
+         * @param n Number of constraints in the infeasible constraint system.
+         * @param ctx Z3 context object.
+         */
+        public MapSolver(int n, Context ctx){
             this.context = ctx;
             this.solver = context.mkSolver();
             this.n = n;
@@ -195,7 +245,11 @@ public class MarcoMUS {
             }
         }
 
-        private List<Integer> nextSeed(){
+        /**
+         * Generate a new subset of the constraints for MSS/MUS generation.
+         * @return List of indexes corresponding to constraints in the new seed.
+         */
+        public List<Integer> nextSeed(){
             if (solver.check()==Status.UNSATISFIABLE){
                 return null; //TODO: Ensure this works or return an empty list.
             }
@@ -237,7 +291,11 @@ public class MarcoMUS {
             return retSet;
         }
 
-        private void blockDown(Set<Integer> fromPoint){
+        /**
+         * Ensure subsets of existing MSSes are not explored again.
+         * @param fromPoint An MSS
+         */
+        public void blockDown(Set<Integer> fromPoint){
             Set<Integer> comp = complement(fromPoint);
             List<BoolExpr> blockConstraints = new ArrayList<>();
             for (int i: comp){
@@ -246,7 +304,11 @@ public class MarcoMUS {
             solver.add(context.mkOr(blockConstraints.toArray(new BoolExpr[blockConstraints.size()])));
         }
 
-        private void blockUp(Set<Integer> fromPoint){
+        /**
+         * Ensure supersets of existing MUSes are not explored again.
+         * @param fromPoint An MUS.
+         */
+        public void blockUp(Set<Integer> fromPoint){
             List<BoolExpr> blockConstraints = new ArrayList<>();
             for (int i : fromPoint){
                 blockConstraints.add(context.mkNot(context.mkBoolConst(Integer.toString(i))));
