@@ -19,9 +19,57 @@ public class MarcoMUS {
         BoolExpr c3 = ctx.mkNot(b);
         BoolExpr c4 = ctx.mkNot(a);
 
-        BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
         //List of constraints in the test constraint system.
+        BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
 
+        SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
+        MapSolver mapSolver = new MapSolver(constraints.length, ctx);
+
+
+        enumerate(subsetSolver, mapSolver);
+
+    }
+
+    private static void enumerate(SubsetSolver subsetSolver, MapSolver mapSolver){
+        List<List<Expr>> MSSes = new ArrayList<>();
+        List<List<Expr>> MUSes = new ArrayList<>();
+
+        while (true){
+            List<Integer> seed  = mapSolver.nextSeed();
+            if (seed==null)
+                break;
+
+            Set<Integer> seedSet= new HashSet<>();
+            seedSet.addAll(seed);
+            if (subsetSolver.checkSubset(seedSet)){
+                Set<Integer> mss = subsetSolver.grow(seed);
+                List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
+                MSSes.add(mssLits);
+
+                mapSolver.blockDown(mss);
+            }else{
+                Set<Integer> mus = subsetSolver.shrink(seed);
+                List<Expr> musLits = subsetSolver.toIndicatorLiterals(mus);
+                MUSes.add(musLits);
+                mapSolver.blockUp(mus);
+            }
+        }
+
+        System.out.printf("List of MSSes (%d) \n", MSSes.size());
+        for(List<Expr> mss: MSSes){
+            for (Expr e : mss){
+                System.out.print(e.toString() + " ");
+            }
+            System.out.println();
+        }
+
+        System.out.printf("List of MUSes (%d) \n", MUSes.size());
+        for(List<Expr> mus: MUSes){
+            for (Expr e : mus){
+                System.out.print(e.toString() + " ");
+            }
+            System.out.println();
+        }
     }
 
 
@@ -40,7 +88,7 @@ public class MarcoMUS {
             varCache = new HashMap<>();
             idCache = new HashMap<>();
             solver = ctx.mkSolver();
-
+            this.ctx = ctx;
             for (int i=0;i<n;i++){
                 solver.add(ctx.mkImplies(getIndicatorVariable(i),constraints[i]));
             }
@@ -49,7 +97,7 @@ public class MarcoMUS {
         //c_var(self, i) in python.
         private BoolExpr getIndicatorVariable(int i){
             if (!varCache.containsKey(i)){
-                BoolExpr v = ctx.mkBoolConst(constraints[i].toString());
+                BoolExpr v = ctx.mkBoolConst(constraints[Math.abs(i)].toString());
                 idCache.put(v.getId(), Math.abs(i));
                 if (i>=0){
                     varCache.put(i, v);
@@ -126,6 +174,11 @@ public class MarcoMUS {
 
     }
 
+    public static void main(String[] args){
+        System.out.println("Running MarcoMUS");
+        testMarco();
+    }
+
     private static class MapSolver{
         private Solver solver;
         private int n;
@@ -163,12 +216,13 @@ public class MarcoMUS {
              */
             for (FuncDecl c :  model.getConstDecls()){
                 if (model.getConstInterp(c).isFalse()){
-//                    seed.remove(Integer.parseInt(c.getName().toString()));
-                    seed.remove(c.getId()); //TODO : Prevent hazard here
+                    seed.remove(Integer.parseInt(c.getName().toString()));
+//                    seed.remove(c.getId()); //TODO : Prevent hazard here
                 }
             }
             for (FuncDecl f : model.getFuncDecls()){
                 if (model.getConstInterp(f).isFalse()) {
+                    seed.remove(Integer.parseInt(f.getName().toString()));
                     seed.remove(f.getId());
                 }
             }
