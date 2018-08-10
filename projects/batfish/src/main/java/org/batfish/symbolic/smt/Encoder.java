@@ -1355,7 +1355,10 @@ public class Encoder {
     }
 
 
-    List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints, _ctx);
+    List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
+            _ctx,
+            _settings.getMaxMUSCount(),
+            _settings.getMaxMSSCount());
 
     int musCount = 1;
     for (Set<Integer> mus: listMUSes){

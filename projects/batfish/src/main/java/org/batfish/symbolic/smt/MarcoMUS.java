@@ -35,7 +35,7 @@ public class MarcoMUS {
         //List of constraints in the test constraint system.
         BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
 
-        enumerate(constraints,ctx);
+        enumerate(constraints,ctx, MAX_MUS_COUNT, MAX_MSS_COUNT);
 
     }
 
@@ -46,7 +46,9 @@ public class MarcoMUS {
      * @param ctx Context object required for creating MapSolver and SubsetSolver objects.
      * @return List of MUSes of the unsatisfiable constraint system.
      */
-    public static List<Set<Integer>> enumerate(BoolExpr[] constraints, Context ctx){
+    public static List<Set<Integer>> enumerate(BoolExpr[] constraints, Context ctx,
+                                               int maxMUSCount,
+                                               int maxMSSCount){
         SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
         MapSolver mapSolver = new MapSolver(constraints.length, ctx);
 
@@ -59,7 +61,7 @@ public class MarcoMUS {
             List<Integer> seed  = mapSolver.nextSeed();
             if (seed==null)
                 break;
-            if (MSSes.size()>=MAX_MSS_COUNT || MUSes.size()>=MAX_MUS_COUNT)
+            if (MSSes.size()>=maxMSSCount|| MUSes.size()>=maxMUSCount)
                 break;
 
             Set<Integer> seedSet= new HashSet<>();
@@ -80,7 +82,7 @@ public class MarcoMUS {
             }
         }
 
-        System.out.printf("List of MSSes (%d) \n", MSSes.size());
+        System.out.printf("Total Number of MSSes (%d) \n", MSSes.size());
 //        for(List<Expr> mss: MSSes){
 //            for (Expr e : mss){
 //                System.out.print(e.toString() + " ");
@@ -88,7 +90,7 @@ public class MarcoMUS {
 //            System.out.println();
 //        }
 
-        System.out.printf("List of MUSes (%d) \n", MUSes.size());
+        System.out.printf("Total Number of MUSes (%d) \n", MUSes.size());
 //        for(List<Expr> mus: MUSes){
 //            for (Expr e : mus){
 //                System.out.print(e.toString() + " ");
