@@ -984,13 +984,13 @@ public class Encoder {
     Path filepath = testrigpath.resolve("faultloc");
     File file = filepath.toFile();
     // check whether faultloc file exists, if not, throw an exception
-    HashMap<String,ArrayList<PredicateLabel>> result= new HashMap<String,ArrayList<PredicateLabel>>();
+    HashMap<String,ArrayList<PredicateLabel>> result= new HashMap<>();
     try {
       BufferedReader br = new BufferedReader(new FileReader(file));
       String s=null;
       String question=null;
       String[] arr = null;
-      ArrayList<PredicateLabel> label_list=new ArrayList<PredicateLabel>();
+      ArrayList<PredicateLabel> label_list=new ArrayList<>();
       //go through the faultloc file and turns each line into a PredicateLabel and associated with the corespoding question
       while ((s=br.readLine())!=null) {
         if (!s.contains(" ")) {
@@ -998,7 +998,7 @@ public class Encoder {
             result.put(question, label_list);
           }
           question=s;
-          label_list=new ArrayList<PredicateLabel>();
+          label_list=new ArrayList<>();
         }
         if (s.contains(" ")) {
           arr = s.split(" ");
@@ -1021,7 +1021,7 @@ public class Encoder {
    */  
   public List<PredicateLabel> edgeToLabel(){
     List<GraphEdge> possible=_graph.getPossilbe();
-    List<PredicateLabel> result=new ArrayList<PredicateLabel>();
+    List<PredicateLabel> result=new ArrayList<>();
     for (GraphEdge e: possible) {
       PredicateLabel label1=new PredicateLabel(labels.EXPORT,e.getRouter(),e.getStart(),Protocol.BGP);
       PredicateLabel label2=new PredicateLabel(labels.IMPORT,e.getPeer(),e.getEnd(),Protocol.BGP);
@@ -1326,11 +1326,6 @@ public class Encoder {
 
 
     
-    Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
-    Path filepath = testrigpath.resolve("experiment.csv");
-    File file = filepath.toFile();
-    System.out.println(filepath);
-    FileWriter filewriter1=null;
     String unfoundpred="";
     for (String q:Faultloc.keySet()) {
       for (PredicateLabel label:unfound.get(q))
@@ -1344,9 +1339,10 @@ public class Encoder {
 
   void localizeFaultsUsingMarco(){
     Map<String, BoolExpr> assertionsMap = _faultlocUnsatCore.getTrackingVars();
+    Map<String, PredicateLabel> predicateLabelMap = _faultlocUnsatCore.getTrackingLabels();
     BoolExpr[] constraints = new BoolExpr[assertionsMap.size()];
     String[] trackingNames = new String[assertionsMap.size()];
-    Map<String, PredicateLabel> predicateLabelMap = _faultlocUnsatCore.getTrackingLabels();
+
     int i=0;
     for (String key: assertionsMap.keySet()){
       constraints[i] = assertionsMap.get(key);
@@ -1354,22 +1350,140 @@ public class Encoder {
       i++;
     }
 
+    HashMap<String, ArrayList<PredicateLabel>> questionToFaultyPredicateLabelsMap = loadFaultloc();
+
 
     List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
             _ctx,
             _settings.getMaxMUSCount(),
             _settings.getMaxMSSCount());
 
+    Set<Integer> intersection = new HashSet<>();
+    Set<Integer> union = new HashSet<>();
+    Map<Integer, Integer> predicateFrequencies = new HashMap<>();
+
     int musCount = 1;
     for (Set<Integer> mus: listMUSes){
-      System.out.printf("MUS #%d\n", musCount);
+      System.out.printf("MUS #%d | Intersection Size: %d | Union Size: %d\n",
+              musCount,
+              intersection.size(),
+              union.size());
+      if (musCount==1){
+        //Initialize intersection and union with contents of the MUS on the first iteration.
+        intersection.addAll(mus);
+        union.addAll(mus);
+      }else{
+        buildSetIntersect(mus, intersection);
+        buildSetUnion(mus, union);
+      }
       for(int id: mus){
+        if (predicateFrequencies.containsKey(id)){
+          predicateFrequencies.put(id, predicateFrequencies.get(id)+1);
+        }else{
+          predicateFrequencies.put(id, 1);
+        }
+        //TODO : add cli option to enable/disable printing muses.
         System.out.println(predicateLabelMap.get(trackingNames[id]));
       }
       System.out.println("=====================================================");
       musCount++;
     }
 
+    System.out.printf("Intersection Size: %d | Union Size: %d\n",
+            intersection.size(),
+            union.size());
+
+    Set<PredicateLabel>  foundInIntersection = new HashSet<>();
+    Set<PredicateLabel> extraInIntersection = new HashSet<>();
+
+    //Idea 1 : Look for faulty predicates in the complement of intersection
+    for (String question: questionToFaultyPredicateLabelsMap.keySet()) {
+      ArrayList<PredicateLabel> listFaultyPredicateLabels = questionToFaultyPredicateLabelsMap.get(question);
+      for (int intersectionPred : intersection) {
+        if (listFaultyPredicateLabels.contains(predicateLabelMap.get(trackingNames[intersectionPred]))) {
+          foundInIntersection.add(predicateLabelMap.get(trackingNames[intersectionPred]));
+        } else {
+          extraInIntersection.add(predicateLabelMap.get(trackingNames[intersectionPred]));
+        }
+      }
+    }
+
+    //Idea 2 : Compute Not (union of MUSes)
+    Set<PredicateLabel> complementOfUnion = new HashSet<>();
+    complementOfUnion.addAll(predicateLabelMap.values());
+
+    //Computing complement of Union:
+    for (String question: questionToFaultyPredicateLabelsMap.keySet()){
+      for (int unionPredId : union){
+        complementOfUnion.remove(predicateLabelMap.get(trackingNames[unionPredId]));
+      }
+    }
+
+    produceAnalysisForCandidates(complementOfUnion);
+
+    //Computing found/extra in complement of union (of MUSes)
+    for (String question: questionToFaultyPredicateLabelsMap.keySet()){
+        Set<PredicateLabel> faultyPredsForQuestion = new HashSet<>();
+        faultyPredsForQuestion.addAll(questionToFaultyPredicateLabelsMap.get(question));
+
+
+        for (PredicateLabel faultCandidate: complementOfUnion){
+          if(faultyPredsForQuestion.contains(faultCandidate)){
+            faultyPredsForQuestion.remove(faultCandidate);
+          }
+        }
+    }
+  }
+
+
+  void produceAnalysisForCandidates(Set<PredicateLabel> faultCandidates){
+    HashMap<String, ArrayList<PredicateLabel>> questionToFaultyPredicateLabelsMap = loadFaultloc();
+
+    Set<PredicateLabel> truePositives = new HashSet<>();
+    Set<PredicateLabel> falsePositives = new HashSet<>();
+    Set<PredicateLabel> falseNegatives = new HashSet<>();
+
+    Set<PredicateLabel> faultyPredicates = new HashSet<>();
+    for (String key : questionToFaultyPredicateLabelsMap.keySet()){
+      faultyPredicates.addAll(questionToFaultyPredicateLabelsMap.get(key));
+      for (PredicateLabel candidate : faultCandidates){
+        if(faultyPredicates.contains(candidate)){
+          truePositives.add(candidate);
+          faultyPredicates.remove(candidate);
+        }else{
+          falsePositives.add(candidate);
+        }
+      }
+      falseNegatives.addAll(faultyPredicates);
+    }
+
+
+    _faultlocStats.setNumFoundPreds(truePositives.size());
+    _faultlocStats.setNumUnfoundPreds(falseNegatives.size());
+    _faultlocStats.setNumExtraComputePreds(falsePositives.size()); //TODO:  This is both COMPUTABLE and CONFIGURABLE right now.
+
+    Set<String> falseNegativeString = new HashSet<>();
+    for (PredicateLabel predLabel : falseNegatives){
+      falseNegativeString.add(predLabel.toString());
+    }
+
+    _faultlocStats.setUnfoundPreds(String.join(";",falseNegativeString));
+  }
+
+
+  void buildSetIntersect(Set<Integer> mus, Set<Integer> currentIntersection){
+    Iterator<Integer> iter = currentIntersection.iterator();
+    while (iter.hasNext()){
+      if (!mus.contains(iter.next())){
+        iter.remove();
+      }
+    }
+  }
+
+  void buildSetUnion(Set<Integer> mus, Set<Integer> currentUnion){
+    for(int newElement: mus){
+      currentUnion.add(newElement);
+    }
   }
 
   /**
