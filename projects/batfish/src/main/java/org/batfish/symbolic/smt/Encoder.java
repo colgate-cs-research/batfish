@@ -1393,46 +1393,38 @@ public class Encoder {
             intersection.size(),
             union.size());
 
-    Set<PredicateLabel>  foundInIntersection = new HashSet<>();
-    Set<PredicateLabel> extraInIntersection = new HashSet<>();
 
-    //Idea 1 : Look for faulty predicates in the complement of intersection
-    for (String question: questionToFaultyPredicateLabelsMap.keySet()) {
-      ArrayList<PredicateLabel> listFaultyPredicateLabels = questionToFaultyPredicateLabelsMap.get(question);
-      for (int intersectionPred : intersection) {
-        if (listFaultyPredicateLabels.contains(predicateLabelMap.get(trackingNames[intersectionPred]))) {
-          foundInIntersection.add(predicateLabelMap.get(trackingNames[intersectionPred]));
-        } else {
-          extraInIntersection.add(predicateLabelMap.get(trackingNames[intersectionPred]));
+    if (_settings.shouldUseMUSIntersection()) {
+      //Idea 1 : Compute Not (Intersection of MUSes)
+      Set<PredicateLabel> complementOfIntersection = new HashSet<>();
+      complementOfIntersection.addAll(predicateLabelMap.values());
+
+      //Computing complement of Union:
+      for (String question: questionToFaultyPredicateLabelsMap.keySet()){
+        for (int intersectionPredId : intersection){
+          complementOfIntersection.remove(predicateLabelMap.get(trackingNames[intersectionPredId]));
         }
       }
-    }
 
-    //Idea 2 : Compute Not (union of MUSes)
-    Set<PredicateLabel> complementOfUnion = new HashSet<>();
-    complementOfUnion.addAll(predicateLabelMap.values());
-
-    //Computing complement of Union:
-    for (String question: questionToFaultyPredicateLabelsMap.keySet()){
-      for (int unionPredId : union){
-        complementOfUnion.remove(predicateLabelMap.get(trackingNames[unionPredId]));
-      }
-    }
-
-    produceAnalysisForCandidates(complementOfUnion);
-
-    //Computing found/extra in complement of union (of MUSes)
-    for (String question: questionToFaultyPredicateLabelsMap.keySet()){
-        Set<PredicateLabel> faultyPredsForQuestion = new HashSet<>();
-        faultyPredsForQuestion.addAll(questionToFaultyPredicateLabelsMap.get(question));
+      produceAnalysisForCandidates(complementOfIntersection);
 
 
-        for (PredicateLabel faultCandidate: complementOfUnion){
-          if(faultyPredsForQuestion.contains(faultCandidate)){
-            faultyPredsForQuestion.remove(faultCandidate);
-          }
+    }else if (_settings.shouldUseMUSUnion()){
+      //Idea 2 : Compute Not (union of MUSes)
+      Set<PredicateLabel> complementOfUnion = new HashSet<>();
+      complementOfUnion.addAll(predicateLabelMap.values());
+
+      //Computing complement of Union:
+      for (String question: questionToFaultyPredicateLabelsMap.keySet()){
+        for (int unionPredId : union){
+          complementOfUnion.remove(predicateLabelMap.get(trackingNames[unionPredId]));
         }
+      }
+
+      produceAnalysisForCandidates(complementOfUnion);
+
     }
+
   }
 
 
