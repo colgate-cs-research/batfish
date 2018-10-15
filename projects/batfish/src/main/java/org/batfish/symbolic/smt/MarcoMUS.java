@@ -70,33 +70,16 @@ public class MarcoMUS {
                 Set<Integer> mss = subsetSolver.grow(seed);
                 List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
                 MSSes.add(mssLits);
-                System.out.println("Found MSS #" +MSSes.size() );
                 mapSolver.blockDown(mss);
             }else{
                 Set<Integer> mus = subsetSolver.shrink(seed);
                 indexOfMUSes.add(mus);
                 List<Expr> musLits = subsetSolver.toIndicatorLiterals(mus);
                 MUSes.add(musLits);
-                System.out.println("Found MUS #" +MUSes.size() );
                 mapSolver.blockUp(mus);
             }
         }
 
-        System.out.printf("Total Number of MSSes (%d) \n", MSSes.size());
-//        for(List<Expr> mss: MSSes){
-//            for (Expr e : mss){
-//                System.out.print(e.toString() + " ");
-//            }
-//            System.out.println();
-//        }
-
-        System.out.printf("Total Number of MUSes (%d) \n", MUSes.size());
-//        for(List<Expr> mus: MUSes){
-//            for (Expr e : mus){
-//                System.out.print(e.toString() + " ");
-//            }
-//            System.out.println();
-//        }
 
         return indexOfMUSes;
     }
