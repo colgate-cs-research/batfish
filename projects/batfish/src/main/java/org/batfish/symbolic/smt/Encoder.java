@@ -1364,10 +1364,7 @@ public class Encoder {
 
     int musCount = 1;
     for (Set<Integer> mus: listMUSes){
-      System.out.printf("MUS #%d | Intersection Size: %d | Union Size: %d\n",
-              musCount,
-              intersection.size(),
-              union.size());
+
       if (musCount==1){
         //Initialize intersection and union with contents of the MUS on the first iteration.
         intersection.addAll(mus);
@@ -1382,16 +1379,10 @@ public class Encoder {
         }else{
           predicateFrequencies.put(id, 1);
         }
-        //TODO : add cli option to enable/disable printing muses.
-        System.out.println(predicateLabelMap.get(trackingNames[id]));
       }
       System.out.println("=====================================================");
       musCount++;
     }
-
-    System.out.printf("Intersection Size: %d | Union Size: %d\n",
-            intersection.size(),
-            union.size());
 
 
     if (_settings.shouldUseMUSIntersection()) {
@@ -1427,7 +1418,11 @@ public class Encoder {
 
   }
 
-
+  /**
+   * Given a set of fault candidates, produce analysis of true/false positives and true/false negatives using loadFaultloc().
+   * This updates global FaultlocStats object.
+   * @param faultCandidates Set of predicate labels for predicates at fault
+   */
   void produceAnalysisForCandidates(Set<PredicateLabel> faultCandidates){
     HashMap<String, ArrayList<PredicateLabel>> questionToFaultyPredicateLabelsMap = loadFaultloc();
 
@@ -1436,6 +1431,7 @@ public class Encoder {
     Set<PredicateLabel> falseNegatives = new HashSet<>();
 
     Set<PredicateLabel> faultyPredicates = new HashSet<>();
+
     for (String key : questionToFaultyPredicateLabelsMap.keySet()){
       faultyPredicates.addAll(questionToFaultyPredicateLabelsMap.get(key));
       for (PredicateLabel candidate : faultCandidates){
@@ -1448,7 +1444,6 @@ public class Encoder {
       }
       falseNegatives.addAll(faultyPredicates);
     }
-
 
     _faultlocStats.setNumFoundPreds(truePositives.size());
     _faultlocStats.setNumUnfoundPreds(falseNegatives.size());
@@ -1463,7 +1458,13 @@ public class Encoder {
   }
 
 
+  /**
+   * Compute intersection of two sets.
+   * @param mus new Mus to intersect with existing intersection.
+   * @param currentIntersection Current Intersection
+   */
   void buildSetIntersect(Set<Integer> mus, Set<Integer> currentIntersection){
+    //TODO: Search for a more efficient implementation of set-intersect.
     Iterator<Integer> iter = currentIntersection.iterator();
     while (iter.hasNext()){
       if (!mus.contains(iter.next())){
@@ -1472,6 +1473,11 @@ public class Encoder {
     }
   }
 
+  /**
+   * Compute union of two sets of MUSes.
+   * @param mus new Mus to compute union with existing intersection.
+   * @param currentUnion Current MUS Union
+   */
   void buildSetUnion(Set<Integer> mus, Set<Integer> currentUnion){
     for(int newElement: mus){
       currentUnion.add(newElement);
