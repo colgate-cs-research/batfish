@@ -1150,6 +1150,8 @@ public class Encoder {
 
         if(_settings.shouldUseMarco()){
           localizeFaultsUsingMarco();
+        }else if (_settings.shouldBulkSaveMUSes()){
+          saveMUSes(produceMUSes());
         }else {
           localizeFaultsUsingUnsat();
         }
@@ -1335,6 +1337,64 @@ public class Encoder {
 
 
     System.out.println("=====================================================");
+  }
+
+
+  /**
+   * Produce a set of MUSes using Marco
+   * @return Set of Sets of PredicateLabels where each set is an MUS.
+   */
+  Set<Set<PredicateLabel>> produceMUSes(){
+    Map<String, BoolExpr> assertionsMap = _faultlocUnsatCore.getTrackingVars();
+    Map<String, PredicateLabel> predicateLabelMap = _faultlocUnsatCore.getTrackingLabels();
+    BoolExpr[] constraints = new BoolExpr[assertionsMap.size()];
+    String[] trackingNames = new String[assertionsMap.size()];
+
+    int i=0;
+    for (String key: assertionsMap.keySet()){
+      constraints[i] = assertionsMap.get(key);
+      trackingNames[i] = key;
+      i++;
+    }
+
+    List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
+            _ctx,
+            _settings.getMaxMUSCount(),
+            _settings.getMaxMSSCount());
+
+    Set<Set<PredicateLabel>> setMUSes = new HashSet<>();
+    for (Set<Integer> mus : listMUSes){
+      Set<PredicateLabel> mus_preds = new HashSet<>();
+      for (int pred_id : mus){
+        mus_preds.add(predicateLabelMap.get(trackingNames[pred_id]));
+      }
+      setMUSes.add(mus_preds);
+    }
+
+    return setMUSes;
+
+  }
+
+  void saveMUSes(Set<Set<PredicateLabel>> setOfMUSes){
+    Path testrigpath = this._settings.getActiveTestrigSettings().getTestRigPath();
+    Path filepath = testrigpath.resolve("mus_bulk");
+    System.out.printf("Saving MUSes to %s\n", filepath);
+    File file = filepath.toFile();
+    try {
+      FileWriter musWriter = new FileWriter(file, true);
+      for (Set<PredicateLabel> mus : setOfMUSes){
+        for (PredicateLabel pred : mus){
+          musWriter.append(pred.toString());
+          musWriter.append(",");
+        }
+        musWriter.append("\n");
+      }
+      musWriter.flush();
+      musWriter.close();
+    }catch(IOException ioe){
+      ioe.printStackTrace();
+    }
+
   }
 
   void localizeFaultsUsingMarco(){

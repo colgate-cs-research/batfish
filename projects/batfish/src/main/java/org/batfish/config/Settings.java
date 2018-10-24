@@ -536,6 +536,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_MUS_UNION = "musUnion";
 
+  private static final String ARG_BULK_SAVE_MUS = "saveMUS";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -1055,6 +1057,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     return _config.getBoolean(ARG_MUS_UNION);
   }
 
+  public boolean shouldBulkSaveMUSes(){
+    return _config.getBoolean(ARG_BULK_SAVE_MUS);
+  }
+
   public boolean shouldPrintCounterExampleDiffs(){
     return _config.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
   }
@@ -1159,6 +1165,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_MAX_MSS_COUNT, Integer.MAX_VALUE);
     setDefaultProperty(ARG_MUS_INTERSECT, false);
     setDefaultProperty(ARG_MUS_UNION, false);
+    setDefaultProperty(ARG_BULK_SAVE_MUS,false);
     setDefaultProperty(ARG_MAX_MUS_COUNT, Integer.MAX_VALUE);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
@@ -1470,6 +1477,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(ARG_MUS_INTERSECT, "use Intersection of MUSes for fault localization");
 
+    addBooleanOption(ARG_BULK_SAVE_MUS, "bulk produce and save MUSes to file");
+
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
@@ -1593,6 +1602,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getIntegerOptionValue(ARG_MAX_MUS_COUNT);
     getBooleanOptionValue(ARG_MUS_INTERSECT);
     getBooleanOptionValue(ARG_MUS_UNION);
+    getBooleanOptionValue(ARG_BULK_SAVE_MUS);
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);
     getIntegerOptionValue(ARG_NUM_ITERS_FAULTLOC);
