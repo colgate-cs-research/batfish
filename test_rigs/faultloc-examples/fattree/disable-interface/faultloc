@@ -1,2 +1,3 @@
 p1
 EXPORT edge-6 Serial0 BGP
+EXPORT aggregation-4 Serial1 BGP
