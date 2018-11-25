@@ -23,7 +23,8 @@ declare -A OPTIONS=(["i"]="musIntersect" \
 declare -a SETUPS=("i" "in" "u" "un")
 
 #MAX_MUS_COUNTS=(25 50 75 100)
-MAX_MUS_COUNTS=(1 2 4 8)
+#MAX_MUS_COUNTS=(1 2 4 8)
+MAX_MUS_COUNTS=(1)
 # Clean-up from last experiment
 rm -rf $BASEDIR/containers
 
@@ -32,15 +33,16 @@ for i in "${MAX_MUS_COUNTS[@]}"; do
     for SETUP in "${SETUPS[@]}"; do
 
         # Prepare options file
-        echo "add-batfish-option numIters 20" > $BASEDIR/custom-options
-        echo "add-batfish-option mus" $i >>$BASEDIR/custom-options
+		echo "add-batfish-option useMarco" > $BASEDIR/custom-options
+        echo "add-batfish-option numIters 20" >> $BASEDIR/custom-options
+        #echo "add-batfish-option mus" $i >>$BASEDIR/custom-options
         for (( j=0; j<${#SETUP}; j++ )); do
             CHAR=${SETUP:$j:1}
             OPTION=${OPTIONS[$CHAR]}
             echo "add-batfish-option $OPTION" >> $BASEDIR/custom-options
         done
         #TODO: Find out what purpose this serves.
-        if [-z $SETUP]; then
+        if [ -z $SETUP ]; then
             SETUP="noop"
         fi
 		SETUP="$SETUP$i"
