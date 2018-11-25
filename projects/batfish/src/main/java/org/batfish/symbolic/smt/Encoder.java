@@ -1123,12 +1123,41 @@ public class Encoder {
       return new Tuple<>(result, m);
     }
   }
+
+  boolean checkForRepeatedfailedEdges(Map<Integer, Map<String, String>> failedEdgesCE,
+                                      int numCounterExamples){
+    for (int i =2; i<=numCounterExamples;i++){
+      Map<String, String> pivotSet = failedEdgesCE.get(i);
+      for (int j = 1;j<i;j++){
+        Map<String, String> checkAgainstSet = failedEdgesCE.get(j);
+        boolean repeated = true;
+        for (String varName: pivotSet.keySet()){
+          if (checkAgainstSet.containsKey(varName)){
+            if (!checkAgainstSet.get(varName).equals(pivotSet.get(varName))){
+              repeated= false;
+              break;
+            }
+          }else{
+            repeated= false;
+            break;
+          }
+        }
+        if (repeated){
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
   
   void localizeFaults() {
     long time_check = 0;
     int numCounterexamples = 0;
     // History of values assigned to variables in different (counter)examples
     Map<String, Set<String>> variableHistoryMap = new HashMap<>();
+    //Counter Example Number to
+    Map<Integer, Map<String, String>> failedEdgesCEMap = new HashMap<>();
     SortedSet<Expr> staticVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
     
     do {
@@ -1175,13 +1204,30 @@ public class Encoder {
         if (numCounterexamples == 1) {
           for (String key : ce.keySet()) {
             // first values assigned to counter-example variables...
+            if (key.contains("FAILED-EDGE")){
+              if (failedEdgesCEMap.containsKey(numCounterexamples)){
+                failedEdgesCEMap.get(numCounterexamples).put(key, ce.get(key));
+              }else{
+                failedEdgesCEMap.put(numCounterexamples, new HashMap<>());
+                failedEdgesCEMap.get(numCounterexamples).put(key, ce.get(key));
+              }
+            }
             variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
           }
+
           addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
 
         } else {
           for (String varName : ce.keySet()) {
             variableHistoryMap.get(varName).add(ce.get(varName));
+            if (varName.contains("FAILED-EDGE")){
+              if (failedEdgesCEMap.containsKey(numCounterexamples)){
+                failedEdgesCEMap.get(numCounterexamples).put(varName, ce.get(varName));
+              }else{
+                failedEdgesCEMap.put(numCounterexamples, new HashMap<>());
+                failedEdgesCEMap.get(numCounterexamples).put(varName, ce.get(varName));
+              }
+            }
           }
         }
 
@@ -1189,6 +1235,11 @@ public class Encoder {
       }
     } while (numCounterexamples < _settings.getNumIters());
     System.out.println("Number of Counter Examples generated: " +numCounterexamples);
+
+    System.out.printf("HAS REPEATED FAILED LINK SETS in Counter Examples: %s\n",
+            checkForRepeatedfailedEdges(failedEdgesCEMap, numCounterexamples));
+
+
     if (_settings.shouldPrintCounterExampleDiffs()) {
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
       Collections.sort(variableNames);
@@ -1197,6 +1248,16 @@ public class Encoder {
         System.out.println(
               variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
       }
+
+//      //TODO: Figure out if failed sets of edges are unique to counter-examples.
+//      for (int ceId: failedEdgesCEMap.keySet()){
+//        Map<String, String> failedMap = failedEdgesCEMap.get(ceId);
+//        System.out.printf("==COUNTER EXAMPLE #%d==\n", ceId);
+//        for (String varName: failedMap.keySet()){
+//          System.out.printf("%s -> %s\n", varName, failedMap.get(varName));
+//        }
+//
+//      }
     }
 
   }
@@ -1412,27 +1473,42 @@ public class Encoder {
 
     HashMap<String, ArrayList<PredicateLabel>> questionToFaultyPredicateLabelsMap = loadFaultloc();
 
-
+    //TODO: Not the actual time elapsed.. But close.
+    long start_time = System.currentTimeMillis();
     List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
             _ctx,
             _settings.getMaxMUSCount(),
             _settings.getMaxMSSCount());
-
+    long time_elapsed = System.currentTimeMillis() - start_time;
+    _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);
     Set<Integer> intersection = new HashSet<>();
     Set<Integer> union = new HashSet<>();
     Map<Integer, Integer> predicateFrequencies = new HashMap<>();
 
     int musCount = 1;
-    for (Set<Integer> mus: listMUSes){
 
+    int unionGrowth = 0;
+    int intersectionShrink = 0;
+
+    for (Set<Integer> mus: listMUSes){
+      int currentIntersectionSize;
+      int currentUnionSize;
       if (musCount==1){
         //Initialize intersection and union with contents of the MUS on the first iteration.
         intersection.addAll(mus);
         union.addAll(mus);
+
       }else{
+        currentIntersectionSize = intersection.size();
         buildSetIntersect(mus, intersection);
+        intersectionShrink+=currentIntersectionSize - intersection.size();
+
+        currentUnionSize = union.size();
         buildSetUnion(mus, union);
+        unionGrowth += union.size() - currentUnionSize;
       }
+
+      //Computes frequency of each predicate in set of MUSes
       for(int id: mus){
         if (predicateFrequencies.containsKey(id)){
           predicateFrequencies.put(id, predicateFrequencies.get(id)+1);
@@ -1440,39 +1516,66 @@ public class Encoder {
           predicateFrequencies.put(id, 1);
         }
       }
-      System.out.println("=====================================================");
       musCount++;
     }
 
+    System.out.printf("Total Union Growth : %d  | Total Intersection Shrink : %d\n", unionGrowth, intersectionShrink);
 
+    System.out.printf("Average Union Growth over all MUSes : %f | Average Intersection Shrink over all MUSes : %f\n",
+            unionGrowth*(1.0)/listMUSes.size(),intersectionShrink*(1.0)/listMUSes.size());
+
+
+	System.out.printf("Number of MUSes generated : %d\n", listMUSes.size());
+	_faultlocStats.setNumMUSesGenerated(listMUSes.size());
     if (_settings.shouldUseMUSIntersection()) {
       //Idea 1 : Compute Not (Intersection of MUSes)
-      Set<PredicateLabel> complementOfIntersection = new HashSet<>();
-      complementOfIntersection.addAll(predicateLabelMap.values());
 
-      //Computing complement of Union:
-      for (String question: questionToFaultyPredicateLabelsMap.keySet()){
-        for (int intersectionPredId : intersection){
+      //Don't compute complement of Union if noNegate option is used.
+      if (!_settings.shouldNotNegateProperty()) {
+        Set<PredicateLabel> complementOfIntersection = new HashSet<>();
+        complementOfIntersection.addAll(predicateLabelMap.values());
+
+        //Computing complement of Intersection:
+        for (int intersectionPredId : intersection) {
           complementOfIntersection.remove(predicateLabelMap.get(trackingNames[intersectionPredId]));
         }
+
+
+        produceAnalysisForCandidates(complementOfIntersection);
+      }else{
+
+        Set<PredicateLabel> intersectionPredicates = new HashSet<>();
+
+        for (int intersectionPredId: intersection){
+          intersectionPredicates.add(predicateLabelMap.get(trackingNames[intersectionPredId]));
+        }
+
+        produceAnalysisForCandidates(intersectionPredicates);
       }
-
-      produceAnalysisForCandidates(complementOfIntersection);
-
 
     }else if (_settings.shouldUseMUSUnion()){
       //Idea 2 : Compute Not (union of MUSes)
-      Set<PredicateLabel> complementOfUnion = new HashSet<>();
-      complementOfUnion.addAll(predicateLabelMap.values());
 
-      //Computing complement of Union:
-      for (String question: questionToFaultyPredicateLabelsMap.keySet()){
-        for (int unionPredId : union){
+      //Only compute complement if noNegate option is not used.
+      if (!_settings.shouldNotNegateProperty()) {
+        Set<PredicateLabel> complementOfUnion = new HashSet<>();
+        complementOfUnion.addAll(predicateLabelMap.values());
+
+        //Computing complement of Union:
+        for (int unionPredId : union) {
           complementOfUnion.remove(predicateLabelMap.get(trackingNames[unionPredId]));
         }
-      }
 
-      produceAnalysisForCandidates(complementOfUnion);
+        produceAnalysisForCandidates(complementOfUnion);
+      }else{
+        Set<PredicateLabel> unionPredicates = new HashSet<>();
+
+        for (int unionPredId : union){
+          unionPredicates.add(predicateLabelMap.get(trackingNames[unionPredId]));
+        }
+
+        produceAnalysisForCandidates(unionPredicates);
+      }
 
     }
 
@@ -1515,6 +1618,10 @@ public class Encoder {
     }
 
     _faultlocStats.setUnfoundPreds(String.join(";",falseNegativeString));
+
+    System.out.printf("\t*Analysis Result*\n True Positives : %d |" +
+            "False Negatives : %d | False Positives : %d |\n", truePositives.size(),
+            falseNegatives.size(),falsePositives.size());
   }
 
 
