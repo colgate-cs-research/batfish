@@ -37,7 +37,7 @@ public class MarcoMUS {
         //List of constraints in the test constraint system.
         BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
 
-        enumerate(constraints,ctx, MAX_MUS_COUNT, MAX_MSS_COUNT);
+        enumerate(constraints,ctx, MAX_MUS_COUNT, MAX_MSS_COUNT,true);
 
     }
 
@@ -46,11 +46,13 @@ public class MarcoMUS {
      * as they are generated in the original algorithm (and sample implementation in python)
      * @param constraints Set of constraints in the infeasible constraints system
      * @param ctx Context object required for creating MapSolver and SubsetSolver objects.
+     * @param shouldReturnMUSes true, if MUSes are to be returned.
      * @return List of MUSes of the unsatisfiable constraint system.
      */
     public static List<Set<Integer>> enumerate(BoolExpr[] constraints, Context ctx,
                                                int maxMUSCount,
-                                               int maxMSSCount){
+                                               int maxMSSCount,
+                                               boolean shouldReturnMUSes){
         SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
         MapSolver mapSolver = new MapSolver(constraints.length, ctx);
 
@@ -58,6 +60,8 @@ public class MarcoMUS {
         List<List<Expr>> MUSes = new ArrayList<>();
 
         List<Set<Integer>> indexOfMUSes = new ArrayList<>();
+        List<Set<Integer>> indexOfMSSes = new ArrayList<>();
+
 		long start_time = System.currentTimeMillis();
         while (true){
             List<Integer> seed  = mapSolver.nextSeed();
@@ -75,6 +79,7 @@ public class MarcoMUS {
             seedSet.addAll(seed);
             if (subsetSolver.checkSubset(seedSet)){
                 Set<Integer> mss = subsetSolver.grow(seed);
+                indexOfMSSes.add(mss);
                 List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
                 MSSes.add(mssLits);
                 mapSolver.blockDown(mss);
@@ -88,7 +93,7 @@ public class MarcoMUS {
         }
 
 
-        return indexOfMUSes;
+        return shouldReturnMUSes? indexOfMUSes: indexOfMSSes;
     }
 
     /**
