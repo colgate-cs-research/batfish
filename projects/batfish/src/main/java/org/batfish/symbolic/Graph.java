@@ -1002,6 +1002,7 @@ public class Graph {
 
     if (proto.isOspf() || proto.isConnected() || proto.isStatic()) {
       return 0L;
+
     }
 
     if (eOther != null) {
@@ -1055,7 +1056,7 @@ public class Graph {
     }
 
     // Don't use if interface is not active
-    if (!isInterfaceActive(proto, iface)) {
+    if (proto.isOspf() && !iface.getOspfEnabled()) {
       return false;
     }
 
