@@ -1177,7 +1177,7 @@ public class Encoder {
         System.out.println("=====================================================");
         System.out.println("\n" + numCounterexamples + " counterexamples");
 
-        if(_settings.shouldUseMarco()){
+        if(_settings.getMarcoType()!=null){
           localizeFaultsUsingMarco();
         }else if (_settings.shouldBulkSaveMUSes()){
           saveMUSes(produceMUSes());
@@ -1421,7 +1421,8 @@ public class Encoder {
     List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
             _ctx,
             _settings.getMaxMUSCount(),
-            _settings.getMaxMSSCount());
+            _settings.getMaxMSSCount(),
+            true);
 
     Set<Set<PredicateLabel>> setMUSes = new HashSet<>();
     for (Set<Integer> mus : listMUSes){
@@ -1471,14 +1472,15 @@ public class Encoder {
       i++;
     }
 
-    HashMap<String, ArrayList<PredicateLabel>> questionToFaultyPredicateLabelsMap = loadFaultloc();
+    //Use MUSes unless specified to use MSS
+    boolean shouldUseMUSes = !_settings.getMarcoType().equals("mss");
 
     //TODO: Not the actual time elapsed.. But close.
     long start_time = System.currentTimeMillis();
-    List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
+    List<Set<Integer>> candidateSets = MarcoMUS.enumerate(constraints,
             _ctx,
             _settings.getMaxMUSCount(),
-            _settings.getMaxMSSCount());
+            _settings.getMaxMSSCount(),shouldUseMUSes);
     long time_elapsed = System.currentTimeMillis() - start_time;
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);
     Set<Integer> intersection = new HashSet<>();
@@ -1490,26 +1492,26 @@ public class Encoder {
     int unionGrowth = 0;
     int intersectionShrink = 0;
 
-    for (Set<Integer> mus: listMUSes){
+    for (Set<Integer> candidateSet: candidateSets){
       int currentIntersectionSize;
       int currentUnionSize;
       if (musCount==1){
         //Initialize intersection and union with contents of the MUS on the first iteration.
-        intersection.addAll(mus);
-        union.addAll(mus);
+        intersection.addAll(candidateSet);
+        union.addAll(candidateSet);
 
       }else{
         currentIntersectionSize = intersection.size();
-        buildSetIntersect(mus, intersection);
+        buildSetIntersect(candidateSet, intersection);
         intersectionShrink+=currentIntersectionSize - intersection.size();
 
         currentUnionSize = union.size();
-        buildSetUnion(mus, union);
+        buildSetUnion(candidateSet, union);
         unionGrowth += union.size() - currentUnionSize;
       }
 
       //Computes frequency of each predicate in set of MUSes
-      for(int id: mus){
+      for(int id: candidateSet){
         if (predicateFrequencies.containsKey(id)){
           predicateFrequencies.put(id, predicateFrequencies.get(id)+1);
         }else{
@@ -1521,17 +1523,14 @@ public class Encoder {
 
     System.out.printf("Total Union Growth : %d  | Total Intersection Shrink : %d\n", unionGrowth, intersectionShrink);
 
-    System.out.printf("Average Union Growth over all MUSes : %f | Average Intersection Shrink over all MUSes : %f\n",
-            unionGrowth*(1.0)/listMUSes.size(),intersectionShrink*(1.0)/listMUSes.size());
 
-
-	System.out.printf("Number of MUSes generated : %d\n", listMUSes.size());
-	_faultlocStats.setNumMUSesGenerated(listMUSes.size());
+	System.out.printf("Number of %s generated : %d\n", shouldUseMUSes?"MUSes":"MSSes", candidateSets.size());
+	_faultlocStats.setNumMUSesGenerated(candidateSets.size());
     if (_settings.shouldUseMUSIntersection()) {
       //Idea 1 : Compute Not (Intersection of MUSes)
 
-      //Don't compute complement of Union if noNegate option is used.
-      if (!_settings.shouldNotNegateProperty()) {
+      //Don't compute complement of intersection if noNegate option is used xor msses is being generated.
+      if (_settings.shouldNotNegateProperty() ^ shouldUseMUSes) {
         Set<PredicateLabel> complementOfIntersection = new HashSet<>();
         complementOfIntersection.addAll(predicateLabelMap.values());
 
@@ -1557,7 +1556,7 @@ public class Encoder {
       //Idea 2 : Compute Not (union of MUSes)
 
       //Only compute complement if noNegate option is not used.
-      if (!_settings.shouldNotNegateProperty()) {
+      if (_settings.shouldNotNegateProperty() ^ shouldUseMUSes) {
         Set<PredicateLabel> complementOfUnion = new HashSet<>();
         complementOfUnion.addAll(predicateLabelMap.values());
 
