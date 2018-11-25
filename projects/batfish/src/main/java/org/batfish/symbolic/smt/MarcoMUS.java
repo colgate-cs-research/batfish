@@ -16,7 +16,9 @@ public class MarcoMUS {
 
     private static final int MAX_MUS_COUNT = 5;
     private static final int MAX_MSS_COUNT = 500;
-    /**
+	private static final int MAX_EXPLORATION_TIME = 10 * 1000;
+
+	/**
      * Demo.
      */
     public static void testMarco(){
@@ -56,13 +58,18 @@ public class MarcoMUS {
         List<List<Expr>> MUSes = new ArrayList<>();
 
         List<Set<Integer>> indexOfMUSes = new ArrayList<>();
-
+		long start_time = System.currentTimeMillis();
         while (true){
             List<Integer> seed  = mapSolver.nextSeed();
-            if (seed==null)
+            if (seed==null) {
                 break;
-            if (MSSes.size()>=maxMSSCount|| MUSes.size()>=maxMUSCount)
+            }
+            if (MSSes.size()>=maxMSSCount || MUSes.size()>=maxMUSCount) {
                 break;
+            }
+            if (System.currentTimeMillis()-start_time > MAX_EXPLORATION_TIME) {
+                break;
+            }
 
             Set<Integer> seedSet= new HashSet<>();
             seedSet.addAll(seed);
