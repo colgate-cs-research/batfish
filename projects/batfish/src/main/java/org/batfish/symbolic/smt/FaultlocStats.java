@@ -14,7 +14,7 @@ import java.util.StringJoiner;
 public class FaultlocStats {
     static final String FILE_HEADER= "examples,foundpreds,unfoundpreds,extraconfigpred," +
             "extracomputepred,includecomputable,notnegating,minimize" +
-            ",slice,unfoundpred,slicetime,minimizationtime,checktime\n";
+            ",slice,unfoundpred,slicetime,minimizationtime,checktime,numMUSGenerated, musGenTimeElapsed\n";
     static final String EXPERIMENT_RESULT_FILE_NAME = "experiment.csv";
     static final String COMMA=",";
     static final String NEW_LINE="\n";
@@ -35,6 +35,8 @@ public class FaultlocStats {
     private long sliceTime;
     private long minimizeTime;
     private long checkTime;
+    private int nMUSesGenerated;
+    private long timeElapsedDuringMUSGeneration;
 
 
     /**
@@ -66,6 +68,8 @@ public class FaultlocStats {
         this.sliceTime = 0;
         this.minimizeTime = 0;
         this.checkTime = 0;
+        this.nMUSesGenerated = 0;
+        this.timeElapsedDuringMUSGeneration = 0;
     }
 
     public void setNumCounterExamples(int numCounterExamples){
@@ -104,6 +108,9 @@ public class FaultlocStats {
         this.unfoundPreds = unfoundPreds;
     }
 
+    public void setTimeElapsedDuringMUSGeneration(long musTime) {this.timeElapsedDuringMUSGeneration = musTime;}
+
+    public void setNumMUSesGenerated(int nMUSes){this.nMUSesGenerated = nMUSes;}
 
     /**
      * Write experiment results into a CSV file (name specified as a constant EXPERIMENT_RESULT_FILE_NAME)
@@ -128,7 +135,9 @@ public class FaultlocStats {
                     .add(unfoundPreds)
                     .add(Long.toString(sliceTime))
                     .add(Long.toString(minimizeTime))
-                    .add(Long.toString(checkTime));
+                    .add(Long.toString(checkTime))
+                    .add(Integer.toString(nMUSesGenerated))
+                    .add(Long.toString(timeElapsedDuringMUSGeneration));
             String result = resultBuilder.toString();
             experimentWriter.append(result);
             experimentWriter.append(NEW_LINE);
