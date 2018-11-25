@@ -1037,8 +1037,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
       return _config.getBoolean(ARG_SPLIT_ITE);
   }
 
-  public boolean shouldUseMarco(){
-    return _config.getBoolean(ARG_USE_MARCO);
+  public String getMarcoType(){
+    return _config.getString(ARG_USE_MARCO);
   }
 
   public int getMaxMSSCount(){
@@ -1161,7 +1161,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_NO_FILTER_UNSAT_CORE, false);
     setDefaultProperty(ARG_MINIMIZE_UNSAT_CORE, false);
     setDefaultProperty(ARG_SPLIT_ITE, false);
-    setDefaultProperty(ARG_USE_MARCO, false);
+    setDefaultProperty(ARG_USE_MARCO, null);
     setDefaultProperty(ARG_MAX_MSS_COUNT, Integer.MAX_VALUE);
     setDefaultProperty(ARG_MUS_INTERSECT, false);
     setDefaultProperty(ARG_MUS_UNION, false);
@@ -1467,7 +1467,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(ARG_SPLIT_ITE, "split if then else statements");
 
-    addBooleanOption(ARG_USE_MARCO, "use MARCO MUS enumeration for fault localization");
+    addOption(ARG_USE_MARCO, "use MARCO MUS enumeration for fault localization (specify mss if MSSes to be used)","mss or mus");
 
     addOption(ARG_MAX_MUS_COUNT, "maximum number of MUS to be generated using MARCO","mus");
 
@@ -1596,7 +1596,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
     getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
     getBooleanOptionValue(ARG_SPLIT_ITE);
-    getBooleanOptionValue(ARG_USE_MARCO);
+    getStringOptionValue(ARG_USE_MARCO);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
     getIntegerOptionValue(ARG_MAX_MSS_COUNT);
     getIntegerOptionValue(ARG_MAX_MUS_COUNT);
