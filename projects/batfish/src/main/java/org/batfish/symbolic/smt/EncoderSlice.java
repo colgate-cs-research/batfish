@@ -605,7 +605,6 @@ class EncoderSlice {
       exportInverseMap.put(router, exportEnumMap);
 
       for (Protocol proto : getProtocols().get(router)) {
-
         // Add redistribution variables
         Set<Protocol> r = _logicalGraph.getRedistributedProtocols().get(router, proto);
         assert r != null;
@@ -621,7 +620,7 @@ class EncoderSlice {
           _ospfRedistributed.put(router, rec);
           getAllSymbolicRecords().add(rec);
         }
-
+ 
         Boolean useSingleExport =
             _optimizations.getSliceCanKeepSingleExportVar().get(router, proto);
         assert (useSingleExport != null);
@@ -1460,7 +1459,7 @@ class EncoderSlice {
           } else {
             acc = mkOr(acc, val);
           }
-          PredicateLabel label=new PredicateLabel(labels.BEST_OVERALL, router, null, proto);
+          PredicateLabel label=new PredicateLabel(labels.BEST_PER_PROTOCOL, router, null, proto);
           add(
               mkImplies(bestVars.getPermitted(), greaterOrEqual(conf, proto, best, bestVars, null)),
               label);
