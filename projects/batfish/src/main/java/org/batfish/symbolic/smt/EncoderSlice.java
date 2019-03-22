@@ -605,22 +605,6 @@ class EncoderSlice {
       exportInverseMap.put(router, exportEnumMap);
 
       for (Protocol proto : getProtocols().get(router)) {
-        // Add redistribution variables
-        Set<Protocol> r = _logicalGraph.getRedistributedProtocols().get(router, proto);
-        assert r != null;
-        if (proto.isOspf() && r.size() > 1) {
-          // Add the ospf redistributed record if needed
-          String rname =
-              String.format(
-                  "%d_%s%s_%s_%s",
-                  _encoder.getId(), _sliceName, router, proto.name(), "Redistributed");
-
-          SymbolicRoute rec =
-              new SymbolicRoute(this, rname, router, proto, _optimizations, null, false);
-          _ospfRedistributed.put(router, rec);
-          getAllSymbolicRecords().add(rec);
-        }
- 
         Boolean useSingleExport =
             _optimizations.getSliceCanKeepSingleExportVar().get(router, proto);
         assert (useSingleExport != null);
@@ -733,6 +717,22 @@ class EncoderSlice {
             allEdges.addAll(exportEdgeList);
             es.add(allEdges);
           }
+        }
+
+        // Add redistribution variables
+        Set<Protocol> r = _logicalGraph.getRedistributedProtocols().get(router, proto);
+        assert r != null;
+        if (proto.isOspf() && r.size() > 1 && exportGraphEdgeMap.size() > 0) {
+          // Add the ospf redistributed record if needed
+          String rname =
+              String.format(
+                  "%d_%s%s_%s_%s",
+                  _encoder.getId(), _sliceName, router, proto.name(), "Redistributed");
+
+          SymbolicRoute rec =
+              new SymbolicRoute(this, rname, router, proto, _optimizations, null, false);
+          _ospfRedistributed.put(router, rec);
+          getAllSymbolicRecords().add(rec);
         }
       }
     }
