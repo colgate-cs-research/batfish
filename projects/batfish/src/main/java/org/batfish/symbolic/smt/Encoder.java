@@ -1,6 +1,7 @@
 package org.batfish.symbolic.smt;
 
 import com.microsoft.z3.*;
+import com.microsoft.z3.enumerations.Z3_ast_print_mode;
 import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Pair;
@@ -1159,6 +1160,18 @@ public class Encoder {
     //Counter Example Number to
     Map<Integer, Map<String, String>> failedEdgesCEMap = new HashMap<>();
     SortedSet<Expr> staticVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
+
+    System.out.println("\nSMT");
+    System.out.println("-------------------------------------------");
+    if (_settings.shouldPrintSmt()) {
+        _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
+        for (String predName : _unsatCore.getTrackingVars().keySet()) {
+            System.out.println(_unsatCore.getTrackingLabels().get(predName));
+            System.out.println(
+                    _unsatCore.getTrackingVars().get(predName).getSExpr());
+        }
+    }
+    System.out.println("-------------------------------------------");
     
     do {
       // Solve

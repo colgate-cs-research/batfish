@@ -512,6 +512,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
   private static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
 
+  private static final String ARG_PRINT_SMT = "printSmt";
+
   private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
 
   private static final String ARG_PRINT_UNSAT_EXPR = "printUnsatExpr";
@@ -1064,6 +1066,10 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
   public boolean shouldPrintCounterExampleDiffs(){
     return _config.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
   }
+  
+  public boolean shouldPrintSmt(){
+    return _config.getBoolean(ARG_PRINT_SMT);
+  }
 
   private void initConfigDefaults() {
     setDefaultProperty(BfConsts.ARG_ANALYSIS_NAME, null);
@@ -1168,6 +1174,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     setDefaultProperty(ARG_BULK_SAVE_MUS,false);
     setDefaultProperty(ARG_MAX_MUS_COUNT, Integer.MAX_VALUE);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
+    setDefaultProperty(ARG_PRINT_SMT, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "bdp");
     setDefaultProperty(ARG_ENABLE_SLICING,false);
@@ -1481,6 +1488,8 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
 
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
+    addBooleanOption(ARG_PRINT_SMT, "print SMT predicates");
+
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
     addOption(ARG_Z3_TIMEOUT, "set a timeout (in milliseconds) for Z3 queries", "z3timeout");
 
@@ -1597,6 +1606,7 @@ public final class Settings extends BaseSettings implements BdpSettings, Grammar
     getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
     getBooleanOptionValue(ARG_SPLIT_ITE);
     getStringOptionValue(ARG_USE_MARCO);
+    getBooleanOptionValue(ARG_PRINT_SMT);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
     getIntegerOptionValue(ARG_MAX_MSS_COUNT);
     getIntegerOptionValue(ARG_MAX_MUS_COUNT);
