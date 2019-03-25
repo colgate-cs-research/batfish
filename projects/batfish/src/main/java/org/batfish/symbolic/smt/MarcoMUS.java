@@ -17,7 +17,7 @@ public class MarcoMUS {
     private static final int MAX_MUS_COUNT = 5;
     private static final int MAX_MSS_COUNT = 500;
 	private static final int MAX_EXPLORATION_TIME = 10 * 1000;
-
+    
 	/**
      * Demo.
      */

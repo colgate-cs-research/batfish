@@ -33,7 +33,7 @@ for i in "${MAX_MUS_COUNTS[@]}"; do
     for SETUP in "${SETUPS[@]}"; do
 
         # Prepare options file
-		echo "add-batfish-option useMarco" > $BASEDIR/custom-options
+		echo "add-batfish-option useMarco mss" > $BASEDIR/custom-options
         echo "add-batfish-option numIters 20" >> $BASEDIR/custom-options
         #echo "add-batfish-option mus" $i >>$BASEDIR/custom-options
         for (( j=0; j<${#SETUP}; j++ )); do
