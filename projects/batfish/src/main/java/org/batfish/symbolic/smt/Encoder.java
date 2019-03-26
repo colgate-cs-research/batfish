@@ -854,7 +854,7 @@ public class Encoder {
                                     Map<Expr, Expr> staticVariableAssignments
   ){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
-    staticVars.addAll(staticVariableAssignments.keySet());
+    //staticVars.addAll(staticVariableAssignments.keySet());
     PredicateLabel label=new PredicateLabel(labels.PACKET);
     for (Expr e : staticVars) {
       if (nonStaticVariableAssignments.containsKey(e)) {
