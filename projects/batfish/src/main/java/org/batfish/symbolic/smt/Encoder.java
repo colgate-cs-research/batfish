@@ -1303,6 +1303,11 @@ public class Encoder {
             envModel, failures, nonStaticVariableAssignments,staticVariableAssignments);
         System.out.printf("**********CounterExample #%d Failed Links Count %d *************\n", numCounterexamples, failures.size());
         failures.forEach((k,v) -> System.out.println(k + " " + v ));
+        //TODO: Remove printout
+
+        ce.forEach((k,v)->System.out.println(k + " :: " + v));
+        System.out.println("*****************************************");
+
         failureSets.add(failures);
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 1) {
@@ -1316,6 +1321,8 @@ public class Encoder {
                 failedEdgesCEMap.get(numCounterexamples).put(key, ce.get(key));
               }
             }
+
+
             variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
           }
 
@@ -1387,7 +1394,7 @@ public class Encoder {
 
 
     //FORALL LOCALIZATION
-    localizeForAllFailures(failureSets); // Pass in list of failedLinkSets
+//    localizeForAllFailures(failureSets); // Pass in list of failedLinkSets
 
 
   }

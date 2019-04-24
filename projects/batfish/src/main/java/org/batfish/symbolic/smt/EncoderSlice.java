@@ -822,6 +822,7 @@ class EncoderSlice {
       return;
     }
 
+    System.out.println(getGraph());
     // Otherwise create it anew
     for (String router : getGraph().getRouters()) {
       for (Protocol proto : getProtocols().get(router)) {

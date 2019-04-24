@@ -1029,7 +1029,7 @@ public class CommonUtil {
           for (Entry<String, Interface> e : node.getInterfaces().entrySet()) {
             String ifaceName = e.getKey();
             Interface iface = e.getValue();
-            if (!iface.isLoopback(node.getConfigurationFormat()) && iface.getActive()) {
+            if (!iface.isLoopback(node.getConfigurationFormat())) {
               for (InterfaceAddress address : iface.getAllAddresses()) {
                 if (address.getNetworkBits() < Prefix.MAX_PREFIX_LENGTH) {
                   Prefix prefix = address.getPrefix();
