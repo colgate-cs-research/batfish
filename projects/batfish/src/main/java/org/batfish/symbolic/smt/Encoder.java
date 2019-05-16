@@ -1211,34 +1211,31 @@ public class Encoder {
 
 
         System.out.printf("# of predicates in solver : %d | " +
-                        "# of predicates in UnsatCore : %d\n" ,
+                        "# of predicates in initial unsat core : %d\n" ,
                 solver.getNumAssertions(),
                 solver.getUnsatCore().length);
-        BoolExpr[] unsatCore  = solver.getUnsatCore();
-        for (BoolExpr expr: unsatCore){
-          System.out.println(predNameToLabelsMap.get(expr.toString()));
-          System.out.println(predNameToExprMap.get(expr.toString()));
 
-        }
         System.out.println("Running Marco");
 
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
         List<Set<Integer>> muses = MarcoMUS.enumerate(constraints, _ctx, 10, 1000, true);
 
+        int[] predicateFrequency = new int[labels.size()];
+
+
         for (Set<Integer> mus: muses){
-          System.out.println("****MUS****");
           for (Integer pred_num : mus){
-            System.out.println(labels.get(pred_num));
-              System.out.println(constraints[pred_num]);
+            predicateFrequency[pred_num]++;
           }
-          System.out.println("***END***");
         }
-        System.out.println("MARCO RESULT: " + muses.size());
+        System.out.println("Number of MUSES: " + muses.size());
 
+        for (int i=0;i<predicateFrequency.length;i++){
+          if (predicateFrequency[i]>0) {
+            System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+          }
+        }
       }
-
-
-
   }
 
 
@@ -1292,8 +1289,6 @@ public class Encoder {
         SortedMap<Expr, Expr> counterExampleVariableAssignments = new TreeMap<>();
         buildCounterExample(this, _faultlocSolver.getModel(), ce, packetModel, new TreeSet<>(),
             new TreeMap<>(), failures, counterExampleVariableAssignments);
-        System.out.printf("**********CounterExample #%d Failed Links Count %d *************\n", numCounterexamples, failures.size());
-        failures.forEach((k,v) -> System.out.println(k + " " + v ));
         failureSets.add(failures);
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 1) {
@@ -1306,28 +1301,9 @@ public class Encoder {
           // TODO : Count of num predicates at fault and num predicates found in the model to FaultLocStats.
           Set<PredicateLabel> predicatesInModel = new HashSet<>(_faultlocUnsatCore.getTrackingLabels().values());
 
-//          predicatesInModel.forEach(System.out::println);
           System.out.println("Number of tracked predicates:  " + predicatesInModel.size());
 
-          /* Code to check if predicates at fault are actually present in the problem
-            *(Wasn't working for BGP Triangle disable-interface)
 
-          boolean containsPredicate = false;
-          for (String question: faultsMap.keySet()){
-            for(PredicateLabel faultyPred : faultsMap.get(question)){
-              System.out.println(faultyPred.toString());
-              if (predicatesInModel.contains(faultyPred)){
-                containsPredicate = true;
-              }
-            }
-          }
-
-          if (containsPredicate){
-            System.out.println("Faulty Predicate/s present in problem.");
-          }else{
-            System.out.println("Faulty Predicate/s NOT present in problem.");
-          }
-        */
 
         }
         updatefailededgeMap(numCounterexamples, failedEdgesCEMap, variableHistoryMap,ce);
@@ -1335,9 +1311,6 @@ public class Encoder {
       }
     } while (numCounterexamples < _settings.getNumIters());
     System.out.println("Number of Counter Examples generated: " + numCounterexamples);
-
-//    System.out.printf("HAS REPEATED FAILED LINK SETS in Counter Examples: %s\n",
-//            checkForRepeatedfailedEdges(failedEdgesCEMap, numCounterexamples)); //Making sure failure sets determine network behavior completely
 
     if (_settings.shouldPrintCounterExampleDiffs()) {
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
@@ -1378,7 +1351,7 @@ public class Encoder {
 
   /**
   *compute predicates that not in the unsatCore
-  @param predicatesNameToExprMap
+  @param predicatesNameToLabelMap
   **/
   List<String> predicatesnotunsatcore(Map<String,PredicateLabel> predicatesNameToLabelMap, List<String> unsatCore) {
     List<String> notUnsatCore = new ArrayList<>();
