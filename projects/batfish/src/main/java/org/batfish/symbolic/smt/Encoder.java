@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.Predicate;
 
 /**
  * A class responsible for building a symbolic encoding of the entire network. The encoder does this
@@ -408,7 +409,11 @@ public class Encoder {
   void add(BoolExpr e, PredicateLabel caller) {
     _unsatCore.track(_solver, _ctx, e, caller);
     // Invert policy for faultloc, if requested
+
+//    System.out.println("[Pred] " + caller + " : " + e);
+
     if (caller.gettype() == labels.POLICY) {
+      System.out.println("Negated POLICY : " + e);
       if  (_settings.shouldNotNegateProperty()) {
         System.out.println("Assert P");
         e = _ctx.mkNot(e);
@@ -470,19 +475,17 @@ public class Encoder {
    * Add the relevant variables in the counterexample to
    * display to the user in a human-readable fashion
    */
-  private HashMap<String, String> buildCounterExample(
+  private void buildCounterExample(
           Encoder enc,
           Model m,
           SortedMap<String, String> model,
           SortedMap<String, String> packetModel,
           SortedSet<String> fwdModel,
           SortedMap<String, SortedMap<String, String>> envModel,
-          SortedSet<String> failures,
-          SortedMap<Expr, Expr> variableAssignments,
-          SortedMap<Expr, Expr> staticConstraints) {
+          SortedMap<String, ArithExpr> failures,
+          SortedMap<Expr, Expr> variableAssignments) {
 
     SortedMap<Expr, String> valuation = new TreeMap<>();
-    HashMap<String, String> counterExampleState = new HashMap<>();
     // If user asks for the full model
     for (Entry<String, Expr> entry : _allVariables.entrySet()) {
 
@@ -495,9 +498,8 @@ public class Encoder {
           model.put(name, s);
         }
         valuation.put(e, s);
-        counterExampleState.put(name, s);
+        // counterExampleState.put(name, s);
         if (name.contains("reachable-id")){ //this fixes issue with bgp-acls
-          staticConstraints.put(e, val);
         }else{
           variableAssignments.put(e, val);
         }
@@ -506,7 +508,7 @@ public class Encoder {
 
 
 
-    ArrayList<String> sortedKeys = new ArrayList<String>(counterExampleState.keySet());
+    ArrayList<String> sortedKeys = new ArrayList<String>(model.keySet());
     Collections.sort(sortedKeys);
 
 
@@ -687,7 +689,7 @@ public class Encoder {
                       String s = valuation.get(e);
                       if ("1".equals(s)) {
                         String pair = (x.compareTo(y) < 0 ? x + "," + y : y + "," + x);
-                        failures.add("link(" + pair + ")");
+                        failures.put("link(" + pair + ")", e);
                       }
                     });
 
@@ -697,11 +699,9 @@ public class Encoder {
                     (ge, e) -> {
                       String s = valuation.get(e);
                       if ("1".equals(s)) {
-                        failures.add("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")");
+                        failures.put("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")", e);
                       }
                     });
-
-    return counterExampleState;
   }
 
   /*
@@ -785,7 +785,7 @@ public class Encoder {
    * @param referencedTo
    * @param predicatesToExprMap
    */
-  public void computeVarAssignmentsReferences(Map<Expr, List<String>> assignedTo, 
+  public void computeVarAssignmentsReferences(Map<Expr, List<String>> assignedTo,
       Map<String, List<Expr>> referencedTo, Map<String, BoolExpr> predicatesToExprMap){
     for (Map.Entry<String,BoolExpr> entry : predicatesToExprMap.entrySet()) {
       String key = entry.getKey();
@@ -844,61 +844,52 @@ public class Encoder {
 
   /**
    * Adds solver constraints that need not be varied for fault localization,
-   * like Packet variables.
-   * @param staticVars Symbolic Packet variables from the main slice.
-   * @param nonStaticVariableAssignments All variables in model except reachable_id
-   * @param staticVariableAssignments reachable_id (since we force this value to be constant)
+   * namely, packet variables.
+   * @param packetModel variables pertaining to packet
+   * @param counterExampleVariableAssignments values for all variables in model
    */
-  private void addStaticConstraints(Set<Expr> staticVars,
-                                    Map<Expr, Expr> nonStaticVariableAssignments,
-                                    Map<Expr, Expr> staticVariableAssignments
-  ){
+  private void addPacketConstraints(Map<String, String> packetModel,
+      Map<Expr, Expr> counterExampleVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
-    //staticVars.addAll(staticVariableAssignments.keySet());
+
     PredicateLabel label=new PredicateLabel(labels.PACKET);
-    for (Expr e : staticVars) {
-      if (nonStaticVariableAssignments.containsKey(e)) {
-        newEqs.add(_ctx.mkEq(e, nonStaticVariableAssignments.get(e)));
-      }else{
-        newEqs.add(_ctx.mkEq(e, staticVariableAssignments.get(e)));
+    for (Expr var : counterExampleVariableAssignments.keySet()) {
+      if (packetModel.containsKey(var.toString())) {
+        newEqs.add(_ctx.mkEq(var, counterExampleVariableAssignments.get(var)));
       }
     }
-
     BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _faultlocUnsatCore.track(_faultlocSolver, _ctx,andPcktVars, label);
+    _faultlocUnsatCore.track(_faultlocSolver, _ctx, andPcktVars, label);
   }
 
 
   /**
    * Adds constraints from a counter-example (satisfying solution) to the solver
    * after each call to solver.check() that returns SATISFIABLE.
-   * @param staticVars Symbolic Packet variables from the main slice.
-   * @param nonStaticVariableAssignments All variables in model except reachable_id
+   * @param packetModel variables pertaining to packet
+   * @param counterExampleVariableAssignments values for all variables in model
    */
-  private void addCounterExampleConstraints(Set<Expr> staticVars,
-                                            Map<Expr, Expr> nonStaticVariableAssignments){
+  private void addCounterExampleConstraints(Map<String,String> packetModel,
+      Map<Expr, Expr> counterExampleVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
     PredicateLabel label=new PredicateLabel(labels.COUNTEREXAMPLE);
-    StringBuilder builder = new StringBuilder();
-    for (Expr var : nonStaticVariableAssignments.keySet()) {
-      if (!staticVars.contains(var))
-        newEqs.add(_ctx.mkEq(var, nonStaticVariableAssignments.get(var)));
-//        System.out.println("CE " + var + " : " + nonStaticVariableAssignments.get(var));
-        builder.append(var + " && ");
+    for (Expr var : counterExampleVariableAssignments.keySet()) {
+      if (packetModel.get(var.toString()) == null) {
+        newEqs.add(_ctx.mkEq(var, counterExampleVariableAssignments.get(var)));
+      }
     }
-//    System.out.println(builder.toString());
     BoolExpr andAllEq = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
     _faultlocUnsatCore.track(_faultlocSolver,_ctx, _ctx.mkNot(andAllEq),label);
   }
-  
+
   /**
-   * Gets the names of the predicates in the unsat core 
+   * Gets the names of the predicates in the unsat core
    * @return names of the predicates in the unsat core
    */
   private List<String> getFaultlocUnsatCorePredNames() {
     // Get unsat core
     BoolExpr[] unsatCore = _faultlocSolver.getUnsatCore();
-    
+    System.out.printf("Unsat Core Size: %d\n", unsatCore.length);
     // Each predicate in the unsat core is a label, e.g. Pred22
     List<String> predNames = new ArrayList<String>();
     for (int i = 0; i < unsatCore.length; i++) {
@@ -917,15 +908,16 @@ public class Encoder {
   private List<String> minimizeUnsatCore(List<String> unsatCoreNames, Map<String, BoolExpr> predNameToExpr){
 
     // Add all expressions in unsat core to minimization solver
+    long start_mini=System.currentTimeMillis();
     Solver minSolver = _ctx.mkSolver();
     BoolExpr[] unsatCoreExprs = new BoolExpr[unsatCoreNames.size()];
     for (int i = 0; i < unsatCoreNames.size(); i++) {
       unsatCoreExprs[i] = mkNot(predNameToExpr.get(unsatCoreNames.get(i)));
     }
-    minSolver.add(unsatCoreExprs); 
+    minSolver.add(unsatCoreExprs);
 
     // Remove one expression at a time to determine the minimal unsat core
-    List<String> minimalCore = new ArrayList<String>();
+    List<String> minimalCore = new ArrayList<>();
     for (int j = 0; j < unsatCoreExprs.length; j++){
       BoolExpr currentPred =  unsatCoreExprs[j];
       unsatCoreExprs[j] = mkTrue(); //Equivalent of removing the assertion
@@ -936,14 +928,15 @@ public class Encoder {
         minimalCore.add(unsatCoreNames.get(j));
       }
     }
-
+    long time_minimization=System.currentTimeMillis()-start_mini;
+    _faultlocStats.setMinimizeTime(time_minimization);
     return minimalCore;
   }
 
 
-  public Set<String> computeBackwardSlice(Collection<String> unsatCore, 
+  public Set<String> computeBackwardSlice(Collection<String> unsatCore,
       Map<Expr, List<String>> assignedTo, Map<String, List<Expr>> referencedTo){
-
+    long start_slice=System.currentTimeMillis();
     List<String> worklist = new ArrayList<String>(unsatCore);
 
 
@@ -965,18 +958,15 @@ public class Encoder {
         processed.add(currentPred);
       }
     }
-//    System.out.println(" Printing processed"); //in one of these processed expressions, this is where something went wrong, FAULT LOCALISATION
-//    for (String str: processed){
-//      System.out.print(str + ", ");
-//    }
-//    System.out.println();
+    long time_slice=System.currentTimeMillis()-start_slice;
+    _faultlocStats.setSliceTime(time_slice);
     return processed;
   }
-  
+
   /**
    * Load the faultloc file and throw exception if faultloc file is not in the directory
    *
-   * @return HashMap<String,ArrayList<PredicateLabel>> A hashmap with questions as keys and 
+   * @return HashMap<String,ArrayList<PredicateLabel>> A hashmap with questions as keys and
    * coresponding list of PredicateLabels as value
    */
   public HashMap<String,ArrayList<PredicateLabel>> loadFaultloc(){
@@ -1013,13 +1003,13 @@ public class Encoder {
       System.out.println ("Faultloc file not found");
     }
     return result;
-  } 
+  }
   /**
    * Load the possible bgp edges and turn them into a list of predicateLabels
    *
    * @return List<PredicateLabel> represents the possilbe labels generated from the possible bgp edges
    * but not actually exist
-   */  
+   */
   public List<PredicateLabel> edgeToLabel(){
     List<GraphEdge> possible=_graph.getPossilbe();
     List<PredicateLabel> result=new ArrayList<>();
@@ -1030,10 +1020,10 @@ public class Encoder {
       result.add(label2);
     }
     return result;
-    
+
   }
-  
-  
+
+
   /**
    * Checks that a property is always true by seeing if the encoding is unsatisfiable. mkIf the
    * model is satisfiable, then there is a counter example to the property.
@@ -1043,6 +1033,9 @@ public class Encoder {
   public Tuple<VerificationResult, Model> verify() {
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
+
+
+
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
     int numNodes = mainSlice.getGraph().getConfigurations().size();
     int numEdges = 0;
@@ -1088,23 +1081,25 @@ public class Encoder {
         SortedMap<String, String> packetModel = new TreeMap<>();
         SortedSet<String> fwdModel = new TreeSet<>();
         SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
-        SortedSet<String> failures = new TreeSet<>();
-        buildCounterExample(this, m, model, packetModel, fwdModel, envModel, failures, new TreeMap<>(), new TreeMap<>());
+        SortedMap<String, ArithExpr> failures = new TreeMap<>();
+        buildCounterExample(this, m, model, packetModel, fwdModel, envModel, failures, new TreeMap<>());
 
         if (_previousEncoder != null) {
           buildCounterExample(
-              _previousEncoder, m, model, packetModel, fwdModel, envModel, failures, new TreeMap<>(), new TreeMap<>());
+              _previousEncoder, m, model, packetModel, fwdModel, envModel, failures, new TreeMap<>());
         }
-
+        SortedSet<String> failuresStringSet = new TreeSet<>(failures.keySet());
         result =
-            new VerificationResult(false, model, packetModel, envModel, fwdModel, failures, stats);
+            new VerificationResult(false, model, packetModel, envModel, fwdModel, failuresStringSet, stats);
 
 
+
+        System.out.println("Localization called.");
         // Localize faults
         localizeFaults();
         _faultlocStats.writeOut();
 
-        
+
         if (!_question.getMinimize()) {
           break;
         }
@@ -1151,37 +1146,141 @@ public class Encoder {
 
     return false;
   }
-  
+
+
+  /**
+   * For each failure set check if (N && P && failureSet) is satisfiable.
+   * Expected behavior : Since all failureSets passed into the method are obtained from
+   * counter examples on (not P) assertion, each check should return unsatifiable.
+   * @param failureSets Set of failureSets.
+   */
+  void localizeForAllFailures(Set<SortedMap<String, ArithExpr>> failureSets){
+
+      System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
+      Map<String, BoolExpr> predicates = new HashMap<>();
+
+      Map<String, PredicateLabel> predNameToLabelsMap = _faultlocUnsatCore.getTrackingLabels();
+      Map<String, BoolExpr> predNameToExprMap = _faultlocUnsatCore.getTrackingVars();
+
+      for (String key : predNameToLabelsMap.keySet()){
+        PredicateLabel predLabel = predNameToLabelsMap.get(key);
+        if (!predLabel.gettype().equals(labels.COUNTEREXAMPLE)) {
+          if (predLabel.gettype() == labels.POLICY){
+            //re-negate (no negate)
+            predicates.put(key,_ctx.mkNot(predNameToExprMap.get(key)));
+          }else{
+            predicates.put(key,predNameToExprMap.get(key));
+          }
+        }
+      }
+
+
+      List<BoolExpr> allConstraints =new ArrayList<>();
+      List<PredicateLabel> labels = new ArrayList<>();
+      Solver solver;
+      for (SortedMap<String, ArithExpr> failureSet : failureSets){
+
+        System.out.println("\n********FAILURE SET***********");
+        for(String key: failureSet.keySet()){
+          System.out.println(key + " : " + failureSet.get(key));
+        }
+        System.out.println("******************************\n");
+
+
+        solver = _ctx.mkSolver();
+        for (String key:  predicates.keySet()){
+          // Adding Network and policy (unnegated)
+          solver.assertAndTrack(predicates.get(key), _ctx.mkBoolConst(key));
+          allConstraints.add(predicates.get(key));
+          labels.add(predNameToLabelsMap.get(key));
+        }
+        for (String key : failureSet.keySet()){
+          BoolExpr failureExpr = mkEq(failureSet.get(key), mkInt(1));
+          //Don't assert and track failure constraint
+          solver.add(failureExpr);
+          allConstraints.add(failureExpr);
+          labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
+        }
+
+        Status result = solver.check();
+        System.out.println(result);
+
+        if (result==Status.SATISFIABLE){
+          System.out.println(solver.getModel().toString());
+        }
+
+
+
+        System.out.printf("# of predicates in solver : %d | " +
+                        "# of predicates in initial unsat core : %d\n" ,
+                solver.getNumAssertions(),
+                solver.getUnsatCore().length);
+
+        System.out.println("Running Marco");
+
+        BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
+        List<Set<Integer>> muses = MarcoMUS.enumerate(constraints, _ctx, 10, 1000, true);
+
+        int[] predicateFrequency = new int[labels.size()];
+
+
+        for (Set<Integer> mus: muses){
+          for (Integer pred_num : mus){
+            predicateFrequency[pred_num]++;
+          }
+        }
+        System.out.println("Number of MUSES: " + muses.size());
+
+        for (int i=0;i<predicateFrequency.length;i++){
+          if (predicateFrequency[i]>0) {
+            System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+          }
+        }
+      }
+  }
+
+
+  /**
+  * Iteratively produce counterexamples until problem becomes unsat, then employ
+  * fault localization algorithm.
+  */
   void localizeFaults() {
+
     long time_check = 0;
     int numCounterexamples = 0;
     // History of values assigned to variables in different (counter)examples
     Map<String, Set<String>> variableHistoryMap = new HashMap<>();
-    //Counter Example Number to
+    // Counter Example Number to set of failed edges
     Map<Integer, Map<String, String>> failedEdgesCEMap = new HashMap<>();
     SortedSet<Expr> staticVars = this.getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
 
-    System.out.println("\nSMT");
-    System.out.println("-------------------------------------------");
+    HashSet<SortedMap<String, ArithExpr>> failureSets = new HashSet<>();
+
+
+
     if (_settings.shouldPrintSmt()) {
+        System.out.println("\nSMT");
+        System.out.println("-------------------------------------------");
         _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
         for (String predName : _unsatCore.getTrackingVars().keySet()) {
             System.out.println(_unsatCore.getTrackingLabels().get(predName));
             System.out.println(
                     _unsatCore.getTrackingVars().get(predName).getSExpr());
         }
+      System.out.println("-------------------------------------------");
     }
-    System.out.println("-------------------------------------------");
-    
+
+
+
     do {
       // Solve
       long check_start = System.currentTimeMillis();
       Status s = _faultlocSolver.check();
       time_check += System.currentTimeMillis() - check_start;
-      
+
       if (s == Status.UNKNOWN) {
         throw new BatfishException("ERROR: satisfiability unknown");
-      } 
+      }
       else if (s == Status.UNSATISFIABLE) {
         _faultlocStats.setNumCounterExamples(numCounterexamples);
         _faultlocStats.setCheckTime(time_check);
@@ -1201,57 +1300,34 @@ public class Encoder {
       }
       else if (s == Status.SATISFIABLE) {
         numCounterexamples++;
-        Model m = _faultlocSolver.getModel();
-        SortedMap<String, String> model = new TreeMap<>();
+        SortedMap<String, String> ce = new TreeMap<>();
         SortedMap<String, String> packetModel = new TreeMap<>();
-        SortedSet<String> fwdModel = new TreeSet<>();
-        SortedMap<String, SortedMap<String, String>> envModel = new TreeMap<>();
-        SortedSet<String> failures = new TreeSet<>();
-
-        SortedMap<Expr, Expr> nonStaticVariableAssignments = new TreeMap<>();
-        SortedMap<Expr, Expr> staticVariableAssignments = new TreeMap<>();
-        HashMap<String, String> ce = buildCounterExample(this, m, model, packetModel, fwdModel, 
-            envModel, failures, nonStaticVariableAssignments,staticVariableAssignments);
-
+        SortedMap<String, ArithExpr> failures = new TreeMap<>();
+        SortedMap<Expr, Expr> counterExampleVariableAssignments = new TreeMap<>();
+        buildCounterExample(this, _faultlocSolver.getModel(), ce, packetModel, new TreeSet<>(),
+            new TreeMap<>(), failures, counterExampleVariableAssignments);
+        failureSets.add(failures);
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 1) {
-          for (String key : ce.keySet()) {
-            // first values assigned to counter-example variables...
-            if (key.contains("FAILED-EDGE")){
-              if (failedEdgesCEMap.containsKey(numCounterexamples)){
-                failedEdgesCEMap.get(numCounterexamples).put(key, ce.get(key));
-              }else{
-                failedEdgesCEMap.put(numCounterexamples, new HashMap<>());
-                failedEdgesCEMap.get(numCounterexamples).put(key, ce.get(key));
-              }
-            }
-            variableHistoryMap.put(key, new HashSet<>(Arrays.asList(ce.get(key))));
-          }
+          addPacketConstraints(packetModel, counterExampleVariableAssignments);
 
-          addStaticConstraints(staticVars,nonStaticVariableAssignments,staticVariableAssignments);
+          //// ***
+          //Check if predicates at fault are in the model. //TODO : Check this.UPDATE: This works.
+          //Map<String, ArrayList<PredicateLabel>> faultsMap = loadFaultloc();
+          //Make sure atleast one of the predicates in fault is present in the model.
+          // TODO : Count of num predicates at fault and num predicates found in the model to FaultLocStats.
+          Set<PredicateLabel> predicatesInModel = new HashSet<>(_faultlocUnsatCore.getTrackingLabels().values());
 
-        } else {
-          for (String varName : ce.keySet()) {
-            variableHistoryMap.get(varName).add(ce.get(varName));
-            if (varName.contains("FAILED-EDGE")){
-              if (failedEdgesCEMap.containsKey(numCounterexamples)){
-                failedEdgesCEMap.get(numCounterexamples).put(varName, ce.get(varName));
-              }else{
-                failedEdgesCEMap.put(numCounterexamples, new HashMap<>());
-                failedEdgesCEMap.get(numCounterexamples).put(varName, ce.get(varName));
-              }
-            }
-          }
+          System.out.println("Number of tracked predicates:  " + predicatesInModel.size());
+
+
+
         }
-
-        addCounterExampleConstraints(staticVars, nonStaticVariableAssignments);
+        updatefailededgeMap(numCounterexamples, failedEdgesCEMap, variableHistoryMap,ce);
+        addCounterExampleConstraints(packetModel, counterExampleVariableAssignments);
       }
     } while (numCounterexamples < _settings.getNumIters());
-    System.out.println("Number of Counter Examples generated: " +numCounterexamples);
-
-    System.out.printf("HAS REPEATED FAILED LINK SETS in Counter Examples: %s\n",
-            checkForRepeatedfailedEdges(failedEdgesCEMap, numCounterexamples));
-
+    System.out.println("Number of Counter Examples generated: " + numCounterexamples);
 
     if (_settings.shouldPrintCounterExampleDiffs()) {
       ArrayList<String> variableNames = new ArrayList<>(variableHistoryMap.keySet());
@@ -1261,20 +1337,79 @@ public class Encoder {
         System.out.println(
               variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
       }
-
-//      //TODO: Figure out if failed sets of edges are unique to counter-examples.
-//      for (int ceId: failedEdgesCEMap.keySet()){
-//        Map<String, String> failedMap = failedEdgesCEMap.get(ceId);
-//        System.out.printf("==COUNTER EXAMPLE #%d==\n", ceId);
-//        for (String varName: failedMap.keySet()){
-//          System.out.printf("%s -> %s\n", varName, failedMap.get(varName));
-//        }
-//
-//      }
     }
 
+    //FORALL LOCALIZATION
+    localizeForAllFailures(failureSets); // Pass in list of failedLinkSets
   }
-  
+
+  void updatefailededgeMap(int numCounterexamples,
+                            Map<Integer, Map<String, String>> failedEdgesCEMap,
+                            Map<String,
+                            Set<String>> variableHistoryMap,
+                            SortedMap<String, String> ce){
+    for (String varName : ce.keySet()) {
+      if (numCounterexamples != 1){
+      variableHistoryMap.get(varName).add(ce.get(varName));
+      if (varName.contains("FAILED-EDGE")){
+        if (failedEdgesCEMap.containsKey(numCounterexamples)){
+          failedEdgesCEMap.get(numCounterexamples).put(varName, ce.get(varName));
+        }else{
+          failedEdgesCEMap.put(numCounterexamples, new HashMap<>());
+          failedEdgesCEMap.get(numCounterexamples).put(varName, ce.get(varName));
+        }
+      }
+     }
+     if (numCounterexamples == 1){
+       variableHistoryMap.put(varName, new HashSet<>(Arrays.asList(ce.get(varName))));
+     }
+    }
+  }
+
+  /**
+  *compute predicates that not in the unsatCore
+  @param predicatesNameToLabelMap
+  **/
+  List<String> predicatesnotunsatcore(Map<String,PredicateLabel> predicatesNameToLabelMap, List<String> unsatCore) {
+    List<String> notUnsatCore = new ArrayList<>();
+    for (String predicate : predicatesNameToLabelMap.keySet()) {
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      if (!unsatCore.contains(predicate)
+            && (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable()
+                || (_settings.shouldIncludeComputable() && label.isComputable()))) {
+          notUnsatCore.add(predicate);
+       }
+    }
+    return notUnsatCore;
+  }
+
+  /**
+  printout the slice results
+  */
+  void outSlice(Map<String, BoolExpr> predicatesNameToExprMap,
+                Map<String, PredicateLabel> predicatesNameToLabelMap,
+                Set<String> backwardSlice){
+    System.out.println("\nBackward slice:");
+    System.out.println("-------------------------------------------");
+    for (String predicate : backwardSlice) {
+      // Only output constraints we can change
+      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+      if (_settings.shouldRemoveUnsatCoreFilters()
+              || label.isConfigurable() || label.isComputable()) {
+          if (_settings.shouldPrintUnsatExpr()) {
+            System.out.println(label + ": "
+                    + predicatesNameToExprMap.get(predicate));
+          } else {
+            System.out.println(label);
+          }
+      }
+    }
+    System.out.println("-------------------------------------------");
+  }
+
+  /**
+   * Use a single unsat core to localize faults
+   */
   void localizeFaultsUsingUnsat() {
     Map<String, BoolExpr> predicatesNameToExprMap = _unsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicatesNameToLabelMap = _unsatCore.getTrackingLabels();
@@ -1282,33 +1417,33 @@ public class Encoder {
     HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
     HashMap<String, ArrayList<PredicateLabel>> Faultloc= loadFaultloc();
 
-    
+
     // Get unsat core
     List<String> unsatCore = this.getFaultlocUnsatCorePredNames();
 
     // Minimize unsat core, if requested
     if (_settings.shouldMinimizeUnsatCore()) {
-      long start_mini=System.currentTimeMillis();
+      //long start_mini=System.currentTimeMillis();
       unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
-      long time_minimization=System.currentTimeMillis()-start_mini;
-      _faultlocStats.setMinimizeTime(time_minimization);
+      //long time_minimization=System.currentTimeMillis()-start_mini;
+      //_faultlocStats.setMinimizeTime(time_minimization);
     }
- 
+
     // Compute predicates in not unsat core
-    List<String> notUnsatCore = new ArrayList<>();
-    for (String predicate : predicatesNameToLabelMap.keySet()) {
-      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-      if (!unsatCore.contains(predicate) 
-            && (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable() 
-                || (_settings.shouldIncludeComputable() && label.isComputable()))) {
-          notUnsatCore.add(predicate);
-       }
-    }
-    
-    processCores(unsatCore, notUnsatCore, predicatesNameToExprMap, predicatesNameToLabelMap);
+    List<String> notUnsatCore = predicatesnotunsatcore(predicatesNameToLabelMap,unsatCore);
+    // for (String predicate : predicatesNameToLabelMap.keySet()) {
+    //   PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+    //   if (!unsatCore.contains(predicate)
+    //         && (_settings.shouldRemoveUnsatCoreFilters() || label.isConfigurable()
+    //             || (_settings.shouldIncludeComputable() && label.isComputable()))) {
+    //       notUnsatCore.add(predicate);
+    //    }
+    // }
+
+    outputCores(unsatCore, notUnsatCore, predicatesNameToExprMap, predicatesNameToLabelMap);
     // Determine whether to use unsat core or not unsat core for fault localization
     // A solution to Minesweeeper's constraints is a counterexample, and the
-    // unsat core is the reason a counterexample cannot be found---i.e., 
+    // unsat core is the reason a counterexample cannot be found---i.e.,
     // the unsat core contains "good" predicates. Hence, the not unsat
     // core should be used to localize faults.
     Set<String> faultCandidates = new HashSet<>(notUnsatCore);
@@ -1318,44 +1453,106 @@ public class Encoder {
     if (_settings.shouldNotNegateProperty()) {
       faultCandidates = new HashSet<>(unsatCore);
     }
-    
-    
+
+
     // If requested, compute a backward slice from all predicates in the (not) unsat
     // core and add everything in the slice to the list of predicates for fault localization.
     if (_settings.shouldEnableSlicing()) {
-      long start_slice=System.currentTimeMillis();
-      
+      //long start_slice=System.currentTimeMillis();
+
       // Mapping from variable names to predicates in which a value is assigned to the variable
       Map<Expr, List<String>> assignedTo = new HashMap<>();
       // Mapping from predicates to the variables that are referenced in the predicate
       Map<String, List<Expr>> referencedTo = new HashMap<>();
       // Compute variable/predicate mappings required for computing slices
       computeVarAssignmentsReferences(assignedTo, referencedTo, predicatesNameToExprMap);
-      
+
       // Compute Slice
       Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
-      long time_slice=System.currentTimeMillis()-start_slice;
-      _faultlocStats.setSliceTime(time_slice);
+      // long time_slice=System.currentTimeMillis()-start_slice;
+      // _faultlocStats.setSliceTime(time_slice);
       faultCandidates = backwardSlice;
-      System.out.println("\nBackward slice:");
-      System.out.println("-------------------------------------------");
-      for (String predicate : backwardSlice) {
-        // Only output constraints we can change
-        PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-        if (_settings.shouldRemoveUnsatCoreFilters() 
-                || label.isConfigurable() || label.isComputable()) {
-            if (_settings.shouldPrintUnsatExpr()) {
-              System.out.println(label + ": " 
-                      + predicatesNameToExprMap.get(predicate));
-            } else {
-              System.out.println(label);
-            }
-        }
-      }
-      System.out.println("-------------------------------------------");
-    } 
-     
+      //print out slice results
+      outSlice(predicatesNameToExprMap,predicatesNameToLabelMap,backwardSlice);
+    //   System.out.println("\nBackward slice:");
+    //   System.out.println("-------------------------------------------");
+    //   for (String predicate : backwardSlice) {
+    //     // Only output constraints we can change
+    //     PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+    //     if (_settings.shouldRemoveUnsatCoreFilters()
+    //             || label.isConfigurable() || label.isComputable()) {
+    //         if (_settings.shouldPrintUnsatExpr()) {
+    //           System.out.println(label + ": "
+    //                   + predicatesNameToExprMap.get(predicate));
+    //         } else {
+    //           System.out.println(label);
+    //         }
+    //     }
+    //   }
+    //   System.out.println("-------------------------------------------");
+    //
+    }
+
     // Determine which labels are not found
+    computeExtrapredicates(predicatesNameToLabelMap, unfound, Faultloc, faultCandidates);
+    // int extraComputable = 0;
+    // int extraConfigurable = 0;
+    // List<PredicateLabel> combination= new ArrayList<> ();
+    // for (String predicate : faultCandidates) {
+    //   PredicateLabel label = predicatesNameToLabelMap.get(predicate);
+    //   combination.add(label);
+    // }
+    // combination.addAll(edgeToLabel());
+    // for (PredicateLabel label:combination) {
+    //   for (String q : Faultloc.keySet()) {
+    //     unfound.get(q).remove(label);
+    //     if (!Faultloc.get(q).contains(label)) {
+    //       if (label.isComputable())
+    //         extraComputable += 1;
+    //       if (label.isConfigurable())
+    //         extraConfigurable += 1;
+    //     }
+    //   }
+    // }
+    // _faultlocStats.setNumExtraConfigPreds(extraConfigurable);
+    // _faultlocStats.setNumExtraComputePreds(extraComputable);
+
+    // Print out found and unfound items in faultloc list
+    outUnfound(unfound, Faultloc);
+    // int unfoundCount = 0;
+    // int foundCount = 0;
+    // for (String q:Faultloc.keySet()) {
+    //   unfoundCount = unfound.get(q).size();
+    //   foundCount = Faultloc.get(q).size()-unfoundCount;
+    //   System.out.println("\nFaulty predicates for " + q + ": "
+    //           + foundCount + " found, " + unfoundCount + " unfound");
+    //   if (unfoundCount > 0) {
+    //     System.out.println("Unfound faulty predicates for " + q + ":");
+    //     System.out.println("-------------------------------------------");
+    //     for (PredicateLabel label : unfound.get(q)) {
+    //         System.out.println(label);
+    //     }
+    //     System.out.println("-------------------------------------------");
+    //   }
+    // }
+    // _faultlocStats.setNumFoundPreds(foundCount);
+    // _faultlocStats.setNumUnfoundPreds(unfoundCount);
+    // String unfoundpred="";
+    // for (String q:Faultloc.keySet()) {
+    //   for (PredicateLabel label:unfound.get(q))
+    //   unfoundpred+=label.toString()+";";
+    // }
+    // _faultlocStats.setUnfoundPreds(unfoundpred);
+    //
+    //
+    // System.out.println("=====================================================");
+  }
+
+  // Determine which labels are not found
+  void computeExtrapredicates(Map<String, PredicateLabel> predicatesNameToLabelMap,
+                              HashMap<String, ArrayList<PredicateLabel>> unfound,
+                              HashMap<String, ArrayList<PredicateLabel>> Faultloc,
+                              Set<String> faultCandidates){
     int extraComputable = 0;
     int extraConfigurable = 0;
     List<PredicateLabel> combination= new ArrayList<> ();
@@ -1377,14 +1574,19 @@ public class Encoder {
     }
     _faultlocStats.setNumExtraConfigPreds(extraConfigurable);
     _faultlocStats.setNumExtraComputePreds(extraComputable);
+  }
 
-    // Print out found and unfound items in faultloc list
+/*
+print out unfound items in Faultloc
+*/
+  void outUnfound(HashMap<String, ArrayList<PredicateLabel>> unfound,
+                  HashMap<String, ArrayList<PredicateLabel>> Faultloc){
     int unfoundCount = 0;
     int foundCount = 0;
     for (String q:Faultloc.keySet()) {
       unfoundCount = unfound.get(q).size();
       foundCount = Faultloc.get(q).size()-unfoundCount;
-      System.out.println("\nFaulty predicates for " + q + ": " 
+      System.out.println("\nFaulty predicates for " + q + ": "
               + foundCount + " found, " + unfoundCount + " unfound");
       if (unfoundCount > 0) {
         System.out.println("Unfound faulty predicates for " + q + ":");
@@ -1395,21 +1597,14 @@ public class Encoder {
         System.out.println("-------------------------------------------");
       }
     }
-
-
     _faultlocStats.setNumFoundPreds(foundCount);
     _faultlocStats.setNumUnfoundPreds(unfoundCount);
-
-
-    
     String unfoundpred="";
     for (String q:Faultloc.keySet()) {
       for (PredicateLabel label:unfound.get(q))
-      unfoundpred+=label.toString()+";";            
+      unfoundpred+=label.toString()+";";
     }
     _faultlocStats.setUnfoundPreds(unfoundpred);
-
-
     System.out.println("=====================================================");
   }
 
@@ -1431,11 +1626,17 @@ public class Encoder {
       i++;
     }
 
+    //Use MUSes unless specified to use MSS
+    boolean shouldUseMUSes = !_settings.getMarcoType().equals("mss");
+
+    long start_time = System.currentTimeMillis();
     List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
             _ctx,
             _settings.getMaxMUSCount(),
             _settings.getMaxMSSCount(),
-            true);
+            shouldUseMUSes);
+    long time_elapsed = System.currentTimeMillis() - start_time;
+    _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);
 
     Set<Set<PredicateLabel>> setMUSes = new HashSet<>();
     for (Set<Integer> mus : listMUSes){
@@ -1473,9 +1674,9 @@ public class Encoder {
   }
 
   void localizeFaultsUsingMarco(){
-    Map<String, BoolExpr> assertionsMap = _faultlocUnsatCore.getTrackingVars();
+    //Map<String, BoolExpr> assertionsMap = _faultlocUnsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicateLabelMap = _faultlocUnsatCore.getTrackingLabels();
-    BoolExpr[] constraints = new BoolExpr[assertionsMap.size()];
+    /*BoolExpr[] constraints = new BoolExpr[assertionsMap.size()];
     String[] trackingNames = new String[assertionsMap.size()];
 
     int i=0;
@@ -1483,29 +1684,32 @@ public class Encoder {
       constraints[i] = assertionsMap.get(key);
       trackingNames[i] = key;
       i++;
-    }
+    }*/
 
     //Use MUSes unless specified to use MSS
     boolean shouldUseMUSes = !_settings.getMarcoType().equals("mss");
 
-    //TODO: Not the actual time elapsed.. But close.
+    /*//TODO: Not the actual time elapsed.. But close.
     long start_time = System.currentTimeMillis();
     List<Set<Integer>> candidateSets = MarcoMUS.enumerate(constraints,
             _ctx,
             _settings.getMaxMUSCount(),
             _settings.getMaxMSSCount(),shouldUseMUSes);
     long time_elapsed = System.currentTimeMillis() - start_time;
-    _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);
-    Set<Integer> intersection = new HashSet<>();
-    Set<Integer> union = new HashSet<>();
-    Map<Integer, Integer> predicateFrequencies = new HashMap<>();
+    _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);*/
+
+    Set<Set<PredicateLabel>> candidateSets = produceMUSes();
+
+    Set<PredicateLabel> intersection = new HashSet<>();
+    Set<PredicateLabel> union = new HashSet<>();
+    Map<PredicateLabel, Integer> predicateFrequencies = new HashMap<>();
 
     int musCount = 1;
 
     int unionGrowth = 0;
     int intersectionShrink = 0;
 
-    for (Set<Integer> candidateSet: candidateSets){
+    for (Set<PredicateLabel> candidateSet: candidateSets){
       int currentIntersectionSize;
       int currentUnionSize;
       if (musCount==1){
@@ -1524,7 +1728,7 @@ public class Encoder {
       }
 
       //Computes frequency of each predicate in set of MUSes
-      for(int id: candidateSet){
+      for(PredicateLabel id: candidateSet){
         if (predicateFrequencies.containsKey(id)){
           predicateFrequencies.put(id, predicateFrequencies.get(id)+1);
         }else{
@@ -1548,21 +1752,22 @@ public class Encoder {
         complementOfIntersection.addAll(predicateLabelMap.values());
 
         //Computing complement of Intersection:
-        for (int intersectionPredId : intersection) {
+        /*for (int intersectionPredId : intersection) {
           complementOfIntersection.remove(predicateLabelMap.get(trackingNames[intersectionPredId]));
-        }
+        }*/
+        complementOfIntersection.removeAll(intersection);
 
 
         produceAnalysisForCandidates(complementOfIntersection);
       }else{
 
-        Set<PredicateLabel> intersectionPredicates = new HashSet<>();
+        /*Set<PredicateLabel> intersectionPredicates = new HashSet<>();
 
         for (int intersectionPredId: intersection){
           intersectionPredicates.add(predicateLabelMap.get(trackingNames[intersectionPredId]));
-        }
+        }*/
 
-        produceAnalysisForCandidates(intersectionPredicates);
+        produceAnalysisForCandidates(intersection);
       }
 
     }else if (_settings.shouldUseMUSUnion()){
@@ -1574,19 +1779,20 @@ public class Encoder {
         complementOfUnion.addAll(predicateLabelMap.values());
 
         //Computing complement of Union:
-        for (int unionPredId : union) {
+        /*for (int unionPredId : union) {
           complementOfUnion.remove(predicateLabelMap.get(trackingNames[unionPredId]));
-        }
+        }*/
+        complementOfUnion.removeAll(union);
 
         produceAnalysisForCandidates(complementOfUnion);
       }else{
-        Set<PredicateLabel> unionPredicates = new HashSet<>();
+        /*Set<PredicateLabel> unionPredicates = new HashSet<>();
 
         for (int unionPredId : union){
           unionPredicates.add(predicateLabelMap.get(trackingNames[unionPredId]));
-        }
+        }*/
 
-        produceAnalysisForCandidates(unionPredicates);
+        produceAnalysisForCandidates(union);
       }
 
     }
@@ -1642,9 +1848,9 @@ public class Encoder {
    * @param mus new Mus to intersect with existing intersection.
    * @param currentIntersection Current Intersection
    */
-  void buildSetIntersect(Set<Integer> mus, Set<Integer> currentIntersection){
+  void buildSetIntersect(Set<PredicateLabel> mus, Set<PredicateLabel> currentIntersection){
     //TODO: Search for a more efficient implementation of set-intersect.
-    Iterator<Integer> iter = currentIntersection.iterator();
+    Iterator<PredicateLabel> iter = currentIntersection.iterator();
     while (iter.hasNext()){
       if (!mus.contains(iter.next())){
         iter.remove();
@@ -1657,8 +1863,8 @@ public class Encoder {
    * @param mus new Mus to compute union with existing intersection.
    * @param currentUnion Current MUS Union
    */
-  void buildSetUnion(Set<Integer> mus, Set<Integer> currentUnion){
-    for(int newElement: mus){
+  void buildSetUnion(Set<PredicateLabel> mus, Set<PredicateLabel> currentUnion){
+    for(PredicateLabel newElement: mus){
       currentUnion.add(newElement);
     }
   }
@@ -1667,7 +1873,7 @@ public class Encoder {
    * Print and process the produced UnsatCore and the complement for storage.
    * Predicate Labels are written out seperated by commas.
    */
-  void processCores(List<String> unsatCore, List<String> notUnsatCore,
+  void outputCores(List<String> unsatCore, List<String> notUnsatCore,
                     Map<String, BoolExpr> predicatesNameToExprMap,
                     Map<String, PredicateLabel> predicatesNameToLabelMap){
     Set<String> notUnsatLabels = new HashSet<>();
@@ -1748,8 +1954,8 @@ public class Encoder {
         slice.computeEncoding();
       }
     }
-    
-    
+
+
   }
 
   /*

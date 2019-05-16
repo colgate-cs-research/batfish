@@ -200,7 +200,7 @@ public class PredicateLabel{
   
   /**
   * This method compare two predicates are the same or not
-  * @param Object o1 This is the predicateLabel going to be compared
+  * @param o1 This is the predicateLabel going to be compared
   * @return boolean Return true if they are the same, false if they are different
   */
   
