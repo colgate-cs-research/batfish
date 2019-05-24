@@ -1208,13 +1208,13 @@ public class Encoder {
           allConstraints.add(failureExpr);
           labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
         }
-//        for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
-//          BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
-//          //Don't assert and track failure constraint
-//          solver.add(failureExpr);
-//          allConstraints.add(failureExpr);
-//          labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
-//        }
+        for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
+          BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
+          //Don't assert and track failure constraint
+          solver.add(failureExpr);
+          allConstraints.add(failureExpr);
+          labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
+        }
 
         Status result = solver.check();
 
