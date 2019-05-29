@@ -1,0 +1,44 @@
+{
+ "edges": [
+  {
+   "node2": {
+    "interfaceName": "GigabitEthernet0/2",
+    "hostname": "core"
+   },
+   "node1": {
+    "interfaceName": "GigabitEthernet0/1",
+    "hostname": "edge2"
+   }
+  },
+  {
+   "node2": {
+    "interfaceName": "GigabitEthernet0/1",
+    "hostname": "core"
+   },
+   "node1": {
+    "interfaceName": "GigabitEthernet0/1",
+    "hostname": "edge1"
+   }
+  },
+  {
+   "node2": {
+    "interfaceName": "GigabitEthernet0/1",
+    "hostname": "edge1"
+   },
+   "node1": {
+    "interfaceName": "GigabitEthernet0/1",
+    "hostname": "core"
+   }
+  },
+  {
+   "node2": {
+    "interfaceName": "GigabitEthernet0/1",
+    "hostname": "edge2"
+   },
+   "node1": {
+    "interfaceName": "GigabitEthernet0/2",
+    "hostname": "core"
+   }
+  }
+ ]
+}
