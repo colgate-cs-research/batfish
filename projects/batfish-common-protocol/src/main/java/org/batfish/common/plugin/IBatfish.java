@@ -87,8 +87,6 @@ public interface IBatfish extends IPluginConsumer {
 
   String getTestrigName();
 
-  Integer getNumIters();
-
   void initBgpAdvertisements(Map<String, Configuration> configurations);
 
   void initBgpOriginationSpaceExplicit(Map<String, Configuration> configurations);
