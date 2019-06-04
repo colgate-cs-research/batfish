@@ -14,7 +14,6 @@ import org.batfish.symbolic.CommunityVar;
 import org.batfish.symbolic.CommunityVar.Type;
 import org.batfish.symbolic.IDeepCopy;
 import org.batfish.symbolic.Protocol;
-import java.util.Arrays;
 
 /**
  * A symbolic record of control plane message attributes. Attributes are specialized based on the
