@@ -1279,7 +1279,8 @@ public class Encoder {
 
     HashMap<SortedMap<String, ArithExpr>,SortedMap<String, ArithExpr>> failureSets = new HashMap<>();
 
-
+    System.out.println("Graph varialbe:");
+    System.out.println(_graph);
 
     if (_settings.shouldPrintSmt()) {
         System.out.println("\nSMT");
