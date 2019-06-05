@@ -1,2 +1,2 @@
 p1
-IMPORT B GigabitEthernet0/1 BGP
+IMPORT b GigabitEthernet0/1 BGP

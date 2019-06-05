@@ -1,2 +1,2 @@
 p1
-EXPORT B GigabitEthernet0/1 BGP
+EXPORT b GigabitEthernet0/1 BGP

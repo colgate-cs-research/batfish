@@ -1,2 +1,2 @@
 p1
-EXPORT D GigabitEthernet0/2 OSPF
+EXPORT d GigabitEthernet0/2 OSPF

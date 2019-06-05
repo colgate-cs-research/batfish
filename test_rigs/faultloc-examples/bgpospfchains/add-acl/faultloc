@@ -1,3 +1,3 @@
 p1
-ACLS_INBOUND B GigabitEthernet0/1 null
-ACLS_INBOUND H GigabitEthernet0/2 null
+ACLS_INBOUND b GigabitEthernet0/1 null
+ACLS_INBOUND h GigabitEthernet0/2 null
