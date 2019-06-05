@@ -1,10 +1,15 @@
 package org.batfish.datamodel.pojo;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
+import java.util.Objects;
+import javax.annotation.Nullable;
 
 public abstract class BfObject {
 
-  private final String _id;
+  protected static final String PROP_ID = "id";
+
+  @Nullable private final String _id;
 
   private Map<String, String> _properties;
 
@@ -14,9 +19,12 @@ public abstract class BfObject {
 
   @Override
   public boolean equals(Object o) {
-    return (o != null && o.getClass() == this.getClass() && _id.equals(((BfObject) o).getId()));
+    return (o != null
+        && o.getClass() == this.getClass()
+        && Objects.equals(_id, ((BfObject) o).getId()));
   }
 
+  @JsonProperty(PROP_ID)
   public String getId() {
     return _id;
   }
@@ -27,7 +35,7 @@ public abstract class BfObject {
 
   @Override
   public int hashCode() {
-    return _id.hashCode();
+    return Objects.hash(_id);
   }
 
   public void setProperties(Map<String, String> properties) {

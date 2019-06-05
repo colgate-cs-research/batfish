@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.io.Serializable;
 import java.util.Objects;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
 
 public final class InterfaceAddress implements Comparable<InterfaceAddress>, Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private Ip _ip;
@@ -17,26 +17,17 @@ public final class InterfaceAddress implements Comparable<InterfaceAddress>, Ser
   private int _networkBits;
 
   public InterfaceAddress(@Nonnull Ip ip, int networkBits) {
-    if (ip == null) {
-      throw new BatfishException("Cannot create InterfaceAddress with null IP");
-    }
     _ip = ip;
     _networkBits = networkBits;
   }
 
   public InterfaceAddress(@Nonnull Ip ip, @Nonnull Ip networkMask) {
-    if (ip == null) {
-      throw new BatfishException("Cannot create InterfaceAddress with null IP");
-    }
-    if (networkMask == null) {
-      throw new BatfishException("Cannot create InterfaceAddress with null mask");
-    }
     _ip = ip;
     _networkBits = networkMask.numSubnetBits();
   }
 
   @JsonCreator
-  public InterfaceAddress(@Nonnull String text) {
+  public InterfaceAddress(@Nullable String text) {
     if (text == null) {
       throw new BatfishException("Cannot create InterfaceAddress from null string");
     }
@@ -45,7 +36,7 @@ public final class InterfaceAddress implements Comparable<InterfaceAddress>, Ser
       throw new BatfishException(
           String.format("Invalid %s string: \"%s\"", InterfaceAddress.class.getSimpleName(), text));
     }
-    _ip = new Ip(parts[0]);
+    _ip = Ip.parse(parts[0]);
     try {
       _networkBits = Integer.parseInt(parts[1]);
     } catch (NumberFormatException e) {
@@ -82,7 +73,7 @@ public final class InterfaceAddress implements Comparable<InterfaceAddress>, Ser
   }
 
   public Prefix getPrefix() {
-    return new Prefix(_ip, _networkBits);
+    return Prefix.create(_ip, _networkBits);
   }
 
   @Override

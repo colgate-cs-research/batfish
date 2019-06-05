@@ -1,12 +1,11 @@
 package org.batfish.config;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertThat;
 
-import java.nio.file.Paths;
+import com.google.common.collect.ImmutableList;
 import org.batfish.common.CleanBatfishException;
 import org.batfish.main.Driver.RunMode;
 import org.junit.Test;
@@ -14,11 +13,11 @@ import org.junit.Test;
 /** Test for {@link org.batfish.config.Settings} */
 public class SettingsTest {
 
+  /** Test default dataplane engine is ibdp */
   @Test
-  /** Test default dataplane engine is bdp */
   public void testDefaultDPEngine() {
     Settings settings = new Settings(new String[] {});
-    assertThat(settings.getDataPlaneEngineName(), equalTo("bdp"));
+    assertThat(settings.getDataPlaneEngineName(), equalTo("ibdp"));
   }
 
   /** Test that settings copy is deep */
@@ -64,18 +63,43 @@ public class SettingsTest {
     assertThat(settings.getRunMode(), equalTo(RunMode.WORKSERVICE));
   }
 
-  /**
-   * Value of question path is allowed to have null and acts as a special value, ensure that's
-   * supported.
-   */
   @Test
-  public void testQuestionPathAllowNull() {
-    Settings settings = new Settings(new String[] {});
-    settings.setQuestionPath(Paths.get("test"));
+  public void testLogfileWithDeltaTestrig() {
+    // Only main testrig
+    Settings settings =
+        new Settings(new String[] {"-storagebase=/path", "-container=foo", "-testrig=main"});
+    settings.setTaskId("tid");
 
-    assertThat(settings.getQuestionPath(), equalTo(Paths.get("test")));
-    // Update to null
-    settings.setQuestionPath(null);
-    assertThat(settings.getQuestionPath(), is(nullValue()));
+    assertThat(settings.getLogFile(), equalTo("/path/foo/snapshots/main/output/tid.log"));
+
+    // Delta testrig present
+    settings =
+        new Settings(
+            new String[] {
+              "-storagebase=/path", "-container=foo", "-testrig=main", "-deltatestrig=delta"
+            });
+    settings.setTaskId("tid");
+
+    assertThat(settings.getLogFile(), equalTo("/path/foo/snapshots/delta/output/tid.log"));
+
+    // Delta testrig present, but the question is differential
+    settings =
+        new Settings(
+            new String[] {
+              "-storagebase=/path",
+              "-container=foo",
+              "-testrig=main",
+              "-deltatestrig=delta",
+              "-differential=true"
+            });
+    settings.setTaskId("tid");
+
+    assertThat(settings.getLogFile(), equalTo("/path/foo/snapshots/main/output/tid.log"));
+  }
+
+  @Test
+  public void testDebugSettings() {
+    Settings settings = new Settings(new String[] {"-debugflags=blah"});
+    assertThat(settings.getDebugFlags(), equalTo(ImmutableList.of("blah")));
   }
 }

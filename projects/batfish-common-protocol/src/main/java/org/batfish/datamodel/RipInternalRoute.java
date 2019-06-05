@@ -4,10 +4,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 
+@ParametersAreNonnullByDefault
 public class RipInternalRoute extends RipRoute {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   @JsonCreator
@@ -20,17 +22,23 @@ public class RipInternalRoute extends RipRoute {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (o == this) {
+  public boolean equals(@Nullable Object o) {
+    if (this == o) {
       return true;
-    } else if (!(o instanceof RipInternalRoute)) {
+    }
+    if (!(o instanceof RipRoute)) {
       return false;
     }
-    RipInternalRoute other = (RipInternalRoute) o;
-    return _metric == other._metric
+    RipRoute other = (RipRoute) o;
+    return _network.equals(other._network)
         && _admin == other._admin
-        && Objects.equals(_nextHopIp, other._nextHopIp)
-        && _network.equals(other._network);
+        && _metric == other._metric
+        && _nextHopIp.equals(other._nextHopIp);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(_network, _admin, _metric, _nextHopIp);
   }
 
   @Nonnull
@@ -49,31 +57,34 @@ public class RipInternalRoute extends RipRoute {
     return NO_TAG;
   }
 
-  @Override
-  public int hashCode() {
-    int prime = 31;
-    int result = 1;
-    result = prime * result + _admin;
-    result = prime * result + Long.hashCode(_metric);
-    result = prime * result + _network.hashCode();
-    result = prime * result + (_nextHopIp == null ? 0 : _nextHopIp.hashCode());
-    return result;
+  public static Builder builder() {
+    return new Builder();
   }
 
   @Override
-  protected final String protocolRouteString() {
-    return "";
+  public Builder toBuilder() {
+    return new Builder()
+        .setNetwork(getNetwork())
+        .setNextHopIp(getNextHopIp())
+        .setAdmin(getAdministrativeCost())
+        .setMetric(getMetric());
   }
 
-  @Override
-  public int routeCompare(AbstractRoute rhs) {
-    /*
-     * TODO: In case we implement RipExternalRoute or something like that, we need class
-     * comparison. Need to remove if that won't happen.
-     */
-    if (getClass() != rhs.getClass()) {
-      return 0;
+  /** A {@link RipInternalRoute} builder */
+  public static class Builder extends AbstractRouteBuilder<Builder, RipInternalRoute> {
+
+    private Builder() {}
+
+    @Nonnull
+    @Override
+    public RipInternalRoute build() {
+      return new RipInternalRoute(getNetwork(), getNextHopIp(), getAdmin(), getMetric());
     }
-    return 0;
+
+    @Nonnull
+    @Override
+    protected Builder getThis() {
+      return this;
+    }
   }
 }

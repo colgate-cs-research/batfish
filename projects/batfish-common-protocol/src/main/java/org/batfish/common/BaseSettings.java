@@ -2,6 +2,8 @@ package org.batfish.common;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -17,6 +19,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ConfigurationUtils;
+import org.apache.commons.configuration2.ImmutableConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 
@@ -56,6 +59,32 @@ public abstract class BaseSettings {
    */
   public BaseSettings(Path configFile) {
     this(loadFileConfiguration(configFile.toFile()));
+  }
+
+  protected static Configuration getConfig(
+      String overridePropertyName,
+      String defaultPropertyFilename,
+      Class<?> defaultPropertyLocatorClass) {
+    String overriddenPath = System.getProperty(overridePropertyName);
+    URL propertiesUrl;
+    if (overriddenPath != null) {
+      // The user provided an override, so look up that configuration instead.
+      try {
+        propertiesUrl = new URL(new URL("file://"), overriddenPath);
+      } catch (MalformedURLException e) {
+        throw new BatfishException(
+            "Error treating " + overriddenPath + " as a path to a properties file", e);
+      }
+    } else {
+      // Find the default properties file.
+      propertiesUrl =
+          defaultPropertyLocatorClass.getClassLoader().getResource(defaultPropertyFilename);
+    }
+    try {
+      return new Configurations().properties(propertiesUrl);
+    } catch (Exception e) {
+      throw new BatfishException("Error loading configuration from " + overriddenPath, e);
+    }
   }
 
   protected final void addBooleanOption(String key, String description) {
@@ -99,7 +128,9 @@ public abstract class BaseSettings {
         b = false;
       } else {
         throw new CleanBatfishException(
-            "Error parsing command line: Invalid boolean value: \"" + value + "\"");
+            String.format(
+                "Error parsing command line: Invalid boolean value for key \"%s\": \"%s\"",
+                key, value));
       }
       _config.setProperty(key, b);
     }
@@ -210,5 +241,9 @@ public abstract class BaseSettings {
     if (_config.getProperty(key) == null) {
       _config.setProperty(key, value);
     }
+  }
+
+  public ImmutableConfiguration getImmutableConfiguration() {
+    return ConfigurationUtils.unmodifiableConfiguration(_config);
   }
 }

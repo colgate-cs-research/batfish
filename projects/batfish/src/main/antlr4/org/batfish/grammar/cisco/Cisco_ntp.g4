@@ -12,6 +12,7 @@ ntp_access_group
    (
       IPV4
       | IPV6
+      | KOD
       |
       (
          PEER
@@ -59,7 +60,7 @@ ntp_authentication
 
 ntp_clock_period
 :
-   CLOCK_PERIOD ~NEWLINE* NEWLINE
+   CLOCK_PERIOD null_rest_of_line
 ;
 
 ntp_commit
@@ -115,12 +116,12 @@ ntp_null
       | INTERFACE
       | LOG_INTERNAL_SYNC
       | PASSIVE
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 ntp_peer
 :
-   PEER ~NEWLINE* NEWLINE
+   PEER null_rest_of_line
 ;
 
 ntp_server
@@ -163,7 +164,7 @@ ntp_server
 
 ntp_source
 :
-   SOURCE ~NEWLINE* NEWLINE
+   SOURCE null_rest_of_line
 ;
 
 ntp_source_interface
@@ -178,7 +179,7 @@ ntp_trusted_key
 
 ntp_update_calendar
 :
-   UPDATE_CALENDAR ~NEWLINE* NEWLINE
+   UPDATE_CALENDAR null_rest_of_line
 ;
 
 s_ntp

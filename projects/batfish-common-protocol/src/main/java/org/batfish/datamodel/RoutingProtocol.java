@@ -11,14 +11,19 @@ public enum RoutingProtocol {
   BGP("bgp"),
   CONNECTED("connected"),
   EGP("egp"),
+  EIGRP("eigrp"),
+  EIGRP_EX("eigrpEX"),
+  EVPN("evpn"),
   IBGP("ibgp"),
   IGP("igp"),
-  ISIS("isis"),
+  ISIS_ANY("isis"),
   ISIS_EL1("isisEL1"),
   ISIS_EL2("isisEL2"),
   ISIS_L1("isisL1"),
   ISIS_L2("isisL2"),
+  KERNEL("kernel"),
   LDP("ldp"),
+  LISP("lisp"),
   LOCAL("local"),
   MSDP("msdp"),
   OSPF("ospf"),
@@ -64,6 +69,8 @@ public enum RoutingProtocol {
             break;
           case ARISTA:
             break;
+          case ARUBAOS:
+            break;
           case AWS:
             break;
           case CADANT:
@@ -113,8 +120,11 @@ public enum RoutingProtocol {
           case CISCO_IOS:
           case CISCO_IOS_XR:
           case CISCO_NX:
+          case CUMULUS_NCLU:
           case FORCE10:
           case FOUNDRY:
+          case F5:
+          case F5_BIGIP_STRUCTURED:
             return 20;
           case FLAT_JUNIPER:
           case JUNIPER:
@@ -123,10 +133,10 @@ public enum RoutingProtocol {
           case FLAT_VYOS:
           case VYOS:
             return 20;
+          case ARUBAOS: // aruba controllers don't support BGP
           case EMPTY:
           case IGNORED:
           case BLADENETWORK:
-          case F5:
           case HOST:
           case IPTABLES:
           case MRV:
@@ -143,6 +153,86 @@ public enum RoutingProtocol {
       case CONNECTED:
         return 0;
 
+      case EIGRP:
+        switch (vendor) {
+          case ALCATEL_AOS:
+          case ARISTA:
+          case ARUBAOS:
+          case AWS:
+          case BLADENETWORK:
+          case CADANT:
+            break;
+          case CISCO_ASA:
+          case CISCO_IOS:
+          case CISCO_IOS_XR:
+          case CISCO_NX:
+            return 90;
+          case EMPTY:
+          case F5:
+          case FLAT_JUNIPER:
+          case FLAT_VYOS:
+          case FORCE10:
+          case FOUNDRY:
+          case HOST:
+          case IGNORED:
+          case IPTABLES:
+          case JUNIPER:
+          case JUNIPER_SWITCH:
+          case METAMAKO:
+          case MRV:
+          case MRV_COMMANDS:
+          case MSS:
+          case PALO_ALTO:
+          case PALO_ALTO_NESTED:
+          case UNKNOWN:
+          case VXWORKS:
+          case VYOS:
+            break;
+          default:
+            break;
+        }
+        break;
+
+      case EIGRP_EX:
+        switch (vendor) {
+          case ALCATEL_AOS:
+          case ARISTA:
+          case ARUBAOS:
+          case AWS:
+          case BLADENETWORK:
+          case CADANT:
+            break;
+          case CISCO_ASA:
+          case CISCO_IOS:
+          case CISCO_IOS_XR:
+          case CISCO_NX:
+            return 170;
+          case EMPTY:
+          case F5:
+          case FLAT_JUNIPER:
+          case FLAT_VYOS:
+          case FORCE10:
+          case FOUNDRY:
+          case HOST:
+          case IGNORED:
+          case IPTABLES:
+          case JUNIPER:
+          case JUNIPER_SWITCH:
+          case METAMAKO:
+          case MRV:
+          case MRV_COMMANDS:
+          case MSS:
+          case PALO_ALTO:
+          case PALO_ALTO_NESTED:
+          case UNKNOWN:
+          case VXWORKS:
+          case VYOS:
+            break;
+          default:
+            break;
+        }
+        break;
+
       case IBGP:
         switch (vendor) {
           case ALCATEL_AOS:
@@ -157,8 +247,11 @@ public enum RoutingProtocol {
           case CISCO_IOS:
           case CISCO_IOS_XR:
           case CISCO_NX:
+          case CUMULUS_NCLU:
           case FORCE10:
           case FOUNDRY:
+          case F5:
+          case F5_BIGIP_STRUCTURED:
             return 200;
           case FLAT_JUNIPER:
           case JUNIPER:
@@ -167,10 +260,10 @@ public enum RoutingProtocol {
           case FLAT_VYOS:
           case VYOS:
             return 200;
+          case ARUBAOS: // aruba controllers don't support bgp
           case EMPTY:
           case IGNORED:
           case BLADENETWORK:
-          case F5:
           case HOST:
           case IPTABLES:
           case MRV:
@@ -188,12 +281,12 @@ public enum RoutingProtocol {
         switch (vendor) {
           case ALCATEL_AOS:
             break;
-          case ARISTA:
-            break;
           case AWS:
             return 115;
           case CADANT:
             return 117;
+          case ARISTA:
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -229,12 +322,12 @@ public enum RoutingProtocol {
         switch (vendor) {
           case ALCATEL_AOS:
             break;
-          case ARISTA:
-            break;
           case AWS:
             return 115;
           case CADANT:
             return 118;
+          case ARISTA:
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -270,12 +363,12 @@ public enum RoutingProtocol {
         switch (vendor) {
           case ALCATEL_AOS:
             break;
-          case ARISTA:
-            break;
           case AWS:
             return 115;
           case CADANT:
             return 115;
+          case ARISTA:
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -311,12 +404,12 @@ public enum RoutingProtocol {
         switch (vendor) {
           case ALCATEL_AOS:
             break;
-          case ARISTA:
-            break;
           case AWS:
             return 115;
           case CADANT:
             return 116;
+          case ARISTA:
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -348,6 +441,9 @@ public enum RoutingProtocol {
         }
         break;
 
+      case KERNEL:
+        return 0;
+
       case OSPF:
         switch (vendor) {
           case ALCATEL_AOS:
@@ -359,6 +455,7 @@ public enum RoutingProtocol {
           case CADANT:
             // TODO: verify. assumption due to missing information in manual.
             return 110;
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -401,6 +498,7 @@ public enum RoutingProtocol {
           case CADANT:
             // TODO: verify. assumption based on incrementing IS-IS costs in manual.
             return 112;
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -443,6 +541,7 @@ public enum RoutingProtocol {
           case CADANT:
             // TODO: verify. assumption based on incrementing IS-IS costs in manual.
             return 113;
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -485,6 +584,7 @@ public enum RoutingProtocol {
           case CADANT:
             // TODO: verify. assumption based on incrementing IS-IS costs in manual.
             return 111;
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -526,6 +626,7 @@ public enum RoutingProtocol {
             return 120;
           case CADANT:
             return 120;
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CISCO_ASA:
           case CISCO_IOS:
           case CISCO_IOS_XR:
@@ -562,7 +663,7 @@ public enum RoutingProtocol {
 
       case EGP:
       case IGP:
-      case ISIS:
+      case ISIS_ANY:
       case LDP:
       case LOCAL:
       case MSDP:
@@ -584,6 +685,7 @@ public enum RoutingProtocol {
       case OSPF_IA:
         switch (vendor) {
           case ARISTA:
+          case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
           case CADANT:
           case CISCO_ASA:
           case CISCO_IOS:
@@ -621,10 +723,50 @@ public enum RoutingProtocol {
       case AGGREGATE:
       case BGP:
       case CONNECTED:
+      case EIGRP:
+        switch (vendor) {
+          case ALCATEL_AOS:
+          case ARISTA:
+          case ARUBAOS:
+          case AWS:
+          case BLADENETWORK:
+          case CADANT:
+            break;
+          case CISCO_ASA:
+          case CISCO_IOS:
+          case CISCO_IOS_XR:
+          case CISCO_NX:
+            return 5;
+          case EMPTY:
+          case F5:
+          case FLAT_JUNIPER:
+          case FLAT_VYOS:
+          case FORCE10:
+          case FOUNDRY:
+          case HOST:
+          case IGNORED:
+          case IPTABLES:
+          case JUNIPER:
+          case JUNIPER_SWITCH:
+          case METAMAKO:
+          case MRV:
+          case MRV_COMMANDS:
+          case MSS:
+          case PALO_ALTO:
+          case PALO_ALTO_NESTED:
+          case UNKNOWN:
+          case VXWORKS:
+          case VYOS:
+          default:
+            break;
+        }
+        throw new BatfishException(
+            "Unsupported vendor for EIGRP summary administrative cost: " + vendor);
       case EGP:
+      case EIGRP_EX:
       case IBGP:
       case IGP:
-      case ISIS:
+      case ISIS_ANY:
       case ISIS_EL1:
       case ISIS_EL2:
       case ISIS_L1:

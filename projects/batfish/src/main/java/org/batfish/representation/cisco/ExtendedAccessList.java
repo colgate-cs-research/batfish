@@ -1,28 +1,35 @@
 package org.batfish.representation.cisco;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import org.batfish.common.util.DefinedStructure;
+import javax.annotation.Nonnull;
 
-public class ExtendedAccessList extends DefinedStructure<String> {
+public class ExtendedAccessList implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  private List<ExtendedAccessListLine> _lines;
-
+  @Nonnull private List<ExtendedAccessListLine> _lines;
+  @Nonnull private final String _name;
   private StandardAccessList _parent;
 
-  public ExtendedAccessList(String id, int definitionLine) {
-    super(id, definitionLine);
+  public ExtendedAccessList(@Nonnull String id) {
+    _name = id;
     _lines = new ArrayList<>();
   }
 
-  public void addLine(ExtendedAccessListLine all) {
-    _lines.add(all);
+  public void addLine(@Nonnull ExtendedAccessListLine line) {
+    _lines.add(line);
   }
 
+  @Nonnull
   public List<ExtendedAccessListLine> getLines() {
     return _lines;
+  }
+
+  @Nonnull
+  public String getName() {
+    return _name;
   }
 
   public StandardAccessList getParent() {
@@ -35,10 +42,10 @@ public class ExtendedAccessList extends DefinedStructure<String> {
 
   @Override
   public String toString() {
-    String output = super.toString() + "\n" + "Identifier: " + _key;
+    StringBuilder output = new StringBuilder(super.toString() + "\n" + "Identifier: " + _name);
     for (ExtendedAccessListLine line : _lines) {
-      output += "\n" + line;
+      output.append("\n").append(line);
     }
-    return output;
+    return output.toString();
   }
 }

@@ -1,6 +1,6 @@
 package org.batfish.representation.juniper;
 
-import java.util.Collections;
+import com.google.common.collect.ImmutableList;
 import java.util.List;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
@@ -13,7 +13,6 @@ public final class PsThenAccept extends PsThen {
 
   public static final PsThenAccept INSTANCE = new PsThenAccept();
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private PsThenAccept() {}
@@ -24,12 +23,11 @@ public final class PsThenAccept extends PsThen {
       JuniperConfiguration juniperVendorConfiguration,
       Configuration c,
       Warnings w) {
-    If ifStatement = new If();
-    ifStatement.setGuard(BooleanExprs.CallExprContext.toStaticBooleanExpr());
-    ifStatement.setTrueStatements(
-        Collections.singletonList(Statements.ReturnTrue.toStaticStatement()));
-    ifStatement.setFalseStatements(
-        Collections.singletonList(Statements.ExitAccept.toStaticStatement()));
+    If ifStatement =
+        new If(
+            BooleanExprs.CALL_EXPR_CONTEXT,
+            ImmutableList.of(Statements.ReturnTrue.toStaticStatement()),
+            ImmutableList.of(Statements.ExitAccept.toStaticStatement()));
     statements.add(ifStatement);
   }
 }

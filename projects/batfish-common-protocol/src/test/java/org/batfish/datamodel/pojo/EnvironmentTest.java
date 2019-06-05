@@ -41,25 +41,24 @@ public class EnvironmentTest {
         new BgpAdvertisement(
             BgpAdvertisementType.EBGP_SENT,
             Prefix.parse("1.1.1.1/24"),
-            new Ip("1.1.1.1"),
+            Ip.parse("1.1.1.1"),
             "srcNode",
             "srcVrf",
-            new Ip("2.2.2.2"),
+            Ip.parse("2.2.2.2"),
             "dstNode",
             "dstVrf",
-            new Ip("3.3.3.3"),
+            Ip.parse("3.3.3.3"),
             RoutingProtocol.BGP,
             OriginType.EGP,
             20,
             20,
-            new Ip("0.0.0.0"),
-            new AsPath(Lists.newArrayList()),
+            Ip.parse("0.0.0.0"),
+            AsPath.of(Lists.newArrayList()),
             ImmutableSortedSet.of(),
             ImmutableSortedSet.of(),
             10));
     Environment e =
         new Environment(
-            "environment",
             "testrig",
             Sets.newTreeSet(),
             Sets.newTreeSet(),
@@ -67,7 +66,6 @@ public class EnvironmentTest {
             bgpTables,
             routingTables,
             bgpAdvertisements);
-    assertThat(e.getEnvName(), equalTo("environment"));
     assertThat(e.getTestrigName(), equalTo("testrig"));
     assertThat(e.getEdgeBlacklist(), equalTo(Sets.newHashSet()));
     assertThat(e.getInterfaceBlacklist(), equalTo(Sets.newHashSet()));
@@ -81,7 +79,6 @@ public class EnvironmentTest {
   public void testToString() {
     Environment e =
         new Environment(
-            "environment",
             "testrig",
             Sets.newTreeSet(),
             Sets.newTreeSet(),
@@ -92,7 +89,7 @@ public class EnvironmentTest {
     assertThat(
         e.toString(),
         equalTo(
-            "Environment{envName=environment, testrigName=testrig, "
+            "Environment{testrigName=testrig, "
                 + "edgeBlacklist=[], interfaceBlacklist=[], "
                 + "nodeBlacklist=[], bgpTables={}, routingTables={}, "
                 + "externalBgpAnnouncements=[]}"));

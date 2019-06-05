@@ -121,9 +121,34 @@ as_path_set_stanza
    )? END_SET NEWLINE
 ;
 
+asa_access_group
+:
+   ACCESS_GROUP
+   (
+      asa_ag_interface
+      | asa_ag_global
+   )
+   NEWLINE
+;
+
+asa_ag_interface
+:
+   name = variable
+   (
+      IN
+      | OUT
+   )
+   INTERFACE iface = variable
+;
+
+asa_ag_global
+:
+   name = variable GLOBAL
+;
+
 bandwidth_irs_stanza
 :
-   BANDWIDTH ~NEWLINE* NEWLINE
+   BANDWIDTH null_rest_of_line
 ;
 
 cadant_stdacl_name
@@ -133,8 +158,8 @@ cadant_stdacl_name
 
 community_set_stanza
 :
-   COMMUNITY_SET name = variable NEWLINE community_set_elem_list END_SET
-   NEWLINE
+   COMMUNITY_SET name = variable NEWLINE
+   community_set_elem_list END_SET NEWLINE
 ;
 
 community_set_elem_list
@@ -145,28 +170,15 @@ community_set_elem_list
    (
       (
          (
-            community_set_elem COMMA
+            elems += community_set_elem COMMA
          )
          | hash_comment
       ) NEWLINE
    )*
    (
-      community_set_elem
+      elems += community_set_elem
       | hash_comment
    ) NEWLINE
-;
-
-community_set_elem
-:
-   rp_community_set_elem
-   | ACCEPT_OWN
-   | DFA_REGEX COMMUNITY_SET_REGEX
-   | INTERNET
-   | IOS_REGEX COMMUNITY_SET_REGEX
-   | LOCAL_AS
-   | NO_ADVERTISE
-   | NO_EXPORT
-   | PRIVATE_AS
 ;
 
 etype
@@ -179,17 +191,23 @@ etype
 extended_access_list_additional_feature
 :
    ACK
+   | ADMINISTRATIVELY_PROHIBITED
+   | ALTERNATE_ADDRESS
    | BEYOND_SCOPE
+   | BFD_ECHO
+   | CONVERSION_ERROR
    | COUNT
    | CWR
    | DESTINATION_UNREACHABLE
+   | DOD_HOST_PROHIBITED
+   | DOD_NET_PROHIBITED
    |
    (
       DSCP dscp_type
    )
    |
    (
-      icmpv6_message_type = DEC icmpv6_message_code = DEC?
+      icmp_message_type = DEC icmp_message_code = DEC?
    )
    | ECE
    | ECHO
@@ -202,35 +220,65 @@ extended_access_list_additional_feature
    | ESTABLISHED
    | FIN
    | FRAGMENTS
+   | GENERAL_PARAMETER_PROBLEM
    | HOP_LIMIT
    | HOPLIMIT
+   | HOST_ISOLATED
+   | HOST_PRECEDENCE_UNREACHABLE
+   | HOST_REDIRECT
+   | HOST_TOS_REDIRECT
+   | HOST_TOS_UNREACHABLE
    | HOST_UNKNOWN
    | HOST_UNREACHABLE
-   | LOG
+   | INFORMATION_REPLY
+   | INFORMATION_REQUEST
+   |
+   (
+      LOG
+      (
+         DEFAULT
+         | DISABLE
+         | (level = DEC (INTERVAL secs = DEC)?)
+      )?
+   )
    | LOG_INPUT
+   | MASK_REPLY
+   | MASK_REQUEST
    | MLD_QUERY
    | MLD_REDUCTION
    | MLD_REPORT
    | MLDV2
+   | MOBILE_HOST_REDIRECT
    | ND
    | ND_NA
    | ND_NS
    | ND_TYPE
    | NEIGHBOR
-   | NETWORK_UNKNOWN
+   | NET_REDIRECT
+   | NET_TOS_REDIRECT
+   | NET_TOS_UNREACHABLE
    | NET_UNREACHABLE
+   | NETWORK_UNKNOWN
+   | NO_ROOM_FOR_OPTION
+   | OPTION_MISSING
    | PACKET_TOO_BIG
    | PARAMETER_PROBLEM
    | PORT_UNREACHABLE
+   | PRECEDENCE_UNREACHABLE
+   | PROTOCOL_UNREACHABLE
    | PSH
+   | REASSEMBLY_TIMEOUT
    | REDIRECT
    | ROUTER
    | ROUTER_ADVERTISEMENT
    | ROUTER_SOLICITATION
    | RST
    | SOURCE_QUENCH
+   | SOURCE_ROUTE_FAILED
    | SYN
    | TIME_EXCEEDED
+   | TIMESTAMP_REPLY
+   | TIMESTAMP_REQUEST
    | TRACEROUTE
    | TRACKED
    | TTL_EXCEEDED
@@ -257,7 +305,7 @@ extended_access_list_null_tail
       | MENU
       | REMARK
       | STATISTICS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 extended_access_list_stanza
@@ -312,7 +360,23 @@ extended_access_list_tail
    )? ala = access_list_action
    (
       VLAN vlan = DEC vmask = HEX
-   )? prot = protocol srcipr = access_list_ip_range
+   )?
+   (
+      prot = protocol
+      |
+      (
+         OBJECT_GROUP ogs = variable
+      )
+      |
+      (
+         OBJECT
+         (
+            inline_obj = protocol
+            | inline_obj_icmp = icmp_inline_object_type
+            | obj = variable
+         )
+      )
+   ) srcipr = access_list_ip_range
    (
       alps_src = port_specifier
    )? dstipr = access_list_ip_range
@@ -447,7 +511,7 @@ ip_prefix_list_stanza
    (
       IP
       | IPV4
-   ) PREFIX_LIST name = variable
+   )? PREFIX_LIST name = variable
    (
       (
          NEWLINE
@@ -656,7 +720,7 @@ ipv6_prefix_list_tail
 
 ipx_sap_access_list_null_tail
 :
-   action = access_list_action ~NEWLINE* NEWLINE
+   action = access_list_action null_rest_of_line
 ;
 
 ipx_sap_access_list_stanza
@@ -782,7 +846,7 @@ null_irs_stanza
    NO?
    (
       SIGNALLING
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 null_rs_stanza
@@ -793,7 +857,7 @@ null_rs_stanza
       | KEY_SOURCE
       | LOGGING
       | WINDOW_SIZE
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 prefix_set_stanza
@@ -823,7 +887,7 @@ prefix_set_elem_list
 
 protocol_type_code_access_list_null_tail
 :
-   action = access_list_action ~NEWLINE* NEWLINE
+   action = access_list_action null_rest_of_line
 ;
 
 protocol_type_code_access_list_stanza
@@ -860,12 +924,12 @@ s_arp_access_list_extended_tail
    (
       REQUEST
       | RESPONSE
-   )? IP senderip = access_list_ip_range 
+   )? IP senderip = access_list_ip_range
    (
-      targetip = access_list_ip_range 
+      targetip = access_list_ip_range
    )? MAC sendermac = access_list_mac_range
    (
-      targetmac = access_list_mac_range 
+      targetmac = access_list_mac_range
    )? LOG? NEWLINE
 ;
 
@@ -958,12 +1022,9 @@ s_mac_access_list_extended
 s_mac_access_list_extended_tail
 :
    (
-      (
-         SEQ
-         | SEQUENCE
-      )? num = DEC
-   )? action = access_list_action src = access_list_mac_range dst =
-   access_list_mac_range
+      (SEQ | SEQUENCE)? num = DEC
+   )?
+   action = access_list_action src = access_list_mac_range dst = access_list_mac_range
    (
       vlan = DEC
       | vlan_any = ANY
@@ -1025,7 +1086,7 @@ standard_access_list_null_tail
    (
       REMARK
       | STATISTICS
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 standard_access_list_stanza

@@ -1,7 +1,9 @@
 package org.batfish.representation.mrv;
 
-import java.util.Set;
-import java.util.SortedSet;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import com.google.common.collect.ImmutableList;
+import java.util.List;
 import org.batfish.common.VendorConversionException;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
@@ -10,7 +12,6 @@ import org.batfish.vendor.VendorConfiguration;
 
 public class MrvConfiguration extends VendorConfiguration {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private transient Configuration _c;
@@ -24,31 +25,14 @@ public class MrvConfiguration extends VendorConfiguration {
     return _hostname;
   }
 
-  @Override
-  public SortedSet<String> getRoles() {
-    throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
-  }
-
-  @Override
-  public Set<String> getUnimplementedFeatures() {
-    throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
-  }
-
   public ConfigurationFormat getVendor() {
     return _vendor;
   }
 
   @Override
   public void setHostname(String hostname) {
-    _hostname = hostname;
-  }
-
-  @Override
-  public void setRoles(SortedSet<String> roles) {
-    throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
+    checkNotNull(hostname, "'hostname' cannot be null");
+    _hostname = hostname.toLowerCase();
   }
 
   @Override
@@ -57,10 +41,10 @@ public class MrvConfiguration extends VendorConfiguration {
   }
 
   @Override
-  public Configuration toVendorIndependentConfiguration() throws VendorConversionException {
+  public List<Configuration> toVendorIndependentConfigurations() throws VendorConversionException {
     _c = new Configuration(_hostname, _vendor);
-    _c.setDefaultCrossZoneAction(LineAction.ACCEPT);
-    _c.setDefaultInboundAction(LineAction.ACCEPT);
-    return _c;
+    _c.setDefaultCrossZoneAction(LineAction.PERMIT);
+    _c.setDefaultInboundAction(LineAction.PERMIT);
+    return ImmutableList.of(_c);
   }
 }

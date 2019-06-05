@@ -1,15 +1,15 @@
 package org.batfish.representation.host;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -27,6 +27,10 @@ import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.StaticRoute;
 import org.batfish.datamodel.Vrf;
+import org.batfish.datamodel.acl.AclLineMatchExpr;
+import org.batfish.datamodel.acl.FalseExpr;
+import org.batfish.datamodel.acl.MatchHeaderSpace;
+import org.batfish.datamodel.acl.TrueExpr;
 import org.batfish.representation.iptables.IptablesVendorConfiguration;
 import org.batfish.vendor.VendorConfiguration;
 
@@ -51,27 +55,23 @@ public class HostConfiguration extends VendorConfiguration {
   private static final String NAT_OUTPUT = "nat::OUTPUT";
 
   private static final String NAT_PREROUTING = "nat::PREROUTING";
-
   private static final String PROP_HOST_INTERFACES = "hostInterfaces";
-
   private static final String PROP_HOSTNAME = "hostname";
-
   private static final String PROP_IPTABLES_FILE = "iptablesFile";
-
   private static final String PROP_OVERLAY = "overlay";
 
   private static final String RAW_OUTPUT = "raw::OUTPUT";
 
   private static final String RAW_PREROUTING = "raw::PREROUTING";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  public static HostConfiguration fromJson(String text, Warnings warnings)
-      throws JsonParseException, JsonMappingException, IOException {
-    ObjectMapper mapper = new BatfishObjectMapper();
-    HostConfiguration hostConfiguration = mapper.readValue(text, HostConfiguration.class);
-    hostConfiguration._w = warnings;
+  public static HostConfiguration fromJson(String filename, String text, Warnings warnings)
+      throws IOException {
+    HostConfiguration hostConfiguration =
+        BatfishObjectMapper.mapper().readValue(text, HostConfiguration.class);
+    hostConfiguration.setWarnings(warnings);
+    hostConfiguration.setFilename(filename);
     return hostConfiguration;
   }
 
@@ -87,8 +87,6 @@ public class HostConfiguration extends VendorConfiguration {
 
   private boolean _overlay;
 
-  protected final SortedSet<String> _roles = new TreeSet<>();
-
   // @JsonCreator
   // public HostConfiguration(@JsonProperty(PROP_HOSTNAME) String name) {
   // _hostname = name;
@@ -99,8 +97,6 @@ public class HostConfiguration extends VendorConfiguration {
   private final Set<HostStaticRoute> _staticRoutes;
 
   private transient VendorConfiguration _underlayConfiguration;
-
-  private transient Set<String> _unimplementedFeatures;
 
   public HostConfiguration() {
     _hostInterfaces = new TreeMap<>();
@@ -132,21 +128,10 @@ public class HostConfiguration extends VendorConfiguration {
     return _overlay;
   }
 
-  @JsonIgnore
-  @Override
-  public SortedSet<String> getRoles() {
-    return _roles;
-  }
-
-  @JsonIgnore
-  @Override
-  public Set<String> getUnimplementedFeatures() {
-    return _unimplementedFeatures;
-  }
-
   @Override
   public void setHostname(String hostname) {
-    _hostname = hostname;
+    checkNotNull(hostname, "'hostname' cannot be null");
+    _hostname = hostname.toLowerCase();
   }
 
   public void setIptablesFile(String file) {
@@ -160,11 +145,6 @@ public class HostConfiguration extends VendorConfiguration {
   @JsonProperty(PROP_OVERLAY)
   public void setOverlay(boolean overlay) {
     _overlay = overlay;
-  }
-
-  @Override
-  public void setRoles(SortedSet<String> roles) {
-    _roles.addAll(roles);
   }
 
   @JsonIgnore
@@ -191,10 +171,19 @@ public class HostConfiguration extends VendorConfiguration {
       IpAccessList acl = _c.getIpAccessLists().get(aclName);
       if (acl != null) {
         for (IpAccessListLine line : acl.getLines()) {
-          if (line.getAction() == LineAction.REJECT) {
+          if (line.getAction() == LineAction.DENY) {
             return false;
           }
-          if (!line.unrestricted()) {
+          /*
+           * This will have to change when ACLs are more complicated.
+           * For now, a simple line is either TrueExpr, FalseExpr, or unrestricted MatchHeaderSpace.
+           */
+          AclLineMatchExpr matchCondition = line.getMatchCondition();
+          if (!(matchCondition instanceof TrueExpr
+              || matchCondition instanceof FalseExpr
+              || (matchCondition instanceof MatchHeaderSpace
+                  && ((MatchHeaderSpace) matchCondition).getHeaderspace().unrestricted()))) {
+            /* At least one line is complicated, so the whole ACL is complicated */
             return false;
           }
         }
@@ -204,7 +193,7 @@ public class HostConfiguration extends VendorConfiguration {
   }
 
   @Override
-  public Configuration toVendorIndependentConfiguration() throws VendorConversionException {
+  public List<Configuration> toVendorIndependentConfigurations() throws VendorConversionException {
     if (_underlayConfiguration != null) {
       _hostInterfaces.forEach(
           (name, iface) ->
@@ -214,9 +203,8 @@ public class HostConfiguration extends VendorConfiguration {
     }
     String hostname = getHostname();
     _c = new Configuration(hostname, ConfigurationFormat.HOST);
-    _c.setDefaultCrossZoneAction(LineAction.ACCEPT);
-    _c.setDefaultInboundAction(LineAction.ACCEPT);
-    _c.setRoles(_roles);
+    _c.setDefaultCrossZoneAction(LineAction.PERMIT);
+    _c.setDefaultInboundAction(LineAction.PERMIT);
     _c.getVrfs().put(Configuration.DEFAULT_VRF_NAME, new Vrf(Configuration.DEFAULT_VRF_NAME));
 
     // add interfaces
@@ -226,7 +214,7 @@ public class HostConfiguration extends VendorConfiguration {
             hostInterface -> {
               String canonicalName = hostInterface.getCanonicalName();
               Interface newIface = hostInterface.toInterface(_c, _w);
-              _c.getInterfaces().put(canonicalName, newIface);
+              _c.getAllInterfaces().put(canonicalName, newIface);
               _c.getDefaultVrf().getInterfaces().put(canonicalName, newIface);
             });
 
@@ -247,7 +235,8 @@ public class HostConfiguration extends VendorConfiguration {
 
     _c.getDefaultVrf()
         .getStaticRoutes()
-        .addAll(_staticRoutes.stream().map(hsr -> hsr.toStaticRoute()).collect(Collectors.toSet()));
+        .addAll(
+            _staticRoutes.stream().map(HostStaticRoute::toStaticRoute).collect(Collectors.toSet()));
     Set<StaticRoute> staticRoutes = _c.getDefaultVrf().getStaticRoutes();
     for (HostInterface iface : _hostInterfaces.values()) {
       Ip gateway = iface.getGateway();
@@ -263,8 +252,8 @@ public class HostConfiguration extends VendorConfiguration {
         break;
       }
     }
-    if (_staticRoutes.isEmpty() && staticRoutes.isEmpty() && !_c.getInterfaces().isEmpty()) {
-      String ifaceName = _c.getInterfaces().values().iterator().next().getName();
+    if (_staticRoutes.isEmpty() && staticRoutes.isEmpty() && !_c.getAllInterfaces().isEmpty()) {
+      String ifaceName = _c.getAllInterfaces().values().iterator().next().getName();
       _c.getDefaultVrf()
           .getStaticRoutes()
           .add(
@@ -275,11 +264,12 @@ public class HostConfiguration extends VendorConfiguration {
                   .setTag(AbstractRoute.NO_TAG)
                   .build());
     }
-    return _c;
+    return ImmutableList.of(_c);
   }
 
-  public Configuration toVendorIndependentConfiguration(VendorConfiguration underlayConfiguration) {
+  public List<Configuration> toVendorIndependentConfigurations(
+      VendorConfiguration underlayConfiguration) {
     _underlayConfiguration = underlayConfiguration;
-    return toVendorIndependentConfiguration();
+    return toVendorIndependentConfigurations();
   }
 }

@@ -69,12 +69,14 @@ fft_from
       | fftf_destination_prefix_list
       | fftf_dscp
       | fftf_exp
+      | fftf_extension_header
       | fftf_first_fragment
       | fftf_forwarding_class
       | fftf_fragment_offset
       | fftf_icmp_code
       | fftf_icmp_type
       | fftf_ip_options
+      | fftf_ip_protocol
       | fftf_is_fragment
       | fftf_learn_vlan_1p_priority
       | fftf_next_header
@@ -85,6 +87,7 @@ fft_from
       | fftf_prefix_list
       | fftf_protocol
       | fftf_source_address
+      | fftf_source_mac_address
       | fftf_source_port
       | fftf_source_prefix_list
       | fftf_tcp_established
@@ -110,6 +113,13 @@ fft_then
    )
 ;
 
+fftfa_address_mask_prefix
+:
+    ip_address = IP_ADDRESS (FORWARD_SLASH wildcard_mask = IP_ADDRESS)?
+    | IP_PREFIX
+
+;
+
 fftf_address
 :
    ADDRESS
@@ -121,10 +131,9 @@ fftf_address
 
 fftf_destination_address
 :
-   DESTINATION_ADDRESS
+   (DESTINATION_ADDRESS | IP_DESTINATION_ADDRESS)
    (
-      IP_ADDRESS
-      | IP_PREFIX
+      fftfa_address_mask_prefix
       | IPV6_ADDRESS
       | IPV6_PREFIX
    ) EXCEPT?
@@ -163,6 +172,11 @@ fftf_exp
    EXP DEC
 ;
 
+fftf_extension_header
+:
+   EXTENSION_HEADER FRAGMENT
+;
+
 fftf_first_fragment
 :
    FIRST_FRAGMENT
@@ -197,6 +211,7 @@ fftf_icmp_type
    ICMP_TYPE
    (
       icmp_type
+      | icmp6_only_type
       | subrange
    )
 ;
@@ -204,6 +219,11 @@ fftf_icmp_type
 fftf_ip_options
 :
    IP_OPTIONS ip_option
+;
+
+fftf_ip_protocol
+:
+   IP_PROTOCOL ip_protocol
 ;
 
 fftf_is_fragment
@@ -224,7 +244,8 @@ fftf_next_header
 fftf_null
 :
    (
-      PAYLOAD_PROTOCOL
+      ETHER_TYPE
+      | PAYLOAD_PROTOCOL
    ) null_filler
 ;
 
@@ -264,13 +285,17 @@ fftf_protocol
 
 fftf_source_address
 :
-   SOURCE_ADDRESS
+   (SOURCE_ADDRESS | IP_SOURCE_ADDRESS)
    (
-      IP_ADDRESS
-      | IP_PREFIX
+      fftfa_address_mask_prefix
       | IPV6_ADDRESS
       | IPV6_PREFIX
    ) EXCEPT?
+;
+
+fftf_source_mac_address
+:
+   SOURCE_MAC_ADDRESS address = MAC_ADDRESS FORWARD_SLASH length = DEC
 ;
 
 fftf_source_port
@@ -368,7 +393,7 @@ fftt_reject
 
 fftt_routing_instance
 :
-   ROUTING_INSTANCE null_filler
+   ROUTING_INSTANCE name = variable
 ;
 
 s_firewall

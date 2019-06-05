@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.batfish</groupId>
     <artifactId>batfish-parent</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
   </parent>
 
   <artifactId>batfish-client</artifactId>
@@ -26,6 +26,10 @@
               </goals>
               <configuration>
                 <ignoredUnusedDeclaredDependencies>
+                  <ignoredUnusedDeclaredDependency>org.lastnpe.eea:guava-eea
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.lastnpe.eea:jdk-eea
+                  </ignoredUnusedDeclaredDependency>
                   <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14
                   </ignoredUnusedDeclaredDependency>
                 </ignoredUnusedDeclaredDependencies>
@@ -43,31 +47,11 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-pmd-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>check</id>
-            <goals>
-              <goal>check</goal>
-            </goals>
-            <configuration>
-              <failOnViolation>true</failOnViolation>
-            </configuration>
-          </execution>
-
-          <execution>
-            <id>cpd-check</id>
-            <goals>
-              <goal>cpd-check</goal>
-            </goals>
-            <configuration>
-              <failOnViolation>false</failOnViolation>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
@@ -104,11 +88,6 @@
     </dependency>
 
     <dependency>
-      <groupId>com.kjetland</groupId>
-      <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
-    </dependency>
-
-    <dependency>
       <groupId>com.uber.jaeger</groupId>
       <artifactId>jaeger-core</artifactId>
     </dependency>
@@ -116,6 +95,11 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.wumpz</groupId>
+      <artifactId>diffutils</artifactId>
     </dependency>
 
     <dependency>
@@ -153,11 +137,29 @@
       <artifactId>jline</artifactId>
     </dependency>
 
+    <dependency>
+      <groupId>org.skyscreamer</groupId>
+      <artifactId>jsonassert</artifactId>
+    </dependency>
+
     <!-- Runtime dependencies to add logging. -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-jdk14</artifactId>
       <scope>runtime</scope>
+    </dependency>
+
+    <!-- Provided dependencies to be available at compile time only -->
+    <dependency>
+      <groupId>org.lastnpe.eea</groupId>
+      <artifactId>guava-eea</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.lastnpe.eea</groupId>
+      <artifactId>jdk-eea</artifactId>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Test dependencies. -->
@@ -168,7 +170,7 @@
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-core</artifactId>
+      <artifactId>hamcrest</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

@@ -33,17 +33,16 @@ public class DeactivatedLinePruner extends FlatJuniperParserBaseListener {
   @Override
   public void enterFlat_juniper_configuration(Flat_juniper_configurationContext ctx) {
     _configurationContext = ctx;
-    _newConfigurationLines = new ArrayList<>();
-    _newConfigurationLines.addAll(ctx.children);
+    _newConfigurationLines = new ArrayList<>(ctx.children);
   }
 
   @Override
   public void enterInterface_id(Interface_idContext ctx) {
-    if (_enablePathRecording && (ctx.unit != null || ctx.suffix != null || ctx.node != null)) {
+    if (_enablePathRecording && (ctx.unit != null || ctx.chnl != null || ctx.node != null)) {
       _enablePathRecording = false;
       _reenablePathRecording = true;
       String text = ctx.getText();
-      _currentPath.addNode(text);
+      _currentPath.addNode(text, ctx.getStart().getLine());
     }
   }
 
@@ -94,7 +93,7 @@ public class DeactivatedLinePruner extends FlatJuniperParserBaseListener {
   public void visitTerminal(TerminalNode node) {
     if (_enablePathRecording) {
       String text = node.getText();
-      _currentPath.addNode(text);
+      _currentPath.addNode(text, node.getSymbol().getLine());
     }
   }
 }

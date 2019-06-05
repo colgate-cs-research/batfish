@@ -1,29 +1,33 @@
 package org.batfish.datamodel.pojo;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.Edge;
+import org.batfish.datamodel.InterfaceType;
 import org.batfish.datamodel.pojo.Aggregate.AggregateType;
+import org.batfish.datamodel.pojo.Link.LinkType;
 
 public class Topology extends BfObject {
-
   private static final String PROP_TESTRIG_NAME = "testrigName";
 
-  private Set<Aggregate> _aggregates;
+  @Nonnull private Set<Aggregate> _aggregates;
 
-  private Set<Interface> _interfaces;
+  @Nonnull private Set<Interface> _interfaces;
 
-  private Set<Link> _links;
+  @Nonnull private Set<Link> _links;
 
-  private Set<Node> _nodes;
+  @Nonnull private Set<Node> _nodes;
 
-  private final String _testrigName;
+  @Nonnull private final String _testrigName;
 
   public static Topology create(
       String testrigName,
@@ -40,17 +44,30 @@ public class Topology extends BfObject {
       Node pojoNode = new Node(configuration.getHostname(), configuration.getDeviceType());
       pojoTopology.getNodes().add(pojoNode);
 
+      Map<String, org.batfish.datamodel.Interface> nodeInterfaces =
+          configuration.getAllInterfaces();
       // add interfaces and links
       for (Edge edge : topology.getNodeEdges().get(nodeName)) {
-        org.batfish.datamodel.pojo.Interface pojoInterface =
-            new org.batfish.datamodel.pojo.Interface(
-                pojoNode.getId(), edge.getInterface1().getInterface());
+        String interface1 = edge.getInt1();
+        String interface2 = edge.getInt2();
 
+        InterfaceType iface1type =
+            nodeInterfaces.containsKey(interface1)
+                ? nodeInterfaces.get(interface1).getInterfaceType()
+                : InterfaceType.UNKNOWN;
+        InterfaceType iface2type =
+            nodeInterfaces.containsKey(interface2)
+                ? nodeInterfaces.get(interface2).getInterfaceType()
+                : InterfaceType.UNKNOWN;
+
+        Interface pojoInterface = new Interface(pojoNode.getId(), interface1, iface1type);
+
+        LinkType linkType = Link.interfaceTypesToLinkType(iface1type, iface2type);
         Link pojoLink =
             new Link(
                 pojoInterface.getId(),
-                org.batfish.datamodel.pojo.Interface.getId(
-                    Node.getId(edge.getNode2()), edge.getInt2()));
+                Interface.getId(Node.makeId(edge.getNode2()), interface2),
+                linkType);
 
         pojoTopology.getInterfaces().add(pojoInterface);
         pojoTopology.getLinks().add(pojoLink);
@@ -100,14 +117,23 @@ public class Topology extends BfObject {
     return pojoTopology;
   }
 
+  public Topology(String testrigName) {
+    this(getId(testrigName), testrigName);
+  }
+
   @JsonCreator
-  public Topology(@JsonProperty(PROP_TESTRIG_NAME) String name) {
-    super(getId(name));
-    _testrigName = name;
+  public Topology(
+      @JsonProperty(PROP_ID) String topologyId,
+      @JsonProperty(PROP_TESTRIG_NAME) String testrigName) {
+    super(firstNonNull(topologyId, getId(testrigName)));
+    _testrigName = testrigName;
     _aggregates = new HashSet<>();
     _interfaces = new HashSet<>();
     _links = new HashSet<>();
     _nodes = new HashSet<>();
+    if (testrigName == null) {
+      throw new IllegalArgumentException("Cannot build Topology: testrigName is null");
+    }
   }
 
   public Set<Aggregate> getAggregates() {

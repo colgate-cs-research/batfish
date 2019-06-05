@@ -2,14 +2,17 @@ package org.batfish.common.util;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 import org.batfish.common.BatfishException;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -23,11 +26,6 @@ public class JsonDiff {
   public static final String CHANGED_ITEM_DELTA = "DELTA";
   public static final String COMMON_ITEM_CODE = "COMMON :: ";
   public static final String REMOVED_ITEM_CODE = "REMOVED :: ";
-
-  public static String getStringWithoutCode(String key) {
-    String[] words = key.split(" :: ");
-    return words[1];
-  }
 
   private final SortedMap<String, Object> _data;
 
@@ -121,9 +119,9 @@ public class JsonDiff {
         String key = (String) i.next();
         rhsKeys.add(key);
       }
-      SortedSet<String> commonKeys = CommonUtil.intersection(lhsKeys, rhsKeys, TreeSet::new);
-      SortedSet<String> lhsOnlyKeys = CommonUtil.difference(lhsKeys, rhsKeys, TreeSet::new);
-      SortedSet<String> rhsOnlyKeys = CommonUtil.difference(rhsKeys, lhsKeys, TreeSet::new);
+      SortedSet<String> commonKeys = intersection(lhsKeys, rhsKeys, TreeSet::new);
+      SortedSet<String> lhsOnlyKeys = difference(lhsKeys, rhsKeys, TreeSet::new);
+      SortedSet<String> rhsOnlyKeys = difference(rhsKeys, lhsKeys, TreeSet::new);
       for (String lhsOnlyKey : lhsOnlyKeys) {
         String removedKeyName = REMOVED_ITEM_CODE + lhsOnlyKey;
         _data.put(removedKeyName, getValue(lhs.get(lhsOnlyKey)));
@@ -198,12 +196,28 @@ public class JsonDiff {
     _data = data;
   }
 
+  private static <S extends Set<T>, T> S difference(
+      Set<T> minuendSet, Set<T> subtrahendSet, Supplier<S> setConstructor) {
+    S differenceSet = setConstructor.get();
+    differenceSet.addAll(minuendSet);
+    differenceSet.removeAll(subtrahendSet);
+    return differenceSet;
+  }
+
+  private static <S extends Set<T>, T> S intersection(
+      Set<T> set1, Collection<T> set2, Supplier<S> setConstructor) {
+    S intersectionSet = setConstructor.get();
+    intersectionSet.addAll(set1);
+    intersectionSet.retainAll(set2);
+    return intersectionSet;
+  }
+
   @JsonValue
   public SortedMap<String, Object> getData() {
     return _data;
   }
 
-  private Object getValue(Object object) throws JSONException {
+  private static Object getValue(Object object) throws JSONException {
     if (object instanceof JSONObject) {
       JSONObject j = (JSONObject) object;
       Map<String, Object> map = new TreeMap<>();
@@ -226,9 +240,5 @@ public class JsonDiff {
     } else {
       return object;
     }
-  }
-
-  public String prettyPrint(String prefixStr) {
-    return PrettyPrinter.print(prefixStr, this);
   }
 }

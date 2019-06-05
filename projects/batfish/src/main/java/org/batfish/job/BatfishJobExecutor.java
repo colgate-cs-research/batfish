@@ -1,5 +1,6 @@
 package org.batfish.job;
 
+import com.google.common.base.Throwables;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -8,10 +9,8 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
-import org.batfish.common.util.CommonUtil;
 import org.batfish.config.Settings;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.main.Driver;
@@ -75,6 +74,15 @@ public class BatfishJobExecutor {
     return new BatfishJobExecutor(settings, logger);
   }
 
+  private static String getTime(long millis) {
+    long cs = (millis / 10) % 100;
+    long s = (millis / 1000) % 60;
+    long m = (millis / (1000 * 60)) % 60;
+    long h = (millis / (1000 * 60 * 60)) % 24;
+    String time = String.format("%02d:%02d:%02d.%02d", h, m, s, cs);
+    return time;
+  }
+
   /**
    * @param jobs jobs to be executed, of type {@link JobT}
    * @param output data structure to which the result of the job will be applied, it should be of
@@ -125,7 +133,8 @@ public class BatfishJobExecutor {
         } catch (InterruptedException e) {
           throw new BatfishException("Job didn't finish", e);
         } catch (ExecutionException e) {
-          throw new BatfishException("Error executing job", e);
+          throw new BatfishException(
+              String.format("Error executing job: %s", e.getCause().getMessage()), e);
         }
 
         markJobCompleted();
@@ -151,9 +160,7 @@ public class BatfishJobExecutor {
       return Executors.newSingleThreadExecutor();
     }
     // if parallel processing is allowed
-    int maxConcurrentThreads = Runtime.getRuntime().availableProcessors();
-    int numConcurrentThreads = Math.min(maxConcurrentThreads, _settings.getJobs());
-    return Executors.newFixedThreadPool(numConcurrentThreads);
+    return Executors.newFixedThreadPool(_settings.getAvailableThreads());
   }
 
   <
@@ -161,7 +168,7 @@ public class BatfishJobExecutor {
           AnswerElementT extends AnswerElement,
           OutputT>
       String getFailureMessage(JobResultT result) {
-    String time = CommonUtil.getTime(result.getElapsedTime());
+    String time = getTime(result.getElapsedTime());
     String failureMessage =
         String.format(
             "Failure running job after elapsed time: %s\n-----"
@@ -175,7 +182,7 @@ public class BatfishJobExecutor {
           AnswerElementT extends AnswerElement,
           OutputT>
       String getSuccessMessage(JobResultT result) {
-    String time = CommonUtil.getTime(result.getElapsedTime());
+    String time = getTime(result.getElapsedTime());
     String successMessage =
         String.format(
             "Job terminated successfully with result: %s after elapsed time: %s - %d/%d "
@@ -223,7 +230,7 @@ public class BatfishJobExecutor {
     }
     // we keep the failure cause and proceed
     result.appendHistory(_logger);
-    _logger.errorf("%s:\n\t%s", failureMessage, ExceptionUtils.getStackTrace(failureCause));
+    _logger.errorf("%s:\n\t%s", failureMessage, Throwables.getStackTraceAsString(failureCause));
     failureCauses.add(bfc);
     if (!haltOnProcessingError) {
       result.applyTo(output, _logger, answerElement);

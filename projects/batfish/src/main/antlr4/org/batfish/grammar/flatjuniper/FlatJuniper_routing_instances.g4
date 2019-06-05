@@ -1,6 +1,7 @@
 parser grammar FlatJuniper_routing_instances;
 
-import FlatJuniper_common, FlatJuniper_forwarding_options, FlatJuniper_protocols, FlatJuniper_snmp;
+import
+FlatJuniper_common, FlatJuniper_forwarding_options, FlatJuniper_protocols, FlatJuniper_snmp;
 
 options {
    tokenVocab = FlatJuniperLexer;
@@ -25,6 +26,7 @@ ri_instance_type
    (
       FORWARDING
       | L2VPN
+      | VIRTUAL_ROUTER
       | VIRTUAL_SWITCH
       | VRF
    )
@@ -37,10 +39,7 @@ ri_interface
 
 ri_named_routing_instance
 :
-   (
-      WILDCARD
-      | name = variable
-   )
+   name = variable
    (
       ri_common
       | ri_instance_type
@@ -53,6 +52,7 @@ ri_named_routing_instance
       | ri_vrf_import
       | ri_vrf_table_label
       | ri_vrf_target
+      | ri_vtep_source_interface
    )
 ;
 
@@ -112,6 +112,11 @@ ri_vrf_target
    )
 ;
 
+ri_vtep_source_interface
+:
+   VTEP_SOURCE_INTERFACE iface = interface_id
+;
+
 riv_community
 :
    extended_community
@@ -129,18 +134,12 @@ riv_import
 
 ro_aggregate
 :
-   AGGREGATE ROUTE
-   (
-      prefix = IP_PREFIX
-      | prefix6 = IPV6_PREFIX
-   )
-   (
-      apply
-      | roa_as_path
-      | roa_community
-      | roa_preference
-      | roa_tag
-   )
+  AGGREGATE
+  (
+    apply
+    | roa_defaults
+    | roa_route
+  )
 ;
 
 ro_auto_export
@@ -150,10 +149,14 @@ ro_auto_export
 
 ro_autonomous_system
 :
-   AUTONOMOUS_SYSTEM as = DEC?
+   AUTONOMOUS_SYSTEM asn = bgp_asn?
    (
       apply
-      | roas_loops
+      |
+      (
+         roas_asdot_notation
+         | roas_loops
+      )*
    )
 ;
 
@@ -164,6 +167,14 @@ ro_bmp
       rob_station_address
       | rob_station_port
    )
+;
+
+ro_confederation
+:
+  CONFEDERATION num = DEC?
+  (
+    MEMBERS member += DEC
+  )*
 ;
 
 ro_forwarding_table
@@ -178,16 +189,17 @@ ro_forwarding_table
 
 ro_generate
 :
-   GENERATE ROUTE
-   (
-      IP_PREFIX
-      | IPV6_PREFIX
-   )
-   (
-      rog_discard
-      | rog_metric
-      | rog_policy
-   )
+  GENERATE
+  (
+    apply
+    | rog_defaults
+    | rog_route
+  )
+;
+
+ro_instance_import
+:
+   INSTANCE_IMPORT name = variable
 ;
 
 ro_interface_routes
@@ -208,6 +220,7 @@ ro_null
 :
    (
       GRACEFUL_RESTART
+      | LSP_TELEMETRY
       | MULTICAST
       | MULTIPATH
       | NONSTOP_ROUTING
@@ -220,11 +233,7 @@ ro_null
 
 ro_rib
 :
-   RIB
-   (
-      name = VARIABLE
-      | WILDCARD
-   )
+   RIB name = VARIABLE
    (
       apply
       | ro_aggregate
@@ -241,6 +250,11 @@ ro_rib_groups
       | ror_import_policy
       | ror_import_rib
    )
+;
+
+ro_route_distinguisher_id
+:
+   ROUTE_DISTINGUISHER_ID addr = IP_ADDRESS
 ;
 
 ro_router_id
@@ -266,18 +280,57 @@ ro_static
    )
 ;
 
+roa_active
+:
+  ACTIVE
+;
+
 roa_as_path
 :
    AS_PATH?
    (
-      roaa_origin
+      roaa_aggregator
+      | roaa_origin
       | roaa_path
    )
 ;
 
+roa_common
+:
+  apply
+  | roa_active
+  | roa_as_path
+  | roa_community
+  | roa_discard
+  | roa_passive
+  | roa_policy
+  | roa_preference
+  | roa_tag
+;
+
 roa_community
 :
-   COMMUNITY community = COMMUNITY_LITERAL
+   COMMUNITY community = STANDARD_COMMUNITY
+;
+
+roa_defaults
+:
+  DEFAULTS roa_common
+;
+
+roa_discard
+:
+  DISCARD
+;
+
+roa_passive
+:
+  PASSIVE
+;
+
+roa_policy
+:
+  POLICY name = variable
 ;
 
 roa_preference
@@ -285,9 +338,27 @@ roa_preference
    PREFERENCE preference = DEC
 ;
 
+roa_route
+:
+  ROUTE
+  (
+    prefix = IP_PREFIX
+    | prefix6 = IPV6_PREFIX
+  )
+  (
+    apply
+    | roa_common
+  )
+;
+
 roa_tag
 :
    TAG tag = DEC
+;
+
+roaa_aggregator
+:
+   AGGREGATOR as = DEC ip = IP_ADDRESS
 ;
 
 roaa_origin
@@ -298,6 +369,11 @@ roaa_origin
 roaa_path
 :
    PATH path = as_path_expr
+;
+
+roas_asdot_notation
+:
+   ASDOT_NOTATION
 ;
 
 roas_loops
@@ -333,6 +409,32 @@ rof_null
    ) null_filler
 ;
 
+rog_active
+:
+   ACTIVE
+;
+
+rog_common
+:
+  apply
+  | rog_active
+  | rog_community
+  | rog_discard
+  | rog_metric
+  | rog_passive
+  | rog_policy
+;
+
+rog_community
+:
+   COMMUNITY standard_community
+;
+
+rog_defaults
+:
+  DEFAULTS rog_common
+;
+
 rog_discard
 :
    DISCARD
@@ -343,9 +445,23 @@ rog_metric
    METRIC metric = DEC
 ;
 
+rog_passive
+:
+  PASSIVE
+;
+
 rog_policy
 :
    POLICY policy = variable
+;
+
+rog_route
+:
+  ROUTE
+  (
+    IP_PREFIX
+    | IPV6_PREFIX
+  ) rog_common
 ;
 
 roi_family
@@ -359,11 +475,7 @@ roi_family
 
 roi_rib_group
 :
-   RIB_GROUP
-   (
-      roir_inet
-      | roir_null
-   )
+   RIB_GROUP (INET | INET6) name = variable
 ;
 
 roif_inet
@@ -383,19 +495,19 @@ roifi_export
 :
    EXPORT
    (
-      LAN
-      | POINT_TO_POINT
+      roifie_lan
+      | roifie_point_to_point
    )
 ;
 
-roir_inet
+roifie_lan
 :
-   INET name = variable
+   LAN
 ;
 
-roir_null
+roifie_point_to_point
 :
-   INET6 null_filler
+   POINT_TO_POINT
 ;
 
 ror_export_rib
@@ -461,6 +573,7 @@ rosr_common
    | rosr_community
    | rosr_discard
    | rosr_install
+   | rosr_no_install
    | rosr_metric
    | rosr_next_hop
    | rosr_next_table
@@ -511,6 +624,11 @@ rosr_next_hop
 rosr_next_table
 :
    NEXT_TABLE name = variable
+;
+
+rosr_no_install
+:
+   NO_INSTALL
 ;
 
 rosr_no_readvertise
@@ -580,13 +698,16 @@ s_routing_options
       | ro_auto_export
       | ro_autonomous_system
       | ro_bmp
+      | ro_confederation
       | ro_forwarding_table
       | ro_generate
+      | ro_instance_import
       | ro_interface_routes
       | ro_martians
       | ro_null
       | ro_rib
       | ro_rib_groups
+      | ro_route_distinguisher_id
       | ro_router_id
       | ro_srlg
       | ro_static

@@ -7,28 +7,19 @@ import java.io.Serializable;
 
 @JsonPropertyOrder({Route6.PROP_DIFF_SYMBOL})
 public class Route6 implements Comparable<Route6>, Serializable {
-
   private static final String PROP_ADMINISTRATIVE_COST = "administrativeCost";
 
   public static final String AMBIGUOUS_NEXT_HOP = "(ambiguous)";
 
   protected static final String PROP_DIFF_SYMBOL = "diffSymbol";
-
   private static final String PROP_METRIC = "metric";
-
   private static final String PROP_NETWORK = "network";
-
   private static final String PROP_NEXT_HOP_INTERFACE = "nextHopInterface";
-
   private static final String PROP_NEXT_HOP_IP = "nextHopIp";
-
   private static final String PROP_NEXT_HOP = "nextHop";
-
   private static final String PROP_NODE = "node";
-
   private static final String PROP_PROTOCOL = "protocol";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private static final String PROP_TAG = "tag";
@@ -44,7 +35,6 @@ public class Route6 implements Comparable<Route6>, Serializable {
   public static final Ip6 UNSET_ROUTE_NEXT_HOP_IP = Ip6.AUTO;
 
   public static final int UNSET_ROUTE_TAG = -1;
-
   private static final String PROP_VRF = "vrf";
 
   private final int _administrativeCost;
@@ -229,39 +219,6 @@ public class Route6 implements Comparable<Route6>, Serializable {
     result = prime * result + _tag;
     result = prime * result + _vrf.hashCode();
     return result;
-  }
-
-  public String prettyPrint(boolean diff) {
-    String node = getNode();
-    String nhnode = getNextHop();
-    Ip6 nextHopIp = getNextHopIp();
-    String nhip;
-    String tag;
-    int tagInt = getTag();
-    if (tagInt == Route6.UNSET_ROUTE_TAG) {
-      tag = "none";
-    } else {
-      tag = Integer.toString(tagInt);
-    }
-    String nhint = getNextHopInterface();
-    if (!nhint.equals(Route6.UNSET_NEXT_HOP_INTERFACE)
-        && nextHopIp.equals(Route6.UNSET_ROUTE_NEXT_HOP_IP)) {
-      // static interface without next hop ip
-      nhnode = "N/A";
-      nhip = "N/A";
-    }
-    nhip = nextHopIp != null ? nextHopIp.toString() : "N/A";
-    String vrf = getVrf();
-    String net = getNetwork().toString();
-    String admin = Integer.toString(getAdministrativeCost());
-    String cost = Integer.toString(getMetric());
-    String prot = getProtocol().protocolName();
-    String diffStr = diff ? getDiffSymbol() + " " : "";
-    String routeStr =
-        String.format(
-            "%s%s vrf:%s net:%s nhip:%s nhint:%s nhnode:%s admin:%s cost:%s tag:%s prot:%s\n",
-            diffStr, node, vrf, net, nhip, nhint, nhnode, admin, cost, tag, prot);
-    return routeStr;
   }
 
   @JsonProperty(PROP_DIFF_SYMBOL)

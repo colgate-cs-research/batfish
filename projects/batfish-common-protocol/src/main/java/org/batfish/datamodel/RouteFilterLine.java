@@ -1,105 +1,106 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
+import com.google.common.base.MoreObjects;
 import java.io.Serializable;
+import java.util.Objects;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 
-@JsonSchemaDescription("A line in an RouteFilterList")
-public class RouteFilterLine implements Serializable {
-
+/** A line in a {@link RouteFilterList}. */
+@ParametersAreNonnullByDefault
+public final class RouteFilterLine implements Serializable {
   private static final String PROP_ACTION = "action";
-
   private static final String PROP_LENGTH_RANGE = "lengthRange";
-
-  private static final String PROP_PREFIX = "prefix";
+  private static final String PROP_IP_WILDCARD = "ipWildcard";
 
   private static final long serialVersionUID = 1L;
 
   private final LineAction _action;
-
+  private final IpWildcard _ipWildcard;
   private final SubRange _lengthRange;
 
-  private final Prefix _prefix;
+  /** Route filter line that permits all routes */
+  public static final RouteFilterLine PERMIT_ALL =
+      new RouteFilterLine(
+          LineAction.PERMIT, Prefix.ZERO, new SubRange(0, Prefix.MAX_PREFIX_LENGTH));
 
   @JsonCreator
-  public RouteFilterLine(
-      @JsonProperty(PROP_ACTION) LineAction action,
-      @JsonProperty(PROP_PREFIX) Prefix prefix,
-      @JsonProperty(PROP_LENGTH_RANGE) SubRange lengthRange) {
+  private static RouteFilterLine create(
+      @Nullable @JsonProperty(PROP_ACTION) LineAction action,
+      @Nullable @JsonProperty(PROP_IP_WILDCARD) IpWildcard ipWildcard,
+      @Nullable @JsonProperty(PROP_LENGTH_RANGE) SubRange lengthRange) {
+    checkArgument(action != null, "% is missing", PROP_ACTION);
+    checkArgument(ipWildcard != null, "% is missing", PROP_IP_WILDCARD);
+    checkArgument(lengthRange != null, "% is missing", PROP_LENGTH_RANGE);
+    return new RouteFilterLine(action, ipWildcard, lengthRange);
+  }
+
+  public RouteFilterLine(LineAction action, IpWildcard ipWildcard, SubRange lengthRange) {
     _action = action;
-    _prefix = prefix;
+    _ipWildcard = ipWildcard;
     _lengthRange = lengthRange;
   }
 
+  public RouteFilterLine(LineAction action, Prefix prefix, SubRange lengthRange) {
+    _action = action;
+    _ipWildcard = IpWildcard.create(prefix);
+    _lengthRange = lengthRange;
+  }
+
+  public RouteFilterLine(LineAction action, PrefixRange prefixRange) {
+    this(action, IpWildcard.create(prefixRange.getPrefix()), prefixRange.getLengthRange());
+  }
+
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(@Nullable Object o) {
     if (o == this) {
       return true;
     } else if (!(o instanceof RouteFilterLine)) {
       return false;
     }
+
     RouteFilterLine other = (RouteFilterLine) o;
-    if (_action != other._action) {
-      return false;
-    }
-    if (!_lengthRange.equals(other._lengthRange)) {
-      return false;
-    }
-    if (!_prefix.equals(other._prefix)) {
-      return false;
-    }
-    return true;
+    return Objects.equals(_action, other._action)
+        && Objects.equals(_lengthRange, other._lengthRange)
+        && Objects.equals(_ipWildcard, other._ipWildcard);
   }
 
+  /** The action the underlying access-list will take when this line matches an IPV4 route. */
   @JsonProperty(PROP_ACTION)
-  @JsonPropertyDescription(
-      "The action the underlying access-list will take when this line matches an IPV4 route.")
   public LineAction getAction() {
     return _action;
   }
 
+  /** The range of acceptable prefix-lengths for a route. */
   @JsonProperty(PROP_LENGTH_RANGE)
-  @JsonPropertyDescription("The range of acceptable prefix-lengths for a route.")
   public SubRange getLengthRange() {
     return _lengthRange;
   }
 
-  @JsonProperty(PROP_PREFIX)
-  @JsonPropertyDescription(
-      "The bits against which to compare a route's prefix. The length of this prefix is used to "
-          + "determine how many leading bits must match.")
-  public Prefix getPrefix() {
-    return _prefix;
+  /**
+   * The bits against which to compare a route's prefix. The mask of this IP Wildcard determines
+   * which bits must match.
+   */
+  @JsonProperty(PROP_IP_WILDCARD)
+  public IpWildcard getIpWildcard() {
+    return _ipWildcard;
   }
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + _action.ordinal();
-    result = prime * result + _lengthRange.hashCode();
-    result = prime * result + _prefix.hashCode();
-    return result;
-  }
-
-  public String toCompactString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(_action + " ");
-    sb.append(_prefix + " ");
-    sb.append(_lengthRange + " ");
-    return sb.toString();
+    return Objects.hash(_action.ordinal(), _lengthRange, _ipWildcard);
   }
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("{ ");
-    sb.append("Action=" + _action + " ");
-    sb.append("Prefix=" + _prefix + " ");
-    sb.append("LengthRange=" + _lengthRange + " ");
-    sb.append("}");
-    return sb.toString();
+    return MoreObjects.toStringHelper(getClass())
+        .add("Action", _action)
+        .add("IpWildCard", _ipWildcard)
+        .add("LengthRange", _lengthRange)
+        .toString();
   }
 }

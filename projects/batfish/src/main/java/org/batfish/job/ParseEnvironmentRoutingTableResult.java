@@ -1,10 +1,14 @@
 package org.batfish.job;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
+import com.google.common.base.Throwables;
 import java.nio.file.Path;
 import java.util.SortedMap;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BatfishLogger.BatfishLoggerHistory;
+import org.batfish.common.ErrorDetails;
 import org.batfish.common.ParseTreeSentences;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.answers.ParseEnvironmentRoutingTablesAnswerElement;
@@ -83,6 +87,7 @@ public class ParseEnvironmentRoutingTableResult
       BatfishLogger logger,
       ParseEnvironmentRoutingTablesAnswerElement answerElement) {
     appendHistory(logger);
+    String filename = _file.getFileName().toString();
     if (_routingTable != null) {
       String hostname = _name;
       if (routingTables.containsKey(hostname)) {
@@ -90,24 +95,30 @@ public class ParseEnvironmentRoutingTableResult
       } else {
         routingTables.put(hostname, _routingTable);
         if (!_warnings.isEmpty()) {
-          answerElement.getWarnings().put(hostname, _warnings);
+          answerElement.getWarnings().put(filename, _warnings);
         }
         if (!_parseTree.isEmpty()) {
-          answerElement.getParseTrees().put(hostname, _parseTree);
+          answerElement.getParseTrees().put(filename, _parseTree);
         }
         if (_routingTable.getUnrecognized()) {
-          answerElement.getParseStatus().put(hostname, ParseStatus.PARTIALLY_UNRECOGNIZED);
+          answerElement.getParseStatus().put(filename, ParseStatus.PARTIALLY_UNRECOGNIZED);
         } else {
-          answerElement.getParseStatus().put(hostname, ParseStatus.PASSED);
+          answerElement.getParseStatus().put(filename, ParseStatus.PASSED);
         }
       }
     } else {
-      String filename = _file.getFileName().toString();
       answerElement.getParseStatus().put(filename, _status);
       if (_status == ParseStatus.FAILED) {
         answerElement
             .getErrors()
             .put(filename, ((BatfishException) _failureCause).getBatfishStackTrace());
+        answerElement
+            .getErrorDetails()
+            .put(
+                filename,
+                new ErrorDetails(
+                    Throwables.getStackTraceAsString(
+                        firstNonNull(_failureCause.getCause(), _failureCause))));
       }
     }
   }

@@ -1,15 +1,18 @@
 package org.batfish.datamodel.collections;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ImmutableSortedSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -18,6 +21,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import org.batfish.common.BatfishException;
 import org.batfish.common.util.BatfishObjectMapper;
+import org.batfish.common.util.CollectionUtil;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 public class NamedStructureEquivalenceSets<T> {
@@ -35,32 +39,29 @@ public class NamedStructureEquivalenceSets<T> {
       }
     }
 
-    private final ObjectMapper _mapper;
-
     private Map<String, Map<Integer, Set<NamedStructureEquivalenceSet<T>>>>
         _sameNamedStructuresByNameAndHash;
 
     private final String _structureClassName;
 
     private Builder(String structureClassName) {
-      _mapper = new BatfishObjectMapper();
       _sameNamedStructuresByNameAndHash = new HashMap<>();
       _structureClassName = structureClassName;
     }
 
-    public void addEntry(String structureName, String hostname, T structure) {
+    public void addEntry(
+        String structureName, String hostname, T structure, boolean assumeAllUnique) {
       Map<Integer, Set<NamedStructureEquivalenceSet<T>>> sameNamedStructuresByHash =
           _sameNamedStructuresByNameAndHash.computeIfAbsent(structureName, s -> new HashMap<>());
       String structureJson = writeObject(structure);
       int hash = structureJson.hashCode();
       Set<NamedStructureEquivalenceSet<T>> eqSetsWithSameHash =
           sameNamedStructuresByHash.computeIfAbsent(hash, h -> new HashSet<>());
-      if (eqSetsWithSameHash.isEmpty()) {
+      if (assumeAllUnique || eqSetsWithSameHash.isEmpty()) {
         eqSetsWithSameHash.add(new NamedStructureEquivalenceSet<>(hostname, structure));
       } else {
         Optional<NamedStructureEquivalenceSet<T>> potentialMatchingSet =
-            eqSetsWithSameHash
-                .stream()
+            eqSetsWithSameHash.stream()
                 .filter(
                     s -> checkJsonStringEquals(structureJson, writeObject(s.getNamedStructure())))
                 .findAny();
@@ -85,9 +86,7 @@ public class NamedStructureEquivalenceSets<T> {
         String structureName = e.getKey();
         Map<Integer, Set<NamedStructureEquivalenceSet<T>>> structuresByHash = e.getValue();
         SortedSet<NamedStructureEquivalenceSet<T>> newSet =
-            structuresByHash
-                .values()
-                .stream()
+            structuresByHash.values().stream()
                 .flatMap(ss -> ss.stream())
                 .collect(ImmutableSortedSet.toImmutableSortedSet(Comparator.naturalOrder()));
         builder.put(structureName, newSet);
@@ -100,7 +99,7 @@ public class NamedStructureEquivalenceSets<T> {
 
     private String writeObject(T t) {
       try {
-        String structureJson = _mapper.writeValueAsString(t);
+        String structureJson = BatfishObjectMapper.writePrettyString(t);
         return structureJson;
       } catch (JsonProcessingException e) {
         throw new BatfishException("Could not write named structure as JSON", e);
@@ -109,7 +108,6 @@ public class NamedStructureEquivalenceSets<T> {
   }
 
   private static final String PROP_SAME_NAMED_STRUCTURES = "sameNamedStructures";
-
   private static final String PROP_STRUCTURE_CLASS_NAME = "structureClassName";
 
   public static <T> Builder<T> builder(String structureClassName) {
@@ -130,9 +128,7 @@ public class NamedStructureEquivalenceSets<T> {
   /** Remove structures with only one equivalence class, since they indicate nothing of note */
   public void clean() {
     _sameNamedStructures =
-        _sameNamedStructures
-            .entrySet()
-            .stream()
+        _sameNamedStructures.entrySet().stream()
             .filter(e -> e.getValue().size() != 1)
             .collect(
                 ImmutableSortedMap.toImmutableSortedMap(
@@ -144,19 +140,9 @@ public class NamedStructureEquivalenceSets<T> {
     return _sameNamedStructures;
   }
 
+  @JsonProperty(PROP_STRUCTURE_CLASS_NAME)
   public String getStructureClassName() {
     return _structureClassName;
-  }
-
-  public String prettyPrint(String indent) {
-    StringBuilder sb = new StringBuilder();
-    for (String name : _sameNamedStructures.keySet()) {
-      sb.append(indent + name + "\n");
-      for (NamedStructureEquivalenceSet<T> set : _sameNamedStructures.get(name)) {
-        sb.append(set.prettyPrint(indent + indent));
-      }
-    }
-    return sb.toString();
   }
 
   @JsonProperty(PROP_SAME_NAMED_STRUCTURES)
@@ -172,5 +158,24 @@ public class NamedStructureEquivalenceSets<T> {
   @Override
   public String toString() {
     return "<" + _structureClassName + ", " + _sameNamedStructures + ">";
+  }
+
+  /**
+   * Mapping: hostname -&gt; names of structures of this type for which named host is the
+   * representative
+   */
+  @JsonIgnore
+  public Map<String, Set<String>> getRepresentatives() {
+    Map<String, Set<String>> representativesByHostname = new LinkedHashMap<>();
+    _sameNamedStructures.forEach(
+        (aclName, equivalenceSets) ->
+            equivalenceSets.forEach(
+                equivalenceSet ->
+                    representativesByHostname
+                        .computeIfAbsent(
+                            equivalenceSet.getRepresentativeElement(), n -> new LinkedHashSet<>())
+                        .add(aclName)));
+    return CollectionUtil.toImmutableMap(
+        representativesByHostname, Entry::getKey, e -> ImmutableSet.copyOf(e.getValue()));
   }
 }

@@ -1,21 +1,37 @@
 package org.batfish.datamodel.routing_policy.expr;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
 import java.util.List;
+import java.util.Objects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+import org.batfish.common.BatfishException;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 
-public class PassesThroughAsPath extends BooleanExpr {
+@ParametersAreNonnullByDefault
+public final class PassesThroughAsPath extends BooleanExpr {
+  private static final String PROP_EXACT = "exact";
+  private static final String PROP_RANGE = "range";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private boolean _exact;
-
-  private List<SubRangeExpr> _range;
+  private final boolean _exact;
+  @Nonnull private final List<SubRangeExpr> _range;
 
   @JsonCreator
-  private PassesThroughAsPath() {}
+  private static PassesThroughAsPath jsonCreator(
+      @Nullable @JsonProperty(PROP_EXACT) Boolean exact,
+      @Nullable @JsonProperty(PROP_RANGE) List<SubRangeExpr> range) {
+    checkArgument(exact != null, "%s must be provided", PROP_EXACT);
+    return new PassesThroughAsPath(firstNonNull(range, ImmutableList.of()), exact);
+  }
 
   public PassesThroughAsPath(List<SubRangeExpr> range, boolean exact) {
     _range = range;
@@ -23,58 +39,34 @@ public class PassesThroughAsPath extends BooleanExpr {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    PassesThroughAsPath other = (PassesThroughAsPath) obj;
-    if (_exact != other._exact) {
-      return false;
-    }
-    if (_range == null) {
-      if (other._range != null) {
-        return false;
-      }
-    } else if (!_range.equals(other._range)) {
-      return false;
-    }
-    return true;
-  }
-
-  @Override
   public Result evaluate(Environment environment) {
-    throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
+    throw new BatfishException("No implementation for PassesThroughAsPath.evaluate()");
   }
 
+  @JsonProperty(PROP_EXACT)
   public boolean getExact() {
     return _exact;
   }
 
+  @JsonProperty(PROP_RANGE)
+  @Nonnull
   public List<SubRangeExpr> getRange() {
     return _range;
   }
 
   @Override
+  public boolean equals(@Nullable Object obj) {
+    if (this == obj) {
+      return true;
+    } else if (!(obj instanceof PassesThroughAsPath)) {
+      return false;
+    }
+    PassesThroughAsPath other = (PassesThroughAsPath) obj;
+    return _exact == other._exact && Objects.equals(_range, other._range);
+  }
+
+  @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + (_exact ? 1231 : 1237);
-    result = prime * result + ((_range == null) ? 0 : _range.hashCode());
-    return result;
-  }
-
-  public void setExact(boolean exact) {
-    _exact = exact;
-  }
-
-  public void setRange(List<SubRangeExpr> range) {
-    _range = range;
+    return Objects.hash(_exact, _range);
   }
 }

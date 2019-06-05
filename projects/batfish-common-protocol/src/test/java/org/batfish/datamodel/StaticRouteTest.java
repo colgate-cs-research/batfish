@@ -1,10 +1,11 @@
 package org.batfish.datamodel;
 
-import static org.hamcrest.core.Is.is;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
+import com.google.common.testing.EqualsTester;
 import java.io.IOException;
-import org.batfish.common.BatfishException;
+import org.apache.commons.lang3.SerializationUtils;
 import org.batfish.common.util.BatfishObjectMapper;
 import org.junit.Rule;
 import org.junit.Test;
@@ -19,63 +20,119 @@ public class StaticRouteTest {
   public void checkAllAttrs() {
     StaticRoute sr =
         StaticRoute.builder()
-            .setNextHopIp(new Ip("192.168.1.1"))
+            .setNextHopIp(Ip.parse("192.168.1.1"))
             .setNetwork(Prefix.ZERO)
-            .setNextHopInterface("192.168.1.2")
+            .setNextHopInterface("Ethernet0")
             .setAdministrativeCost(1)
             .setTag(0)
+            .setMetric(123)
             .build();
-    assertThat(sr.getNextHopIp(), is(new Ip("192.168.1.1")));
-    assertThat(sr.getNetwork(), is(Prefix.ZERO));
-    assertThat(sr.getNextHopInterface(), is("192.168.1.2"));
-    assertThat(sr.getAdministrativeCost(), is(1));
-    assertThat(sr.getTag(), is(0));
+    assertThat(sr.getNextHopIp(), equalTo(Ip.parse("192.168.1.1")));
+    assertThat(sr.getNetwork(), equalTo(Prefix.ZERO));
+    assertThat(sr.getNextHopInterface(), equalTo("Ethernet0"));
+    assertThat(sr.getAdministrativeCost(), equalTo(1));
+    assertThat(sr.getTag(), equalTo(0));
+    assertThat(sr.getMetric(), equalTo(123L));
   }
 
   @Test
   public void checkNullNextHop() {
-    StaticRoute sr = StaticRoute.builder().setNetwork(Prefix.ZERO).setNextHopIp(null).build();
-    assertThat(sr.getNextHopIp(), is(Route.UNSET_ROUTE_NEXT_HOP_IP));
+    StaticRoute sr =
+        StaticRoute.builder()
+            .setNetwork(Prefix.ZERO)
+            .setAdministrativeCost(1)
+            .setNextHopIp(null)
+            .build();
+    assertThat(sr.getNextHopIp(), equalTo(Route.UNSET_ROUTE_NEXT_HOP_IP));
   }
 
   @Test
   public void checkNullNextHopInterface() {
     StaticRoute sr =
-        StaticRoute.builder().setNetwork(Prefix.ZERO).setNextHopInterface(null).build();
-    assertThat(sr.getNextHopInterface(), is(Route.UNSET_NEXT_HOP_INTERFACE));
+        StaticRoute.builder()
+            .setNetwork(Prefix.ZERO)
+            .setAdministrativeCost(1)
+            .setNextHopInterface(null)
+            .build();
+    assertThat(sr.getNextHopInterface(), equalTo(Route.UNSET_NEXT_HOP_INTERFACE));
   }
 
   @Test
   public void checkDefaults() {
-    StaticRoute sr = StaticRoute.builder().setNetwork(Prefix.ZERO).build();
-    assertThat(sr.getNextHopInterface(), is(Route.UNSET_NEXT_HOP_INTERFACE));
-    assertThat(sr.getNextHopIp(), is(Route.UNSET_ROUTE_NEXT_HOP_IP));
-    assertThat(sr.getAdministrativeCost(), is(Route.UNSET_ROUTE_ADMIN));
-    assertThat(sr.getTag(), is(Route.UNSET_ROUTE_TAG));
+    StaticRoute sr = StaticRoute.builder().setNetwork(Prefix.ZERO).setAdministrativeCost(1).build();
+    assertThat(sr.getNextHopInterface(), equalTo(Route.UNSET_NEXT_HOP_INTERFACE));
+    assertThat(sr.getNextHopIp(), equalTo(Route.UNSET_ROUTE_NEXT_HOP_IP));
+    assertThat(sr.getAdministrativeCost(), equalTo(1));
+    assertThat(sr.getTag(), equalTo(Route.UNSET_ROUTE_TAG));
+    assertThat(sr.getMetric(), equalTo(StaticRoute.DEFAULT_STATIC_ROUTE_METRIC));
   }
 
   @Test
-  public void checkSerialization() {
-    BatfishObjectMapper mapper =
-        new BatfishObjectMapper(Thread.currentThread().getContextClassLoader());
+  public void checkThrowsWithoutAdmin() {
+    _thrown.expect(IllegalArgumentException.class);
+    StaticRoute.builder().setNetwork(Prefix.ZERO).build();
+  }
+
+  @Test
+  public void testToBuilderRoundTrip() {
     StaticRoute sr =
         StaticRoute.builder()
-            .setNextHopIp(new Ip("192.168.1.1"))
+            .setNextHopIp(Ip.parse("192.168.1.1"))
             .setNetwork(Prefix.ZERO)
-            .setNextHopInterface("192.168.1.2")
+            .setNextHopInterface("Ethernet0")
             .setAdministrativeCost(1)
             .setTag(0)
+            .setMetric(123)
             .build();
-    try {
-      String json = mapper.writeValueAsString(sr);
-      StaticRoute parsedObj = mapper.readValue(json, StaticRoute.class);
-      assertThat(parsedObj.getNextHopIp(), is(new Ip("192.168.1.1")));
-      assertThat(parsedObj.getNetwork(), is(Prefix.ZERO));
-      assertThat(parsedObj.getNextHopInterface(), is("192.168.1.2"));
-      assertThat(parsedObj.getAdministrativeCost(), is(1));
-      assertThat(parsedObj.getTag(), is(0));
-    } catch (IOException e) {
-      throw new BatfishException("Cannot parse the json to StaticRoute object", e);
-    }
+
+    assertThat(sr.toBuilder().build(), equalTo(sr));
+  }
+
+  @Test
+  public void testEquals() {
+    StaticRoute.Builder b =
+        StaticRoute.builder().setNetwork(Prefix.parse("1.1.1.0/24")).setAdministrativeCost(1);
+    new EqualsTester()
+        .addEqualityGroup(b.build(), b.build())
+        .addEqualityGroup(b.setNetwork(Prefix.parse("2.2.2.0/24")).build())
+        .addEqualityGroup(b.setAdministrativeCost(2).build())
+        .addEqualityGroup(b.setNonRouting(true).build())
+        .addEqualityGroup(b.setNonForwarding(true).build())
+        .addEqualityGroup(b.setMetric(3).build())
+        .addEqualityGroup(b.setNextHopIp(Ip.parse("2.2.2.2")).build())
+        .addEqualityGroup(b.setNextHopInterface("Ethernet0").build())
+        .addEqualityGroup(b.setTag(4).build())
+        .addEqualityGroup(new Object())
+        .testEquals();
+  }
+
+  @Test
+  public void checkJsonSerialization() throws IOException {
+    StaticRoute sr =
+        StaticRoute.builder()
+            .setNextHopIp(Ip.parse("192.168.1.1"))
+            .setNetwork(Prefix.ZERO)
+            .setNextHopInterface("Ethernet0")
+            .setAdministrativeCost(1)
+            .setTag(0)
+            .setMetric(123)
+            .build();
+
+    assertThat(BatfishObjectMapper.clone(sr, StaticRoute.class), equalTo(sr));
+  }
+
+  @Test
+  public void testJavaSerialization() {
+    StaticRoute sr =
+        StaticRoute.builder()
+            .setNextHopIp(Ip.parse("192.168.1.1"))
+            .setNetwork(Prefix.ZERO)
+            .setNextHopInterface("Ethernet0")
+            .setAdministrativeCost(1)
+            .setTag(0)
+            .setMetric(123)
+            .build();
+
+    assertThat(SerializationUtils.clone(sr), equalTo(sr));
   }
 }

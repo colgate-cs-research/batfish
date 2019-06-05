@@ -1,19 +1,19 @@
 package org.batfish.representation.cisco;
 
-import org.batfish.common.util.DefinedStructure;
+import java.io.Serializable;
 import org.batfish.datamodel.Ip;
 
-public class NatPool extends DefinedStructure<String> {
-
-  /** */
+/** Representation of a NAT pool for Cisco devices. */
+public final class NatPool implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  private Ip _first;
+  private final Ip _first;
 
-  private Ip _last;
+  private final Ip _last;
 
-  public NatPool(String name, int definitionLine) {
-    super(name, definitionLine);
+  public NatPool(Ip first, Ip last) {
+    _first = first;
+    _last = last;
   }
 
   public Ip getFirst() {
@@ -22,13 +22,5 @@ public class NatPool extends DefinedStructure<String> {
 
   public Ip getLast() {
     return _last;
-  }
-
-  public void setFirst(Ip first) {
-    _first = first;
-  }
-
-  public void setLast(Ip last) {
-    _last = last;
   }
 }

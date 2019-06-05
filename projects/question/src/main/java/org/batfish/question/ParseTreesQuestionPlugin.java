@@ -15,7 +15,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class ParseTreesQuestionPlugin extends QuestionPlugin {
 
-  public static class ParseTreesAnswerElement implements AnswerElement {
+  public static class ParseTreesAnswerElement extends AnswerElement {
 
     private SortedMap<String, ParseTreeSentences> _parseTrees;
 
@@ -26,19 +26,6 @@ public class ParseTreesQuestionPlugin extends QuestionPlugin {
 
     public SortedMap<String, ParseTreeSentences> getParseTrees() {
       return _parseTrees;
-    }
-
-    @Override
-    public String prettyPrint() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("Parse trees of vendor configurations\n");
-      for (String name : _parseTrees.keySet()) {
-        sb.append("\n  " + name + " [Parse tree]\n");
-        for (String sentence : _parseTrees.get(name).getSentences()) {
-          sb.append("    " + sentence + "\n");
-        }
-      }
-      return sb.toString();
     }
 
     public void setParseTrees(SortedMap<String, ParseTreeSentences> parseTrees) {
@@ -63,14 +50,7 @@ public class ParseTreesQuestionPlugin extends QuestionPlugin {
     }
   }
 
-  // <question_page_comment>
-
-  /**
-   * Outputs parse trees from test-rig initialization.
-   *
-   * @type InitInfo onefile
-   * @example bf_answer("parsetrees") Get parse trees
-   */
+  /** Outputs parse trees from snapshot initialization. */
   public static class ParseTreesQuestion extends Question {
 
     public ParseTreesQuestion() {}
@@ -83,11 +63,6 @@ public class ParseTreesQuestionPlugin extends QuestionPlugin {
     @Override
     public String getName() {
       return "parsetrees";
-    }
-
-    @Override
-    public String prettyPrint() {
-      return getName();
     }
   }
 

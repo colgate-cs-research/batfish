@@ -58,15 +58,22 @@ banner_type
    | SLIP_PPP
 ;
 
+bgp_asn
+:
+    asn = DEC
+    | asn4b = FLOAT // DEC.DEC , but this lexes as FLOAT
+;
+
 community
 :
-   com = COMMUNITY_NUMBER
-   | com = DEC
-   | com = GSHUT
-   | com = INTERNET
-   | com = LOCAL_AS
-   | com = NO_ADVERTISE
-   | com = NO_EXPORT
+   ACCEPT_OWN
+   | GSHUT
+   | INTERNET
+   | LOCAL_AS
+   | NO_ADVERTISE
+   | NO_EXPORT
+   | STANDARD_COMMUNITY
+   | uint32
 ;
 
 description_line
@@ -150,6 +157,30 @@ icmp_object_type
    | TIMESTAMP_REQUEST
    | TRACEROUTE
    | UNREACHABLE
+   | UNSET
+;
+
+icmp_inline_object_type
+:
+   ICMP_ALTERNATE_ADDRESS
+   | ICMP_CONVERSION_ERROR
+   | ICMP_ECHO
+   | ICMP_ECHO_REPLY
+   | ICMP_INFORMATION_REPLY
+   | ICMP_INFORMATION_REQUEST
+   | ICMP_MASK_REPLY
+   | ICMP_MASK_REQUEST
+   | ICMP_MOBILE_REDIRECT
+   | ICMP_PARAMETER_PROBLEM
+   | ICMP_REDIRECT
+   | ICMP_ROUTER_ADVERTISEMENT
+   | ICMP_ROUTER_SOLICITATION
+   | ICMP_SOURCE_QUENCH
+   | ICMP_TIME_EXCEEDED
+   | ICMP_TIMESTAMP_REPLY
+   | ICMP_TIMESTAMP_REQUEST
+   | ICMP_TRACEROUTE
+   | ICMP_UNREACHABLE
 ;
 
 int_expr
@@ -162,6 +193,11 @@ int_expr
    )
    | IGP_COST
    | RP_VARIABLE
+;
+
+eos_vxlan_interface_name
+:
+   VXLAN DEC
 ;
 
 interface_name
@@ -247,15 +283,20 @@ netservice_alg
    | VOCERA
 ;
 
+null_rest_of_line
+:
+    ~NEWLINE* NEWLINE
+;
+
 ospf_route_type
 :
    (
-      EXTERNAL DEC
+      EXTERNAL DEC?
    )
    | INTERNAL
    |
    (
-      NSSA_EXTERNAL DEC
+      NSSA_EXTERNAL DEC?
    )
 ;
 
@@ -273,7 +314,10 @@ port_specifier
    )
    |
    (
-      NEQ arg = port
+      NEQ
+      (
+         args += port
+      )+
    )
    |
    (
@@ -288,82 +332,214 @@ port_specifier
 port
 :
    DEC
+   | ACAP
+   | ACR_NEMA
+   | AFPOVERTCP
    | AOL
+   | ARNS
+   | ASF_RMCP
+   | ASIP_WEBADMIN
+   | AT_RTMP
+   | AURP
+   | AUTH
+   | BFD
+   | BFD_ECHO
+   | BFTP
+   | BGMP
    | BGP
    | BIFF
    | BOOTPC
    | BOOTPS
    | CHARGEN
+   | CIFS
+   | CISCO_TDP
+   | CITADEL
    | CITRIX_ICA
+   | CLEARCASE
    | CMD
+   | COMMERCE
+   | COURIER
+   | CSNET_NS
    | CTIQBE
+   | CVX
+   | CVX_CLUSTER
+   | CVX_LICENSE
    | DAYTIME
+   | DHCP_FAILOVER2
+   | DHCPV6_CLIENT
+   | DHCPV6_SERVER
    | DISCARD
    | DNSIX
    | DOMAIN
+   | DSP
    | ECHO
+   | EFS
+   | EPP
+   | ESRO_GEN
    | EXEC
    | FINGER
    | FTP
    | FTP_DATA
+   | FTPS
+   | FTPS_DATA
+   | GODI
    | GOPHER
+   | GRE
+   | GTP_C
+   | GTP_PRIME
+   | GTP_U
    | H323
-   | HTTPS
+   | HA_CLUSTER
    | HOSTNAME
+   | HP_ALARM_MGR
+   | HTTP
+   | HTTP_ALT
+   | HTTP_MGMT
+   | HTTP_RPC_EPMAP
+   | HTTPS
    | IDENT
+   | IEEE_MMS_SSL
+   | IMAP
+   | IMAP3
    | IMAP4
+   | IMAPS
+   | IPP
+   | IPX
    | IRC
+   | IRIS_BEEP
    | ISAKMP
+   | ISCSI
+   | ISI_GL
+   | ISO_TSAP
    | KERBEROS
+   | KERBEROS_ADM
    | KLOGIN
+   | KPASSWD
    | KSHELL
+   | L2TP
+   | LA_MAINT
+   | LANZ
    | LDAP
    | LDAPS
    | LDP
-   | LPD
+   | LMP
    | LOGIN
    | LOTUSNOTES
+   | LPD
+   | MAC_SRVR_ADMIN
+   | MATIP_TYPE_A
+   | MATIP_TYPE_B
+   | MICRO_BFD
    | MICROSOFT_DS
    | MLAG
    | MOBILE_IP
+   | MONITOR
+   | MPP
+   | MS_SQL_M
+   | MS_SQL_S
+   | MSDP
+   | MSEXCH_ROUTING
+   | MSG_ICP
+   | MSP
    | MSRPC
    | NAMESERVER
+   | NAS
+   | NAT
+   | NCP
    | NETBIOS_DGM
    | NETBIOS_NS
    | NETBIOS_SS
    | NETBIOS_SSN
+   | NETRJS_1
+   | NETRJS_2
+   | NETRJS_3
+   | NETRJS_4
+   | NETWALL
+   | NETWNEWS
+   | NEW_RWHO
+   | NFS
    | NNTP
+   | NNTPS
    | NON500_ISAKMP
+   | NSW_FE
    | NTP
+   | ODMR
+   | OLSR
+   | OPENVPN
    | PCANYWHERE_DATA
    | PCANYWHERE_STATUS
    | PIM_AUTO_RP
+   | PKIX_TIMESTAMP
+   | PKT_KRB_IPSEC
    | POP2
    | POP3
+   | POP3S
    | PPTP
+   | PRINT_SRV
+   | PTP_EVENT
+   | PTP_GENERAL
+   | QMTP
+   | QOTD
    | RADIUS
    | RADIUS_ACCT
+   | RE_MAIL_CK
+   | REMOTEFS
+   | REPCMD
    | RIP
+   | RJE
+   | RLP
+   | RLZDBASE
+   | RMC
+   | RMONITOR
+   | RPC2PORTMAP
+   | RSH
+   | RSYNC
+   | RTELNET
+   | RTSP
    | SECUREID_UDP
+   | SGMP
+   | SILC
+   | SIP
    | SMTP
+   | SMUX
+   | SNAGAS
    | SNMP
    | SNMP_TRAP
    | SNMPTRAP
+   | SNPP
    | SQLNET
+   | SQLSERV
+   | SQLSRV
    | SSH
+   | SUBMISSION
    | SUNRPC
+   | SVRLOC
    | SYSLOG
+   | SYSTAT
    | TACACS
    | TACACS_DS
    | TALK
+   | TBRPF
+   | TCPMUX
+   | TCPNETHASPSRV
    | TELNET
    | TFTP
    | TIME
+   | TIMED
+   | TUNNEL
+   | UPS
    | UUCP
+   | UUCP_PATH
+   | VMNET
+   | VXLAN
    | WHO
    | WHOIS
    | WWW
    | XDMCP
+   | XNS_CH
+   | XNS_MAIL
+   | XNS_TIME
+   | Z39_50
 ;
 
 prefix_set_elem
@@ -391,7 +567,8 @@ prefix_set_elem
 
 protocol
 :
-   AHP
+   AH
+   | AHP
    | DEC
    | EIGRP
    | ESP
@@ -438,16 +615,18 @@ route_policy_params_list
    )*
 ;
 
-rp_community_set_elem
+community_set_elem
 :
+   community
+   |
    (
-      prefix = rp_community_set_elem_half COLON suffix =
-      rp_community_set_elem_half
+     prefix = community_set_elem_half COLON suffix = community_set_elem_half
    )
-   | community
+   | DFA_REGEX COMMUNITY_SET_REGEX
+   | IOS_REGEX COMMUNITY_SET_REGEX
 ;
 
-rp_community_set_elem_half
+community_set_elem_half
 :
    value = DEC
    | var = RP_VARIABLE
@@ -456,6 +635,7 @@ rp_community_set_elem_half
       BRACKET_LEFT first = DEC PERIOD PERIOD last = DEC BRACKET_RIGHT
    )
    | ASTERISK
+   | PRIVATE_AS
 ;
 
 rp_subrange
@@ -465,6 +645,38 @@ rp_subrange
    (
       BRACKET_LEFT first = int_expr PERIOD PERIOD last = int_expr BRACKET_RIGHT
    )
+;
+
+service_group_protocol
+:
+     TCP | TCP_UDP | UDP
+;
+
+service_specifier
+:
+   service_specifier_icmp
+   | service_specifier_tcp_udp
+   | service_specifier_protocol
+;
+
+service_specifier_icmp
+:
+   ICMP icmp_object_type?
+;
+
+service_specifier_protocol
+:
+   protocol
+;
+
+service_specifier_tcp_udp
+:
+   (
+      TCP
+      | TCP_UDP
+      | UDP
+   )
+   (SOURCE src_ps = port_specifier)? (DESTINATION dst_ps = port_specifier)?
 ;
 
 subrange
@@ -482,6 +694,11 @@ switchport_trunk_encapsulation
    | NEGOTIATE
 ;
 
+uint32
+:
+  DEC
+;
+
 variable
 :
    ~NEWLINE
@@ -490,14 +707,19 @@ variable
 variable_aclname
 :
    (
-      ~( ETH | EXTENDED | NEWLINE | STANDARD | SESSION | WS )
+      ~( ETH | EXTENDED | IN | NEWLINE | OUT | REMARK | STANDARD | SESSION | WS )
    )+
 ;
 
 variable_community_name
 :
    ~( NEWLINE | DOUBLE_QUOTE | GROUP | IPV4 | IPV6 | RO | RW | SDROWNER |
-   SYSTEMOWNER | USE_IPV4_ACL | USE_IPV6_ACL | VIEW )+
+   SYSTEMOWNER | USE_ACL | USE_IPV4_ACL | USE_IPV6_ACL | VIEW )
+;
+
+variable_distribute_list
+:
+  ~( NEWLINE | IN | OUT )+
 ;
 
 variable_hostname
@@ -525,10 +747,22 @@ variable_permissive
 
 variable_secret
 :
-   ~( NEWLINE | ROLE )+
+   ~( NEWLINE | ATTRIBUTES | ENCRYPTED | LEVEL |  MSCHAP | NT_ENCRYPTED | PBKDF2 | PRIVILEGE | ROLE )+
+;
+
+variable_group_id
+:
+    ~( NEWLINE | TCP | TCP_UDP | UDP )+
 ;
 
 variable_vlan
 :
    ~( NEWLINE | ACCESS_MAP | DEC )
+;
+
+vlan_id
+:
+  v = DEC
+  {isVlanId($v)}?
+
 ;

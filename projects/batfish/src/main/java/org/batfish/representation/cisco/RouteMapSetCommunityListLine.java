@@ -3,27 +3,23 @@ package org.batfish.representation.cisco;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 import org.batfish.common.Warnings;
+import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.CommunityList;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.LineAction;
-import org.batfish.datamodel.routing_policy.expr.InlineCommunitySet;
+import org.batfish.datamodel.routing_policy.statement.AddCommunity;
 import org.batfish.datamodel.routing_policy.statement.SetCommunity;
 import org.batfish.datamodel.routing_policy.statement.Statement;
 
 public final class RouteMapSetCommunityListLine extends RouteMapSetLine {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private final Set<String> _communityLists;
 
-  private final int _statementLine;
-
-  public RouteMapSetCommunityListLine(Set<String> communityLists, int statementLine) {
+  public RouteMapSetCommunityListLine(Set<String> communityLists) {
     _communityLists = communityLists;
-    _statementLine = statementLine;
   }
 
   @Override
@@ -36,7 +32,7 @@ public final class RouteMapSetCommunityListLine extends RouteMapSetLine {
         StandardCommunityList scl = cc.getStandardCommunityLists().get(communityListName);
         if (scl != null) {
           for (StandardCommunityListLine line : scl.getLines()) {
-            if (line.getAction() == LineAction.ACCEPT) {
+            if (line.getAction() == LineAction.PERMIT) {
               communities.addAll(line.getCommunities());
             } else {
               w.redFlag(
@@ -53,15 +49,23 @@ public final class RouteMapSetCommunityListLine extends RouteMapSetLine {
                   + communityListName
                   + "\"");
         }
-      } else {
-        cc.undefined(
-            CiscoStructureType.COMMUNITY_LIST,
-            communityListName,
-            CiscoStructureUsage.ROUTE_MAP_SET_COMMUNITY,
-            _statementLine);
       }
     }
-    statements.add(new SetCommunity(new InlineCommunitySet(new TreeSet<>(communities))));
+    CommonUtil.forEachWithIndex(
+        _communityLists,
+        (index, communityListName) -> {
+          if (index == 0) {
+            statements.add(
+                new SetCommunity(
+                    new org.batfish.datamodel.routing_policy.expr.NamedCommunitySet(
+                        communityListName)));
+          } else {
+            statements.add(
+                new AddCommunity(
+                    new org.batfish.datamodel.routing_policy.expr.NamedCommunitySet(
+                        communityListName)));
+          }
+        });
   }
 
   @Override

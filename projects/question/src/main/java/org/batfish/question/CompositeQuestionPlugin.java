@@ -13,8 +13,7 @@ import org.batfish.datamodel.questions.Question;
 @AutoService(Plugin.class)
 public class CompositeQuestionPlugin extends QuestionPlugin {
 
-  public static class CompositeAnswerElement implements AnswerElement {
-
+  public static class CompositeAnswerElement extends AnswerElement {
     private static final String PROP_ANSWERS = "answers";
 
     private List<AnswerElement> _answers;
@@ -45,9 +44,7 @@ public class CompositeQuestionPlugin extends QuestionPlugin {
       CompositeQuestion question = (CompositeQuestion) _question;
       CompositeAnswerElement answerElement = new CompositeAnswerElement();
       for (Question innerQuestion : question._questions) {
-        String innerQuestionName = innerQuestion.getName();
-        Answerer innerAnswerer =
-            _batfish.getAnswererCreators().get(innerQuestionName).apply(innerQuestion, _batfish);
+        Answerer innerAnswerer = _batfish.createAnswerer(innerQuestion);
         AnswerElement innerAnswer = innerAnswerer.answer();
         answerElement._answers.add(innerAnswer);
       }
@@ -56,7 +53,6 @@ public class CompositeQuestionPlugin extends QuestionPlugin {
   }
 
   public static class CompositeQuestion extends Question {
-
     private static final String PROP_QUESTIONS = "questions";
 
     private List<Question> _questions;

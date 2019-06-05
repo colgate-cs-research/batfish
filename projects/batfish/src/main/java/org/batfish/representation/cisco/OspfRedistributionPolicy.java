@@ -1,19 +1,15 @@
 package org.batfish.representation.cisco;
 
-import org.batfish.datamodel.OspfMetricType;
 import org.batfish.datamodel.RoutingProtocol;
+import org.batfish.datamodel.ospf.OspfMetricType;
 
 public class OspfRedistributionPolicy extends RedistributionPolicy {
 
   public static final String BGP_AS = "BGP_AS";
 
+  public static final String EIGRP_AS_NUMBER = "EIGRP_AS_NUMBER";
+
   public static final OspfMetricType DEFAULT_METRIC_TYPE = OspfMetricType.E2;
-
-  public static final long DEFAULT_REDISTRIBUTE_BGP_METRIC = 20;
-
-  public static final long DEFAULT_REDISTRIBUTE_CONNECTED_METRIC = 20;
-
-  public static final long DEFAULT_REDISTRIBUTE_STATIC_METRIC = 20;
 
   private static final long serialVersionUID = 1L;
 
@@ -21,7 +17,7 @@ public class OspfRedistributionPolicy extends RedistributionPolicy {
 
   private OspfMetricType _metricType;
 
-  private boolean _subnets;
+  private boolean _onlyClassfulRoutes;
 
   private Long _tag;
 
@@ -37,8 +33,8 @@ public class OspfRedistributionPolicy extends RedistributionPolicy {
     return _metricType;
   }
 
-  public boolean getSubnets() {
-    return _subnets;
+  public boolean getOnlyClassfulRoutes() {
+    return _onlyClassfulRoutes;
   }
 
   public Long getTag() {
@@ -49,12 +45,12 @@ public class OspfRedistributionPolicy extends RedistributionPolicy {
     _metric = metric;
   }
 
-  public void setOspfMetricType(OspfMetricType type) {
-    _metricType = type;
+  public void setOnlyClassfulRoutes(boolean b) {
+    _onlyClassfulRoutes = b;
   }
 
-  public void setSubnets(boolean b) {
-    _subnets = b;
+  public void setOspfMetricType(OspfMetricType type) {
+    _metricType = type;
   }
 
   public void setTag(long tag) {

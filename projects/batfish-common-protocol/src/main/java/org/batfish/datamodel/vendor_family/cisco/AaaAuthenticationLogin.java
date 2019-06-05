@@ -3,12 +3,12 @@ package org.batfish.datamodel.vendor_family.cisco;
 import java.io.Serializable;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.batfish.datamodel.AaaAuthenticationLoginList;
 
 public class AaaAuthenticationLogin implements Serializable {
 
   public static final String DEFAULT_LIST_NAME = "default";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private SortedMap<String, AaaAuthenticationLoginList> _lists;

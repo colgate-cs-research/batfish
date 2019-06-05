@@ -1,78 +1,57 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
-import org.batfish.common.BatfishException;
+import java.util.Comparator;
+import java.util.Objects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public final class Flow implements Comparable<Flow>, Serializable {
-  /** */
-  private static final long serialVersionUID = 1L;
-
   public static class Builder {
-
-    private Integer _dscp;
-
+    private int _dscp;
     private Ip _dstIp;
+    @Nullable private Integer _dstPort;
+    private int _ecn;
+    private int _fragmentOffset;
+    private @Nullable Integer _icmpCode;
+    private @Nullable Integer _icmpType;
+    private @Nullable String _ingressInterface;
+    // Nullable because no sensible default. User is required to specify.
+    private @Nullable String _ingressNode;
+    private @Nullable String _ingressVrf;
+    private @Nonnull IpProtocol _ipProtocol;
+    private int _packetLength;
+    private @Nonnull Ip _srcIp;
+    @Nullable private Integer _srcPort;
+    private @Nonnull FlowState _state;
+    // Nullable because no sensible default. User is required to specify.
+    private @Nullable String _tag;
+    private int _tcpFlagsAck;
+    private int _tcpFlagsCwr;
+    private int _tcpFlagsEce;
+    private int _tcpFlagsFin;
+    private int _tcpFlagsPsh;
+    private int _tcpFlagsRst;
+    private int _tcpFlagsSyn;
+    private int _tcpFlagsUrg;
 
-    private Integer _dstPort;
-
-    private Integer _ecn;
-
-    private Integer _fragmentOffset;
-
-    private Integer _icmpCode;
-
-    private Integer _icmpType;
-
-    private String _ingressInterface;
-
-    private String _ingressNode;
-
-    private String _ingressVrf;
-
-    private IpProtocol _ipProtocol;
-
-    private Integer _packetLength;
-
-    private Ip _srcIp;
-
-    private Integer _srcPort;
-
-    private State _state;
-
-    private String _tag;
-
-    private Integer _tcpFlagsAck;
-
-    private Integer _tcpFlagsCwr;
-
-    private Integer _tcpFlagsEce;
-
-    private Integer _tcpFlagsFin;
-
-    private Integer _tcpFlagsPsh;
-
-    private Integer _tcpFlagsRst;
-
-    private Integer _tcpFlagsSyn;
-
-    private Integer _tcpFlagsUrg;
-
-    public Builder() {
+    private Builder() {
       _dscp = 0;
       _dstIp = Ip.ZERO;
-      _dstPort = 0;
       _ecn = 0;
       _fragmentOffset = 0;
       _ipProtocol = IpProtocol.IP;
       _srcIp = Ip.ZERO;
-      _srcPort = 0;
-      _icmpType = IcmpType.UNSET;
-      _icmpCode = IcmpCode.UNSET;
       _ingressVrf = Configuration.DEFAULT_VRF_NAME;
       _packetLength = 0;
-      _state = State.NEW;
+      _state = FlowState.NEW;
       _tcpFlagsCwr = 0;
       _tcpFlagsEce = 0;
       _tcpFlagsUrg = 0;
@@ -83,7 +62,7 @@ public final class Flow implements Comparable<Flow>, Serializable {
       _tcpFlagsFin = 0;
     }
 
-    public Builder(Flow flow) {
+    private Builder(Flow flow) {
       _ingressNode = flow._ingressNode;
       _ingressInterface = flow._ingressInterface;
       _ingressVrf = flow._ingressVrf;
@@ -99,23 +78,29 @@ public final class Flow implements Comparable<Flow>, Serializable {
       _icmpCode = flow._icmpCode;
       _packetLength = flow._packetLength;
       _state = flow._state;
-      _tcpFlagsCwr = flow._tcpFlagsCwr;
-      _tcpFlagsEce = flow._tcpFlagsEce;
-      _tcpFlagsUrg = flow._tcpFlagsUrg;
-      _tcpFlagsAck = flow._tcpFlagsAck;
-      _tcpFlagsPsh = flow._tcpFlagsPsh;
-      _tcpFlagsRst = flow._tcpFlagsRst;
-      _tcpFlagsSyn = flow._tcpFlagsSyn;
-      _tcpFlagsFin = flow._tcpFlagsFin;
+      _tcpFlagsAck = flow.getTcpFlagsAck();
+      _tcpFlagsCwr = flow.getTcpFlagsCwr();
+      _tcpFlagsEce = flow.getTcpFlagsEce();
+      _tcpFlagsUrg = flow.getTcpFlagsUrg();
+      _tcpFlagsPsh = flow.getTcpFlagsPsh();
+      _tcpFlagsRst = flow.getTcpFlagsRst();
+      _tcpFlagsSyn = flow.getTcpFlagsSyn();
+      _tcpFlagsFin = flow.getTcpFlagsFin();
       _tag = flow._tag;
     }
 
     public Flow build() {
-      if (_ingressNode == null) {
-        throw new BatfishException("Cannot build flow without at least specifying ingress node");
-      }
-      if (_tag == null) {
-        throw new BatfishException("Cannot build flow without specifying tag");
+      checkNotNull(_ingressNode, "Cannot build flow without at least specifying ingress node");
+      checkNotNull(_tag, "Cannot build flow without specifying tag");
+      if (_ipProtocol == IpProtocol.ICMP) {
+        checkArgument(_icmpType != null, "ICMP packets must have an ICMP type");
+        checkArgument(_icmpCode != null, "ICMP packets must have an ICMP code");
+      } else if (_ipProtocol == IpProtocol.TCP) {
+        checkArgument(_srcPort != null, "TCP packets must have a source port");
+        checkArgument(_dstPort != null, "TCP packets must have a destination port");
+      } else if (_ipProtocol == IpProtocol.UDP) {
+        checkArgument(_srcPort != null, "UDP packets must have a source port");
+        checkArgument(_dstPort != null, "UDP packets must have a destination port");
       }
       return new Flow(
           _ingressNode,
@@ -144,7 +129,7 @@ public final class Flow implements Comparable<Flow>, Serializable {
           _tag);
     }
 
-    public Integer getDscp() {
+    public int getDscp() {
       return _dscp;
     }
 
@@ -152,19 +137,19 @@ public final class Flow implements Comparable<Flow>, Serializable {
       return _dstIp;
     }
 
-    public Integer getDstPort() {
+    public @Nullable Integer getDstPort() {
       return _dstPort;
     }
 
-    public Integer getEcn() {
+    public int getEcn() {
       return _ecn;
     }
 
-    public Integer getIcmpCode() {
+    public @Nullable Integer getIcmpCode() {
       return _icmpCode;
     }
 
-    public Integer getIcmpType() {
+    public @Nullable Integer getIcmpType() {
       return _icmpType;
     }
 
@@ -184,7 +169,7 @@ public final class Flow implements Comparable<Flow>, Serializable {
       return _ipProtocol;
     }
 
-    public Integer getPacketLength() {
+    public int getPacketLength() {
       return _packetLength;
     }
 
@@ -192,11 +177,11 @@ public final class Flow implements Comparable<Flow>, Serializable {
       return _srcIp;
     }
 
-    public Integer getSrcPort() {
+    public @Nullable Integer getSrcPort() {
       return _srcPort;
     }
 
-    public State getState() {
+    public FlowState getState() {
       return _state;
     }
 
@@ -204,265 +189,263 @@ public final class Flow implements Comparable<Flow>, Serializable {
       return _tag;
     }
 
-    public Integer getTcpFlagsAck() {
+    public int getTcpFlagsAck() {
       return _tcpFlagsAck;
     }
 
-    public Integer getTcpFlagsCwr() {
+    public int getTcpFlagsCwr() {
       return _tcpFlagsCwr;
     }
 
-    public Integer getTcpFlagsEce() {
+    public int getTcpFlagsEce() {
       return _tcpFlagsEce;
     }
 
-    public Integer getTcpFlagsFin() {
+    public int getTcpFlagsFin() {
       return _tcpFlagsFin;
     }
 
-    public Integer getTcpFlagsPsh() {
+    public int getTcpFlagsPsh() {
       return _tcpFlagsPsh;
     }
 
-    public Integer getTcpFlagsRst() {
+    public int getTcpFlagsRst() {
       return _tcpFlagsRst;
     }
 
-    public Integer getTcpFlagsSyn() {
+    public int getTcpFlagsSyn() {
       return _tcpFlagsSyn;
     }
 
-    public Integer getTcpFlagsUrg() {
+    public int getTcpFlagsUrg() {
       return _tcpFlagsUrg;
     }
 
-    public void setDscp(Integer dscp) {
+    public Builder setDscp(int dscp) {
       _dscp = dscp;
+      return this;
     }
 
-    public void setDstIp(Ip dstIp) {
+    public Builder setDstIp(Ip dstIp) {
       _dstIp = dstIp;
+      return this;
     }
 
-    public void setDstPort(int dstPort) {
+    public Builder setDstPort(@Nullable Integer dstPort) {
       _dstPort = dstPort;
+      return this;
     }
 
-    public void setDstPort(Integer dstPort) {
-      _dstPort = dstPort;
-    }
-
-    public void setEcn(Integer ecn) {
+    public Builder setEcn(int ecn) {
       _ecn = ecn;
+      return this;
     }
 
-    public void setFragmentOffset(int fragmentOffset) {
+    public Builder setFragmentOffset(int fragmentOffset) {
       _fragmentOffset = fragmentOffset;
+      return this;
     }
 
-    public void setIcmpCode(Integer icmpCode) {
+    public Builder setIcmpCode(@Nullable Integer icmpCode) {
       _icmpCode = icmpCode;
+      return this;
     }
 
-    public void setIcmpType(Integer icmpType) {
+    public Builder setIcmpType(@Nullable Integer icmpType) {
       _icmpType = icmpType;
+      return this;
     }
 
-    public void setIngressInterface(String ingressInterface) {
+    public Builder setIngressInterface(@Nullable String ingressInterface) {
       _ingressInterface = ingressInterface;
+
+      // invariant: either ingressVrf or ingressInterface is always null.
+      if (_ingressInterface != null) {
+        _ingressVrf = null;
+      }
+      return this;
     }
 
-    public void setIngressNode(String ingressNode) {
+    public Builder setIngressNode(@Nonnull String ingressNode) {
       _ingressNode = ingressNode;
+      return this;
     }
 
-    public void setIngressVrf(String ingressVrf) {
+    public Builder setIngressVrf(@Nullable String ingressVrf) {
       _ingressVrf = ingressVrf;
+
+      // invariant: either ingressVrf or ingressInterface is always null.
+      if (_ingressVrf != null) {
+        _ingressInterface = null;
+      }
+      return this;
     }
 
-    public void setIpProtocol(IpProtocol ipProtocol) {
+    public Builder setIpProtocol(@Nonnull IpProtocol ipProtocol) {
       _ipProtocol = ipProtocol;
+      return this;
     }
 
-    public void setPacketLength(Integer packetLength) {
+    public Builder setPacketLength(Integer packetLength) {
       _packetLength = packetLength;
+      return this;
     }
 
-    public void setSrcIp(Ip srcIp) {
+    public Builder setSrcIp(Ip srcIp) {
       _srcIp = srcIp;
+      return this;
     }
 
-    public void setSrcPort(int srcPort) {
+    public Builder setSrcPort(@Nullable Integer srcPort) {
       _srcPort = srcPort;
+      return this;
     }
 
-    public void setSrcPort(Integer srcPort) {
-      _srcPort = srcPort;
-    }
-
-    public void setState(State state) {
+    public Builder setState(FlowState state) {
       _state = state;
+      return this;
     }
 
-    public void setTag(String tag) {
+    public Builder setTag(String tag) {
       _tag = tag;
+      return this;
     }
 
-    public void setTcpFlagsAck(Integer tcpFlagsAck) {
+    public Builder setTcpFlagsAck(Integer tcpFlagsAck) {
       _tcpFlagsAck = tcpFlagsAck;
+      return this;
     }
 
-    public void setTcpFlagsCwr(Integer tcpFlagsCwr) {
+    public Builder setTcpFlagsCwr(Integer tcpFlagsCwr) {
       _tcpFlagsCwr = tcpFlagsCwr;
+      return this;
     }
 
-    public void setTcpFlagsEce(Integer tcpFlagsEce) {
+    public Builder setTcpFlagsEce(Integer tcpFlagsEce) {
       _tcpFlagsEce = tcpFlagsEce;
+      return this;
     }
 
-    public void setTcpFlagsFin(Integer tcpFlagsFin) {
+    public Builder setTcpFlagsFin(Integer tcpFlagsFin) {
       _tcpFlagsFin = tcpFlagsFin;
+      return this;
     }
 
-    public void setTcpFlagsPsh(Integer tcpFlagsPsh) {
+    public Builder setTcpFlagsPsh(Integer tcpFlagsPsh) {
       _tcpFlagsPsh = tcpFlagsPsh;
+      return this;
     }
 
-    public void setTcpFlagsRst(Integer tcpFlagsRst) {
+    public Builder setTcpFlagsRst(Integer tcpFlagsRst) {
       _tcpFlagsRst = tcpFlagsRst;
+      return this;
     }
 
-    public void setTcpFlagsSyn(Integer tcpFlagsSyn) {
+    public Builder setTcpFlagsSyn(Integer tcpFlagsSyn) {
       _tcpFlagsSyn = tcpFlagsSyn;
+      return this;
     }
 
-    public void setTcpFlagsUrg(Integer tcpFlagsUrg) {
+    public Builder setTcpFlagsUrg(Integer tcpFlagsUrg) {
       _tcpFlagsUrg = tcpFlagsUrg;
+      return this;
+    }
+
+    public Builder setTcpFlags(TcpFlags tcpFlags) {
+      _tcpFlagsAck = tcpFlags.getAck() ? 1 : 0;
+      _tcpFlagsCwr = tcpFlags.getCwr() ? 1 : 0;
+      _tcpFlagsEce = tcpFlags.getEce() ? 1 : 0;
+      _tcpFlagsFin = tcpFlags.getFin() ? 1 : 0;
+      _tcpFlagsPsh = tcpFlags.getPsh() ? 1 : 0;
+      _tcpFlagsRst = tcpFlags.getRst() ? 1 : 0;
+      _tcpFlagsSyn = tcpFlags.getSyn() ? 1 : 0;
+      _tcpFlagsUrg = tcpFlags.getUrg() ? 1 : 0;
+      return this;
     }
   }
 
   private static final String PROP_DSCP = "dscp";
-
-  private static final String PROP_DST_IP = "dstIp";
-
-  private static final String PROP_DST_PORT = "dstPort";
-
+  static final String PROP_DST_IP = "dstIp";
+  static final String PROP_DST_PORT = "dstPort";
   private static final String PROP_ECN = "ecn";
-
   private static final String PROP_FRAGMENT_OFFSET = "fragmentOffset";
-
   private static final String PROP_ICMP_CODE = "icmpCode";
-
   private static final String PROP_ICMP_TYPE = "icmpVar";
-
   private static final String PROP_INGRESS_INTERFACE = "ingressInterface";
-
   private static final String PROP_INGRESS_NODE = "ingressNode";
-
   private static final String PROP_INGRESS_VRF = "ingressVrf";
-
   private static final String PROP_IP_PROTOCOL = "ipProtocol";
-
   private static final String PROP_PACKET_LENGTH = "packetLength";
-
-  private static final String PROP_SRC_IP = "srcIp";
-
-  private static final String PROP_SRC_PORT = "srcPort";
-
+  static final String PROP_SRC_IP = "srcIp";
+  static final String PROP_SRC_PORT = "srcPort";
   private static final String PROP_STATE = "state";
-
   private static final String PROP_TAG = "tag";
-
   private static final String PROP_TCP_FLAGS_ACK = "tcpFlagsAck";
-
   private static final String PROP_TCP_FLAGS_CWR = "tcpFlagsCwr";
-
   private static final String PROP_TCP_FLAGS_ECE = "tcpFlagsEce";
-
   private static final String PROP_TCP_FLAGS_FIN = "tcpFlagsFin";
-
   private static final String PROP_TCP_FLAGS_PSH = "tcpFlagsPsh";
-
   private static final String PROP_TCP_FLAGS_RST = "tcpFlagsRst";
-
   private static final String PROP_TCP_FLAGS_SYN = "tcpFlagsSyn";
-
   private static final String PROP_TCP_FLAGS_URG = "tcpFlagsUrg";
+  public static final String BASE_FLOW_TAG = "BASE";
+  public static final String DELTA_FLOW_TAG = "DELTA";
+
+  private static final long serialVersionUID = 1L;
+
+  public static Builder builder() {
+    return new Builder();
+  }
 
   private final int _dscp;
-
-  private final Ip _dstIp;
-
-  private final int _dstPort;
-
+  private final @Nonnull Ip _dstIp;
+  private final @Nullable Integer _dstPort;
   private final int _ecn;
-
   private final int _fragmentOffset;
-
-  private final int _icmpCode;
-
-  private final int _icmpType;
-
-  private String _ingressInterface;
-
-  private final String _ingressNode;
-
-  private final String _ingressVrf;
-
-  private final IpProtocol _ipProtocol;
-
+  private final @Nullable Integer _icmpCode;
+  private final @Nullable Integer _icmpType;
+  private final @Nullable String _ingressInterface;
+  private final @Nonnull String _ingressNode;
+  private final @Nullable String _ingressVrf;
+  private final @Nonnull IpProtocol _ipProtocol;
   private final int _packetLength;
+  private final @Nonnull Ip _srcIp;
+  private final @Nullable Integer _srcPort;
+  private final @Nonnull FlowState _state;
+  private final @Nonnull String _tag;
+  private final @Nonnull TcpFlags _tcpFlags;
 
-  private final Ip _srcIp;
-
-  private final int _srcPort;
-
-  private final State _state;
-
-  private final String _tag;
-
-  private final int _tcpFlagsAck;
-
-  private final int _tcpFlagsCwr;
-
-  private final int _tcpFlagsEce;
-
-  private final int _tcpFlagsFin;
-
-  private final int _tcpFlagsPsh;
-
-  private final int _tcpFlagsRst;
-
-  private final int _tcpFlagsSyn;
-
-  private final int _tcpFlagsUrg;
-
-  @JsonCreator
-  public Flow(
-      @JsonProperty(PROP_INGRESS_NODE) String ingressNode,
-      @JsonProperty(PROP_INGRESS_INTERFACE) String ingressInterface,
-      @JsonProperty(PROP_INGRESS_VRF) String ingressVrf,
-      @JsonProperty(PROP_SRC_IP) Ip srcIp,
-      @JsonProperty(PROP_DST_IP) Ip dstIp,
-      @JsonProperty(PROP_SRC_PORT) int srcPort,
-      @JsonProperty(PROP_DST_PORT) int dstPort,
-      @JsonProperty(PROP_IP_PROTOCOL) IpProtocol ipProtocol,
-      @JsonProperty(PROP_DSCP) int dscp,
-      @JsonProperty(PROP_ECN) int ecn,
-      @JsonProperty(PROP_FRAGMENT_OFFSET) int fragmentOffset,
-      @JsonProperty(PROP_ICMP_TYPE) int icmpType,
-      @JsonProperty(PROP_ICMP_CODE) int icmpCode,
-      @JsonProperty(PROP_PACKET_LENGTH) int packetLength,
-      @JsonProperty(PROP_STATE) State state,
-      @JsonProperty(PROP_TCP_FLAGS_CWR) int tcpFlagsCwr,
-      @JsonProperty(PROP_TCP_FLAGS_ECE) int tcpFlagsEce,
-      @JsonProperty(PROP_TCP_FLAGS_URG) int tcpFlagsUrg,
-      @JsonProperty(PROP_TCP_FLAGS_ACK) int tcpFlagsAck,
-      @JsonProperty(PROP_TCP_FLAGS_PSH) int tcpFlagsPsh,
-      @JsonProperty(PROP_TCP_FLAGS_RST) int tcpFlagsRst,
-      @JsonProperty(PROP_TCP_FLAGS_SYN) int tcpFlagsSyn,
-      @JsonProperty(PROP_TCP_FLAGS_FIN) int tcpFlagsFin,
-      @JsonProperty(PROP_TAG) String tag) {
+  private Flow(
+      @Nonnull String ingressNode,
+      @Nullable String ingressInterface,
+      @Nullable String ingressVrf,
+      @Nonnull Ip srcIp,
+      @Nonnull Ip dstIp,
+      @Nullable Integer srcPort,
+      @Nullable Integer dstPort,
+      @Nonnull IpProtocol ipProtocol,
+      int dscp,
+      int ecn,
+      int fragmentOffset,
+      @Nullable Integer icmpType,
+      @Nullable Integer icmpCode,
+      int packetLength,
+      @Nonnull FlowState state,
+      int tcpFlagsCwr,
+      int tcpFlagsEce,
+      int tcpFlagsUrg,
+      int tcpFlagsAck,
+      int tcpFlagsPsh,
+      int tcpFlagsRst,
+      int tcpFlagsSyn,
+      int tcpFlagsFin,
+      @Nonnull String tag) {
+    checkArgument(
+        ingressInterface != null || ingressVrf != null,
+        "Either ingressInterface or ingressVrf must not be null.");
+    checkArgument(
+        ingressInterface == null || ingressVrf == null,
+        "Either ingressInterface or ingressVrf must be null.");
     _ingressNode = ingressNode;
     _ingressInterface = ingressInterface;
     _ingressVrf = ingressVrf;
@@ -478,105 +461,102 @@ public final class Flow implements Comparable<Flow>, Serializable {
     _icmpCode = icmpCode;
     _packetLength = packetLength;
     _state = state;
-    _tcpFlagsCwr = tcpFlagsCwr;
-    _tcpFlagsEce = tcpFlagsEce;
-    _tcpFlagsUrg = tcpFlagsUrg;
-    _tcpFlagsAck = tcpFlagsAck;
-    _tcpFlagsPsh = tcpFlagsPsh;
-    _tcpFlagsRst = tcpFlagsRst;
-    _tcpFlagsSyn = tcpFlagsSyn;
-    _tcpFlagsFin = tcpFlagsFin;
     _tag = tag;
+    // this ugliness is for backwards compatibility (for now)
+    _tcpFlags =
+        new TcpFlags(
+            tcpFlagsAck != 0,
+            tcpFlagsCwr != 0,
+            tcpFlagsEce != 0,
+            tcpFlagsFin != 0,
+            tcpFlagsPsh != 0,
+            tcpFlagsRst != 0,
+            tcpFlagsSyn != 0,
+            tcpFlagsUrg != 0);
+    if (_ipProtocol == IpProtocol.ICMP) {
+      checkArgument(_icmpType != null, "ICMP packets must have an ICMP type");
+      checkArgument(_icmpCode != null, "ICMP packets must have an ICMP code");
+    } else if (_ipProtocol == IpProtocol.TCP) {
+      checkArgument(_srcPort != null, "TCP packets must have a source port");
+      checkArgument(_dstPort != null, "TCP packets must have a destination port");
+    } else if (_ipProtocol == IpProtocol.UDP) {
+      checkArgument(_srcPort != null, "UDP packets must have a source port");
+      checkArgument(_dstPort != null, "UDP packets must have a destination port");
+    }
+  }
+
+  @JsonCreator
+  private static Flow createFlow(
+      @JsonProperty(PROP_INGRESS_NODE) String ingressNode,
+      @JsonProperty(PROP_INGRESS_INTERFACE) String ingressInterface,
+      @JsonProperty(PROP_INGRESS_VRF) String ingressVrf,
+      @JsonProperty(PROP_SRC_IP) Ip srcIp,
+      @JsonProperty(PROP_DST_IP) Ip dstIp,
+      @JsonProperty(PROP_SRC_PORT) @Nullable Integer srcPort,
+      @JsonProperty(PROP_DST_PORT) @Nullable Integer dstPort,
+      @JsonProperty(PROP_IP_PROTOCOL) IpProtocol ipProtocol,
+      @JsonProperty(PROP_DSCP) int dscp,
+      @JsonProperty(PROP_ECN) int ecn,
+      @JsonProperty(PROP_FRAGMENT_OFFSET) int fragmentOffset,
+      @JsonProperty(PROP_ICMP_TYPE) @Nullable Integer icmpType,
+      @JsonProperty(PROP_ICMP_CODE) @Nullable Integer icmpCode,
+      @JsonProperty(PROP_PACKET_LENGTH) int packetLength,
+      @JsonProperty(PROP_STATE) FlowState state,
+      @JsonProperty(PROP_TCP_FLAGS_CWR) int tcpFlagsCwr,
+      @JsonProperty(PROP_TCP_FLAGS_ECE) int tcpFlagsEce,
+      @JsonProperty(PROP_TCP_FLAGS_URG) int tcpFlagsUrg,
+      @JsonProperty(PROP_TCP_FLAGS_ACK) int tcpFlagsAck,
+      @JsonProperty(PROP_TCP_FLAGS_PSH) int tcpFlagsPsh,
+      @JsonProperty(PROP_TCP_FLAGS_RST) int tcpFlagsRst,
+      @JsonProperty(PROP_TCP_FLAGS_SYN) int tcpFlagsSyn,
+      @JsonProperty(PROP_TCP_FLAGS_FIN) int tcpFlagsFin,
+      @JsonProperty(PROP_TAG) String tag) {
+    return new Flow(
+        requireNonNull(ingressNode, PROP_INGRESS_NODE + " must not be null"),
+        ingressInterface,
+        ingressVrf,
+        requireNonNull(srcIp, PROP_SRC_IP + " must not be null"),
+        requireNonNull(dstIp, PROP_DST_IP + " must not be null"),
+        srcPort,
+        dstPort,
+        requireNonNull(ipProtocol, PROP_IP_PROTOCOL + " must not be null"),
+        dscp,
+        ecn,
+        fragmentOffset,
+        icmpType,
+        icmpCode,
+        packetLength,
+        requireNonNull(state, PROP_STATE + " must not be null"),
+        tcpFlagsCwr,
+        tcpFlagsEce,
+        tcpFlagsUrg,
+        tcpFlagsAck,
+        tcpFlagsPsh,
+        tcpFlagsRst,
+        tcpFlagsSyn,
+        tcpFlagsFin,
+        requireNonNull(tag, PROP_TAG + " must not be null"));
   }
 
   @Override
-  public int compareTo(Flow rhs) {
-    int ret;
-    ret = _ingressNode.compareTo(rhs._ingressNode);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = _ingressVrf.compareTo(rhs._ingressVrf);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = _srcIp.compareTo(rhs._srcIp);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = _dstIp.compareTo(rhs._dstIp);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_ipProtocol.number(), rhs._ipProtocol.number());
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_srcPort, rhs._srcPort);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_dstPort, rhs._dstPort);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_dscp, rhs._dscp);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_ecn, rhs._ecn);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_fragmentOffset, rhs._fragmentOffset);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_icmpType, rhs._icmpType);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_icmpCode, rhs._icmpCode);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_packetLength, rhs._packetLength);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = _state.compareTo(rhs._state);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsCwr, rhs._tcpFlagsCwr);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsEce, rhs._tcpFlagsEce);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsUrg, rhs._tcpFlagsUrg);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsAck, rhs._tcpFlagsAck);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsPsh, rhs._tcpFlagsPsh);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsRst, rhs._tcpFlagsRst);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(_tcpFlagsSyn, rhs._tcpFlagsSyn);
-    if (ret != 0) {
-      return ret;
-    }
-    return Integer.compare(_tcpFlagsFin, rhs._tcpFlagsFin);
+  public int compareTo(@Nonnull Flow rhs) {
+    return Comparator.comparing(Flow::getIngressNode)
+        .thenComparing(Flow::getIngressInterface, Comparator.nullsFirst(Comparator.naturalOrder()))
+        .thenComparing(Flow::getIngressVrf, Comparator.nullsFirst(Comparator.naturalOrder()))
+        .thenComparing(Flow::getSrcIp)
+        .thenComparing(Flow::getDstIp)
+        .thenComparing((flow) -> flow.getIpProtocol().number())
+        .thenComparing(Flow::getSrcPort, Comparator.nullsFirst(Comparator.naturalOrder()))
+        .thenComparing(Flow::getDstPort, Comparator.nullsFirst(Comparator.naturalOrder()))
+        .thenComparing(Flow::getDscp)
+        .thenComparing(Flow::getEcn)
+        .thenComparing(Flow::getFragmentOffset)
+        .thenComparing(Flow::getIcmpType, Comparator.nullsLast(Comparator.naturalOrder()))
+        .thenComparing(Flow::getIcmpCode, Comparator.nullsLast(Comparator.naturalOrder()))
+        .thenComparing(Flow::getPacketLength)
+        .thenComparing(Flow::getState)
+        .thenComparing(Flow::getTcpFlags)
+        .compare(this, rhs);
   }
 
   @Override
@@ -588,73 +568,23 @@ public final class Flow implements Comparable<Flow>, Serializable {
       return false;
     }
     Flow other = (Flow) o;
-    if (_dscp != other._dscp) {
-      return false;
-    }
-    if (!_dstIp.equals(other._dstIp)) {
-      return false;
-    }
-    if (_dstPort != other._dstPort) {
-      return false;
-    }
-    if (_ecn != other._ecn) {
-      return false;
-    }
-    if (_fragmentOffset != other._fragmentOffset) {
-      return false;
-    }
-    if (!_ingressNode.equals(other._ingressNode)) {
-      return false;
-    }
-    if (!_ingressVrf.equals(other._ingressVrf)) {
-      return false;
-    }
-    if (_ipProtocol != other._ipProtocol) {
-      return false;
-    }
-    if (!_srcIp.equals(other._srcIp)) {
-      return false;
-    }
-    if (_srcPort != other._srcPort) {
-      return false;
-    }
-    if (_icmpType != other._icmpType) {
-      return false;
-    }
-    if (_icmpCode != other._icmpCode) {
-      return false;
-    }
-    if (_packetLength != other._packetLength) {
-      return false;
-    }
-    if (_state != other._state) {
-      return false;
-    }
-    if (_tcpFlagsCwr != other._tcpFlagsCwr) {
-      return false;
-    }
-    if (_tcpFlagsEce != other._tcpFlagsEce) {
-      return false;
-    }
-    if (_tcpFlagsUrg != other._tcpFlagsUrg) {
-      return false;
-    }
-    if (_tcpFlagsAck != other._tcpFlagsAck) {
-      return false;
-    }
-    if (_tcpFlagsPsh != other._tcpFlagsPsh) {
-      return false;
-    }
-    if (_tcpFlagsRst != other._tcpFlagsRst) {
-      return false;
-    }
-    if (_tcpFlagsSyn != other._tcpFlagsSyn) {
-      return false;
-    }
-    if (_tcpFlagsFin != other._tcpFlagsFin) {
-      return false;
-    }
-    return _tag.equals(other._tag);
+    return _dscp == other._dscp
+        && _dstIp.equals(other._dstIp)
+        && Objects.equals(_dstPort, other._dstPort)
+        && _ecn == other._ecn
+        && _fragmentOffset == other._fragmentOffset
+        && Objects.equals(_icmpCode, other._icmpCode)
+        && Objects.equals(_icmpType, other._icmpType)
+        && _ingressNode.equals(other._ingressNode)
+        && Objects.equals(_ingressInterface, other._ingressInterface)
+        && Objects.equals(_ingressVrf, other._ingressVrf)
+        && _ipProtocol.equals(other._ipProtocol)
+        && _packetLength == other._packetLength
+        && _srcIp.equals(other._srcIp)
+        && Objects.equals(_srcPort, other._srcPort)
+        && _state.equals(other._state)
+        && _tag.equals(other._tag)
+        && _tcpFlags.equals(other._tcpFlags);
   }
 
   @JsonProperty(PROP_DSCP)
@@ -662,13 +592,14 @@ public final class Flow implements Comparable<Flow>, Serializable {
     return _dscp;
   }
 
+  @Nonnull
   @JsonProperty(PROP_DST_IP)
   public Ip getDstIp() {
     return _dstIp;
   }
 
   @JsonProperty(PROP_DST_PORT)
-  public Integer getDstPort() {
+  public @Nullable Integer getDstPort() {
     return _dstPort;
   }
 
@@ -683,30 +614,36 @@ public final class Flow implements Comparable<Flow>, Serializable {
   }
 
   @JsonProperty(PROP_ICMP_CODE)
+  @Nullable
   public Integer getIcmpCode() {
     return _icmpCode;
   }
 
   @JsonProperty(PROP_ICMP_TYPE)
+  @Nullable
   public Integer getIcmpType() {
     return _icmpType;
   }
 
+  @Nullable
   @JsonProperty(PROP_INGRESS_INTERFACE)
   public String getIngressInterface() {
     return _ingressInterface;
   }
 
+  @Nonnull
   @JsonProperty(PROP_INGRESS_NODE)
   public String getIngressNode() {
     return _ingressNode;
   }
 
+  @Nullable
   @JsonProperty(PROP_INGRESS_VRF)
   public String getIngressVrf() {
     return _ingressVrf;
   }
 
+  @Nonnull
   @JsonProperty(PROP_IP_PROTOCOL)
   public IpProtocol getIpProtocol() {
     return _ipProtocol;
@@ -717,156 +654,114 @@ public final class Flow implements Comparable<Flow>, Serializable {
     return _packetLength;
   }
 
+  @Nonnull
   @JsonProperty(PROP_SRC_IP)
   public Ip getSrcIp() {
     return _srcIp;
   }
 
   @JsonProperty(PROP_SRC_PORT)
-  public Integer getSrcPort() {
+  public @Nullable Integer getSrcPort() {
     return _srcPort;
   }
 
+  @Nonnull
   @JsonProperty(PROP_STATE)
-  public State getState() {
+  public FlowState getState() {
     return _state;
   }
 
+  @Nonnull
   @JsonProperty(PROP_TAG)
   public String getTag() {
     return _tag;
   }
 
+  // Again, backwards-compatibility tcp-flag ugliness below
+
   @JsonProperty(PROP_TCP_FLAGS_ACK)
   public int getTcpFlagsAck() {
-    return _tcpFlagsAck;
+    return _tcpFlags.getAck() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_CWR)
   public int getTcpFlagsCwr() {
-    return _tcpFlagsCwr;
+    return _tcpFlags.getCwr() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_ECE)
   public int getTcpFlagsEce() {
-    return _tcpFlagsEce;
+    return _tcpFlags.getEce() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_FIN)
   public int getTcpFlagsFin() {
-    return _tcpFlagsFin;
+    return _tcpFlags.getFin() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_PSH)
   public int getTcpFlagsPsh() {
-    return _tcpFlagsPsh;
+    return _tcpFlags.getPsh() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_RST)
   public int getTcpFlagsRst() {
-    return _tcpFlagsRst;
+    return _tcpFlags.getRst() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_SYN)
   public int getTcpFlagsSyn() {
-    return _tcpFlagsSyn;
+    return _tcpFlags.getSyn() ? 1 : 0;
   }
 
   @JsonProperty(PROP_TCP_FLAGS_URG)
   public int getTcpFlagsUrg() {
-    return _tcpFlagsUrg;
+    return _tcpFlags.getUrg() ? 1 : 0;
+  }
+
+  @Nonnull
+  @JsonIgnore
+  public TcpFlags getTcpFlags() {
+    return _tcpFlags;
   }
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + _dscp;
-    result = prime * result + _dstIp.hashCode();
-    result = prime * result + _dstPort;
-    result = prime * result + _ecn;
-    result = prime * result + _fragmentOffset;
-    result = prime * result + _ingressNode.hashCode();
-    result = prime * result + _ingressVrf.hashCode();
-    result = prime * result + _ipProtocol.ordinal();
-    result = prime * result + _srcIp.hashCode();
-    result = prime * result + _srcPort;
-    result = prime * result + _icmpType;
-    result = prime * result + _icmpCode;
-    result = prime * result + _packetLength;
-    result = prime * result + _state.ordinal();
-    result = prime * result + _tag.hashCode();
-    result = prime * result + _tcpFlagsCwr;
-    result = prime * result + _tcpFlagsEce;
-    result = prime * result + _tcpFlagsUrg;
-    result = prime * result + _tcpFlagsAck;
-    result = prime * result + _tcpFlagsPsh;
-    result = prime * result + _tcpFlagsRst;
-    result = prime * result + _tcpFlagsSyn;
-    result = prime * result + _tcpFlagsFin;
-    return result;
+    return Objects.hash(
+        _dscp,
+        _dstIp,
+        _dstPort,
+        _ecn,
+        _fragmentOffset,
+        _icmpCode,
+        _icmpType,
+        _ingressInterface,
+        _ingressNode,
+        _ingressVrf,
+        _ipProtocol,
+        _packetLength,
+        _srcIp,
+        _srcPort,
+        _state,
+        _tag,
+        _tcpFlags);
   }
 
-  public String prettyPrint(String prefixString) {
-    boolean icmp = _ipProtocol == IpProtocol.ICMP;
-    boolean tcp = _ipProtocol == IpProtocol.TCP;
-    boolean udp = _ipProtocol == IpProtocol.UDP;
-    String srcPortStr = "";
-    String dstPortStr = "";
-    String icmpTypeStr = "";
-    String icmpCodeStr = "";
-    String tcpFlagsStr = "";
-    if (tcp || udp) {
-      srcPortStr = " sport:" + NamedPort.nameFromNumber(_srcPort);
-      dstPortStr = " dport:" + NamedPort.nameFromNumber(_dstPort);
-    }
-    if (tcp) {
-      tcpFlagsStr =
-          String.format(
-              " tcpFlags:%d%d%d%d%d%d%d%d",
-              _tcpFlagsCwr,
-              _tcpFlagsEce,
-              _tcpFlagsUrg,
-              _tcpFlagsAck,
-              _tcpFlagsPsh,
-              _tcpFlagsRst,
-              _tcpFlagsSyn,
-              _tcpFlagsFin);
-    }
-    if (icmp) {
-      icmpCodeStr = " icmpCode:" + Integer.toString(_icmpCode);
-      icmpTypeStr = " icmpType:" + Integer.toString(_icmpType);
-    }
-    String dscpStr = (_dscp != 0) ? " dscp:" + _dscp : "";
-    String ecnStr = (_ecn != 0) ? " ecn:" + _ecn : "";
-
-    return prefixString
-        + "Flow: ingress:"
-        + _ingressNode
-        + " vrf:"
-        + _ingressVrf
-        + " "
-        + _srcIp
-        + "->"
-        + _dstIp
-        + " "
-        + _ipProtocol
-        + srcPortStr
-        + dstPortStr
-        + dscpStr
-        + ecnStr
-        + icmpTypeStr
-        + icmpCodeStr
-        + " packetLength:"
-        + _packetLength
-        + " state:"
-        + _state
-        + tcpFlagsStr;
+  private String tcpFlagsStr() {
+    return String.format(
+        " tcpFlags:%d%d%d%d%d%d%d%d",
+        getTcpFlagsAck(),
+        getTcpFlagsEce(),
+        getTcpFlagsUrg(),
+        getTcpFlagsAck(),
+        getTcpFlagsPsh(),
+        getTcpFlagsRst(),
+        getTcpFlagsSyn(),
+        getTcpFlagsFin());
   }
 
-  @JsonProperty(PROP_INGRESS_INTERFACE)
-  public void setIngressInterface(String ingressInterface) {
-    _ingressInterface = ingressInterface;
+  public Builder toBuilder() {
+    return new Builder(this);
   }
 
   @Override
@@ -880,30 +775,22 @@ public final class Flow implements Comparable<Flow>, Serializable {
     String icmpCodeStr = "";
     String tcpFlagsStr = "";
     if (tcp || udp) {
+      assert _srcPort != null;
+      assert _dstPort != null;
       srcPortStr = " srcPort:" + NamedPort.nameFromNumber(_srcPort);
       dstPortStr = " dstPort:" + NamedPort.nameFromNumber(_dstPort);
     }
     if (tcp) {
-      tcpFlagsStr =
-          String.format(
-              " tcpFlags:%d%d%d%d%d%d%d%d",
-              _tcpFlagsCwr,
-              _tcpFlagsEce,
-              _tcpFlagsUrg,
-              _tcpFlagsAck,
-              _tcpFlagsPsh,
-              _tcpFlagsRst,
-              _tcpFlagsSyn,
-              _tcpFlagsFin);
+      tcpFlagsStr = tcpFlagsStr();
     }
     if (icmp) {
-      icmpCodeStr = " icmpCode:" + Integer.toString(_icmpCode);
-      icmpTypeStr = " icmpType:" + Integer.toString(_icmpType);
+      icmpCodeStr = " icmpCode:" + _icmpCode;
+      icmpTypeStr = " icmpType:" + _icmpType;
     }
     return "Flow<ingressNode:"
         + _ingressNode
-        + " ingressVrf:"
-        + _ingressVrf
+        + (_ingressVrf != null ? " ingressVrf:" + _ingressVrf : "")
+        + (_ingressInterface != null ? " iface:" + _ingressInterface : "")
         + " srcIp:"
         + _srcIp
         + " dstIp:"

@@ -2,7 +2,7 @@ package org.batfish.datamodel.answers;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-public class StringAnswerElement implements AnswerElement {
+public final class StringAnswerElement extends AnswerElement {
 
   private String _answer;
 
@@ -15,11 +15,6 @@ public class StringAnswerElement implements AnswerElement {
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public String getAnswer() {
-    return _answer;
-  }
-
-  @Override
-  public String prettyPrint() {
     return _answer;
   }
 

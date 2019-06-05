@@ -1,14 +1,13 @@
 package org.batfish.representation.vyos;
 
+import java.io.Serializable;
 import java.util.Set;
 import java.util.TreeSet;
 import org.batfish.common.BatfishException;
-import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.InterfaceAddress;
 
-public class Interface extends ComparableStructure<String> {
+public class Interface implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   public static double getDefaultBandwidth(InterfaceType type) {
@@ -35,23 +34,29 @@ public class Interface extends ComparableStructure<String> {
     }
   }
 
+  private InterfaceAddress _address;
+
   private final Set<InterfaceAddress> _allAddresses;
 
   private double _bandwidth;
 
   private String _description;
 
-  private InterfaceAddress _address;
+  private final String _name;
 
   private InterfaceType _type;
 
   public Interface(String name) {
-    super(name);
     _allAddresses = new TreeSet<>();
+    _name = name;
   }
 
   public Set<InterfaceAddress> getAllAddresses() {
     return _allAddresses;
+  }
+
+  public InterfaceAddress getAddress() {
+    return _address;
   }
 
   public double getBandwidth() {
@@ -62,8 +67,8 @@ public class Interface extends ComparableStructure<String> {
     return _description;
   }
 
-  public InterfaceAddress getAddress() {
-    return _address;
+  public String getName() {
+    return _name;
   }
 
   public InterfaceType getType() {

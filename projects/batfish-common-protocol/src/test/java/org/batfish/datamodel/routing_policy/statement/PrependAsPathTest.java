@@ -1,15 +1,12 @@
 package org.batfish.datamodel.routing_policy.statement;
 
+import static org.batfish.datamodel.AsPath.ofSingletonAsSets;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
-import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
-import java.util.Arrays;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.stream.Collectors;
-import org.batfish.datamodel.BgpRoute;
+import org.batfish.datamodel.Bgpv4Route;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.routing_policy.Environment;
@@ -23,42 +20,38 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class PrependAsPathTest {
 
-  private static Environment newTestEnvironment(BgpRoute.Builder outputRoute) {
+  private static Environment newTestEnvironment(Bgpv4Route.Builder outputRoute) {
     Configuration c = new Configuration("host", ConfigurationFormat.CISCO_IOS);
-    return new Environment(c, "vrf", null, null, outputRoute, null, null);
-  }
-
-  private static List<SortedSet<Integer>> mkAsPath(Integer... explicitAs) {
-    return Arrays.stream(explicitAs).map(ImmutableSortedSet::of).collect(Collectors.toList());
+    return Environment.builder(c).setOutputRoute(outputRoute).build();
   }
 
   @Test
   public void testPrepend() {
     List<AsExpr> prepend = Lists.newArrayList(new ExplicitAs(1), new ExplicitAs(2));
     PrependAsPath operation = new PrependAsPath(new LiteralAsList(prepend));
-    BgpRoute.Builder builder = new BgpRoute.Builder();
-    builder.setAsPath(mkAsPath(3, 4));
+    Bgpv4Route.Builder builder = new Bgpv4Route.Builder();
+    builder.setAsPath(ofSingletonAsSets(3L, 4L));
     Environment env = newTestEnvironment(builder);
 
     operation.execute(env);
-    assertThat(builder.getAsPath(), equalTo(mkAsPath(1, 2, 3, 4)));
+    assertThat(builder.getAsPath(), equalTo(ofSingletonAsSets(1L, 2L, 3L, 4L)));
   }
 
   @Test
   public void testPrependWithIntermediateAttributes() {
     List<AsExpr> prepend = Lists.newArrayList(new ExplicitAs(1), new ExplicitAs(2));
     PrependAsPath operation = new PrependAsPath(new LiteralAsList(prepend));
-    BgpRoute.Builder outputRoute = new BgpRoute.Builder();
-    outputRoute.setAsPath(mkAsPath(3, 4));
+    Bgpv4Route.Builder outputRoute = new Bgpv4Route.Builder();
+    outputRoute.setAsPath(ofSingletonAsSets(3L, 4L));
 
-    BgpRoute.Builder intermediateAttributes = new BgpRoute.Builder();
-    intermediateAttributes.setAsPath(mkAsPath(5, 6));
+    Bgpv4Route.Builder intermediateAttributes = new Bgpv4Route.Builder();
+    intermediateAttributes.setAsPath(ofSingletonAsSets(5L, 6L));
     Environment env = newTestEnvironment(outputRoute);
     env.setIntermediateBgpAttributes(intermediateAttributes);
     env.setWriteToIntermediateBgpAttributes(true);
 
     operation.execute(env);
-    assertThat(outputRoute.getAsPath(), equalTo(mkAsPath(1, 2, 3, 4)));
-    assertThat(intermediateAttributes.getAsPath(), equalTo(mkAsPath(1, 2, 5, 6)));
+    assertThat(outputRoute.getAsPath(), equalTo(ofSingletonAsSets(1L, 2L, 3L, 4L)));
+    assertThat(intermediateAttributes.getAsPath(), equalTo(ofSingletonAsSets(1L, 2L, 5L, 6L)));
   }
 }

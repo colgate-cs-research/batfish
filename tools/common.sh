@@ -7,24 +7,15 @@ export PROJECTS_PATH="$BATFISH_ROOT/projects"
 export BATFISH_VERSION="$(grep -1 batfish-parent "${PROJECTS_PATH}/pom.xml" | grep version | sed 's/[<>]/|/g' | cut -f3 -d\|)"
 
 export BATFISH_PATH="$PROJECTS_PATH/batfish"
-export BATFISH_TEST_RIG_PATH="$BATFISH_ROOT/test_rigs"
+export BATFISH_TEST_RIG_PATH="$BATFISH_ROOT/networks"
 export BATFISH="$BATFISH_PATH/batfish"
+export FLATTEN="$BATFISH_PATH/flatten"
+export PREPROCESS_JUNIPER="$BATFISH_PATH/preprocess_juniper"
 
 export BATFISH_CLIENT_PATH="$PROJECTS_PATH/batfish-client"
 export BATFISH_CLIENT="$BATFISH_CLIENT_PATH/batfish-client"
 
 export BATFISH_DOCS_ROOT="$BATFISH_ROOT/docs"
-export BATFISH_DOCS_DATAMODEL="$BATFISH_DOCS_ROOT/datamodel.json"
-
-export BATFISH_WIKI_ROOT="$BATFISH_ROOT/../batfish.wiki"
-export BATFISH_WIKI_DATAMODEL="$BATFISH_WIKI_ROOT/Datamodel.md"
-export BATFISH_WIKI_QUESTIONS="$BATFISH_WIKI_ROOT/Questions.md"
-
-if [ -d "$BATFISH_ROOT/../pybatfish" ]; then
-   export PYBATFISH_ROOT="$BATFISH_ROOT/../pybatfish"
-   export BATFISH_DATAMODEL_PAGE_SCRIPT="${PYBATFISH_ROOT}/datamodel_page.py"
-   export BATFISH_QUESTIONS_PAGE_SCRIPT="${PYBATFISH_ROOT}/questions_page.py"
-fi
 
 export COORDINATOR_PATH="$PROJECTS_PATH/coordinator"
 export COORDINATOR="$COORDINATOR_PATH/coordinator"
@@ -35,7 +26,7 @@ export ALLINONE="$ALLINONE_PATH/allinone"
 export COMMON_PATH="$PROJECTS_PATH/batfish-common-protocol"
 export COMMON_JAR="$COMMON_PATH/target/batfish-common-protocol-${BATFISH_VERSION}.jar"
 
-export QUESTION_PATH="$PROJECTS_PATH/question"
+export QUESTIONS_PATH="${BATFISH_ROOT}/questions"
 export BATFISH_QUESTION_PLUGIN_DIR="$PROJECTS_PATH/question/target/"
 
 export ALLINONE_COMPLETION_FILE="$BATFISH_TOOLS_PATH/completion-allinone.tmp"
@@ -48,9 +39,9 @@ batfish() {
    if batfish_cygwin; then
       local NUMARGS=$#
       local IGNORE_CURRENT_ARG=no;
-      for i in $(seq 1 $NUMARGS); do
+      for i in $(seq 1 ${NUMARGS}); do
          local CURRENT_ARG=$1
-         local NEW_ARG="$(cygpath -w -- $CURRENT_ARG)"
+         local NEW_ARG="$(cygpath -w -- ${CURRENT_ARG})"
          set -- "$@" "$NEW_ARG"
          shift
       done
@@ -58,7 +49,7 @@ batfish() {
    if [ "$BATFISH_PRINT_CMDLINE" = "yes" ]; then
       echo "$BATFISH $BATFISH_COMMON_ARGS $@" >&2
    fi
-   "$BATFISH" $BATFISH_COMMON_ARGS "$@"
+   "$BATFISH" ${BATFISH_COMMON_ARGS} "$@"
 }
 export -f batfish
 
@@ -139,7 +130,7 @@ export -f _batfish_test_all
 batfish_confirm() {
    # call with a prompt string or use a default
    read -r -p "${1:-Are you sure? [y/N]} " response < /dev/tty
-   case $response in
+   case ${response} in
       [yY][eE][sS]|[yY])
          true
       ;;
@@ -183,11 +174,11 @@ export -f batfish_expect_min_args
 batfish_javadocs() {
    echo "Generating batfish project javadocs"
    batfish_build_all doc
-   cp -r $COMMON_PATH/doc $BATFISH_ROOT/doc/batfish-common-protocol/
-   cp -r $BATFISH_PATH/doc $BATFISH_ROOT/doc/batfish/
-   cp -r $BATFISH_CLIENT_PATH/doc $BATFISH_ROOT/doc/batfish-client/
-   cp -r $COORDINATOR_PATH/doc $BATFISH_ROOT/doc/coordinator/
-   cp -r $ALLINONE_PATH/doc $BATFISH_ROOT/doc/allinone/
+   cp -r ${COMMON_PATH}/doc ${BATFISH_ROOT}/doc/batfish-common-protocol/
+   cp -r ${BATFISH_PATH}/doc ${BATFISH_ROOT}/doc/batfish/
+   cp -r ${BATFISH_CLIENT_PATH}/doc ${BATFISH_ROOT}/doc/batfish-client/
+   cp -r ${COORDINATOR_PATH}/doc ${BATFISH_ROOT}/doc/coordinator/
+   cp -r ${ALLINONE_PATH}/doc ${BATFISH_ROOT}/doc/allinone/
 }
 export -f batfish_javadocs
 
@@ -198,45 +189,30 @@ batfish_prepare_test_rig() {
    local TEST_RIG=$1
    local BASE=$2
    local NAME=$3
-   mkdir -p $BASE/testrigs/$NAME/testrig || return 1
-   mkdir -p $BASE/testrigs/$NAME/environments/default/env_default
-   cp -r $TEST_RIG/. $BASE/testrigs/$NAME/testrig/.
+   mkdir -p ${BASE}/testrigs/${NAME}/testrig || return 1
+   mkdir -p ${BASE}/testrigs/${NAME}/environments/default/env_default
+   cp -r ${TEST_RIG}/. ${BASE}/testrigs/${NAME}/testrig/.
    batfish_date
    echo ": END: Prepare test-rig"
 }
 export -f batfish_prepare_test_rig
 
 batfish_reload() {
-   . $BATFISH_SOURCED_SCRIPT
+   . ${BATFISH_SOURCED_SCRIPT}
 }
 export -f batfish_reload
 
 batfish_unit_tests_parser() {
    local UNIT_TEST_NAME=unit-tests
-   local UNIT_TEST_DIR=$BATFISH_TEST_RIG_PATH/$UNIT_TEST_NAME
+   local UNIT_TEST_DIR=${BATFISH_TEST_RIG_PATH}/${UNIT_TEST_NAME}
    batfish_date
    echo ": START UNIT TEST: Vendor configuration parser"
-   batfish_prepare_test_rig $UNIT_TEST_DIR $PWD $UNIT_TEST_NAME
-   batfish -containerdir $PWD -testrig $UNIT_TEST_NAME -sv "$@" -haltonparseerror -haltonconverterror -urf false
+   batfish_prepare_test_rig ${UNIT_TEST_DIR} $PWD ${UNIT_TEST_NAME}
+   batfish -containerdir $PWD -testrig ${UNIT_TEST_NAME} -sv "$@" -haltonparseerror -haltonconverterror -urf false
    batfish_date
    echo ": END UNIT TEST: Vendor configuration parser"
 }
 export -f batfish_unit_tests_parser
-
-batfish_datamodel() {
-   echo "Generating datamodel to " $BATFISH_DOCS_DATAMODEL
-   batfish_client -runmode gendatamodel > "$BATFISH_DOCS_DATAMODEL"
-
-   echo "Generating wiki page to " $BATFISH_WIKI_DATAMODEL
-   python "$BATFISH_DATAMODEL_PAGE_SCRIPT" "$BATFISH_DOCS_DATAMODEL" > "$BATFISH_WIKI_DATAMODEL"
-}
-export -f batfish_datamodel
-
-batfish_wiki_questions() {
-   echo "Generating questions to " $BATFISH_WIKI_QUESTIONS
-   python "$BATFISH_QUESTIONS_PAGE_SCRIPT" "$QUESTION_PATH/src" > "$BATFISH_WIKI_QUESTIONS"
-}
-export -f batfish_wiki_questions
 
 int_to_ip() {
    batfish_expect_args 1 $# || return 1
@@ -276,9 +252,9 @@ coordinator() {
    # if cygwin, shift and replace each parameter
    if batfish_cygwin; then
       local NUMARGS=$#
-      for i in $(seq 1 $NUMARGS); do
+      for i in $(seq 1 ${NUMARGS}); do
          local CURRENT_ARG=$1
-         local NEW_ARG="$(cygpath -w -- $CURRENT_ARG)"
+         local NEW_ARG="$(cygpath -w -- ${CURRENT_ARG})"
          set -- "$@" "$NEW_ARG"
          shift
       done
@@ -286,7 +262,7 @@ coordinator() {
    if [ "$COORDINATOR_PRINT_CMDLINE" = "yes" ]; then
       echo "$COORDINATOR $COORDINATOR_COMMON_ARGS $@"
    fi
-   $COORDINATOR $COORDINATOR_COMMON_ARGS "$@"
+   ${COORDINATOR} ${COORDINATOR_COMMON_ARGS} "$@"
 }
 export -f coordinator
 
@@ -299,9 +275,9 @@ batfish_client() {
    # if cygwin, shift and replace each parameter
    if batfish_cygwin; then
       local NUMARGS=$#
-      for i in $(seq 1 $NUMARGS); do
+      for i in $(seq 1 ${NUMARGS}); do
          local CURRENT_ARG=$1
-         local NEW_ARG="$(cygpath -w -- $CURRENT_ARG)"
+         local NEW_ARG="$(cygpath -w -- ${CURRENT_ARG})"
          set -- "$@" "$NEW_ARG"
          shift
       done
@@ -309,7 +285,7 @@ batfish_client() {
    if [ "$BATFISH_CLIENT_PRINT_CMDLINE" = "yes" ]; then
       echo "$BATFISH_CLIENT $BATFISH_CLIENT_COMMON_ARGS $@"
    fi
-   $BATFISH_CLIENT $BATFISH_CLIENT_COMMON_ARGS "$@"
+   ${BATFISH_CLIENT} ${BATFISH_CLIENT_COMMON_ARGS} "$@"
 }
 export -f batfish_client
 
@@ -333,9 +309,9 @@ allinone() {
    # if cygwin, shift and replace each parameter
    if batfish_cygwin; then
       local NUMARGS=$#
-      for i in $(seq 1 $NUMARGS); do
+      for i in $(seq 1 ${NUMARGS}); do
          local CURRENT_ARG=$1
-         local NEW_ARG="$(cygpath -w -- $CURRENT_ARG)"
+         local NEW_ARG="$(cygpath -w -- ${CURRENT_ARG})"
          set -- "$@" "$NEW_ARG"
          shift
       done
@@ -343,7 +319,7 @@ allinone() {
    if [ "$ALLINONE_PRINT_CMDLINE" = "yes" ]; then
       echo "$ALLINONE $ALLINONE_COMMON_ARGS $@"
    fi
-   "$ALLINONE" $ALLINONE_COMMON_ARGS "$@"
+   "$ALLINONE" ${ALLINONE_COMMON_ARGS} "$@"
 }
 export -f allinone
 
@@ -389,4 +365,43 @@ _common_build() {
    mvn install -pl batfish-common-protocol -am || return 1
 }
 export -f _common_build
+
+flatten() {
+   # if cygwin, shift and replace each parameter
+   if batfish_cygwin; then
+      local NUMARGS=$#
+      local IGNORE_CURRENT_ARG=no;
+      for i in $(seq 1 ${NUMARGS}); do
+         local CURRENT_ARG=$1
+         local NEW_ARG="$(cygpath -w -- ${CURRENT_ARG})"
+         set -- "$@" "$NEW_ARG"
+         shift
+      done
+   fi
+   if [ "$BATFISH_PRINT_CMDLINE" = "yes" ]; then
+      echo "$BATFISH $BATFISH_COMMON_ARGS $@" >&2
+   fi
+   "$FLATTEN" "$@"
+}
+export -f flatten
+
+preprocess_juniper() {
+   # if cygwin, shift and replace each parameter
+   if batfish_cygwin; then
+      local NUMARGS=$#
+      local IGNORE_CURRENT_ARG=no;
+      for i in $(seq 1 ${NUMARGS}); do
+         local CURRENT_ARG=$1
+         local NEW_ARG="$(cygpath -w -- ${CURRENT_ARG})"
+         set -- "$@" "${NEW_ARG}"
+         shift
+      done
+   fi
+   if [ "$BATFISH_PRINT_CMDLINE" = "yes" ]; then
+      echo "$BATFISH $BATFISH_COMMON_ARGS $@" >&2
+   fi
+   "${PREPROCESS_JUNIPER}" "$@"
+}
+export -f preprocess_juniper
+
 

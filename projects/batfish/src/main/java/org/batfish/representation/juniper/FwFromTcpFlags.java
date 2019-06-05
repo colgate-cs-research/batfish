@@ -4,22 +4,25 @@ import com.google.common.collect.Iterables;
 import java.util.List;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
-import org.batfish.datamodel.IpAccessListLine;
-import org.batfish.datamodel.TcpFlags;
+import org.batfish.datamodel.HeaderSpace;
+import org.batfish.datamodel.TcpFlagsMatchConditions;
 
 public final class FwFromTcpFlags extends FwFrom {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private List<TcpFlags> _tcpFlags;
+  private List<TcpFlagsMatchConditions> _tcpFlags;
 
-  public FwFromTcpFlags(List<TcpFlags> tcpFlags) {
+  public FwFromTcpFlags(List<TcpFlagsMatchConditions> tcpFlags) {
     _tcpFlags = tcpFlags;
   }
 
   @Override
-  public void applyTo(IpAccessListLine line, JuniperConfiguration jc, Warnings w, Configuration c) {
-    line.setTcpFlags(Iterables.concat(line.getTcpFlags(), _tcpFlags));
+  public void applyTo(
+      HeaderSpace.Builder headerSpaceBuilder,
+      JuniperConfiguration jc,
+      Warnings w,
+      Configuration c) {
+    headerSpaceBuilder.setTcpFlags(Iterables.concat(headerSpaceBuilder.getTcpFlags(), _tcpFlags));
   }
 }

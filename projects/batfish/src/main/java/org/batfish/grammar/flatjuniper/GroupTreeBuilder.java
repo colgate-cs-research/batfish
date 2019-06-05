@@ -1,5 +1,7 @@
 package org.batfish.grammar.flatjuniper;
 
+import static org.batfish.grammar.flatjuniper.ConfigurationBuilder.unquote;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.antlr.v4.runtime.Lexer;
@@ -42,17 +44,16 @@ public class GroupTreeBuilder extends FlatJuniperParserBaseListener {
   @Override
   public void enterFlat_juniper_configuration(Flat_juniper_configurationContext ctx) {
     _configurationContext = ctx;
-    _newConfigurationLines = new ArrayList<>();
-    _newConfigurationLines.addAll(ctx.children);
+    _newConfigurationLines = new ArrayList<>(ctx.children);
   }
 
   @Override
   public void enterInterface_id(Interface_idContext ctx) {
-    if (_enablePathRecording && (ctx.unit != null || ctx.suffix != null || ctx.node != null)) {
+    if (_enablePathRecording && (ctx.unit != null || ctx.chnl != null || ctx.node != null)) {
       _enablePathRecording = false;
       _reenablePathRecording = true;
       String text = ctx.getText();
-      _currentPath.addNode(text);
+      _currentPath.addNode(text, ctx.getStart().getLine());
     }
   }
 
@@ -82,7 +83,7 @@ public class GroupTreeBuilder extends FlatJuniperParserBaseListener {
 
   @Override
   public void exitS_groups_named(S_groups_namedContext ctx) {
-    String groupName = ctx.name.getText();
+    String groupName = unquote(ctx.name.getText());
     HierarchyTree tree = _hierarchy.getTree(groupName);
     if (tree == null) {
       tree = _hierarchy.newTree(groupName);
@@ -97,10 +98,11 @@ public class GroupTreeBuilder extends FlatJuniperParserBaseListener {
     for (Token currentToken : unfilteredTokens) {
       if (currentToken.getChannel() != Lexer.HIDDEN) {
         String text = currentToken.getText();
+        int line = currentToken.getLine();
         if (currentToken.getType() == FlatJuniperLexer.WILDCARD) {
-          path.addWildcardNode(text);
+          path.addWildcardNode(text, line);
         } else {
-          path.addNode(text);
+          path.addNode(text, line);
         }
       }
     }
@@ -123,10 +125,11 @@ public class GroupTreeBuilder extends FlatJuniperParserBaseListener {
   public void visitTerminal(TerminalNode node) {
     if (_enablePathRecording) {
       String text = node.getText();
+      int line = node.getSymbol().getLine();
       if (node.getSymbol().getType() == FlatJuniperLexer.WILDCARD) {
-        _currentPath.addWildcardNode(text);
+        _currentPath.addWildcardNode(text, line);
       } else {
-        _currentPath.addNode(text);
+        _currentPath.addNode(text, line);
       }
     }
   }

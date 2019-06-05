@@ -1,8 +1,8 @@
 package org.batfish.representation.cisco;
 
-import org.batfish.datamodel.IsisLevel;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.RoutingProtocol;
+import org.batfish.datamodel.isis.IsisLevel;
 
 public class IsisRedistributionPolicy extends RedistributionPolicy {
 
@@ -12,7 +12,6 @@ public class IsisRedistributionPolicy extends RedistributionPolicy {
 
   public static final Integer DEFAULT_REDISTRIBUTE_STATIC_METRIC = 10;
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private IsisLevel _level;
@@ -24,7 +23,7 @@ public class IsisRedistributionPolicy extends RedistributionPolicy {
   private Prefix _summaryPrefix;
 
   public IsisRedistributionPolicy(RoutingProtocol sourceProtocol) {
-    super(sourceProtocol, RoutingProtocol.ISIS);
+    super(sourceProtocol, RoutingProtocol.ISIS_ANY);
   }
 
   public IsisLevel getLevel() {

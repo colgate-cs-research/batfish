@@ -11,7 +11,7 @@ o_area
    AREA
    (
       area = IP_ADDRESS
-      | WILDCARD
+      | wildcard
    )
    (
       apply
@@ -28,13 +28,26 @@ o_common
 :
    apply
    | o_area
+   | o_disable
+   | o_enable
    | o_export
    | o_external_preference
    | o_import
    | o_no_active_backbone
    | o_null
+   | o_reference_bandwidth
    | o_rib_group
    | o_traffic_engineering
+;
+
+o_disable
+:
+   DISABLE
+;
+
+o_enable
+:
+   ENABLE
 ;
 
 o_export
@@ -60,12 +73,17 @@ o_no_active_backbone
 o_null
 :
    (
-      NO_RFC_1583
+      GRACEFUL_RESTART
+      | NO_RFC_1583
       | OVERLOAD
-      | REFERENCE_BANDWIDTH
       | SPF_OPTIONS
       | TRACEOPTIONS
    ) null_filler
+;
+
+o_reference_bandwidth
+:
+   REFERENCE_BANDWIDTH bandwidth
 ;
 
 o_rib_group
@@ -92,7 +110,11 @@ oa_area_range
    )
    (
       apply
-      | (oaa_override_metric | oaa_restrict)+
+      |
+      (
+         oaa_override_metric
+         | oaa_restrict
+      )+
    )
 ;
 
@@ -103,17 +125,19 @@ oa_interface
       ALL
       | id = interface_id
       | ip = IP_ADDRESS
-      | WILDCARD
+      | wildcard
    )
    (
       apply
       | oai_dead_interval
       | oai_disable
+      | oai_enable
       | oai_hello_interval
       | oai_interface_type
       | oai_ldp_synchronization
       | oai_link_protection
       | oai_metric
+      | oai_neighbor
       | oai_null
       | oai_passive
       | oai_priority
@@ -123,11 +147,7 @@ oa_interface
 
 oa_label_switched_path
 :
-   LABEL_SWITCHED_PATH
-   (
-      name = variable
-      | WILDCARD
-   )
+   LABEL_SWITCHED_PATH name = variable
    (
       apply
       | oal_metric
@@ -157,7 +177,8 @@ oa_stub
    STUB
    (
       oas_no_summaries
-   )
+      | oas_default_metric
+   )*
 ;
 
 oaa_override_metric
@@ -180,6 +201,11 @@ oai_disable
    DISABLE
 ;
 
+oai_enable
+:
+   ENABLE
+;
+
 oai_hello_interval
 :
    HELLO_INTERVAL DEC
@@ -187,12 +213,17 @@ oai_hello_interval
 
 oai_interface_type
 :
-   INTERFACE_TYPE P2P
+   INTERFACE_TYPE type = ospf_interface_type
 ;
 
 oai_ldp_synchronization
 :
    LDP_SYNCHRONIZATION
+   (
+       apply
+       | oai_ls_disable
+       | oai_ls_hold_time
+   )
 ;
 
 oai_link_protection
@@ -200,9 +231,24 @@ oai_link_protection
    LINK_PROTECTION
 ;
 
+oai_ls_disable
+:
+   DISABLE
+;
+
+oai_ls_hold_time
+:
+   HOLD_TIME time = DEC
+;
+
 oai_metric
 :
    METRIC DEC
+;
+
+oai_neighbor
+:
+   NEIGHBOR IP_ADDRESS ELIGIBLE?
 ;
 
 oai_null
@@ -244,7 +290,8 @@ oan_default_lsa
 :
    DEFAULT_LSA
    (
-      oand_default_metric
+      apply
+      | oand_default_metric
       | oand_metric_type
       | oand_type_7
    )
@@ -277,6 +324,21 @@ oand_type_7
 oas_no_summaries
 :
    NO_SUMMARIES
+;
+
+oas_default_metric
+:
+   DEFAULT_METRIC DEC
+;
+
+ospf_interface_type
+:
+   (
+      NBMA
+      | P2MP
+      | P2MP_OVER_LAN
+      | P2P
+   )
 ;
 
 ot_credibility_protocol_preference

@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import org.batfish.common.BatfishLogger;
 import org.batfish.datamodel.Ip;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -29,7 +28,7 @@ public class NetworkInterface implements AwsVpcEntity, Serializable {
 
   private final String _vpcId;
 
-  public NetworkInterface(JSONObject jObj, BatfishLogger logger) throws JSONException {
+  public NetworkInterface(JSONObject jObj) throws JSONException {
     _groups = new LinkedList<>();
     _ipAddressAssociations = new HashMap<>();
 
@@ -47,11 +46,11 @@ public class NetworkInterface implements AwsVpcEntity, Serializable {
     }
 
     JSONArray privateIpAddresses = jObj.getJSONArray(JSON_KEY_PRIVATE_IP_ADDRESSES);
-    initIpAddressAssociations(privateIpAddresses, logger);
+    initIpAddressAssociations(privateIpAddresses);
 
     if (jObj.has(JSON_KEY_ASSOCIATION)) {
       JSONObject assocJson = jObj.getJSONObject(JSON_KEY_ASSOCIATION);
-      _associationPublicIp = new Ip(assocJson.getString(JSON_KEY_PUBLIC_IP));
+      _associationPublicIp = Ip.parse(assocJson.getString(JSON_KEY_PUBLIC_IP));
     } else {
       _associationPublicIp = null;
     }
@@ -101,20 +100,19 @@ public class NetworkInterface implements AwsVpcEntity, Serializable {
     return _vpcId;
   }
 
-  private void initIpAddressAssociations(JSONArray associations, BatfishLogger logger)
-      throws JSONException {
+  private void initIpAddressAssociations(JSONArray associations) throws JSONException {
 
     for (int index = 0; index < associations.length(); index++) {
       JSONObject childObject = associations.getJSONObject(index);
 
-      Ip privateIpAddress = new Ip(childObject.getString(JSON_KEY_PRIVATE_IP_ADDRESS));
+      Ip privateIpAddress = Ip.parse(childObject.getString(JSON_KEY_PRIVATE_IP_ADDRESS));
 
       Ip publicIpAddress = null;
 
       if (childObject.has(JSON_KEY_ASSOCIATION)) {
         JSONObject assocJson = childObject.getJSONObject(JSON_KEY_ASSOCIATION);
 
-        publicIpAddress = new Ip(assocJson.getString(JSON_KEY_PUBLIC_IP));
+        publicIpAddress = Ip.parse(assocJson.getString(JSON_KEY_PUBLIC_IP));
       }
 
       _ipAddressAssociations.put(privateIpAddress, publicIpAddress);

@@ -1,20 +1,16 @@
 package org.batfish.common.plugin;
 
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import org.batfish.datamodel.AbstractRoute;
-import org.batfish.datamodel.BgpAdvertisement;
+import org.batfish.common.topology.TopologyContainer;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.DataPlane;
-import org.batfish.datamodel.Flow;
-import org.batfish.datamodel.FlowTrace;
 import org.batfish.datamodel.Topology;
 import org.batfish.datamodel.answers.DataPlaneAnswerElement;
-import org.batfish.datamodel.collections.IbgpTopology;
 
+/**
+ * Abstract class that defines the behavior expected for a Batfish plugin that implements data plane
+ * capabilities.
+ */
 public abstract class DataPlanePlugin extends BatfishPlugin implements IDataPlanePlugin {
 
   private static DataPlanePlugin DATA_PLANE_PLUGIN;
@@ -38,13 +34,20 @@ public abstract class DataPlanePlugin extends BatfishPlugin implements IDataPlan
     DATA_PLANE_PLUGIN_CLASS = dataPlanePlugin;
   }
 
+  /**
+   * Result of computing the dataplane. Combines a {@link DataPlane} and {@link TopologyContainer}
+   * with a {@link DataPlaneAnswerElement}
+   */
   public static final class ComputeDataPlaneResult {
     public final DataPlaneAnswerElement _answerElement;
     public final DataPlane _dataPlane;
+    public final TopologyContainer _topologies;
 
-    public ComputeDataPlaneResult(DataPlaneAnswerElement answerElement, DataPlane dataPlane) {
+    public ComputeDataPlaneResult(
+        DataPlaneAnswerElement answerElement, DataPlane dataPlane, TopologyContainer topologies) {
       _answerElement = answerElement;
       _dataPlane = dataPlane;
+      _topologies = topologies;
     }
   }
 
@@ -54,25 +57,22 @@ public abstract class DataPlanePlugin extends BatfishPlugin implements IDataPlan
     dataPlanePluginInitialize();
   }
 
+  public abstract ComputeDataPlaneResult computeDataPlane();
+
+  /** @deprecated in favor of {@link #computeDataPlane()} */
+  @Deprecated
   public abstract ComputeDataPlaneResult computeDataPlane(boolean differentialContext);
 
+  public abstract ComputeDataPlaneResult computeDataPlane(
+      Map<String, Configuration> configurations, Topology topology);
+
+  /** @deprecated in favor of {@link #computeDataPlane(Map, Topology)} */
+  @Deprecated
   public abstract ComputeDataPlaneResult computeDataPlane(
       boolean differentialContext, Map<String, Configuration> configurations, Topology topology);
 
   protected void dataPlanePluginInitialize() {}
 
-  public abstract Set<BgpAdvertisement> getAdvertisements();
-
-  public abstract List<Flow> getHistoryFlows(DataPlane dataPlane);
-
-  public abstract List<FlowTrace> getHistoryFlowTraces(DataPlane dataPlane);
-
-  public abstract IbgpTopology getIbgpNeighbors();
-
-  public abstract SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> getRoutes(
-      DataPlane dataPlane);
-
-  public abstract void processFlows(Set<Flow> flows, DataPlane dataPlane);
-
+  /** Return the name of this plugin */
   public abstract String getName();
 }

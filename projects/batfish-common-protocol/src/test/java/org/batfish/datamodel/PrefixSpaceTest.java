@@ -6,7 +6,6 @@ import static org.junit.Assert.assertThat;
 import com.google.common.collect.ImmutableSet;
 import java.util.BitSet;
 import java.util.Set;
-import java.util.TreeSet;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,7 +27,7 @@ public class PrefixSpaceTest {
     assertThat(
         PrefixSpace.getAddressBits(Ip.MAX), equalTo(BitSet.valueOf(new long[] {0xff_ff_ff_ffL})));
     assertThat(
-        PrefixSpace.getAddressBits(new Ip("128.255.31.3")),
+        PrefixSpace.getAddressBits(Ip.parse("128.255.31.3")),
         equalTo(BitSet.valueOf(new long[] {0xc0_f8_ff_01L})));
   }
 
@@ -39,7 +38,7 @@ public class PrefixSpaceTest {
 
   @Test
   public void constructPrefixSpaceTest() {
-    _ps = new PrefixSpace(ImmutableSet.of(PrefixRange.fromString("100.0.0.0/32")));
+    _ps = new PrefixSpace(PrefixRange.fromString("100.0.0.0/32"));
     assertThat(_ps.isEmpty(), equalTo(false));
     assertThat(_ps.containsPrefixRange(PrefixRange.fromString("100.0.0.0/32")), equalTo(true));
   }
@@ -54,10 +53,8 @@ public class PrefixSpaceTest {
 
   @Test
   public void addPrefixRangeTest() {
-    Set<PrefixRange> ranges = new TreeSet<>();
     PrefixRange range = PrefixRange.fromString("10.10.10.0/32:16-24");
-    ranges.add(range);
-    _ps = new PrefixSpace(ranges);
+    _ps = new PrefixSpace(range);
     assertThat(_ps.containsPrefixRange(range), equalTo(true));
     assertThat(
         "Shorter prefixes not included",
@@ -87,10 +84,8 @@ public class PrefixSpaceTest {
 
   @Test
   public void addSpaceTest() {
-    Set<PrefixRange> ranges = new TreeSet<>();
     PrefixRange range = PrefixRange.fromString("100.0.0.0/32");
-    ranges.add(range);
-    _ps.addSpace(new PrefixSpace(ranges));
+    _ps.addSpace(new PrefixSpace(range));
     assertThat(_ps.isEmpty(), equalTo(false));
     assertThat(_ps.containsPrefixRange(range), equalTo(true));
   }
@@ -190,5 +185,37 @@ public class PrefixSpaceTest {
         equalTo(true));
     assertThat("don't intersect anywhere else", intersection.getPrefixRanges().size(), equalTo(3));
     assertThat("has overlap", _ps.overlaps(other), equalTo(true));
+  }
+
+  @Test
+  public void testPruning() {
+    PrefixRange ten8to15 = PrefixRange.fromString("10.0.0.0/8:8-15");
+    PrefixRange ten8to16 = PrefixRange.fromString("10.0.0.0/8:8-16");
+    PrefixRange ten9to17 = PrefixRange.fromString("10.0.0.0/8:9-17");
+    PrefixRange one9to9 = PrefixRange.fromString("1.0.0.0/8:9-9");
+    PrefixRange eleven9to9 = PrefixRange.fromString("11.0.0.0/8:9-9");
+    PrefixRange all = PrefixRange.fromString("0.0.0.0/0:0-32");
+
+    PrefixSpace space = new PrefixSpace();
+    space.addPrefixRange(ten8to15);
+    assertThat(space.getPrefixRanges(), equalTo(ImmutableSet.of(ten8to15)));
+
+    space.addPrefixRange(ten8to16);
+    assertThat(space.getPrefixRanges(), equalTo(ImmutableSet.of(ten8to16)));
+    space.addPrefixRange(ten8to16);
+    assertThat(space.getPrefixRanges(), equalTo(ImmutableSet.of(ten8to16)));
+
+    space.addPrefixRange(ten9to17);
+    assertThat(space.getPrefixRanges(), equalTo(ImmutableSet.of(ten8to16, ten9to17)));
+
+    space.addPrefixRange(one9to9);
+    assertThat(space.getPrefixRanges(), equalTo(ImmutableSet.of(one9to9, ten8to16, ten9to17)));
+
+    space.addPrefixRange(eleven9to9);
+    assertThat(
+        space.getPrefixRanges(), equalTo(ImmutableSet.of(one9to9, ten8to16, ten9to17, eleven9to9)));
+
+    space.addPrefixRange(all);
+    assertThat(space.getPrefixRanges(), equalTo(ImmutableSet.of(all)));
   }
 }

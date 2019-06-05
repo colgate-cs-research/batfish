@@ -1,23 +1,24 @@
 package org.batfish.datamodel.routing_policy.expr;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nullable;
 import org.batfish.datamodel.OriginType;
 import org.batfish.datamodel.routing_policy.Environment;
 
 public class LiteralOrigin extends OriginExpr {
+  private static final String PROP_ORIGIN_TYPE = "originType";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private Integer _asNum;
+  @Nullable private Long _asNum;
 
   private OriginType _originType;
 
   @JsonCreator
   private LiteralOrigin() {}
 
-  public LiteralOrigin(OriginType originType, @Nullable Integer asNum) {
+  public LiteralOrigin(OriginType originType, @Nullable Long asNum) {
     _asNum = asNum;
     _originType = originType;
   }
@@ -52,10 +53,12 @@ public class LiteralOrigin extends OriginExpr {
     return _originType;
   }
 
-  public Integer getAsNum() {
+  @Nullable
+  public Long getAsNum() {
     return _asNum;
   }
 
+  @JsonProperty(PROP_ORIGIN_TYPE)
   public OriginType getOriginType() {
     return _originType;
   }
@@ -69,10 +72,11 @@ public class LiteralOrigin extends OriginExpr {
     return result;
   }
 
-  public void setAsNum(Integer asNum) {
+  public void setAsNum(@Nullable Long asNum) {
     _asNum = asNum;
   }
 
+  @JsonProperty(PROP_ORIGIN_TYPE)
   public void setOriginType(OriginType originType) {
     _originType = originType;
   }

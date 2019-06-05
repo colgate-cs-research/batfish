@@ -18,6 +18,7 @@ aaa_accounting
       | aaa_accounting_delay_start
       | aaa_accounting_exec_line
       | aaa_accounting_exec_stanza
+      | aaa_accounting_identity
       | aaa_accounting_nested
       | aaa_accounting_network_line
       | aaa_accounting_network_stanza
@@ -74,7 +75,7 @@ aaa_accounting_connection_stanza
       (
          ACTION_TYPE
          | GROUP
-      ) ~NEWLINE* NEWLINE
+      ) null_rest_of_line
    )+
 ;
 
@@ -128,8 +129,17 @@ aaa_accounting_exec_stanza
       (
          ACTION_TYPE
          | GROUP
-      ) ~NEWLINE* NEWLINE
+      ) null_rest_of_line
    )+
+;
+
+aaa_accounting_identity
+:
+   IDENTITY
+   (
+      DEFAULT
+      | list = variable
+   ) aaa_accounting_method NEWLINE
 ;
 
 aaa_accounting_method
@@ -202,7 +212,7 @@ aaa_accounting_network_stanza
       (
          ACTION_TYPE
          | GROUP
-      ) ~NEWLINE* NEWLINE
+      ) null_rest_of_line
    )+
 ;
 
@@ -275,23 +285,20 @@ aaa_authentication
 :
    AUTHENTICATION
    (
-      aaa_authentication_banner
+      aaa_authentication_asa
+      | aaa_authentication_banner
       | aaa_authentication_captive_portal
       | aaa_authentication_dot1x
       | aaa_authentication_enable
-      | aaa_authentication_http
       | aaa_authentication_include
       | aaa_authentication_login
       | aaa_authentication_mac
       | aaa_authentication_mgmt
       | aaa_authentication_policy
       | aaa_authentication_ppp
-      | aaa_authentication_serial
-      | aaa_authentication_ssh
       | aaa_authentication_stateful_dot1x
       | aaa_authentication_stateful_kerberos
       | aaa_authentication_stateful_ntlm
-      | aaa_authentication_telnet
       | aaa_authentication_username_prompt
       | aaa_authentication_vpn
       | aaa_authentication_wired
@@ -299,9 +306,26 @@ aaa_authentication
    )
 ;
 
+aaa_authentication_asa
+:
+   (
+      linetype=HTTP
+      | linetype=SERIAL
+      | linetype=SSH
+      | linetype=TELNET
+   ) aaa_authentication_asa_console
+;
+
 aaa_authentication_asa_console
 :
-   CONSOLE group = variable? TACACS_PLUS_ASA? LOCAL_ASA? NEWLINE
+   CONSOLE
+   (
+      LOCAL_ASA
+      |
+      (
+         group = variable LOCAL_ASA?
+      )
+   ) NEWLINE
 ;
 
 aaa_authentication_banner
@@ -311,7 +335,7 @@ aaa_authentication_banner
 
 aaa_authentication_captive_portal
 :
-   CAPTIVE_PORTAL ~NEWLINE* NEWLINE
+   CAPTIVE_PORTAL null_rest_of_line
    (
       aaa_authentication_captive_portal_null
    )*
@@ -332,7 +356,7 @@ aaa_authentication_captive_portal_null
       | SERVER_GROUP
       | WELCOME_PAGE
       | WHITE_LIST
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_authentication_dot1x
@@ -365,7 +389,7 @@ aaa_authentication_dot1x_null
       | TERMINATION
       | TIMER
       | WPA_FAST_HANDOVER
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_authentication_enable
@@ -378,11 +402,6 @@ aaa_authentication_enable
       ) NEWLINE
       | aaa_authentication_asa_console
    )
-;
-
-aaa_authentication_http
-:
-   HTTP aaa_authentication_asa_console
 ;
 
 aaa_authentication_include
@@ -399,22 +418,14 @@ aaa_authentication_include
 aaa_authentication_list_method
 :
    (
-      aaa_authentication_list_method_enable
+      aaa_authentication_list_method_ios
       | aaa_authentication_list_method_fallback
       | aaa_authentication_list_method_group
       | aaa_authentication_list_method_if_needed
-      | aaa_authentication_list_method_line
-      | aaa_authentication_list_method_local
-      | aaa_authentication_list_method_none
       | aaa_authentication_list_method_radius
       | aaa_authentication_list_method_tacacs_local
       | aaa_authentication_list_method_tacacs_plus
    )
-;
-
-aaa_authentication_list_method_enable
-:
-   ENABLE
 ;
 
 aaa_authentication_list_method_fallback
@@ -424,11 +435,36 @@ aaa_authentication_list_method_fallback
 
 aaa_authentication_list_method_group
 :
-   GROUP groups += ~NEWLINE
+   GROUP aaa_authentication_list_method_group_ios
    (
-      groups += ~( NEWLINE | ENABLE | FALLBACK | GROUP | IF_NEEDED | LINE |
-      LOCAL | NONE | TACACS_PLUS )
+      groups += aaa_authentication_list_method_group_additional
    )*
+;
+
+aaa_authentication_list_method_group_ios
+:
+   RADIUS
+   | TACACS_PLUS
+   | groupName = variable
+;
+
+aaa_authentication_list_method_group_additional
+:
+   ~(
+      NEWLINE
+      | CACHE
+      | ENABLE
+      | FALLBACK
+      | GROUP
+      | IF_NEEDED
+      | KRB5
+      | KRB5_TELNET
+      | LINE
+      | LOCAL
+      | LOCAL_CASE
+      | NONE
+      | TACACS_PLUS
+   )
 ;
 
 aaa_authentication_list_method_if_needed
@@ -436,19 +472,15 @@ aaa_authentication_list_method_if_needed
    IF_NEEDED
 ;
 
-aaa_authentication_list_method_line
+aaa_authentication_list_method_ios
 :
-   LINE
-;
-
-aaa_authentication_list_method_local
-:
-   LOCAL
-;
-
-aaa_authentication_list_method_none
-:
-   NONE
+   ENABLE
+   | KRB5
+   | KRB5_TELNET
+   | LINE
+   | LOCAL
+   | LOCAL_CASE
+   | NONE
 ;
 
 aaa_authentication_list_method_radius
@@ -541,7 +573,7 @@ aaa_authentication_mac_null
       | MAX_AUTHENTICATION_FAILURES
       | REAUTHENTICATION
       | TIMER
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_authentication_mgmt
@@ -558,7 +590,7 @@ aaa_authentication_mgmt_null
    (
       ENABLE
       | SERVER_GROUP
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_authentication_policy
@@ -578,11 +610,6 @@ aaa_authentication_ppp
       DEFAULT
       | list = variable
    ) aaa_authentication_list_method+ NEWLINE
-;
-
-aaa_authentication_serial
-:
-   SERIAL aaa_authentication_asa_console
 ;
 
 aaa_authentication_server
@@ -607,7 +634,7 @@ aaa_authentication_server_radius_null
    NO?
    (
       HOST
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_authentication_server_tacacs
@@ -624,12 +651,7 @@ aaa_authentication_server_tacacs_null
    (
       HOST
       | SESSION_AUTHORIZATION
-   ) ~NEWLINE* NEWLINE
-;
-
-aaa_authentication_ssh
-:
-   SSH aaa_authentication_asa_console
+   ) null_rest_of_line
 ;
 
 aaa_authentication_stateful_dot1x
@@ -645,11 +667,6 @@ aaa_authentication_stateful_kerberos
 aaa_authentication_stateful_ntlm
 :
    STATEFUL_NTLM double_quoted_string NEWLINE
-;
-
-aaa_authentication_telnet
-:
-   TELNET aaa_authentication_asa_console
 ;
 
 aaa_authentication_username_prompt
@@ -676,7 +693,8 @@ aaa_authorization
 :
    AUTHORIZATION
    (
-      aaa_authorization_commands
+      aaa_authorization_auth_proxy
+      | aaa_authorization_commands
       | aaa_authorization_config_commands
       | aaa_authorization_console
       | aaa_authorization_exec
@@ -686,6 +704,15 @@ aaa_authorization
       | aaa_authorization_ssh_certificate
       | aaa_authorization_ssh_publickey
    )
+;
+
+aaa_authorization_auth_proxy
+:
+   AUTH_PROXY
+   (
+      DEFAULT
+      | list = variable
+   ) aaa_authorization_method
 ;
 
 aaa_authorization_commands
@@ -781,17 +808,17 @@ aaa_authorization_ssh_publickey
 
 aaa_bandwidth_contract
 :
-   BANDWIDTH_CONTRACT name = variable ~NEWLINE* NEWLINE
+   BANDWIDTH_CONTRACT name = variable null_rest_of_line
 ;
 
 aaa_default_taskgroup
 :
-   DEFAULT_TASKGROUP ~NEWLINE* NEWLINE
+   DEFAULT_TASKGROUP null_rest_of_line
 ;
 
 aaa_derivation_rules
 :
-   DERIVATION_RULES ~NEWLINE* NEWLINE
+   DERIVATION_RULES null_rest_of_line
    (
       aaa_derivation_rules_null
    )*
@@ -802,7 +829,7 @@ aaa_derivation_rules_null
    NO?
    (
       SET
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_group
@@ -852,7 +879,7 @@ aaa_group_server
    (
       IP_ADDRESS
       | IPV6_ADDRESS
-      | name = variable
+      | NAME? name = variable
    )
    (
       (
@@ -879,11 +906,19 @@ aaa_group_server_private
    )
    (
       (
+         ACCT_PORT acct_port = DEC
+      )
+      |
+      (
+         AUTH_PORT auth_port = DEC
+      )
+      |
+      (
          KEY DEC variable_secret
       )
       |
       (
-         PORT DEC
+        PORT prt= DEC
       )
       |
       (
@@ -924,7 +959,7 @@ aaa_new_model
 
 aaa_password_policy
 :
-   PASSWORD_POLICY ~NEWLINE* NEWLINE
+   PASSWORD_POLICY null_rest_of_line
 ;
 
 aaa_profile
@@ -951,12 +986,60 @@ aaa_profile_null
       | RADIUS_INTERIM_ACCOUNTING
       | RFC_3576_SERVER
       | WIRED_TO_WIRELESS_ROAM
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_rfc_3576_server
 :
    RFC_3576_SERVER double_quoted_string NEWLINE
+;
+
+aaa_server
+:
+   SERVER RADIUS DYNAMIC_AUTHOR NEWLINE
+   (
+      aaa_server_auth_type
+      | aaa_server_client
+      | aaa_server_ignore
+      | aaa_server_port
+   )*
+;
+
+aaa_server_auth_type
+:
+   AUTH_TYPE
+   (
+      ANY
+      | ALL
+      | SESSION_KEY
+   ) NEWLINE
+;
+
+aaa_server_client
+:
+   CLIENT
+   (
+      IP_ADDRESS
+      | name = variable
+   )
+   SERVER_KEY
+   DEC?
+   variable
+   NEWLINE
+;
+
+aaa_server_ignore
+:
+   IGNORE
+   (
+      SERVER_KEY
+      | SESSION_KEY
+   ) NEWLINE
+;
+
+aaa_server_port
+:
+   PORT port_num = DEC NEWLINE
 ;
 
 aaa_server_group
@@ -975,7 +1058,7 @@ aaa_server_group_null
       | AUTH_SERVER
       | LOAD_BALANCE
       | SET
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 aaa_session_id
@@ -1056,6 +1139,7 @@ s_aaa
       | aaa_password_policy
       | aaa_profile
       | aaa_rfc_3576_server
+      | aaa_server
       | aaa_server_group
       | aaa_session_id
       | aaa_user

@@ -1,40 +1,33 @@
 package org.batfish.representation.host;
 
+import static org.batfish.datamodel.transformation.Transformation.always;
+import static org.batfish.datamodel.transformation.TransformationStep.assignSourceIp;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedSet;
-import com.google.common.collect.Iterables;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
+import javax.annotation.Nullable;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.SourceNat;
 import org.batfish.datamodel.Vrf;
 
 public class HostInterface implements Serializable {
 
   private static final String PROP_BANDWIDTH = "bandwidth";
-
+  private static final String PROP_ENCAPSULATION_VLAN = "encapsulationVlan";
   private static final String PROP_GATEWAY = "gateway";
-
   private static final String PROP_NAME = "name";
-
   private static final String PROP_OTHER_PREFIXES = "otherPrefixes";
-
   private static final String PROP_PREFIX = "prefix";
-
   private static final String PROP_SHARED = "shared";
-
   private static final String PROP_VRF = "vrf";
-
-  /** */
   private static final long serialVersionUID = 1L;
 
   private Double _bandwidth = 1000 * 1000 * 1000.0; // default is 1 Gbps
@@ -48,6 +41,8 @@ public class HostInterface implements Serializable {
   private Set<InterfaceAddress> _otherAddresses;
 
   private InterfaceAddress _address;
+
+  private @Nullable Integer _encapsulationVlan;
 
   private boolean _shared;
 
@@ -72,6 +67,11 @@ public class HostInterface implements Serializable {
   @JsonIgnore
   public String getCanonicalName() {
     return _canonicalName;
+  }
+
+  @JsonProperty(PROP_ENCAPSULATION_VLAN)
+  public @Nullable Integer getEncapsulationVlan() {
+    return _encapsulationVlan;
   }
 
   @JsonProperty(PROP_GATEWAY)
@@ -109,6 +109,11 @@ public class HostInterface implements Serializable {
     _canonicalName = canonicalName;
   }
 
+  @JsonProperty(PROP_ENCAPSULATION_VLAN)
+  public void setEncapsulationVlan(@Nullable Integer encapsulationVlan) {
+    _encapsulationVlan = encapsulationVlan;
+  }
+
   @JsonProperty(PROP_GATEWAY)
   public void setGateway(Ip gateway) {
     _gateway = gateway;
@@ -135,19 +140,21 @@ public class HostInterface implements Serializable {
   }
 
   public Interface toInterface(Configuration configuration, Warnings warnings) {
-    Interface iface = new Interface(_canonicalName, configuration);
-    iface.setBandwidth(_bandwidth);
-    iface.setDeclaredNames(ImmutableSortedSet.of(_name));
-    iface.setAddress(_address);
-    iface.setAllAddresses(Iterables.concat(Collections.singleton(_address), _otherAddresses));
-    iface.setVrf(configuration.getDefaultVrf());
+    String name = _canonicalName != null ? _canonicalName : _name;
+    Interface.Builder iface =
+        Interface.builder()
+            .setName(name)
+            .setOwner(configuration)
+            .setAddresses(_address, _otherAddresses)
+            .setBandwidth(_bandwidth)
+            .setDeclaredNames(ImmutableSortedSet.of(_name))
+            .setEncapsulationVlan(_encapsulationVlan)
+            .setProxyArp(false)
+            .setVrf(configuration.getDefaultVrf());
     if (_shared) {
-      SourceNat sourceNat = new SourceNat();
-      iface.setSourceNats(ImmutableList.of(sourceNat));
       Ip publicIp = _address.getIp();
-      sourceNat.setPoolIpFirst(publicIp);
-      sourceNat.setPoolIpLast(publicIp);
+      iface.setOutgoingTransformation(always().apply(assignSourceIp(publicIp, publicIp)).build());
     }
-    return iface;
+    return iface.build();
   }
 }

@@ -17,7 +17,7 @@ public class IpsecTunnel implements Serializable {
     return getText((Element) element.getElementsByTagName(outerTag).item(0), innerTag);
   }
 
-  private int _cgwBgpAsn = -1;
+  private long _cgwBgpAsn = -1L;
 
   private Ip _cgwInsideAddress;
 
@@ -49,7 +49,7 @@ public class IpsecTunnel implements Serializable {
 
   private String _ipsecProtocol;
 
-  private int _vgwBgpAsn = -1;
+  private long _vgwBgpAsn = -1L;
 
   private Ip _vgwInsideAddress;
 
@@ -73,14 +73,14 @@ public class IpsecTunnel implements Serializable {
         (Element) ipsecTunnel.getElementsByTagName(AwsVpcEntity.XML_KEY_CUSTOMER_GATEWAY).item(0);
 
     _cgwOutsideAddress =
-        new Ip(
+        Ip.parse(
             getText(
                 cgwElement,
                 AwsVpcEntity.XML_KEY_TUNNEL_OUTSIDE_ADDRESS,
                 AwsVpcEntity.XML_KEY_IP_ADDRESS));
 
     _cgwInsideAddress =
-        new Ip(
+        Ip.parse(
             getText(
                 cgwElement,
                 AwsVpcEntity.XML_KEY_TUNNEL_INSIDE_ADDRESS,
@@ -103,14 +103,14 @@ public class IpsecTunnel implements Serializable {
         (Element) ipsecTunnel.getElementsByTagName(AwsVpcEntity.XML_KEY_VPN_GATEWAY).item(0);
 
     _vgwOutsideAddress =
-        new Ip(
+        Ip.parse(
             getText(
                 vgwElement,
                 AwsVpcEntity.XML_KEY_TUNNEL_OUTSIDE_ADDRESS,
                 AwsVpcEntity.XML_KEY_IP_ADDRESS));
 
     _vgwInsideAddress =
-        new Ip(
+        Ip.parse(
             getText(
                 vgwElement,
                 AwsVpcEntity.XML_KEY_TUNNEL_INSIDE_ADDRESS,
@@ -153,7 +153,7 @@ public class IpsecTunnel implements Serializable {
     _ipsecMode = getText(ipsecElement, AwsVpcEntity.XML_KEY_MODE);
   }
 
-  public int getCgwBgpAsn() {
+  public long getCgwBgpAsn() {
     return _cgwBgpAsn;
   }
 
@@ -217,7 +217,7 @@ public class IpsecTunnel implements Serializable {
     return _ipsecProtocol;
   }
 
-  public int getVgwBgpAsn() {
+  public long getVgwBgpAsn() {
     return _vgwBgpAsn;
   }
 

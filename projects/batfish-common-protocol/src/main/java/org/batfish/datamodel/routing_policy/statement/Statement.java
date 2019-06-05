@@ -15,7 +15,7 @@ import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "class")
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = AddCommunity.class),
   @JsonSubTypes.Type(value = BufferedStatement.class),
@@ -38,10 +38,8 @@ import org.batfish.datamodel.routing_policy.RoutingPolicy;
   @JsonSubTypes.Type(value = SetWeight.class)
 })
 public abstract class Statement implements Serializable {
-
   private static final String PROP_COMMENT = "comment";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _comment;

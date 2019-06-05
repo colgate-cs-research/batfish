@@ -1,187 +1,112 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.io.Serializable;
-import java.util.Map;
 import javax.annotation.Nonnull;
-import org.batfish.common.BatfishException;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "class")
-public abstract class AbstractRoute implements Serializable, Comparable<AbstractRoute> {
-
-  protected static final String PROP_ADMINISTRATIVE_COST = "administrativeCost";
-
-  protected static final String PROP_METRIC = "metric";
-
-  protected static final String PROP_NETWORK = "network";
-
-  protected static final String PROP_NEXT_HOP_INTERFACE = "nextHopInterface";
-
-  protected static final String PROP_NEXT_HOP_IP = "nextHopIp";
-
-  private static final String PROP_NEXT_HOP = "nextHop";
-
-  public static final int NO_TAG = -1;
-
-  private static final String PROP_NODE = "node";
-
-  protected static final String PROP_PROTOCOL = "protocol";
+/**
+ * A base class for all types of routes supported in the dataplane computation, making this the most
+ * general route type available. "Main" non-protocol-specific RIBs store and reason about this type
+ * of route.
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
+@ParametersAreNonnullByDefault
+public abstract class AbstractRoute implements AbstractRouteDecorator, Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  protected static final String PROP_TAG = "tag";
+  /** Indicates a route has no tag associated with it */
+  public static final int NO_TAG = -1;
 
-  private static final String PROP_VRF = "vrf";
+  static final String PROP_ADMINISTRATIVE_COST = "administrativeCost";
+  public static final String PROP_METRIC = "metric";
+  static final String PROP_NETWORK = "network";
+  static final String PROP_NEXT_HOP_INTERFACE = "nextHopInterface";
+  static final String PROP_NEXT_HOP_IP = "nextHopIp";
+  static final String PROP_NON_ROUTING = "nonRouting";
+  static final String PROP_NON_FORWARDING = "nonForwarding";
+  static final String PROP_PROTOCOL = "protocol";
+  static final String PROP_TAG = "tag";
 
-  protected final Prefix _network;
-
-  private String _nextHop;
-
-  private String _node;
-
-  private boolean _nonRouting;
-
-  private String _vrf;
+  @Nonnull protected final Prefix _network;
+  protected final int _admin;
+  private final boolean _nonRouting;
+  private final boolean _nonForwarding;
 
   @JsonCreator
-  public AbstractRoute(@JsonProperty(PROP_NETWORK) Prefix network) {
-    if (network == null) {
-      throw new BatfishException("Cannot construct AbstractRoute with null network");
-    }
+  protected AbstractRoute(
+      @Nullable Prefix network, int admin, boolean nonRouting, boolean nonForwarding) {
+    checkArgument(network != null, "Cannot create a route without a %s", PROP_NETWORK);
+    checkArgument(admin >= 0, "Invalid admin distance for a route: %d", admin);
     _network = network;
+    _admin = admin;
+    _nonForwarding = nonForwarding;
+    _nonRouting = nonRouting;
   }
 
-  @Override
-  public final int compareTo(AbstractRoute rhs) {
-    int ret;
-    ret = _network.compareTo(rhs._network);
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(getAdministrativeCost(), rhs.getAdministrativeCost());
-    if (ret != 0) {
-      return ret;
-    }
-    Long lhsMetric = getMetric();
-    Long rhsMetric = rhs.getMetric();
-    if (lhsMetric == null) {
-      if (rhsMetric != null) {
-        ret = -1;
-      } else {
-        ret = 0;
-      }
-    } else if (rhsMetric == null) {
-      ret = 1;
-    } else {
-      ret = Long.compare(lhsMetric, rhsMetric);
-    }
-    if (ret != 0) {
-      return ret;
-    }
-    ret = routeCompare(rhs);
-    if (ret != 0) {
-      return ret;
-    }
-    Ip lhsNextHopIp = getNextHopIp();
-    Ip rhsNextHopIp = rhs.getNextHopIp();
-    if (Route.UNSET_ROUTE_NEXT_HOP_IP.equals(lhsNextHopIp)) {
-      if (!Route.UNSET_ROUTE_NEXT_HOP_IP.equals(rhsNextHopIp)) {
-        ret = -1;
-      } else {
-        ret = 0;
-      }
-    } else if (Route.UNSET_ROUTE_NEXT_HOP_IP.equals(rhsNextHopIp)) {
-      ret = 1;
-    } else {
-      ret = lhsNextHopIp.compareTo(rhsNextHopIp);
-    }
-    if (ret != 0) {
-      return ret;
-    }
-    String nextHopInterface = getNextHopInterface();
-    String rhsNextHopInterface = rhs.getNextHopInterface();
-    if (Route.UNSET_NEXT_HOP_INTERFACE.equals(nextHopInterface)) {
-      if (!Route.UNSET_NEXT_HOP_INTERFACE.equals(rhsNextHopInterface)) {
-        ret = -1;
-      } else {
-        ret = 0;
-      }
-    } else {
-      ret = nextHopInterface.compareTo(rhsNextHopInterface);
-    }
-    if (ret != 0) {
-      return ret;
-    }
-    ret = Integer.compare(getTag(), rhs.getTag());
-    return ret;
+  /** Backwards compatible API */
+  protected AbstractRoute(@Nonnull Prefix network) {
+    this(network, 1, false, false);
   }
 
   @Override
   public abstract boolean equals(Object o);
 
-  public final String fullString() {
-    String nhnode = _nextHop;
-    Ip nextHopIp = getNextHopIp();
-    String nhip;
-    String tag;
-    int tagInt = getTag();
-    if (tagInt == Route.UNSET_ROUTE_TAG) {
-      tag = "none";
-    } else {
-      tag = Integer.toString(tagInt);
-    }
-    String nhint = getNextHopInterface();
-    if (!nhint.equals(Route.UNSET_NEXT_HOP_INTERFACE)
-        && nextHopIp.equals(Route.UNSET_ROUTE_NEXT_HOP_IP)) {
-      // static interface with no next hop ip
-      nhnode = "N/A";
-    }
-    nhip = !Route.UNSET_ROUTE_NEXT_HOP_IP.equals(nextHopIp) ? nextHopIp.toString() : "N/A";
-    String net = getNetwork().toString();
-    String admin = Integer.toString(getAdministrativeCost());
-    String cost = Long.toString(getMetric());
-    String prot = getProtocol().protocolName();
-    String routeStr =
-        String.format(
-            "%s vrf:%s net:%s nhip:%s nhint:%s nhnode:%s admin:%s cost:%s tag:%s prot:%s %s",
-            _node, _vrf, net, nhip, nhint, nhnode, admin, cost, tag, prot, protocolRouteString());
-    return routeStr;
-  }
+  @Override
+  public abstract int hashCode();
 
   @JsonIgnore
-  public abstract int getAdministrativeCost();
+  @Override
+  public AbstractRoute getAbstractRoute() {
+    return this;
+  }
+
+  public final int getAdministrativeCost() {
+    return _admin;
+  }
 
   @JsonIgnore
   public abstract Long getMetric();
 
+  /** IPV4 network of this route */
   @JsonProperty(PROP_NETWORK)
-  @JsonPropertyDescription("IPV4 network of this route")
+  @Override
+  @Nonnull
   public final Prefix getNetwork() {
     return _network;
   }
 
-  @JsonProperty(PROP_NEXT_HOP)
-  public String getNextHop() {
-    return _nextHop;
-  }
-
+  /**
+   * Name of the next-hop interface for this route. If not known, {@link
+   * Route#UNSET_NEXT_HOP_INTERFACE} must be returned.
+   */
   @JsonIgnore
-  @Nonnull
   public abstract String getNextHopInterface();
 
-  @Nonnull
+  /**
+   * Next hop IP for this route. If not known, {@link Route#UNSET_ROUTE_NEXT_HOP_IP} must be
+   * returned.
+   */
   @JsonIgnore
   public abstract Ip getNextHopIp();
 
-  @JsonProperty(PROP_NODE)
-  public String getNode() {
-    return _node;
+  /**
+   * Returns {@code true} if this route is non-forwarding, i.e., it can be installed in the main RIB
+   * but not the FIB.
+   */
+  @JsonIgnore
+  public final boolean getNonForwarding() {
+    return _nonForwarding;
   }
 
+  /** Check if this route is "non-routing", i.e., should not be installed in the main RIB. */
   @JsonIgnore
   public final boolean getNonRouting() {
     return _nonRouting;
@@ -190,40 +115,9 @@ public abstract class AbstractRoute implements Serializable, Comparable<Abstract
   @JsonIgnore
   public abstract RoutingProtocol getProtocol();
 
+  /** Return the route's tag or {@link #NO_TAG} if no tag is present */
   @JsonIgnore
   public abstract int getTag();
-
-  @JsonProperty(PROP_VRF)
-  public String getVrf() {
-    return _vrf;
-  }
-
-  @Override
-  public abstract int hashCode();
-
-  protected abstract String protocolRouteString();
-
-  public abstract int routeCompare(AbstractRoute rhs);
-
-  @JsonProperty(PROP_NEXT_HOP)
-  public void setNextHop(String nextHop) {
-    _nextHop = nextHop;
-  }
-
-  @JsonProperty(PROP_NODE)
-  public void setNode(String node) {
-    _node = node;
-  }
-
-  @JsonIgnore
-  public final void setNonRouting(boolean nonRouting) {
-    _nonRouting = nonRouting;
-  }
-
-  @JsonProperty(PROP_VRF)
-  public void setVrf(String vrf) {
-    _vrf = vrf;
-  }
 
   @Override
   public String toString() {
@@ -237,34 +131,6 @@ public abstract class AbstractRoute implements Serializable, Comparable<Abstract
         + ">";
   }
 
-  public Route toSummaryRoute(String hostname, String vrfName, Map<Ip, String> ipOwners) {
-    RouteBuilder rb = new RouteBuilder();
-    rb.setNode(hostname);
-    rb.setNetwork(getNetwork());
-    Ip nextHopIp = getNextHopIp();
-    if (getProtocol() == RoutingProtocol.CONNECTED
-        || (getProtocol() == RoutingProtocol.STATIC
-            && nextHopIp.equals(Route.UNSET_ROUTE_NEXT_HOP_IP))
-        || Interface.NULL_INTERFACE_NAME.equals(getNextHopInterface())) {
-      rb.setNextHop(Configuration.NODE_NONE_NAME);
-    }
-    if (!nextHopIp.equals(Route.UNSET_ROUTE_NEXT_HOP_IP)) {
-      rb.setNextHopIp(nextHopIp);
-      String nextHop = ipOwners.get(nextHopIp);
-      if (nextHop != null) {
-        rb.setNextHop(nextHop);
-      }
-    }
-    String nextHopInterface = getNextHopInterface();
-    if (!nextHopInterface.equals(Route.UNSET_NEXT_HOP_INTERFACE)) {
-      rb.setNextHopInterface(nextHopInterface);
-    }
-    rb.setAdministrativeCost(getAdministrativeCost());
-    rb.setCost(getMetric());
-    rb.setProtocol(getProtocol());
-    rb.setTag(getTag());
-    rb.setVrf(vrfName);
-    Route outputRoute = rb.build();
-    return outputRoute;
-  }
+  /** Return a {@link AbstractRouteBuilder} pre-populated with the values for this route. */
+  public abstract AbstractRouteBuilder<?, ?> toBuilder();
 }

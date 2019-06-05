@@ -3,6 +3,8 @@ package org.batfish.coordinator;
 import static com.google.common.base.Preconditions.checkState;
 import static java.nio.file.FileVisitOption.FOLLOW_LINKS;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.uber.jaeger.Configuration;
 import com.uber.jaeger.Configuration.ReporterConfiguration;
@@ -21,15 +23,17 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.UriBuilder;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.util.BatfishObjectMapper;
+import org.batfish.common.util.BindPortFutures;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.coordinator.authorizer.Authorizer;
 import org.batfish.coordinator.authorizer.DbAuthorizer;
@@ -37,9 +41,12 @@ import org.batfish.coordinator.authorizer.FileAuthorizer;
 import org.batfish.coordinator.authorizer.NoneAuthorizer;
 import org.batfish.coordinator.config.ConfigurationLocator;
 import org.batfish.coordinator.config.Settings;
-import org.batfish.datamodel.questions.Question;
+import org.batfish.coordinator.id.FileBasedIdManager;
+import org.batfish.datamodel.questions.InstanceData;
+import org.batfish.storage.FileBasedStorage;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.jettison.JettisonFeature;
@@ -56,10 +63,9 @@ public class Main {
   private static @Nullable Settings _settings;
   private static @Nullable WorkMgr _workManager;
 
-  static Logger httpServerLogger =
-      Logger.getLogger(org.glassfish.grizzly.http.server.HttpServer.class.getName());
+  static Logger httpServerLogger = Logger.getLogger(HttpServer.class.getName());
   static Logger networkListenerLogger =
-      Logger.getLogger("org.glassfish.grizzly.http.server.NetworkListener");
+      Logger.getLogger(org.glassfish.grizzly.http.server.NetworkListener.class.getName());
 
   public static Authorizer getAuthorizer() {
     checkState(_authorizer != null, "Error: Authorizer has not been configured");
@@ -76,61 +82,81 @@ public class Main {
     return _poolManager;
   }
 
+  @Nullable
   public static Map<String, String> getQuestionTemplates() {
+    return getQuestionTemplates(false);
+  }
 
+  /**
+   * Returns content of question templates, keyed by name. If {@code verbose} is {@code true},
+   * includes hidden templates. Returns {@code null} if question templates not configured.
+   */
+  @Nullable
+  public static Map<String, String> getQuestionTemplates(boolean verbose) {
     List<Path> questionTemplateDir = _settings.getQuestionTemplateDirs();
-
-    if (questionTemplateDir == null || questionTemplateDir.size() == 0) {
+    if (questionTemplateDir == null || questionTemplateDir.isEmpty()) {
       return null;
     }
 
     Map<String, String> questionTemplates = new HashMap<>();
-    questionTemplateDir.forEach(
-        (dir) -> {
-          readQuestionTemplates(dir, questionTemplates);
-        });
-
+    questionTemplateDir.stream()
+        .filter(Objects::nonNull)
+        .filter(dir -> !dir.toString().isEmpty())
+        .forEach((dir) -> readQuestionTemplates(dir, questionTemplates));
+    if (!verbose) {
+      questionTemplates.keySet().removeIf(Main::isHiddenQuestionTemplate);
+    }
     return questionTemplates;
   }
 
-  private static String readQuestionTemplate(Path file, Map<String, String> templates) {
+  static boolean isHiddenQuestionTemplate(String name) {
+    return name.startsWith("__");
+  }
+
+  @VisibleForTesting
+  static String readQuestionTemplate(Path file, Map<String, String> templates)
+      throws JSONException, IOException {
     String questionText = CommonUtil.readFile(file);
-    try {
-      JSONObject questionObj = new JSONObject(questionText);
-      if (questionObj.has(BfConsts.PROP_INSTANCE) && !questionObj.isNull(BfConsts.PROP_INSTANCE)) {
-        JSONObject instanceDataObj = questionObj.getJSONObject(BfConsts.PROP_INSTANCE);
-        String instanceDataStr = instanceDataObj.toString();
-        BatfishObjectMapper mapper = new BatfishObjectMapper();
-        Question.InstanceData instanceData =
-            mapper.<Question.InstanceData>readValue(instanceDataStr, Question.InstanceData.class);
-        String name = instanceData.getInstanceName();
-
-        if (templates.containsKey(name)) {
-          throw new BatfishException("Duplicate template name " + name);
-        }
-
-        templates.put(name.toLowerCase(), questionText);
-        return name;
-      } else {
-        throw new BatfishException("Question in file: '" + file + "' has no instance name");
+    JSONObject questionObj = new JSONObject(questionText);
+    if (questionObj.has(BfConsts.PROP_INSTANCE) && !questionObj.isNull(BfConsts.PROP_INSTANCE)) {
+      JSONObject instanceDataObj = questionObj.getJSONObject(BfConsts.PROP_INSTANCE);
+      String instanceDataStr = instanceDataObj.toString();
+      InstanceData instanceData =
+          BatfishObjectMapper.mapper().readValue(instanceDataStr, InstanceData.class);
+      String name = instanceData.getInstanceName();
+      String key = name.toLowerCase();
+      if (templates.containsKey(key) && _logger != null) {
+        _logger.warnf(
+            "Found duplicate template having instance name %s, only the last one in the list of templatedirs will be loaded\n",
+            name);
       }
-    } catch (JSONException | IOException e) {
-      throw new BatfishException("Failed to process question", e);
+
+      templates.put(key, questionText);
+      return name;
+    } else {
+      throw new BatfishException(String.format("Question in file:%s has no instance name", file));
     }
   }
 
-  private static void readQuestionTemplates(Path questionsPath, Map<String, String> templates) {
+  @VisibleForTesting
+  static void readQuestionTemplates(Path questionsPath, Map<String, String> templates) {
     try {
       Files.walkFileTree(
           questionsPath,
           EnumSet.of(FOLLOW_LINKS),
-          1,
+          Integer.MAX_VALUE,
           new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               String filename = file.getFileName().toString();
               if (filename.endsWith(".json")) {
-                readQuestionTemplate(file, templates);
+                try {
+                  readQuestionTemplate(file, templates);
+                } catch (Exception e) {
+                  _logger.errorf(
+                      "Failed to read question template from '%s': %s",
+                      file, Throwables.getStackTraceAsString(e));
+                }
               }
               return FileVisitResult.CONTINUE;
             }
@@ -162,7 +188,7 @@ public class Main {
     _authorizer = authorizer;
   }
 
-  static void initAuthorizer() throws Exception {
+  static void initAuthorizer() {
     Settings settings = getSettings();
     Authorizer.Type type = settings.getAuthorizationType();
     switch (type) {
@@ -183,13 +209,13 @@ public class Main {
     getLogger().infof("Using authorizer %s\n", _authorizer);
   }
 
-  private static void initPoolManager() {
+  private static void initPoolManager(BindPortFutures bindPortFutures) {
     ResourceConfig rcPool =
         new ResourceConfig(PoolMgrService.class)
             .register(new JettisonFeature())
             .register(MultiPartFeature.class)
             .register(CrossDomainFilter.class);
-
+    HttpServer server;
     if (_settings.getSslPoolDisable()) {
       URI poolMgrUri =
           UriBuilder.fromUri("http://" + _settings.getPoolBindHost())
@@ -198,7 +224,7 @@ public class Main {
 
       _logger.infof("Starting pool manager at %s\n", poolMgrUri);
 
-      GrizzlyHttpServerFactory.createHttpServer(poolMgrUri, rcPool);
+      server = GrizzlyHttpServerFactory.createHttpServer(poolMgrUri, rcPool);
     } else {
       URI poolMgrUri =
           UriBuilder.fromUri("https://" + _settings.getPoolBindHost())
@@ -207,57 +233,83 @@ public class Main {
 
       _logger.infof("Starting pool manager at %s\n", poolMgrUri);
 
-      CommonUtil.startSslServer(
-          rcPool,
-          poolMgrUri,
-          _settings.getSslPoolKeystoreFile(),
-          _settings.getSslPoolKeystorePassword(),
-          _settings.getSslPoolTrustAllCerts(),
-          _settings.getSslPoolTruststoreFile(),
-          _settings.getSslPoolTruststorePassword(),
-          ConfigurationLocator.class,
-          Main.class);
+      server =
+          CommonUtil.startSslServer(
+              rcPool,
+              poolMgrUri,
+              _settings.getSslPoolKeystoreFile(),
+              _settings.getSslPoolKeystorePassword(),
+              _settings.getSslPoolTrustAllCerts(),
+              _settings.getSslPoolTruststoreFile(),
+              _settings.getSslPoolTruststorePassword(),
+              ConfigurationLocator.class,
+              Main.class);
     }
 
     _poolManager = new PoolMgr(_settings, _logger);
     _poolManager.startPoolManager();
+    int selectedListenPort = server.getListeners().iterator().next().getPort();
+    URI actualPoolMgrUri =
+        UriBuilder.fromUri("http://" + _settings.getPoolBindHost())
+            .port(selectedListenPort)
+            .build();
+    _logger.infof("Started pool manager at %s\n", actualPoolMgrUri);
+    if (!bindPortFutures.getPoolPort().isDone()) {
+      bindPortFutures.getPoolPort().complete(selectedListenPort);
+    }
   }
 
   private static void startWorkManagerService(
-      Class<?> serviceClass, List<Class<?>> features, int port) {
+      Class<?> serviceClass,
+      List<Class<?>> features,
+      int port,
+      CompletableFuture<Integer> portFuture) {
     ResourceConfig rcWork =
         new ResourceConfig(serviceClass)
             .register(ExceptionMapper.class)
             .register(CrossDomainFilter.class);
     if (_settings.getTracingEnable()) {
+      _logger.infof("Registering feature %s", ServerTracingDynamicFeature.class.getSimpleName());
       rcWork.register(ServerTracingDynamicFeature.class);
     }
     for (Class<?> feature : features) {
+      _logger.infof("Registering feature %s", feature.getSimpleName());
       rcWork.register(feature);
     }
 
+    HttpServer server;
     if (_settings.getSslWorkDisable()) {
       URI workMgrUri =
           UriBuilder.fromUri("http://" + _settings.getWorkBindHost()).port(port).build();
 
       _logger.infof("Starting work manager %s at %s\n", serviceClass, workMgrUri);
 
-      GrizzlyHttpServerFactory.createHttpServer(workMgrUri, rcWork);
+      server = GrizzlyHttpServerFactory.createHttpServer(workMgrUri, rcWork);
     } else {
       URI workMgrUri =
           UriBuilder.fromUri("https://" + _settings.getWorkBindHost()).port(port).build();
 
       _logger.infof("Starting work manager at %s\n", workMgrUri);
-      CommonUtil.startSslServer(
-          rcWork,
-          workMgrUri,
-          _settings.getSslWorkKeystoreFile(),
-          _settings.getSslWorkKeystorePassword(),
-          _settings.getSslWorkTrustAllCerts(),
-          _settings.getSslWorkTruststoreFile(),
-          _settings.getSslWorkTruststorePassword(),
-          ConfigurationLocator.class,
-          Main.class);
+      server =
+          CommonUtil.startSslServer(
+              rcWork,
+              workMgrUri,
+              _settings.getSslWorkKeystoreFile(),
+              _settings.getSslWorkKeystorePassword(),
+              _settings.getSslWorkTrustAllCerts(),
+              _settings.getSslWorkTruststoreFile(),
+              _settings.getSslWorkTruststorePassword(),
+              ConfigurationLocator.class,
+              Main.class);
+    }
+    int selectedListenPort = server.getListeners().iterator().next().getPort();
+    URI actualWorkMgrUri =
+        UriBuilder.fromUri("http://" + _settings.getWorkBindHost())
+            .port(selectedListenPort)
+            .build();
+    _logger.infof("Started work manager at %s\n", actualWorkMgrUri);
+    if (!portFuture.isDone()) {
+      portFuture.complete(selectedListenPort);
     }
   }
 
@@ -275,36 +327,59 @@ public class Main {
             .getTracer());
   }
 
-  private static void initWorkManager() {
-    _workManager = new WorkMgr(_settings, _logger);
+  private static void initWorkManager(BindPortFutures bindPortFutures) {
+    _workManager =
+        new WorkMgr(
+            _settings,
+            _logger,
+            new FileBasedIdManager(_settings.getContainersLocation()),
+            new FileBasedStorage(_settings.getContainersLocation(), _logger));
     _workManager.startWorkManager();
     // Initialize and start the work manager service using the legacy API and Jettison.
     startWorkManagerService(
         WorkMgrService.class,
         Lists.newArrayList(JettisonFeature.class, MultiPartFeature.class),
-        _settings.getServiceWorkPort());
+        _settings.getServiceWorkPort(),
+        bindPortFutures.getWorkPort());
     // Initialize and start the work manager service using the v2 RESTful API and Jackson.
 
     startWorkManagerService(
         WorkMgrServiceV2.class,
         Lists.newArrayList(
+            ServiceObjectMapper.class,
             JacksonFeature.class,
             ApiKeyAuthenticationFilter.class,
             VersionCompatibilityFilter.class),
-        _settings.getServiceWorkV2Port());
+        _settings.getServiceWorkV2Port(),
+        bindPortFutures.getWorkV2Port());
   }
 
   public static void main(String[] args) {
     mainInit(args);
     _logger =
         new BatfishLogger(_settings.getLogLevel(), false, _settings.getLogFile(), false, true);
-    mainRun();
+    mainRun(new BindPortFutures());
   }
 
-  public static void main(String[] args, BatfishLogger logger) {
+  public static void main(String[] args, BatfishLogger logger, BindPortFutures portFutures) {
     mainInit(args);
+
+    // Supply ports early if known before binding
+    int configuredPoolPort = _settings.getServicePoolPort();
+    if (configuredPoolPort > 0) {
+      portFutures.getPoolPort().complete(configuredPoolPort);
+    }
+    int configuredWorkPort = _settings.getServiceWorkPort();
+    if (configuredWorkPort > 0) {
+      portFutures.getWorkPort().complete(configuredWorkPort);
+    }
+    int configuredWorkV2Port = _settings.getServiceWorkV2Port();
+    if (configuredWorkV2Port > 0) {
+      portFutures.getWorkV2Port().complete(configuredWorkV2Port);
+    }
+
     _logger = logger;
-    mainRun();
+    mainRun(portFutures);
   }
 
   public static void mainInit(String[] args) {
@@ -315,23 +390,23 @@ public class Main {
       httpServerLogger.setLevel(Level.WARNING);
     } catch (Exception e) {
       System.err.print(
-          "org.batfish.coordinator: Initialization failed: " + ExceptionUtils.getStackTrace(e));
+          "org.batfish.coordinator: Initialization failed: " + Throwables.getStackTraceAsString(e));
       System.exit(1);
     }
   }
 
-  private static void mainRun() {
+  private static void mainRun(BindPortFutures portFutures) {
     try {
       initAuthorizer();
-      initPoolManager();
+      initPoolManager(portFutures);
       if (_settings.getTracingEnable() && !GlobalTracer.isRegistered()) {
         initTracer();
       }
-      initWorkManager();
+      initWorkManager(portFutures);
     } catch (Exception e) {
       System.err.println(
           "org.batfish.coordinator: Initialization of a helper failed: "
-              + ExceptionUtils.getStackTrace(e));
+              + Throwables.getStackTraceAsString(e));
       System.exit(1);
     }
 
@@ -342,7 +417,7 @@ public class Main {
         _logger.info("Still alive .... waiting for work to show up\n");
       }
     } catch (Exception ex) {
-      String stackTrace = ExceptionUtils.getStackTrace(ex);
+      String stackTrace = Throwables.getStackTraceAsString(ex);
       System.err.println(stackTrace);
     }
   }

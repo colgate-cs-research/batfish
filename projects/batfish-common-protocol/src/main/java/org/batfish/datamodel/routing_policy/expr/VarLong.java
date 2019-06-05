@@ -5,7 +5,6 @@ import org.batfish.datamodel.routing_policy.Environment;
 
 public class VarLong extends LongExpr {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _var;
@@ -42,7 +41,6 @@ public class VarLong extends LongExpr {
   @Override
   public long evaluate(Environment environment) {
     throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
   }
 
   public String getVar() {

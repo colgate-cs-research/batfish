@@ -8,7 +8,6 @@ import org.batfish.common.BaseSettings;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BfConsts;
 import org.batfish.common.CoordConsts;
-import org.batfish.common.util.CommonUtil;
 import org.batfish.coordinator.authorizer.Authorizer;
 import org.batfish.coordinator.queues.WorkQueue;
 import org.batfish.datamodel.Ip;
@@ -39,9 +38,9 @@ public class Settings extends BaseSettings {
   private static final String ARG_QUEUE_TYPE = "qtype";
 
   public static final String ARG_SERVICE_NAME = "servicename";
-  private static final String ARG_SERVICE_POOL_PORT = "poolport";
-  private static final String ARG_SERVICE_WORK_PORT = "workport";
-  private static final String ARG_SERVICE_WORK_V2_PORT = "workv2port";
+  public static final String ARG_SERVICE_POOL_PORT = "poolport";
+  public static final String ARG_SERVICE_WORK_PORT = "workport";
+  public static final String ARG_SERVICE_WORK_V2_PORT = "workv2port";
   private static final String ARG_SSL_POOL_DISABLE = "sslpooldisable";
 
   private static final String ARG_SSL_POOL_KEYSTORE_FILE = "sslpoolkeystorefile";
@@ -56,11 +55,6 @@ public class Settings extends BaseSettings {
   private static final String ARG_SSL_WORK_TRUST_ALL_CERTS = "sslworktrustallcerts";
   private static final String ARG_SSL_WORK_TRUSTSTORE_FILE = "sslworktruststorefile";
   private static final String ARG_SSL_WORK_TRUSTSTORE_PASSWORD = "sslworktruststorepassword";
-  /** Need when using Azure queues for storing work items */
-  private static final String ARG_STORAGE_ACCOUNT_KEY = "storageaccountkey";
-
-  private static final String ARG_STORAGE_ACCOUNT_NAME = "storageaccountname";
-  private static final String ARG_STORAGE_PROTOCOL = "storageprotocol";
 
   private static final String ARG_TRACING_AGENT_HOST = "tracingagenthost";
   private static final String ARG_TRACING_AGENT_PORT = "tracingagentport";
@@ -76,7 +70,6 @@ public class Settings extends BaseSettings {
   private Path _containersLocation;
   private String _dbAuthorizerConnString;
   private long _dbCacheExpiryMs;
-  private boolean _defaultKeyListings;
   private String _driverClass;
   private Path _fileAuthorizerPermsFile;
   private Path _fileAuthorizerRootDir;
@@ -117,7 +110,7 @@ public class Settings extends BaseSettings {
 
   public Settings(String[] args) {
     super(
-        CommonUtil.getConfig(
+        getConfig(
             BfConsts.PROP_COORDINATOR_PROPERTIES_PATH,
             BfConsts.ABSPATH_CONFIG_FILE_NAME_COORDINATOR,
             Settings.class));
@@ -141,10 +134,6 @@ public class Settings extends BaseSettings {
 
   public String getDbAuthorizerConnString() {
     return _dbAuthorizerConnString;
-  }
-
-  public boolean getDefaultKeyListings() {
-    return _defaultKeyListings;
   }
 
   public String getDriverClass() {
@@ -311,8 +300,8 @@ public class Settings extends BaseSettings {
     setDefaultProperty(ARG_HELP, false);
     setDefaultProperty(ARG_LOG_FILE, null);
     setDefaultProperty(ARG_LOG_LEVEL, BatfishLogger.getLogLevelStr(BatfishLogger.LEVEL_OUTPUT));
-    setDefaultProperty(ARG_PERIOD_ASSIGN_WORK_MS, 1000);
-    setDefaultProperty(ARG_PERIOD_CHECK_WORK_MS, 1000);
+    setDefaultProperty(ARG_PERIOD_ASSIGN_WORK_MS, 100);
+    setDefaultProperty(ARG_PERIOD_CHECK_WORK_MS, 100);
     setDefaultProperty(ARG_PERIOD_WORKER_STATUS_REFRESH_MS, 10000);
     setDefaultProperty(ARG_QUESTION_TEMPLATE_DIRS, Collections.emptyList());
     setDefaultProperty(ARG_QUEUE_COMPLETED_WORK, "batfishcompletedwork");
@@ -339,20 +328,10 @@ public class Settings extends BaseSettings {
     setDefaultProperty(ARG_TRACING_AGENT_HOST, "localhost");
     setDefaultProperty(ARG_TRACING_AGENT_PORT, 5775);
     setDefaultProperty(ARG_TRACING_ENABLE, false);
-    // setDefaultProperty(ARG_SSL_KEYSTORE_FILE, "selfsigned.jks");
-    // setDefaultProperty(ARG_SSL_KEYSTORE_PASSWORD, "batfish");
-    setDefaultProperty(
-        ARG_STORAGE_ACCOUNT_KEY,
-        "zRTT++dVryOWXJyAM7NM0TuQcu0Y23BgCQfkt7xh2f/Mm+r6c8/XtPTY0xxaF6tPSACJiuACsjotDeNIVyXM8Q==");
-    setDefaultProperty(ARG_STORAGE_ACCOUNT_NAME, "testdrive");
-    setDefaultProperty(ARG_STORAGE_PROTOCOL, "http");
   }
 
   private void initOptions() {
     addOption(ARG_AUTHORIZER_TYPE, "type of authorizer to use", "authorizer type");
-
-    addBooleanOption(
-        ARG_ALLOW_DEFAULT_KEY_LISTINGS, "allow default API key to list containers and testrigs");
 
     addOption(ARG_CONTAINERS_LOCATION, "where to store containers", "containers_location");
 
@@ -388,7 +367,7 @@ public class Settings extends BaseSettings {
     addListOption(
         ARG_QUESTION_TEMPLATE_DIRS, "paths to question template directories", ARGNAME_PATHS);
 
-    addOption(ARG_QUEUE_TYPE, "queue type to use {azure, memory}", "qtype");
+    addOption(ARG_QUEUE_TYPE, "queue type to use {memory}", "qtype");
 
     addOption(
         ARG_POOL_BIND_HOST,
@@ -407,6 +386,11 @@ public class Settings extends BaseSettings {
 
     addOption(
         ARG_SERVICE_WORK_PORT, "port for work management service", "port_number_work_service");
+
+    addOption(
+        ARG_SERVICE_WORK_V2_PORT,
+        "port for work management service v2",
+        "port_number_work_v2_service");
 
     addBooleanOption(ARG_SSL_POOL_DISABLE, "disable SSL on pool manager service");
 
@@ -438,7 +422,6 @@ public class Settings extends BaseSettings {
     _authorizerType = Authorizer.Type.valueOf(getStringOptionValue(ARG_AUTHORIZER_TYPE));
     _dbAuthorizerConnString = getStringOptionValue(ARG_DB_AUTHORIZER_CONN_STRING);
     _dbCacheExpiryMs = getLongOptionValue(ARG_DB_AUTHORIZER_CACHE_EXPIRY_MS);
-    _defaultKeyListings = getBooleanOptionValue(ARG_ALLOW_DEFAULT_KEY_LISTINGS);
     _driverClass = getStringOptionValue(ARG_DRIVER_CLASS);
     _fileAuthorizerRootDir = Paths.get(getStringOptionValue(ARG_FILE_AUTHORIZER_ROOT_DIR));
     _fileAuthorizerPermsFile = Paths.get(getStringOptionValue(ARG_FILE_AUTHORIZER_PERMS_FILE));
@@ -465,9 +448,6 @@ public class Settings extends BaseSettings {
     _sslWorkTrustAllCerts = getBooleanOptionValue(ARG_SSL_WORK_TRUST_ALL_CERTS);
     _sslWorkTruststoreFile = getPathOptionValue(ARG_SSL_WORK_TRUSTSTORE_FILE);
     _sslWorkTruststorePassword = getStringOptionValue(ARG_SSL_WORK_TRUSTSTORE_PASSWORD);
-    _storageAccountKey = getStringOptionValue(ARG_STORAGE_ACCOUNT_KEY);
-    _storageAccountName = getStringOptionValue(ARG_STORAGE_ACCOUNT_NAME);
-    _storageProtocol = getStringOptionValue(ARG_STORAGE_PROTOCOL);
     _tracingAgentHost = getStringOptionValue(ARG_TRACING_AGENT_HOST);
     _tracingAgentPort = getIntegerOptionValue(ARG_TRACING_AGENT_PORT);
     _tracingEnable = getBooleanOptionValue(ARG_TRACING_ENABLE);
@@ -481,6 +461,10 @@ public class Settings extends BaseSettings {
 
   public void setContainersLocation(Path dir) {
     _containersLocation = dir;
+  }
+
+  public void setQuestionTemplateDirs(List<Path> questionTemplateDirs) {
+    _questionTemplateDirs = questionTemplateDirs;
   }
 
   public void setSslPoolDisable(boolean sslPoolDisable) {

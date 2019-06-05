@@ -22,8 +22,7 @@ public class WildcardPruner extends FlatJuniperParserBaseListener {
   @Override
   public void enterFlat_juniper_configuration(Flat_juniper_configurationContext ctx) {
     _configurationContext = ctx;
-    _newConfigurationLines = new ArrayList<>();
-    _newConfigurationLines.addAll(ctx.children);
+    _newConfigurationLines = new ArrayList<>(ctx.children);
   }
 
   @Override
@@ -54,10 +53,11 @@ public class WildcardPruner extends FlatJuniperParserBaseListener {
   public void visitTerminal(TerminalNode node) {
     if (_enablePathRecording) {
       String text = node.getText();
-      if (node.getSymbol().getType() == FlatJuniperLexer.WILDCARD) {
-        _currentPath.addWildcardNode(text);
+      int line = node.getSymbol().getLine();
+      if (node.getSymbol().getType() == FlatJuniperLexer.WILDCARD_ARTIFACT) {
+        _currentPath.addWildcardNode(text, line);
       } else {
-        _currentPath.addNode(text);
+        _currentPath.addNode(text, line);
       }
     }
   }

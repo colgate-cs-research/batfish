@@ -4,13 +4,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.Optional;
+import javax.annotation.Nonnull;
 import org.batfish.common.BatfishException;
 
 public class Prefix6 implements Comparable<Prefix6>, Serializable {
 
   public static final int MAX_PREFIX_LENGTH = 128;
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   public static final Prefix6 ZERO = new Prefix6(Ip6.ZERO, 0);
@@ -58,11 +59,24 @@ public class Prefix6 implements Comparable<Prefix6>, Serializable {
     if (parts.length != 2) {
       throw new BatfishException("Invalid Prefix6 string: \"" + text + "\"");
     }
-    _address = new Ip6(parts[0]);
+    _address = Ip6.parse(parts[0]);
     try {
       _prefixLength = Integer.parseInt(parts[1]);
     } catch (NumberFormatException e) {
       throw new BatfishException("Invalid Prefix6 length: \"" + parts[1] + "\"", e);
+    }
+  }
+
+  /**
+   * Return an {@link Optional} {@link Prefix6} from a string, or {@link Optional#empty} if the
+   * string does not represent a {@link Prefix6}.
+   */
+  @Nonnull
+  public static Optional<Prefix6> tryParse(@Nonnull String text) {
+    try {
+      return Optional.of(new Prefix6(text));
+    } catch (BatfishException e) {
+      return Optional.empty();
     }
   }
 

@@ -1,95 +1,112 @@
 package org.batfish.common.plugin;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
-import java.util.regex.Pattern;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.apache.commons.configuration2.ImmutableConfiguration;
 import org.batfish.common.Answerer;
-import org.batfish.common.Directory;
-import org.batfish.datamodel.AbstractRoute;
+import org.batfish.common.NetworkSnapshot;
+import org.batfish.common.bdd.BDDPacket;
+import org.batfish.common.topology.TopologyProvider;
 import org.batfish.datamodel.BgpAdvertisement;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.DataPlane;
 import org.batfish.datamodel.Flow;
-import org.batfish.datamodel.FlowHistory;
-import org.batfish.datamodel.ForwardingAction;
-import org.batfish.datamodel.HeaderSpace;
-import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.NodeRoleSpecifier;
-import org.batfish.datamodel.Topology;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.answers.ConvertConfigurationAnswerElement;
 import org.batfish.datamodel.answers.DataPlaneAnswerElement;
 import org.batfish.datamodel.answers.InitInfoAnswerElement;
+import org.batfish.datamodel.answers.MajorIssueConfig;
 import org.batfish.datamodel.answers.ParseEnvironmentBgpTablesAnswerElement;
 import org.batfish.datamodel.answers.ParseEnvironmentRoutingTablesAnswerElement;
 import org.batfish.datamodel.answers.ParseVendorConfigurationAnswerElement;
-import org.batfish.datamodel.assertion.AssertionAst;
 import org.batfish.datamodel.collections.BgpAdvertisementsByVrf;
-import org.batfish.datamodel.collections.NamedStructureEquivalenceSets;
-import org.batfish.datamodel.collections.NodeInterfacePair;
 import org.batfish.datamodel.collections.RoutesByVrf;
+import org.batfish.datamodel.flow.Trace;
 import org.batfish.datamodel.pojo.Environment;
-import org.batfish.datamodel.questions.NodesSpecifier;
 import org.batfish.datamodel.questions.Question;
-import org.batfish.datamodel.questions.smt.HeaderLocationQuestion;
-import org.batfish.datamodel.questions.smt.HeaderQuestion;
-import org.batfish.datamodel.questions.smt.RoleQuestion;
 import org.batfish.grammar.BgpTableFormat;
-import org.batfish.grammar.GrammarSettings;
+import org.batfish.identifiers.NetworkId;
+import org.batfish.identifiers.SnapshotId;
+import org.batfish.question.ReachabilityParameters;
+import org.batfish.question.bidirectionalreachability.BidirectionalReachabilityResult;
+import org.batfish.question.differentialreachability.DifferentialReachabilityParameters;
+import org.batfish.question.differentialreachability.DifferentialReachabilityResult;
+import org.batfish.question.multipath.MultipathConsistencyParameters;
+import org.batfish.referencelibrary.ReferenceLibrary;
+import org.batfish.role.NodeRoleDimension;
+import org.batfish.role.NodeRolesData;
+import org.batfish.specifier.SpecifierContext;
 
 public interface IBatfish extends IPluginConsumer {
 
-  AnswerElement answerAclReachability(
-      String aclNameRegexStr, NamedStructureEquivalenceSets<?> aclEqSets);
+  DifferentialReachabilityResult bddDifferentialReachability(
+      DifferentialReachabilityParameters parameters);
 
-  void checkDataPlane();
+  /**
+   * Given a {@link Set} of {@link Flow}s it populates the {@link List} of {@link Trace}s for them
+   *
+   * @param flows {@link Set} of {@link Flow}s for which {@link Trace}s are to be found
+   * @param ignoreFilters if true, filters/ACLs encountered while building the {@link Flow}s are
+   *     ignored
+   * @return {@link SortedMap} of {@link Flow} to {@link List} of {@link Trace}s
+   */
+  SortedMap<Flow, List<Trace>> buildFlows(Set<Flow> flows, boolean ignoreFilters);
 
-  void checkEnvironmentExists();
+  void checkSnapshotOutputReady();
 
-  Set<NodeInterfacePair> computeFlowSinks(
-      Map<String, Configuration> configurations, boolean differentialContext, Topology topology);
+  /** Compute the dataplane for the current {@link NetworkSnapshot} */
+  DataPlaneAnswerElement computeDataPlane();
 
-  DataPlaneAnswerElement computeDataPlane(boolean differentialContext);
+  boolean debugFlagEnabled(String flag);
 
-  Map<String, BiFunction<Question, IBatfish, Answerer>> getAnswererCreators();
+  ReferenceLibrary getReferenceLibraryData();
 
-  String getContainerName();
+  @Nullable
+  Answerer createAnswerer(@Nonnull Question question);
 
-  DataPlanePluginSettings getDataPlanePluginSettings();
+  NetworkId getContainerName();
+
+  DataPlanePlugin getDataPlanePlugin();
 
   String getDifferentialFlowTag();
 
   Environment getEnvironment();
 
-  Topology getEnvironmentTopology();
-
   String getFlowTag();
 
-  GrammarSettings getGrammarSettings();
+  /** Get the configuration of the major issue type {@code majorIssueType} if its present */
+  MajorIssueConfig getMajorIssueConfig(String majorIssueType);
 
-  FlowHistory getHistory();
+  @Nonnull
+  NetworkSnapshot getNetworkSnapshot();
 
-  NodeRoleSpecifier getNodeRoleSpecifier(boolean inferred);
+  NodeRolesData getNodeRolesData();
 
-  Map<String, String> getQuestionTemplates();
+  Optional<NodeRoleDimension> getNodeRoleDimension(String roleDimension);
 
-  SortedMap<String, SortedMap<String, SortedSet<AbstractRoute>>> getRoutes(boolean useCompression);
+  @Nonnull
+  TopologyProvider getTopologyProvider();
+
+  Map<String, String> getQuestionTemplates(boolean verbose);
+
+  /**
+   * Get batfish settings
+   *
+   * @return the {@link ImmutableConfiguration} that represents batfish settings.
+   */
+  ImmutableConfiguration getSettingsConfiguration();
 
   String getTaskId();
 
-  Directory getTestrigFileTree();
-
-  String getTestrigName();
-
-  void initBgpAdvertisements(Map<String, Configuration> configurations);
-
-  void initBgpOriginationSpaceExplicit(Map<String, Configuration> configurations);
+  SnapshotId getTestrigName();
 
   InitInfoAnswerElement initInfo(boolean summary, boolean verboseError);
 
@@ -97,10 +114,10 @@ public interface IBatfish extends IPluginConsumer {
 
   InitInfoAnswerElement initInfoRoutes(boolean summary, boolean verboseError);
 
-  void initRemoteRipNeighbors(
-      Map<String, Configuration> configurations, Map<Ip, Set<String>> ipOwners, Topology topology);
-
   SortedMap<String, Configuration> loadConfigurations();
+
+  /** Returns the configurations for given snapshot. */
+  SortedMap<String, Configuration> loadConfigurations(NetworkSnapshot snapshot);
 
   ConvertConfigurationAnswerElement loadConvertConfigurationAnswerElementOrReparse();
 
@@ -116,30 +133,21 @@ public interface IBatfish extends IPluginConsumer {
 
   ParseVendorConfigurationAnswerElement loadParseVendorConfigurationAnswerElement();
 
-  AnswerElement multipath(HeaderSpace headerSpace, NodesSpecifier ingressNodeRegex);
-
   AtomicInteger newBatch(String description, int jobs);
 
-  AssertionAst parseAssertion(String text);
-
-  AnswerElement pathDiff(HeaderSpace headerSpace);
-  
-  
-
-  void popEnvironment();
+  void popSnapshot();
 
   Set<BgpAdvertisement> loadExternalBgpAnnouncements(Map<String, Configuration> configurations);
 
-  void processFlows(Set<Flow> flows);
+  /** @return a {@link TracerouteEngine} for the current snapshot. */
+  TracerouteEngine getTracerouteEngine();
 
-  void pushBaseEnvironment();
+  void pushBaseSnapshot();
 
-  void pushDeltaEnvironment();
+  void pushDeltaSnapshot();
 
   @Nullable
   String readExternalBgpAnnouncementsFile();
-
-  AnswerElement reducedReachability(HeaderSpace headerSpace, NodesSpecifier ingressNodeRegex);
 
   void registerAnswerer(
       String questionName,
@@ -160,38 +168,25 @@ public interface IBatfish extends IPluginConsumer {
   void registerExternalBgpAdvertisementPlugin(
       ExternalBgpAdvertisementPlugin externalBgpAdvertisementPlugin);
 
-  AnswerElement smtBlackhole(HeaderQuestion q);
+  /** Use more explicit {@link #specifierContext(NetworkSnapshot)} if possible. */
+  SpecifierContext specifierContext();
 
-  AnswerElement smtBoundedLength(HeaderLocationQuestion q, Integer bound);
+  /** Return a {@link SpecifierContext} for a given {@link NetworkSnapshot} */
+  SpecifierContext specifierContext(NetworkSnapshot networkSnapshot);
 
-  AnswerElement smtDeterminism(HeaderQuestion q);
+  AnswerElement standard(ReachabilityParameters reachabilityParameters);
 
-  AnswerElement smtEqualLength(HeaderLocationQuestion q);
+  Set<Flow> bddLoopDetection();
 
-  AnswerElement smtForwarding(HeaderQuestion q);
+  Set<Flow> bddMultipathConsistency(MultipathConsistencyParameters parameters);
 
-  AnswerElement smtLoadBalance(HeaderLocationQuestion q, int threshold);
+  @Nullable
+  String loadQuestionSettings(@Nonnull Question question);
 
-  AnswerElement smtLocalConsistency(Pattern routerRegex, boolean strict, boolean fullModel);
+  /** Performs bidirectional reachability analysis. */
+  @Nonnull
+  BidirectionalReachabilityResult bidirectionalReachability(
+      BDDPacket bddPacket, ReachabilityParameters parameters);
 
-  AnswerElement smtMultipathConsistency(HeaderLocationQuestion q);
-
-  AnswerElement smtReachability(HeaderLocationQuestion q);
-
-  AnswerElement smtRoles(RoleQuestion q);
-
-  AnswerElement smtRoutingLoop(HeaderQuestion q);
-
-  AnswerElement standard(
-      HeaderSpace headerSpace,
-      Set<ForwardingAction> actions,
-      NodesSpecifier ingressNodeRegex,
-      NodesSpecifier notIngressNodeRegex,
-      NodesSpecifier finalNodeRegex,
-      NodesSpecifier notFinalNodeRegex,
-      Set<String> transitNodes,
-      Set<String> notTransitNodes,
-      boolean useCompression);
-
-  void writeDataPlane(DataPlane dp, DataPlaneAnswerElement ae);
+  Path getTestrigPath();
 }

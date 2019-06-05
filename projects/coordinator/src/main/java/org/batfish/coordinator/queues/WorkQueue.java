@@ -5,8 +5,7 @@ import org.batfish.coordinator.QueuedWork;
 
 public interface WorkQueue extends Iterable<QueuedWork> {
 
-  public enum Type {
-    azure,
+  enum Type {
     memory
   }
 

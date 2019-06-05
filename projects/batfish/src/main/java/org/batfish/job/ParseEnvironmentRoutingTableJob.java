@@ -58,9 +58,6 @@ public class ParseEnvironmentRoutingTableJob
     ParserRuleContext tree = null;
     RoutingTableExtractor extractor = null;
     _logger.infof("Processing: '%s'\n", currentPath);
-    // String relativePathStr =
-    // _settings.getActiveTestrigSettings().getEnvironmentSettings().getEnvPath()
-    // .relativize(_file).toString();
     RoutingTableFormat format = RoutingTableFormatDetector.identifyRoutingTableFormat(_fileText);
     switch (format) {
       case EMPTY:
@@ -96,7 +93,7 @@ public class ParseEnvironmentRoutingTableJob
                 _hostname, _fileText, nxosRoutingTableParser, _warnings, _batfish);
         break;
 
-        /** PLACEHOLDER CODES FOR IDENTIFIED BUT UNSUPPORTED ROUTING TABLE FORMATS */
+        /* PLACEHOLDER CODES FOR IDENTIFIED BUT UNSUPPORTED ROUTING TABLE FORMATS */
         /*
          * String unsupportedError = "Unsupported routing-table format: '" +
          * format.toString() + "' for file: '" + currentPath + "'\n"; if
@@ -129,7 +126,9 @@ public class ParseEnvironmentRoutingTableJob
       _logger.info("\tParsing...");
       tree = Batfish.parse(combinedParser, _logger, _settings);
       if (_settings.getPrintParseTree()) {
-        _ptSentences = ParseTreePrettyPrinter.getParseTreeSentences(tree, combinedParser);
+        _ptSentences =
+            ParseTreePrettyPrinter.getParseTreeSentences(
+                tree, combinedParser, _settings.getPrintParseTreeLineNums());
       }
       _logger.info("\tPost-processing...");
       extractor.processParseTree(tree);

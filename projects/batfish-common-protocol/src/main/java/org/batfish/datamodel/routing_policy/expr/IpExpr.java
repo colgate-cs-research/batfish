@@ -5,10 +5,10 @@ import java.io.Serializable;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.routing_policy.Environment;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "class")
+/** Base class for expressions that return an {@link Ip} address. */
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
 public abstract class IpExpr implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   @Override

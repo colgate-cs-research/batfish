@@ -1,5 +1,6 @@
 package org.batfish.representation.cisco;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -8,18 +9,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
-import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.OspfAreaSummary;
-import org.batfish.datamodel.OspfMetricType;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.RoutingProtocol;
+import org.batfish.datamodel.ospf.OspfAreaSummary;
+import org.batfish.datamodel.ospf.OspfMetricType;
 
-public class OspfProcess extends ComparableStructure<String> {
+public class OspfProcess implements Serializable {
 
   private static final long DEFAULT_DEFAULT_INFORMATION_METRIC = 1L;
 
@@ -51,9 +52,11 @@ public class OspfProcess extends ComparableStructure<String> {
 
   private Integer _defaultInformationOriginateMapLine;
 
-  private Set<String> _interfaceBlacklist;
+  private Long _defaultMetric;
 
-  private Set<String> _interfaceWhitelist;
+  @Nullable private DistributeList _inboundGlobalDistributeList;
+
+  @Nonnull private Map<String, DistributeList> _inboundIInterfaceDistributeLists;
 
   private Long _maxMetricExternalLsa;
 
@@ -63,11 +66,23 @@ public class OspfProcess extends ComparableStructure<String> {
 
   private Long _maxMetricSummaryLsa;
 
+  private final String _name;
+
   private Set<OspfNetwork> _networks;
 
-  private Map<Long, Boolean> _nssas;
+  private Set<String> _nonDefaultInterfaces;
+
+  private Map<Long, NssaSettings> _nssas;
+
+  private Map<Long, StubSettings> _stubs;
+
+  @Nullable private DistributeList _outboundGlobalDistributeList;
+
+  @Nonnull private Map<String, DistributeList> _outboundInterfaceDistributeLists;
 
   private boolean _passiveInterfaceDefault;
+
+  private Set<String> _passiveInterfaces;
 
   private Map<RoutingProtocol, OspfRedistributionPolicy> _redistributionPolicies;
 
@@ -86,6 +101,7 @@ public class OspfProcess extends ComparableStructure<String> {
       case ARISTA: // EOS manual, Chapter 27, "auto-cost reference-bandwidth (OSPFv2)"
         return DEFAULT_REFERENCE_BANDWIDTH_10_MBPS;
 
+      case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
       case CADANT: // Internet claims they use the Cisco defaults.
       case CISCO_ASA: // ASA uses 100 Mbps, switches to 40 Gbps for OSPF v3
       case CISCO_IOS: // https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/iproute_ospf/command/iro-cr-book/ospf-a1.html#wp3271966058
@@ -102,15 +118,50 @@ public class OspfProcess extends ComparableStructure<String> {
     }
   }
 
+  public long getDefaultMetric(ConfigurationFormat format, RoutingProtocol protocol) {
+    if (this._defaultMetric != null) {
+      return this._defaultMetric;
+    }
+
+    switch (format) {
+      case ARISTA:
+        // Inferred from Arista manual OSPF v3 default-metric comment.
+        return 10;
+
+      case ARUBAOS: // TODO: verify https://github.com/batfish/batfish/issues/1548
+      case CADANT: // Vetted IOS and NXOS; assuming the rest use IOS defaults.
+      case CISCO_ASA:
+      case CISCO_IOS:
+      case CISCO_IOS_XR:
+      case CISCO_NX:
+      case FORCE10:
+      case FOUNDRY:
+        // https://www.cisco.com/c/en/us/support/docs/ip/open-shortest-path-first-ospf/7039-1.html
+        // "the cost allocated to the external route is 20 (the default is 1 for BGP)."
+        switch (protocol) {
+          case BGP:
+            return 1;
+          default:
+            return 20;
+        }
+
+      default:
+        throw new BatfishException("Unknown default OSPF reference bandwidth for format " + format);
+    }
+  }
+
   public OspfProcess(String name, ConfigurationFormat format) {
-    super(name);
+    _name = name;
     _referenceBandwidth = getReferenceOspfBandwidth(format);
     _networks = new TreeSet<>();
     _defaultInformationMetric = DEFAULT_DEFAULT_INFORMATION_METRIC;
     _defaultInformationMetricType = DEFAULT_DEFAULT_INFORMATION_METRIC_TYPE;
+    _inboundIInterfaceDistributeLists = new HashMap<>();
+    _nonDefaultInterfaces = new HashSet<>();
     _nssas = new HashMap<>();
-    _interfaceBlacklist = new HashSet<>();
-    _interfaceWhitelist = new HashSet<>();
+    _outboundInterfaceDistributeLists = new HashMap<>();
+    _passiveInterfaces = new HashSet<>();
+    _stubs = new HashMap<>();
     _wildcardNetworks = new TreeSet<>();
     _redistributionPolicies = new EnumMap<>(RoutingProtocol.class);
     _summaries = new TreeMap<>();
@@ -141,10 +192,6 @@ public class OspfProcess extends ComparableStructure<String> {
     }
   }
 
-  public Set<String> getActiveInterfaceList() {
-    return _interfaceWhitelist;
-  }
-
   public long getDefaultInformationMetric() {
     return _defaultInformationMetric;
   }
@@ -169,6 +216,20 @@ public class OspfProcess extends ComparableStructure<String> {
     return _defaultInformationOriginateMapLine;
   }
 
+  public Long getDefaultMetric() {
+    return _defaultMetric;
+  }
+
+  @Nullable
+  public DistributeList getInboundGlobalDistributeList() {
+    return _inboundGlobalDistributeList;
+  }
+
+  @Nonnull
+  public Map<String, DistributeList> getInboundInterfaceDistributeLists() {
+    return _inboundIInterfaceDistributeLists;
+  }
+
   public Long getMaxMetricExternalLsa() {
     return _maxMetricExternalLsa;
   }
@@ -185,20 +246,38 @@ public class OspfProcess extends ComparableStructure<String> {
     return _maxMetricSummaryLsa;
   }
 
+  public String getName() {
+    return _name;
+  }
+
   public Set<OspfNetwork> getNetworks() {
     return _networks;
   }
 
-  public Map<Long, Boolean> getNssas() {
+  public Set<String> getNonDefaultInterfaces() {
+    return _nonDefaultInterfaces;
+  }
+
+  public Map<Long, NssaSettings> getNssas() {
     return _nssas;
+  }
+
+  @Nullable
+  public DistributeList getOutboundGlobalDistributeList() {
+    return _outboundGlobalDistributeList;
+  }
+
+  @Nonnull
+  public Map<String, DistributeList> getOutboundInterfaceDistributeLists() {
+    return _outboundInterfaceDistributeLists;
   }
 
   public boolean getPassiveInterfaceDefault() {
     return _passiveInterfaceDefault;
   }
 
-  public Set<String> getPassiveInterfaceList() {
-    return _interfaceBlacklist;
+  public Set<String> getPassiveInterfaces() {
+    return _passiveInterfaces;
   }
 
   public Map<RoutingProtocol, OspfRedistributionPolicy> getRedistributionPolicies() {
@@ -215,6 +294,10 @@ public class OspfProcess extends ComparableStructure<String> {
 
   public Ip getRouterId() {
     return _routerId;
+  }
+
+  public Map<Long, StubSettings> getStubs() {
+    return _stubs;
   }
 
   public Map<Long, Map<Prefix, OspfAreaSummary>> getSummaries() {
@@ -249,6 +332,14 @@ public class OspfProcess extends ComparableStructure<String> {
     _defaultInformationOriginateMapLine = defaultInformationOriginateMapLine;
   }
 
+  public void setDefaultMetric(Long metric) {
+    _defaultMetric = metric;
+  }
+
+  public void setInboundGlobalDistributeList(@Nullable DistributeList inboundGlobalDistributeList) {
+    _inboundGlobalDistributeList = inboundGlobalDistributeList;
+  }
+
   public void setMaxMetricExternalLsa(Long maxMetricExternalLsa) {
     _maxMetricExternalLsa = maxMetricExternalLsa;
   }
@@ -263,6 +354,11 @@ public class OspfProcess extends ComparableStructure<String> {
 
   public void setMaxMetricSummaryLsa(Long maxMetricSummaryLsa) {
     _maxMetricSummaryLsa = maxMetricSummaryLsa;
+  }
+
+  public void setOutboundGlobalDistributeList(
+      @Nullable DistributeList outboundGlobalDistributeList) {
+    _outboundGlobalDistributeList = outboundGlobalDistributeList;
   }
 
   public void setPassiveInterfaceDefault(boolean b) {

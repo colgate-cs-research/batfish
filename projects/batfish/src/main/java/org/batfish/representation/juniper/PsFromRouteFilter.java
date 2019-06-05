@@ -14,9 +14,9 @@ import org.batfish.datamodel.routing_policy.expr.MatchPrefixSet;
 import org.batfish.datamodel.routing_policy.expr.NamedPrefix6Set;
 import org.batfish.datamodel.routing_policy.expr.NamedPrefixSet;
 
+/** Represents a "from route-filter" line in a {@link PsTerm} */
 public final class PsFromRouteFilter extends PsFrom {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _routeFilterName;
@@ -36,7 +36,8 @@ public final class PsFromRouteFilter extends PsFrom {
     BooleanExpr match4 = null;
     BooleanExpr match6 = null;
     if (rfl != null) {
-      match4 = new MatchPrefixSet(new DestinationNetwork(), new NamedPrefixSet(_routeFilterName));
+      match4 =
+          new MatchPrefixSet(DestinationNetwork.instance(), new NamedPrefixSet(_routeFilterName));
     }
     if (rfl6 != null) {
       match6 =

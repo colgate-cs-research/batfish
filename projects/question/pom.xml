@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.batfish</groupId>
     <artifactId>batfish-parent</artifactId>
-    <version>0.35.0</version>
+    <version>0.36.0</version>
   </parent>
 
   <artifactId>question</artifactId>
@@ -26,7 +26,14 @@
               </goals>
               <configuration>
                 <ignoredUnusedDeclaredDependencies>
-                  org.slf4j:slf4j-jdk14,com.google.auto.service:auto-service
+                  <ignoredUnusedDeclaredDependency>com.google.auto.service:auto-service
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.lastnpe.eea:guava-eea
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.lastnpe.eea:jdk-eea
+                  </ignoredUnusedDeclaredDependency>
+                  <ignoredUnusedDeclaredDependency>org.slf4j:slf4j-jdk14
+                  </ignoredUnusedDeclaredDependency>
                 </ignoredUnusedDeclaredDependencies>
               </configuration>
             </execution>
@@ -47,27 +54,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-pmd-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>check</id>
-            <goals>
-              <goal>check</goal>
-            </goals>
-            <configuration>
-              <failOnViolation>true</failOnViolation>
-            </configuration>
-          </execution>
-
-          <execution>
-            <id>cpd-check</id>
-            <goals>
-              <goal>cpd-check</goal>
-            </goals>
-            <configuration>
-              <failOnViolation>false</failOnViolation>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
@@ -76,6 +62,11 @@
     <dependency>
       <groupId>org.batfish</groupId>
       <artifactId>batfish-common-protocol</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.batfish</groupId>
+      <artifactId>bdd</artifactId>
     </dependency>
 
     <dependency>
@@ -110,8 +101,21 @@
     </dependency>
 
     <dependency>
-      <groupId>com.jayway.jsonpath</groupId>
-      <artifactId>json-path</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+    </dependency>
+
+    <!-- Provided dependencies to be available at compile time only -->
+    <dependency>
+      <groupId>org.lastnpe.eea</groupId>
+      <artifactId>guava-eea</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.lastnpe.eea</groupId>
+      <artifactId>jdk-eea</artifactId>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Test scope dependencies. -->
@@ -122,14 +126,15 @@
     </dependency>
 
     <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-core</artifactId>
+      <groupId>org.batfish</groupId>
+      <artifactId>batfish-common-protocol</artifactId>
+      <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-library</artifactId>
+      <artifactId>hamcrest</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -138,6 +143,5 @@
       <artifactId>slf4j-jdk14</artifactId>
       <scope>runtime</scope>
     </dependency>
-
   </dependencies>
 </project>

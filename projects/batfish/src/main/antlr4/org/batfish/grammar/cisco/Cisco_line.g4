@@ -119,6 +119,7 @@ l_null
       | SESSION_DISCONNECT_WARNING
       | SESSION_LIMIT
       | SESSION_TIMEOUT
+      | SPEED
       | STOPBITS
       | TERMINAL_TYPE
       | TIMEOUT
@@ -128,7 +129,7 @@ l_null
       (
         NO VACANT_MESSAGE
       )
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 l_script
@@ -164,7 +165,7 @@ lc_null
       | PASSWORD
       | SESSION_TIMEOUT
       | SPEED
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 s_line

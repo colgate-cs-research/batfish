@@ -7,8 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.batfish.common.BatfishException;
-import org.batfish.common.BatfishLogger;
-import org.batfish.common.Pair;
+import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.InterfaceAddress;
@@ -37,7 +36,7 @@ public class Subnet implements AwsVpcEntity, Serializable {
 
   private transient String _vpnGatewayId;
 
-  public Subnet(JSONObject jObj, BatfishLogger logger) throws JSONException {
+  public Subnet(JSONObject jObj) throws JSONException {
     _cidrBlock = Prefix.parse(jObj.getString(JSON_KEY_CIDR_BLOCK));
     _subnetId = jObj.getString(JSON_KEY_SUBNET_ID);
     _vpcId = jObj.getString(JSON_KEY_VPC_ID);
@@ -56,7 +55,7 @@ public class Subnet implements AwsVpcEntity, Serializable {
       if (!_allocatedIps.contains(ipAsLong)) {
         _allocatedIps.add(ipAsLong);
         _lastGeneratedIp = ipAsLong;
-        return new Ip(ipAsLong);
+        return Ip.create(ipAsLong);
       }
     }
     // subnet's CIDR block out of IPs
@@ -67,14 +66,12 @@ public class Subnet implements AwsVpcEntity, Serializable {
     Long generatedIp = _cidrBlock.getStartIp().asLong() + 1L;
     _allocatedIps.add(generatedIp);
     _lastGeneratedIp = generatedIp;
-    return new Ip(generatedIp);
+    return Ip.create(generatedIp);
   }
 
   private NetworkAcl findMyNetworkAcl(Map<String, NetworkAcl> networkAcls) {
     List<NetworkAcl> matchingAcls =
-        networkAcls
-            .values()
-            .stream()
+        networkAcls.values().stream()
             .filter((NetworkAcl acl) -> acl.getVpcId().equals(_vpcId))
             .collect(Collectors.toList());
 
@@ -97,20 +94,16 @@ public class Subnet implements AwsVpcEntity, Serializable {
   private RouteTable findMyRouteTable(Map<String, RouteTable> routeTables) {
     // All route tables for this VPC.
     List<RouteTable> sameVpcTables =
-        routeTables
-            .values()
-            .stream()
+        routeTables.values().stream()
             .filter((RouteTable rt) -> rt.getVpcId().equals(_vpcId))
             .collect(Collectors.toList());
 
     // First we look for the unique route table with an association for this subnet.
     List<RouteTable> matchingRouteTables =
-        sameVpcTables
-            .stream()
+        sameVpcTables.stream()
             .filter(
                 (RouteTable rt) ->
-                    rt.getAssociations()
-                        .stream()
+                    rt.getAssociations().stream()
                         .anyMatch(
                             (RouteTableAssociation rtAssoc) ->
                                 _subnetId.equals(rtAssoc.getSubnetId())))
@@ -129,8 +122,7 @@ public class Subnet implements AwsVpcEntity, Serializable {
 
     // If no route table has an association with this subnet, find the unique main routing table.
     List<RouteTable> mainRouteTables =
-        sameVpcTables
-            .stream()
+        sameVpcTables.stream()
             .filter(
                 (RouteTable rt) ->
                     rt.getAssociations().stream().anyMatch(RouteTableAssociation::isMain))
@@ -171,7 +163,8 @@ public class Subnet implements AwsVpcEntity, Serializable {
     return _vpnGatewayId;
   }
 
-  public Configuration toConfigurationNode(AwsConfiguration awsConfiguration, Region region) {
+  public Configuration toConfigurationNode(
+      AwsConfiguration awsConfiguration, Region region, Warnings warnings) {
     Configuration cfgNode = Utils.newAwsConfiguration(_subnetId, "aws");
 
     // add one interface that faces the instances
@@ -182,10 +175,12 @@ public class Subnet implements AwsVpcEntity, Serializable {
     Utils.newInterface(instancesIfaceName, cfgNode, instancesIfaceAddress);
 
     // generate a prefix for the link between the VPC router and the subnet
-    Pair<InterfaceAddress, InterfaceAddress> vpcSubnetLinkPrefix =
-        awsConfiguration.getNextGeneratedLinkSubnet();
-    InterfaceAddress subnetIfaceAddress = vpcSubnetLinkPrefix.getFirst();
-    InterfaceAddress vpcIfaceAddress = vpcSubnetLinkPrefix.getSecond();
+    Prefix vpcSubnetLinkPrefix = awsConfiguration.getNextGeneratedLinkSubnet();
+    InterfaceAddress subnetIfaceAddress =
+        new InterfaceAddress(
+            vpcSubnetLinkPrefix.getStartIp(), vpcSubnetLinkPrefix.getPrefixLength());
+    InterfaceAddress vpcIfaceAddress =
+        new InterfaceAddress(vpcSubnetLinkPrefix.getEndIp(), vpcSubnetLinkPrefix.getPrefixLength());
 
     // add an interface that faces the VPC router
     String subnetIfaceName = _vpcId;

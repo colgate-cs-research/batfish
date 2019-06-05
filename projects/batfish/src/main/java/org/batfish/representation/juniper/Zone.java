@@ -1,57 +1,102 @@
 package org.batfish.representation.juniper;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.batfish.common.util.ComparableStructure;
 
-public final class Zone extends ComparableStructure<String> {
+public final class Zone implements Serializable {
 
-  /** */
+  public enum AddressBookType {
+    ATTACHED,
+    INLINED,
+    GLOBAL
+  }
+
   private static final long serialVersionUID = 1L;
 
-  private final AddressBook _addressBook;
+  private AddressBook _addressBook;
+
+  private AddressBookType _addressBookType;
 
   private FirewallFilter _fromHostFilter;
 
+  private final Map<String, FirewallFilter> _fromZonePolicies;
+
   private final FirewallFilter _inboundFilter;
 
-  private final Map<Interface, FirewallFilter> _inboundInterfaceFilters;
+  private final Map<String, FirewallFilter> _inboundInterfaceFilters;
 
-  private final Set<Interface> _interfaces;
+  private final List<String> _interfaces;
+
+  private final String _name;
 
   private FirewallFilter _toHostFilter;
 
   private final Map<String, FirewallFilter> _toZonePolicies;
 
-  public Zone(String name, Map<String, AddressBook> globalAddressBooks) {
-    super(name);
-    _addressBook = new AddressBook(name, globalAddressBooks);
-    _inboundFilter = new FirewallFilter("~INBOUND_ZONE_FILTER~" + name, Family.INET, -1);
+  private final Set<String> _screens;
+
+  public Zone(String name, AddressBook globalAddressBook) {
+    _name = name;
+    _addressBook = globalAddressBook;
+    _addressBookType = AddressBookType.GLOBAL;
+    _inboundFilter = new FirewallFilter("~INBOUND_ZONE_FILTER~" + name, Family.INET);
     _inboundInterfaceFilters = new TreeMap<>();
-    _interfaces = new TreeSet<>();
+    _interfaces = new ArrayList<>();
+    _fromZonePolicies = new TreeMap<>();
     _toZonePolicies = new TreeMap<>();
+    _screens = new TreeSet<>();
+  }
+
+  public void attachAddressBook(AddressBook addressBook) {
+    _addressBookType = AddressBookType.ATTACHED;
+    _addressBook = addressBook;
+  }
+
+  public AddressBook initInlinedAddressBook(AddressBook globalAddressBook) {
+    _addressBookType = AddressBookType.INLINED;
+    _addressBook = new AddressBook(_name, globalAddressBook);
+    return _addressBook;
   }
 
   public AddressBook getAddressBook() {
     return _addressBook;
   }
 
+  public AddressBookType getAddressBookType() {
+    return _addressBookType;
+  }
+
   public FirewallFilter getFromHostFilter() {
     return _fromHostFilter;
+  }
+
+  public Map<String, FirewallFilter> getFromZonePolicies() {
+    return _fromZonePolicies;
+  }
+
+  public Set<String> getScreens() {
+    return _screens;
   }
 
   public FirewallFilter getInboundFilter() {
     return _inboundFilter;
   }
 
-  public Map<Interface, FirewallFilter> getInboundInterfaceFilters() {
+  public Map<String, FirewallFilter> getInboundInterfaceFilters() {
     return _inboundInterfaceFilters;
   }
 
-  public Set<Interface> getInterfaces() {
+  public List<String> getInterfaces() {
     return _interfaces;
+  }
+
+  public String getName() {
+    return _name;
   }
 
   public FirewallFilter getToHostFilter() {

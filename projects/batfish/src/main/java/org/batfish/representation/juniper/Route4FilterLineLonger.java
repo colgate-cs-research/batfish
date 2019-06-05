@@ -3,12 +3,11 @@ package org.batfish.representation.juniper;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.LineAction;
 import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.PrefixRange;
 import org.batfish.datamodel.RouteFilterList;
-import org.batfish.datamodel.SubRange;
 
 public class Route4FilterLineLonger extends Route4FilterLine {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   public Route4FilterLineLonger(Prefix prefix) {
@@ -23,7 +22,7 @@ public class Route4FilterLineLonger extends Route4FilterLine {
     }
     org.batfish.datamodel.RouteFilterLine line =
         new org.batfish.datamodel.RouteFilterLine(
-            LineAction.ACCEPT, _prefix, new SubRange(prefixLength + 1, Prefix.MAX_PREFIX_LENGTH));
+            LineAction.PERMIT, PrefixRange.moreSpecificThan(_prefix));
     rfl.addLine(line);
   }
 

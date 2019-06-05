@@ -9,16 +9,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
 import org.batfish.common.BfConsts.TaskStatus;
 
-public class Task {
+public final class Task {
 
   public static class Batch {
-
     private static final String PROP_COMPLETED = "completed";
-
     private static final String PROP_DESCRIPTION = "description";
-
     private static final String PROP_SIZE = "size";
-
     private static final String PROP_START_DATE = "startDate";
 
     private AtomicInteger _completed;
@@ -85,15 +81,10 @@ public class Task {
   }
 
   private static final String PROP_ARGS = "args";
-
   private static final String PROP_BATCHES = "batches";
-
   private static final String PROP_ERR_MESSAGE = "errMessage";
-
   private static final String PROP_OBTAINED = "obtained";
-
   private static final String PROP_STATUS = "status";
-
   private static final String PROP_TERMINATED = "terminated";
 
   private final String[] _args;
@@ -191,6 +182,7 @@ public class Task {
     _terminated = terminated;
   }
 
+  @Override
   public String toString() {
     return String.format(
         "[Status: %s LastBatch: %s]",

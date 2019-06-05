@@ -39,8 +39,7 @@ public class DbAuthorizerTest {
     // Setup a test database using SQLite
     String connString =
         String.format("jdbc:sqlite:%s", Paths.get(tmpFolder.getRoot().getAbsolutePath(), DB_NAME));
-    Connection conn = DriverManager.getConnection(connString);
-    try {
+    try (Connection conn = DriverManager.getConnection(connString)) {
       PreparedStatement ps =
           conn.prepareStatement(
               String.format(
@@ -83,8 +82,6 @@ public class DbAuthorizerTest {
       st.setString(2, KEY2);
       st.execute();
       st.close();
-    } finally {
-      conn.close();
     }
 
     // Set logger, otherwise exceptions are thrown
@@ -108,15 +105,15 @@ public class DbAuthorizerTest {
     _authorizer.authorizeContainer(KEY1, contName);
 
     // Test only KEY1 can access container
-    assertThat(_authorizer.isAccessibleContainer(KEY1, contName, false), is(true));
-    assertThat(_authorizer.isAccessibleContainer(KEY2, contName, false), is(false));
-    assertThat(_authorizer.isAccessibleContainer(KEY3, contName, false), is(false));
+    assertThat(_authorizer.isAccessibleNetwork(KEY1, contName, false), is(true));
+    assertThat(_authorizer.isAccessibleNetwork(KEY2, contName, false), is(false));
+    assertThat(_authorizer.isAccessibleNetwork(KEY3, contName, false), is(false));
 
     // Test only the right container accessible by key1
-    assertThat(_authorizer.isAccessibleContainer(KEY1, "gibberish", false), is(false));
+    assertThat(_authorizer.isAccessibleNetwork(KEY1, "gibberish", false), is(false));
 
     // Test for case sensitivity as well
-    assertThat(_authorizer.isAccessibleContainer(KEY1.toUpperCase(), contName, false), is(false));
-    assertThat(_authorizer.isAccessibleContainer(KEY1, contName.toUpperCase(), false), is(false));
+    assertThat(_authorizer.isAccessibleNetwork(KEY1.toUpperCase(), contName, false), is(false));
+    assertThat(_authorizer.isAccessibleNetwork(KEY1, contName.toUpperCase(), false), is(false));
   }
 }

@@ -40,23 +40,13 @@ public class InitInfoQuestionPlugin extends QuestionPlugin {
     }
   }
 
-  // <question_page_comment>
-
-  /**
-   * Outputs results of test-rig initialization.
-   *
-   * @type InitInfo onefile
-   * @example bf_answer("initinfo", summary=True") Get summary information about test-rig
-   *     initialization
-   */
+  /** Outputs results of test-rig initialization. */
   public static class InitInfoQuestion extends Question {
 
     public static final String PROP_ENVIRONMENT_BGP_TABLES = "environmentBgpTables";
 
     public static final String PROP_ENVIRONMENT_ROUTES = "environmentRoutes";
-
     private static final String PROP_SUMMARY = "summary";
-
     private static final String PROP_VERBOSE_ERROR = "verboseError";
 
     private boolean _environmentBgpTables;
@@ -85,6 +75,11 @@ public class InitInfoQuestionPlugin extends QuestionPlugin {
     }
 
     @Override
+    public boolean getIndependent() {
+      return true;
+    }
+
+    @Override
     public String getName() {
       return "initinfo";
     }
@@ -97,19 +92,6 @@ public class InitInfoQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_VERBOSE_ERROR)
     public boolean getVerboseError() {
       return _verboseError;
-    }
-
-    @Override
-    public String prettyPrint() {
-      return getName()
-          + " "
-          + PROP_SUMMARY
-          + "="
-          + _summary
-          + " "
-          + PROP_VERBOSE_ERROR
-          + "="
-          + _verboseError;
     }
 
     @JsonProperty(PROP_ENVIRONMENT_BGP_TABLES)

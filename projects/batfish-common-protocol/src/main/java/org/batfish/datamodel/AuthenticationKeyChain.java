@@ -2,30 +2,30 @@ package org.batfish.datamodel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serializable;
 import java.util.Map;
 import java.util.TreeMap;
-import org.batfish.common.util.ComparableStructure;
 
-public class AuthenticationKeyChain extends ComparableStructure<String> {
+public class AuthenticationKeyChain implements Serializable {
 
   private static final long serialVersionUID = 1L;
-
   private static final String PROP_DESCRIPTION = "description";
-
   private static final String PROP_KEYS = "keys";
-
+  private static final String PROP_NAME = "name";
   private static final String PROP_TOLERANCE = "tolerance";
 
   private String _description;
 
   private Map<String, AuthenticationKey> _keys;
 
+  private final String _name;
+
   private int _tolerance;
 
   @JsonCreator
   public AuthenticationKeyChain(@JsonProperty(PROP_NAME) String name) {
-    super(name);
     _keys = new TreeMap<>();
+    _name = name;
   }
 
   @JsonProperty(PROP_DESCRIPTION)
@@ -36,6 +36,11 @@ public class AuthenticationKeyChain extends ComparableStructure<String> {
   @JsonProperty(PROP_KEYS)
   public Map<String, AuthenticationKey> getKeys() {
     return _keys;
+  }
+
+  @JsonProperty(PROP_NAME)
+  public String getName() {
+    return _name;
   }
 
   @JsonProperty(PROP_TOLERANCE)

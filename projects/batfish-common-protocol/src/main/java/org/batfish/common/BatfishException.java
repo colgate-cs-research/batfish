@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.base.Throwables;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.batfish.datamodel.answers.AnswerElement;
 
 /**
@@ -17,19 +17,17 @@ import org.batfish.datamodel.answers.AnswerElement;
  */
 public class BatfishException extends RuntimeException {
 
-  public static class BatfishStackTrace implements Serializable, AnswerElement {
-
+  public static class BatfishStackTrace extends AnswerElement implements Serializable {
     private static final String PROP_LINES = "answer";
 
-    /** */
     private static final long serialVersionUID = 1L;
 
-    private final BatfishException _exception;
+    private final transient BatfishException _exception;
 
     private final List<String> _lines;
 
     public BatfishStackTrace(BatfishException exception) {
-      String stackTrace = ExceptionUtils.getStackTrace(exception).replace("\t", "   ");
+      String stackTrace = Throwables.getStackTraceAsString(exception).replace("\t", "   ");
       _lines = Arrays.asList(stackTrace.split("\\n", -1));
       _exception = exception;
     }
@@ -48,11 +46,6 @@ public class BatfishException extends RuntimeException {
     @JsonProperty(PROP_LINES)
     public List<String> getLineMap() {
       return _lines;
-    }
-
-    @Override
-    public String prettyPrint() {
-      return String.join("\n", _lines);
     }
   }
 

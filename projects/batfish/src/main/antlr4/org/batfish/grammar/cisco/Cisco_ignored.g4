@@ -11,7 +11,6 @@ null_block
    NO?
    (
       AAA_SERVER
-      | ACCESS_GROUP
       | ACCESS
       | ACL_POLICY
       | ACLLOG
@@ -21,7 +20,6 @@ null_block
       | AS_PATH_SET
       | ATM
       | BASH
-      | BFD
       | BGP DISABLE_ADVERTISEMENT
       | BLOGGERD
       | BSD_CLIENT
@@ -155,7 +153,6 @@ null_block
       | MAP_LIST
       | MASTERIP
       | MENU
-      | MLAG
       | MODULE
       | MONITOR_INTERFACE
       |
@@ -201,7 +198,6 @@ null_block
       | QOS_POLICY
       | QOS_POLICY_OUTPUT
       | RELOAD_TYPE
-      | REMOVED
       | RMON
       | ROUTE_ONLY
       |
@@ -234,7 +230,6 @@ null_block
       | TAG_TYPE
       | TASKGROUP
       | TCP
-      | TEMPLATE
       | TERMINAL
       | TIME_RANGE
       | TFTP
@@ -259,14 +254,14 @@ null_block
       | VLAN_GROUP
       | VLAN_POLICY
       | VLT
-      | VXLAN
       | VTY_POOL
+      | VXLAN
       | WISM
       | WRED_PROFILE
       | WSMA
       | XDR
       | XML
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
    (
       description_line
       | null_inner
@@ -477,7 +472,6 @@ null_inner
       | RETRIES
       | REVISION
       | RING
-      | ROUTE
       | ROUTE_TARGET
       | RP_ADDRESS
       | SA_FILTER
@@ -487,7 +481,6 @@ null_inner
       | SERVER
       | SERVERFARM
       | SERVER_PRIVATE
-      | SERVICE_POLICY
       | SERVICE_QUEUE
       | SERVICE_TYPE
       | SESSION
@@ -497,7 +490,6 @@ null_inner
       | SINGLE_ROUTER_MODE
       | SLOT
       | SORT_BY
-      | SPEED
       | SPLIT_TUNNEL_NETWORK_LIST
       | SPLIT_TUNNEL_POLICY
       | SSH_KEYDIR
@@ -542,7 +534,7 @@ null_inner
       | WITHOUT_CSD
       | WRED
       | XML_CONFIG
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 null_single
@@ -557,7 +549,7 @@ null_single
             (
                (
                   DEC
-                  | VARIABLE
+                  | variable_aclname
                )
                (
                   EXTENDED
@@ -625,6 +617,7 @@ null_single
       | END
       | ENVIRONMENT
       | ENVIRONMENT_MONITOR
+      | EPM
       | ERRDISABLE
       | ESCAPE_CHARACTER
       | EXCEPTION
@@ -715,8 +708,16 @@ null_single
             | VERIFY
          )
       )
+      | ( NO IP (NAME_SERVER))
       | IP_ADDRESS_LITERAL
       | IP_FLOW_EXPORT_PROFILE
+      |
+      (
+         IPV4
+         (
+            NETMASK_FORMAT
+         )
+      )
       |
       (
          IPV6
@@ -866,10 +867,9 @@ null_single
       | RD
       | RESOURCE
       | RESOURCE_POOL
-      | ROUTE
+      | NO ROUTE
       | ROUTE_TARGET
       | RTR
-      | SAME_SECURITY_TRAFFIC
       | SAT
       | SCHEDULE
       | SCHEDULER
@@ -877,16 +877,15 @@ null_single
       | SDM
       | SECURITY
       | SERVER_TYPE
-      | SERVICE_POLICY
       | SETUP
       | SHELFNAME
       | SHELL
       | SMTP_SERVER
       | SNMP
+      | (NO SNMP_SERVER)
       | SOFTWARE
       | SPD
       | SPE
-      | SPEED
       | STOPBITS
       | SSL
       | STATIC
@@ -955,7 +954,6 @@ null_single
             ACCESS_LOG
             | CONFIGURATION
             | DOT1Q
-            | INTERNAL
             | IFDESCR DETAIL
          )
       )

@@ -1,25 +1,21 @@
 package org.batfish.datamodel.routing_policy.expr;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.routing_policy.Environment;
 
-public class DestinationNetwork extends PrefixExpr {
+/** Expression that extracts a route's destination network given a routing policy environment. */
+public final class DestinationNetwork extends PrefixExpr {
 
-  /** */
   private static final long serialVersionUID = 1L;
+
+  private static final DestinationNetwork INSTANCE = new DestinationNetwork();
+
+  private DestinationNetwork() {}
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    return true;
+    return this == obj || (obj instanceof DestinationNetwork);
   }
 
   @Override
@@ -27,11 +23,13 @@ public class DestinationNetwork extends PrefixExpr {
     return env.getOriginalRoute().getNetwork();
   }
 
+  @JsonCreator
+  public static DestinationNetwork instance() {
+    return INSTANCE;
+  }
+
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + 0x12345678;
-    return result;
+    return System.identityHashCode(this);
   }
 }

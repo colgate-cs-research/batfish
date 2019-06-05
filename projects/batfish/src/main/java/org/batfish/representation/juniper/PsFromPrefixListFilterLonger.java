@@ -13,9 +13,9 @@ import org.batfish.datamodel.routing_policy.expr.DestinationNetwork;
 import org.batfish.datamodel.routing_policy.expr.MatchPrefixSet;
 import org.batfish.datamodel.routing_policy.expr.NamedPrefixSet;
 
+/** Represents a "from prefix-list-filter PREFIX_LIST_NAME longer" line in a {@link PsTerm} */
 public final class PsFromPrefixListFilterLonger extends PsFrom {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _prefixList;
@@ -26,11 +26,10 @@ public final class PsFromPrefixListFilterLonger extends PsFrom {
 
   @Override
   public BooleanExpr toBooleanExpr(JuniperConfiguration jc, Configuration c, Warnings warnings) {
-    PrefixList pl = jc.getPrefixLists().get(_prefixList);
+    PrefixList pl = jc.getMasterLogicalSystem().getPrefixLists().get(_prefixList);
     if (pl != null) {
-      pl.getReferers().put(this, "from prefix-list-filter longer");
       if (pl.getIpv6()) {
-        return BooleanExprs.False.toStaticBooleanExpr();
+        return BooleanExprs.FALSE;
       }
       RouteFilterList rf = c.getRouteFilterLists().get(_prefixList);
       String longerListName = "~" + _prefixList + "~LONGER~";
@@ -38,7 +37,7 @@ public final class PsFromPrefixListFilterLonger extends PsFrom {
       if (longerList == null) {
         longerList = new RouteFilterList(longerListName);
         for (RouteFilterLine line : rf.getLines()) {
-          Prefix prefix = line.getPrefix();
+          Prefix prefix = line.getIpWildcard().toPrefix();
           LineAction action = line.getAction();
           SubRange longerLineRange =
               new SubRange(line.getLengthRange().getStart() + 1, Prefix.MAX_PREFIX_LENGTH);
@@ -55,10 +54,10 @@ public final class PsFromPrefixListFilterLonger extends PsFrom {
           c.getRouteFilterLists().put(longerListName, longerList);
         }
       }
-      return new MatchPrefixSet(new DestinationNetwork(), new NamedPrefixSet(longerListName));
+      return new MatchPrefixSet(DestinationNetwork.instance(), new NamedPrefixSet(longerListName));
     } else {
       warnings.redFlag("Reference to undefined prefix-list: \"" + _prefixList + "\"");
-      return BooleanExprs.False.toStaticBooleanExpr();
+      return BooleanExprs.FALSE;
     }
   }
 }

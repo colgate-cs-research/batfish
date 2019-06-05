@@ -5,49 +5,28 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
-@JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class, property = "@id")
+@JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class)
 public final class Flow6 implements Comparable<Flow6> {
-
   private static final String PROP_DSCP = "dscp";
-
   private static final String PROP_DST_IP = "dstIp";
-
   private static final String PROP_DST_PORT = "dstPort";
-
   private static final String PROP_ECN = "ecn";
-
   private static final String PROP_FRAGMENT_OFFSET = "fragmentOffset";
-
   private static final String PROP_ICMP_CODE = "icmpCode";
-
   private static final String PROP_ICMP_TYPE = "icmpVar";
-
   private static final String PROP_INGRESS_NODE = "ingressNode";
-
   private static final String PROP_IP_PROTOCOL = "ipProtocol";
-
   private static final String PROP_SRC_IP = "srcIp";
-
   private static final String PROP_SRC_PORT = "srcPort";
-
   private static final String PROP_STATE = "state";
-
   private static final String PROP_TAG = "tag";
-
   private static final String PROP_TCP_FLAGS_ACK = "tcpFlagsAck";
-
   private static final String PROP_TCP_FLAGS_CWR = "tcpFlagsCwr";
-
   private static final String PROP_TCP_FLAGS_ECE = "tcpFlagsEce";
-
   private static final String PROP_TCP_FLAGS_FIN = "tcpFlagsFin";
-
   private static final String PROP_TCP_FLAGS_PSH = "tcpFlagsPsh";
-
   private static final String PROP_TCP_FLAGS_RST = "tcpFlagsRst";
-
   private static final String PROP_TCP_FLAGS_SYN = "tcpFlagsSyn";
-
   private static final String PROP_TCP_FLAGS_URG = "tcpFlagsUrg";
 
   private final int _dscp;
@@ -72,7 +51,7 @@ public final class Flow6 implements Comparable<Flow6> {
 
   private final int _srcPort;
 
-  private final State _state;
+  private final FlowState _state;
 
   private final String _tag;
 
@@ -105,7 +84,7 @@ public final class Flow6 implements Comparable<Flow6> {
       @JsonProperty(PROP_FRAGMENT_OFFSET) int fragmentOffset,
       @JsonProperty(PROP_ICMP_TYPE) int icmpType,
       @JsonProperty(PROP_ICMP_CODE) int icmpCode,
-      @JsonProperty(PROP_STATE) State state,
+      @JsonProperty(PROP_STATE) FlowState state,
       @JsonProperty(PROP_TCP_FLAGS_CWR) int tcpFlagsCwr,
       @JsonProperty(PROP_TCP_FLAGS_ECE) int tcpFlagsEce,
       @JsonProperty(PROP_TCP_FLAGS_URG) int tcpFlagsUrg,
@@ -347,7 +326,7 @@ public final class Flow6 implements Comparable<Flow6> {
   }
 
   @JsonProperty(PROP_STATE)
-  public State getState() {
+  public FlowState getState() {
     return _state;
   }
 
@@ -424,59 +403,6 @@ public final class Flow6 implements Comparable<Flow6> {
     return result;
   }
 
-  public String prettyPrint(String prefixString) {
-    boolean icmp = _ipProtocol == IpProtocol.ICMP;
-    boolean tcp = _ipProtocol == IpProtocol.TCP;
-    boolean udp = _ipProtocol == IpProtocol.UDP;
-    String srcPortStr = "";
-    String dstPortStr = "";
-    String icmpTypeStr = "";
-    String icmpCodeStr = "";
-    String tcpFlagsStr = "";
-    if (tcp || udp) {
-      srcPortStr = " sport:" + NamedPort.nameFromNumber(_srcPort);
-      dstPortStr = " dport:" + NamedPort.nameFromNumber(_dstPort);
-    }
-    if (tcp) {
-      tcpFlagsStr =
-          String.format(
-              " tcpFlags:%d%d%d%d%d%d%d%d",
-              _tcpFlagsCwr,
-              _tcpFlagsEce,
-              _tcpFlagsUrg,
-              _tcpFlagsAck,
-              _tcpFlagsPsh,
-              _tcpFlagsRst,
-              _tcpFlagsSyn,
-              _tcpFlagsFin);
-    }
-    if (icmp) {
-      icmpCodeStr = " icmpCode:" + Integer.toString(_icmpCode);
-      icmpTypeStr = " icmpType:" + Integer.toString(_icmpType);
-    }
-    String dscpStr = (_dscp != 0) ? " dscp:" + _dscp : "";
-    String ecnStr = (_ecn != 0) ? " ecn:" + _ecn : "";
-
-    return prefixString
-        + "Flow: ingress:"
-        + _ingressNode
-        + " "
-        + _srcIp
-        + "->"
-        + _dstIp
-        + " "
-        + _ipProtocol
-        + srcPortStr
-        + dstPortStr
-        + dscpStr
-        + ecnStr
-        + icmpTypeStr
-        + icmpCodeStr
-        + " state:"
-        + _state
-        + tcpFlagsStr;
-  }
-
   @Override
   public String toString() {
     boolean icmp = _ipProtocol == IpProtocol.ICMP;
@@ -505,8 +431,8 @@ public final class Flow6 implements Comparable<Flow6> {
               _tcpFlagsFin);
     }
     if (icmp) {
-      icmpCodeStr = " icmpCode:" + Integer.toString(_icmpCode);
-      icmpTypeStr = " icmpType:" + Integer.toString(_icmpType);
+      icmpCodeStr = " icmpCode:" + _icmpCode;
+      icmpTypeStr = " icmpType:" + _icmpType;
     }
     return "Flow<ingressNode:"
         + _ingressNode

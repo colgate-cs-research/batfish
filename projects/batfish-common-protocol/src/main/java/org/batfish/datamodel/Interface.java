@@ -1,39 +1,83 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ImmutableSortedSet;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import org.batfish.common.BatfishException;
 import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
-import org.batfish.datamodel.routing_policy.RoutingPolicy;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+import org.batfish.datamodel.eigrp.EigrpInterfaceSettings;
+import org.batfish.datamodel.hsrp.HsrpGroup;
+import org.batfish.datamodel.isis.IsisInterfaceMode;
+import org.batfish.datamodel.isis.IsisInterfaceSettings;
+import org.batfish.datamodel.ospf.OspfArea;
+import org.batfish.datamodel.transformation.Transformation;
 
 public final class Interface extends ComparableStructure<String> {
 
   public static class Builder extends NetworkFactoryBuilder<Interface> {
 
+    private @Nullable Integer _accessVlan;
+
     private boolean _active;
 
-    private Double _bandwidth;
+    private InterfaceAddress _address;
+
+    private @Nullable IntegerSpace _allowedVlans;
+
+    @Nullable private Double _bandwidth;
 
     private boolean _blacklisted;
 
+    private SortedSet<String> _declaredNames;
+
+    @Nonnull private Set<Dependency> _dependencies = ImmutableSet.of();
+
+    @Nullable private EigrpInterfaceSettings _eigrp;
+
+    @Nullable private Integer _encapsulationVlan;
+
+    private Map<Integer, HsrpGroup> _hsrpGroups;
+
+    private String _hsrpVersion;
+
+    private FirewallSessionInterfaceInfo _firewallSessionInterfaceInfo;
+
+    private String _ospfInboundDistributeListPolicy;
+
     private IpAccessList _incomingFilter;
 
+    private Transformation _incomingTransformation;
+
+    private IsisInterfaceSettings _isis;
+
+    private @Nullable Integer _mlagId;
+
     private String _name;
+
+    private @Nullable Integer _nativeVlan;
 
     private OspfArea _ospfArea;
 
@@ -45,56 +89,119 @@ public final class Interface extends ComparableStructure<String> {
 
     private boolean _ospfPointToPoint;
 
+    private String _ospfProcess;
+
     private IpAccessList _outgoingFilter;
+
+    private Transformation _outgoingTransformation;
 
     private Configuration _owner;
 
-    private List<SourceNat> _sourceNats;
+    private IpAccessList _postTransformationIncomingFilter;
 
-    private InterfaceAddress _address;
+    private boolean _proxyArp;
+
+    private IpAccessList _preTransformationOutgoingFilter;
+
+    private Set<InterfaceAddress> _secondaryAddresses;
+
+    private @Nullable Boolean _switchport;
+
+    private @Nullable SwitchportMode _switchportMode;
+
+    private @Nonnull IpSpace _additionalArpIps;
+
+    private InterfaceType _type;
+
+    private @Nullable Integer _vlan;
 
     private Vrf _vrf;
 
+    private SortedMap<Integer, VrrpGroup> _vrrpGroups;
+
     Builder(NetworkFactory networkFactory) {
       super(networkFactory, Interface.class);
-      _sourceNats = ImmutableList.of();
+      _active = true;
+      _additionalArpIps = EmptyIpSpace.INSTANCE;
+      _declaredNames = ImmutableSortedSet.of();
+      _hsrpGroups = ImmutableMap.of();
+      _secondaryAddresses = ImmutableSet.of();
+      _vrrpGroups = ImmutableSortedMap.of();
     }
 
     @Override
     public Interface build() {
       String name = _name != null ? _name : generateName();
-      Interface iface = new Interface(name, _owner);
+      Interface iface =
+          _type == null ? new Interface(name, _owner) : new Interface(name, _owner, _type);
+      ImmutableSet.Builder<InterfaceAddress> allAddresses = ImmutableSet.builder();
+      if (_accessVlan != null) {
+        iface.setAccessVlan(_accessVlan);
+      }
       iface.setActive(_active);
+      if (_address != null) {
+        iface.setAddress(_address);
+        allAddresses.add(_address);
+      }
+      iface.setAdditionalArpIps(_additionalArpIps);
+      iface.setAllAddresses(allAddresses.addAll(_secondaryAddresses).build());
+      if (_allowedVlans != null) {
+        iface.setAllowedVlans(_allowedVlans);
+      }
       iface.setBandwidth(_bandwidth);
       iface.setBlacklisted(_blacklisted);
+      iface.setDeclaredNames(_declaredNames);
+      iface.setDependencies(_dependencies);
+      iface.setEigrp(_eigrp);
+      iface.setEncapsulationVlan(_encapsulationVlan);
+      iface.setHsrpGroups(_hsrpGroups);
+      iface.setHsrpVersion(_hsrpVersion);
+      iface.setFirewallSessionInterfaceInfo(_firewallSessionInterfaceInfo);
       iface.setIncomingFilter(_incomingFilter);
+      iface.setIncomingTransformation(_incomingTransformation);
+      iface.setIsis(_isis);
+      iface.setMlagId(_mlagId);
+      if (_nativeVlan != null) {
+        iface.setNativeVlan(_nativeVlan);
+      }
       iface.setOspfArea(_ospfArea);
       if (_ospfArea != null) {
-        _ospfArea.getInterfaces().add(name);
-        iface.setOspfAreaName(_ospfArea.getName());
+        _ospfArea.addInterface(name);
+        iface.setOspfAreaName(_ospfArea.getAreaNumber());
       }
       iface.setOspfCost(_ospfCost);
       iface.setOspfEnabled(_ospfEnabled);
+      iface.setOspfInboundDistributeListPolicy(_ospfInboundDistributeListPolicy);
       iface.setOspfPassive(_ospfPassive);
       iface.setOspfPointToPoint(_ospfPointToPoint);
+      iface.setOspfProcess(_ospfProcess);
       iface.setOutgoingFilter(_outgoingFilter);
+      iface.setOutgoingTransformation(_outgoingTransformation);
       iface.setOwner(_owner);
       if (_owner != null) {
-        _owner.getInterfaces().put(name, iface);
+        _owner.getAllInterfaces().put(name, iface);
       }
-      iface.setSourceNats(_sourceNats);
-      iface.setAddress(_address);
-      if (_address != null) {
-        iface.setAllAddresses(Collections.singleton(_address));
+      iface.setPostTransformationIncomingFilter(_postTransformationIncomingFilter);
+      iface.setPreTransformationOutgoingFilter(_preTransformationOutgoingFilter);
+      iface.setProxyArp(_proxyArp);
+      if (_switchport != null) {
+        iface.setSwitchport(_switchport);
       }
+      if (_switchportMode != null) {
+        iface.setSwitchportMode(_switchportMode);
+      }
+      if (_type != null) {
+        iface.setInterfaceType(_type);
+      }
+      iface.setVlan(_vlan);
       iface.setVrf(_vrf);
       if (_vrf != null) {
         _vrf.getInterfaces().put(name, iface);
-        OspfProcess proc = _vrf.getOspfProcess();
-        if (proc != null && _active) {
-          iface.setOspfCost(proc.computeInterfaceCost(iface));
+        if (_active && _ospfProcess != null && _vrf.getOspfProcesses().containsKey(_ospfProcess)) {
+          iface.setOspfCost(_vrf.getOspfProcesses().get(_ospfProcess).computeInterfaceCost(iface));
         }
       }
+      iface.setVrrpGroups(_vrrpGroups);
       return iface;
     }
 
@@ -103,7 +210,69 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
-    public Builder setBandwidth(Double bandwidth) {
+    public Builder setAdditionalArpIps(IpSpace additionalArpIps) {
+      _additionalArpIps = additionalArpIps;
+      return this;
+    }
+
+    /**
+     * Set the primary address of the interface. <br>
+     * The {@link Interface#getAllAddresses()} method of the built {@link Interface} will return a
+     * set containing the primary address and secondary addresses. <br>
+     * The node will accept traffic whose destination IP belongs is among any of the addresses of
+     * any of the interfaces. The primary address is the one used by default as the source IP for
+     * traffic sent out the interface. A secondary address is another address potentially associated
+     * with a different subnet living on the interface. The interface will reply to ARP for the
+     * primary or any secondary IP.
+     */
+    public Builder setAddress(InterfaceAddress address) {
+      _address = address;
+      return this;
+    }
+
+    /**
+     * Set the primary address and secondary addresses of the interface. <br>
+     * The {@link Interface#getAllAddresses()} method of the built {@link Interface} will return a
+     * set containing the primary address and secondary addresses.<br>
+     * The node will accept traffic whose destination IP is among any of the addresses of any of the
+     * interfaces. The primary address is the one used by default as the source IP for traffic sent
+     * out the interface. A secondary address is another address potentially associated with a
+     * different subnet living on the interface. The interface will reply to ARP for the primary or
+     * any secondary IP.
+     */
+    public Builder setAddresses(
+        InterfaceAddress primaryAddress, InterfaceAddress... secondaryAddresses) {
+      return setAddresses(primaryAddress, Arrays.asList(secondaryAddresses));
+    }
+
+    /**
+     * Set the primary address and secondary addresses of the interface. <br>
+     * The {@link Interface#getAllAddresses()} method of the built {@link Interface} will return a
+     * set containing the primary address and secondary addresses.<br>
+     * The node will accept traffic whose destination IP belongs is among any of the addresses of
+     * any of the interfaces. The primary address is the one used by default as the source IP for
+     * traffic sent out the interface. A secondary address is another address potentially associated
+     * with a different subnet living on the interface. The interface will reply to ARP for the
+     * primary or any secondary IP.
+     */
+    public Builder setAddresses(
+        InterfaceAddress primaryAddress, Iterable<InterfaceAddress> secondaryAddresses) {
+      _address = primaryAddress;
+      _secondaryAddresses = ImmutableSet.copyOf(secondaryAddresses);
+      return this;
+    }
+
+    public @Nonnull Builder setAccessVlan(@Nullable Integer accessVlan) {
+      _accessVlan = accessVlan;
+      return this;
+    }
+
+    public @Nonnull Builder setAllowedVlans(@Nullable IntegerSpace allowedVlans) {
+      _allowedVlans = allowedVlans;
+      return this;
+    }
+
+    public Builder setBandwidth(@Nullable Double bandwidth) {
       _bandwidth = bandwidth;
       return this;
     }
@@ -113,13 +282,79 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
+    public Builder setDeclaredNames(Iterable<String> declaredNames) {
+      _declaredNames = ImmutableSortedSet.copyOf(declaredNames);
+      return this;
+    }
+
+    public Builder setDependencies(@Nonnull Iterable<Dependency> dependencies) {
+      _dependencies = ImmutableSet.copyOf(dependencies);
+      return this;
+    }
+
+    /**
+     * Name of the routing policy which is generated from the Global and Interface level inbound
+     * distribute lists for OSPF
+     */
+    public Builder setOspfInboundDistributeListPolicy(
+        @Nonnull String ospfInboundDistributeListPolicy) {
+      _ospfInboundDistributeListPolicy = ospfInboundDistributeListPolicy;
+      return this;
+    }
+
+    public Builder setEigrp(@Nullable EigrpInterfaceSettings eigrp) {
+      _eigrp = eigrp;
+      return this;
+    }
+
+    public @Nonnull Builder setEncapsulationVlan(@Nullable Integer encapsulationVlan) {
+      _encapsulationVlan = encapsulationVlan;
+      return this;
+    }
+
+    public Builder setFirewallSessionInterfaceInfo(
+        @Nullable FirewallSessionInterfaceInfo firewallSessionInterfaceInfo) {
+      _firewallSessionInterfaceInfo = firewallSessionInterfaceInfo;
+      return this;
+    }
+
+    public @Nonnull Builder setHsrpGroups(@Nonnull Map<Integer, HsrpGroup> hsrpGroups) {
+      _hsrpGroups = ImmutableMap.copyOf(hsrpGroups);
+      return this;
+    }
+
+    public @Nonnull Builder setHsrpVersion(@Nullable String hsrpVersion) {
+      _hsrpVersion = hsrpVersion;
+      return this;
+    }
+
     public Builder setIncomingFilter(IpAccessList incomingFilter) {
       _incomingFilter = incomingFilter;
       return this;
     }
 
+    public Builder setIncomingTransformation(Transformation incomingTransformation) {
+      _incomingTransformation = incomingTransformation;
+      return this;
+    }
+
+    public Builder setIsis(IsisInterfaceSettings isis) {
+      _isis = isis;
+      return this;
+    }
+
+    public @Nonnull Builder setMlagId(@Nullable Integer mlagId) {
+      _mlagId = mlagId;
+      return this;
+    }
+
     public Builder setName(String name) {
       _name = name;
+      return this;
+    }
+
+    public @Nonnull Builder setNativeVlan(@Nullable Integer nativeVlan) {
+      _nativeVlan = nativeVlan;
       return this;
     }
 
@@ -148,8 +383,18 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
+    public Builder setOspfProcess(String process) {
+      _ospfProcess = process;
+      return this;
+    }
+
     public Builder setOutgoingFilter(IpAccessList outgoingFilter) {
       _outgoingFilter = outgoingFilter;
+      return this;
+    }
+
+    public Builder setOutgoingTransformation(Transformation outgoingTransformation) {
+      _outgoingTransformation = outgoingTransformation;
       return this;
     }
 
@@ -158,13 +403,55 @@ public final class Interface extends ComparableStructure<String> {
       return this;
     }
 
-    public Builder setSourceNats(List<SourceNat> sourceNats) {
-      _sourceNats = sourceNats;
+    public Builder setPostTransformationIncomingFilter(
+        IpAccessList postTransformationIncomingFilter) {
+      _postTransformationIncomingFilter = postTransformationIncomingFilter;
       return this;
     }
 
-    public Builder setAddress(InterfaceAddress address) {
-      _address = address;
+    public Builder setPreTransformationOutgoingFilter(
+        IpAccessList preTransformationOutgoingFilter) {
+      _preTransformationOutgoingFilter = preTransformationOutgoingFilter;
+      return this;
+    }
+
+    public Builder setProxyArp(boolean proxyArp) {
+      _proxyArp = proxyArp;
+      return this;
+    }
+
+    /**
+     * Set the secondary addresses of the interface. <br>
+     * The {@link Interface#getAllAddresses()} method of the built {@link Interface} will return a
+     * set containing the primary address and secondary addresses.<br>
+     * The node will accept traffic whose destination IP belongs is among any of the addresses of
+     * any of the interfaces. The primary address is the one used by default as the source IP for
+     * traffic sent out the interface. A secondary address is another address potentially associated
+     * with a different subnet living on the interface. The interface will reply to ARP for the
+     * primary or any secondary IP.
+     */
+    public Builder setSecondaryAddresses(Iterable<InterfaceAddress> secondaryAddresses) {
+      _secondaryAddresses = ImmutableSet.copyOf(secondaryAddresses);
+      return this;
+    }
+
+    public @Nonnull Builder setSwitchport(@Nullable Boolean switchport) {
+      _switchport = switchport;
+      return this;
+    }
+
+    public @Nonnull Builder setSwitchportMode(@Nullable SwitchportMode switchportMode) {
+      _switchportMode = switchportMode;
+      return this;
+    }
+
+    public Builder setType(InterfaceType type) {
+      _type = type;
+      return this;
+    }
+
+    public @Nonnull Builder setVlan(@Nullable Integer vlan) {
+      _vlan = vlan;
       return this;
     }
 
@@ -172,89 +459,149 @@ public final class Interface extends ComparableStructure<String> {
       _vrf = vrf;
       return this;
     }
+
+    public Builder setVrrpGroups(SortedMap<Integer, VrrpGroup> vrrpGroups) {
+      _vrrpGroups = ImmutableSortedMap.copyOf(vrrpGroups);
+      return this;
+    }
+  }
+
+  /** Type of interface dependency. Informs failure analysis and bandwidth computation */
+  public enum DependencyType {
+    /** Aggregate dependency, part of one-to-many dependencies */
+    AGGREGATE,
+    /** A bind dependency, one-to-one, required for fate sharing */
+    BIND
+  }
+
+  /**
+   * Represents a directional dependency between two interfaces. Owner of this object <b>depends
+   * on</b> the interface name described by this object.
+   */
+  @ParametersAreNonnullByDefault
+  public static final class Dependency implements Serializable {
+    @Nonnull private final String _interfaceName;
+    @Nonnull private final DependencyType _type;
+    private static final long serialVersionUID = 1L;
+
+    public Dependency(String interfaceName, DependencyType type) {
+      _interfaceName = interfaceName;
+      _type = type;
+    }
+
+    @Nonnull
+    public String getInterfaceName() {
+      return _interfaceName;
+    }
+
+    @Nonnull
+    public DependencyType getType() {
+      return _type;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof Dependency)) {
+        return false;
+      }
+      Dependency that = (Dependency) o;
+      return _interfaceName.equals(that._interfaceName) && _type == that._type;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(_interfaceName, _type.ordinal());
+    }
+
+    @Override
+    public String toString() {
+      return MoreObjects.toStringHelper(Dependency.class)
+          .add("interfaceName", _interfaceName)
+          .add("type", _type)
+          .toString();
+    }
   }
 
   private static final int DEFAULT_MTU = 1500;
 
-  public static final String FLOW_SINK_TERMINATION_NAME = "flow_sink_termination";
+  public static final String DYNAMIC_INTERFACE_NAME = "dynamic";
 
   public static final String NULL_INTERFACE_NAME = "null_interface";
 
+  public static final Set<InterfaceType> TUNNEL_INTERFACE_TYPES =
+      ImmutableSet.of(InterfaceType.TUNNEL, InterfaceType.VPN);
+
+  public static final String UNSET_LOCAL_INTERFACE = "unset_local_interface";
+
+  public static final String INVALID_LOCAL_INTERFACE = "invalid_local_interface";
   private static final String PROP_ACCESS_VLAN = "accessVlan";
-
   private static final String PROP_ACTIVE = "active";
-
+  private static final String PROP_ADDITIONAL_ARP_IPS = "additionalArpIps";
   private static final String PROP_ALL_PREFIXES = "allPrefixes";
-
   private static final String PROP_ALLOWED_VLANS = "allowedVlans";
-
   private static final String PROP_AUTOSTATE = "autostate";
-
   private static final String PROP_BANDWIDTH = "bandwidth";
-
+  private static final String PROP_CHANNEL_GROUP = "channelGroup";
+  private static final String PROP_CHANNEL_GROUP_MEMBERS = "channelGroupMembers";
+  private static final String PROP_CRYPTO_MAP = "cryptoMap";
   private static final String PROP_DECLARED_NAMES = "declaredNames";
-
   private static final String PROP_DESCRIPTION = "description";
-
   private static final String PROP_DHCP_RELAY_ADDRESSES = "dhcpRelayAddresses";
-
+  private static final String PROP_EIGRP = "eigrp";
+  private static final String PROP_ENCAPSULATION_VLAN = "encapsulationVlan";
+  private static final String PROP_FIREWALL_SESSION_INTERFACE_INFO = "firewallSessionInterfaceInfo";
+  private static final String PROP_HSRP_GROUPS = "hsrpGroups";
+  private static final String PROP_HSRP_VERSION = "hsrpVersion";
   private static final String PROP_INBOUND_FILTER = "inboundFilter";
-
   private static final String PROP_INCOMING_FILTER = "incomingFilter";
-
+  private static final String PROP_INCOMING_TRANSFORMATION = "incomingTransformation";
   private static final String PROP_INTERFACE_TYPE = "type";
-
+  private static final String PROP_ISIS = "isis";
   private static final String PROP_ISIS_COST = "isisCost";
-
   private static final String PROP_ISIS_L1_INTERFACE_MODE = "isisL1InterfaceMode";
-
   private static final String PROP_ISIS_L2_INTERFACE_MODE = "isisL2InterfaceMode";
-
+  private static final String PROP_MLAG_ID = "mlagId";
   private static final String PROP_MTU = "mtu";
-
   private static final String PROP_NATIVE_VLAN = "nativeVlan";
-
   private static final String PROP_OSPF_AREA = "ospfArea";
-
   private static final String PROP_OSPF_COST = "ospfCost";
-
   private static final String PROP_OSPF_DEAD_INTERVAL = "ospfDeadInterval";
-
   private static final String PROP_OSPF_ENABLED = "ospfEnabled";
-
   private static final String PROP_OSPF_HELLO_MULTIPLIER = "ospfHelloMultiplier";
-
+  private static final String PROP_OSPF_INBOUND_DISTRIBUTE_LIST_POLICY =
+      "ospfInboundDistributeListPolicy";
   private static final String PROP_OSPF_PASSIVE = "ospfPassive";
-
   private static final String PROP_OSPF_POINT_TO_POINT = "ospfPointToPoint";
-
+  private static final String PROP_OSPF_PROCESS = "ospfProcess";
   private static final String PROP_OUTGOING_FILTER = "outgoingFilter";
-
+  private static final String PROP_OUTGOING_TRANSFORMATION = "outgoingTransformation";
+  private static final String PROP_POST_TRANSFORMATION_INCOMING_FILTER =
+      "postTransformationIncomingFilter";
   private static final String PROP_PREFIX = "prefix";
-
+  private static final String PROP_PRE_TRANSFORMATION_OUTGOING_FILTER =
+      "preTransformationOutgoingFilter";
+  private static final String PROP_PROXY_ARP = "proxyArp";
   private static final String PROP_RIP_ENABLED = "ripEnabled";
-
   private static final String PROP_RIP_PASSIVE = "ripPassive";
-
   private static final String PROP_ROUTING_POLICY = "routingPolicy";
-
-  private static final String PROP_SOURCE_NATS = "sourceNats";
-
   private static final String PROP_SPANNING_TREE_PORTFAST = "spanningTreePortfast";
-
+  private static final String PROP_SPEED = "speed";
   private static final String PROP_SWITCHPORT = "switchport";
-
   private static final String PROP_SWITCHPORT_MODE = "switchportMode";
-
   private static final String PROP_SWITCHPORT_TRUNK_ENCAPSULATION = "switchportTrunkEncapsulation";
-
+  private static final String PROP_VLAN = "vlan";
   private static final String PROP_VRF = "vrf";
-
   private static final String PROP_VRRP_GROUPS = "vrrpGroups";
-
   private static final String PROP_ZONE = "zone";
 
   private static final long serialVersionUID = 1L;
+
+  public static Builder builder() {
+    return new Builder(null);
+  }
 
   private static InterfaceType computeAosInteraceType(String name) {
     if (name.startsWith("vlan")) {
@@ -304,7 +651,7 @@ public final class Interface extends ComparableStructure<String> {
     } else if (name.startsWith("HundredGigabitEthernet")) {
       return InterfaceType.PHYSICAL;
     } else if (name.startsWith("Group-Async")) {
-      return InterfaceType.AGGREGATED;
+      return InterfaceType.PHYSICAL;
     } else if (name.startsWith("Loopback")) {
       return InterfaceType.LOOPBACK;
     } else if (name.startsWith("Management")) {
@@ -318,7 +665,12 @@ public final class Interface extends ComparableStructure<String> {
     } else if (name.startsWith("nve")) {
       return InterfaceType.VLAN;
     } else if (name.startsWith("Port-Channel")) {
-      return InterfaceType.AGGREGATED;
+      if (name.contains(".")) {
+        // Subinterface of a port channel
+        return InterfaceType.AGGREGATE_CHILD;
+      } else {
+        return InterfaceType.AGGREGATED;
+      }
     } else if (name.startsWith("POS")) {
       return InterfaceType.PHYSICAL;
     } else if (name.startsWith("Serial")) {
@@ -357,6 +709,7 @@ public final class Interface extends ComparableStructure<String> {
         return computeAwsInterfaceType(name);
 
       case ARISTA:
+      case ARUBAOS:
       case CADANT:
       case CISCO_ASA:
       case CISCO_IOS:
@@ -364,6 +717,9 @@ public final class Interface extends ComparableStructure<String> {
       case CISCO_NX:
       case FOUNDRY:
         return computeCiscoInterfaceType(name);
+
+      case F5_BIGIP_STRUCTURED:
+        return computeF5BigipStructuredInterfaceType(name);
 
       case FLAT_JUNIPER:
       case JUNIPER:
@@ -393,13 +749,32 @@ public final class Interface extends ComparableStructure<String> {
     }
   }
 
+  private static final Pattern F5_PHYSICAL_INTERFACE_NAME_PATTERN =
+      Pattern.compile("^\\d+\\.\\d+$");
+
+  private static @Nonnull InterfaceType computeF5BigipStructuredInterfaceType(String name) {
+    if (F5_PHYSICAL_INTERFACE_NAME_PATTERN.matcher(name).find()) {
+      return InterfaceType.PHYSICAL;
+    } else {
+      return InterfaceType.UNKNOWN;
+    }
+  }
+
   private static InterfaceType computeJuniperInterfaceType(String name) {
     if (name.startsWith("st")) {
       return InterfaceType.VPN;
     } else if (name.startsWith("reth")) {
       return InterfaceType.REDUNDANT;
+    } else if (name.startsWith("ae") && name.contains(".")) {
+      return InterfaceType.AGGREGATE_CHILD;
     } else if (name.startsWith("ae")) {
       return InterfaceType.AGGREGATED;
+    } else if (name.startsWith("lo")) {
+      return InterfaceType.LOOPBACK;
+    } else if (name.startsWith("irb")) {
+      return InterfaceType.VLAN;
+    } else if (name.contains(".")) {
+      return InterfaceType.LOGICAL;
     } else {
       return InterfaceType.PHYSICAL;
     }
@@ -415,25 +790,44 @@ public final class Interface extends ComparableStructure<String> {
     }
   }
 
-  private int _accessVlan;
+  @Nullable private Integer _accessVlan;
 
   private boolean _active;
 
-  private List<SubRange> _allowedVlans;
+  private @Nonnull IpSpace _additionalArpIps;
+
+  private IntegerSpace _allowedVlans;
 
   private SortedSet<InterfaceAddress> _allAddresses;
 
   private boolean _autoState;
 
-  private Double _bandwidth;
+  @Nullable private Double _bandwidth;
 
   private transient boolean _blacklisted;
 
+  private String _channelGroup;
+
+  private SortedSet<String> _channelGroupMembers;
+
+  private String _cryptoMap;
+
   private SortedSet<String> _declaredNames;
+
+  /** Set of interface dependencies required for this interface to active */
+  @Nonnull private Set<Dependency> _dependencies;
 
   private String _description;
 
   private List<Ip> _dhcpRelayAddresses;
+
+  @Nullable private EigrpInterfaceSettings _eigrp;
+
+  @Nullable private Integer _encapsulationVlan;
+
+  @Nullable private FirewallSessionInterfaceInfo _firewallSessionInterfaceInfo;
+
+  private Map<Integer, HsrpGroup> _hsrpGroups;
 
   private IpAccessList _inboundFilter;
 
@@ -443,21 +837,19 @@ public final class Interface extends ComparableStructure<String> {
 
   private transient String _incomingFilterName;
 
+  private Transformation _incomingTransformation;
+
   private InterfaceType _interfaceType;
 
-  private Integer _isisCost;
+  private IsisInterfaceSettings _isis;
 
-  private IsisInterfaceMode _isisL1InterfaceMode;
-
-  private IsisInterfaceMode _isisL2InterfaceMode;
+  @Nullable private Integer _mlagId;
 
   private int _mtu;
 
-  private int _nativeVlan;
+  @Nullable private Integer _nativeVlan;
 
-  private OspfArea _ospfArea;
-
-  private transient Long _ospfAreaName;
+  @Nullable private Long _ospfAreaName;
 
   private Integer _ospfCost;
 
@@ -467,37 +859,51 @@ public final class Interface extends ComparableStructure<String> {
 
   private int _ospfHelloMultiplier;
 
+  @Nullable private String _ospfInboundDistributeListPolicy;
+
   private boolean _ospfPassive;
 
   private boolean _ospfPointToPoint;
+
+  @Nullable private String _ospfProcess;
 
   private IpAccessList _outgoingFilter;
 
   private transient String _outgoingFilterName;
 
+  private Transformation _outgoingTransformation;
+
   private Configuration _owner;
 
   private InterfaceAddress _address;
 
-  private Boolean _proxyArp;
+  private IpAccessList _postTransformationIncomingFilter;
+
+  private transient String _postTransformationIncomingFilterName;
+
+  private boolean _proxyArp;
+
+  private IpAccessList _preTransformationOutgoingFilter;
+
+  private transient String _preTransformationOutgoingFilterName;
 
   private boolean _ripEnabled;
 
   private boolean _ripPassive;
 
-  private RoutingPolicy _routingPolicy;
-
-  private transient String _routingPolicyName;
-
-  private List<SourceNat> _sourceNats;
+  private String _routingPolicyName;
 
   private boolean _spanningTreePortfast;
 
-  private Boolean _switchport;
+  private @Nullable Double _speed;
+
+  private boolean _switchport;
 
   private SwitchportMode _switchportMode;
 
   private SwitchportEncapsulationType _switchportTrunkEncapsulation;
+
+  private Integer _vlan;
 
   private Vrf _vrf;
 
@@ -505,9 +911,9 @@ public final class Interface extends ComparableStructure<String> {
 
   private SortedMap<Integer, VrrpGroup> _vrrpGroups;
 
-  private Zone _zone;
+  private String _zoneName;
 
-  private transient String _zoneName;
+  private String _hsrpVersion;
 
   @SuppressWarnings("unused")
   private Interface() {
@@ -520,36 +926,40 @@ public final class Interface extends ComparableStructure<String> {
   }
 
   public Interface(String name, Configuration owner) {
+    this(name, owner, InterfaceType.UNKNOWN);
+
+    // Determine interface type after setting owner
+    _interfaceType =
+        ((_key == null) || (_owner == null))
+            ? InterfaceType.UNKNOWN
+            : computeInterfaceType(_key, _owner.getConfigurationFormat());
+  }
+
+  public Interface(String name, Configuration owner, @Nonnull InterfaceType interfaceType) {
     super(name);
     _active = true;
+    _additionalArpIps = EmptyIpSpace.INSTANCE;
     _autoState = true;
-    _allowedVlans = new ArrayList<>();
+    _allowedVlans = IntegerSpace.EMPTY;
     _allAddresses = ImmutableSortedSet.of();
+    _channelGroupMembers = ImmutableSortedSet.of();
     _declaredNames = ImmutableSortedSet.of();
-    _dhcpRelayAddresses = new ArrayList<>();
-    _interfaceType = InterfaceType.UNKNOWN;
+    _dependencies = ImmutableSet.of();
+    _dhcpRelayAddresses = ImmutableList.of();
+    _hsrpGroups = new TreeMap<>();
+    _interfaceType = interfaceType;
     _mtu = DEFAULT_MTU;
-    _nativeVlan = 1;
     _owner = owner;
     _switchportMode = SwitchportMode.NONE;
     _switchportTrunkEncapsulation = SwitchportEncapsulationType.DOT1Q;
-    _isisL1InterfaceMode = IsisInterfaceMode.UNSET;
-    _isisL2InterfaceMode = IsisInterfaceMode.UNSET;
-    _sourceNats = Collections.emptyList();
     _vrfName = Configuration.DEFAULT_VRF_NAME;
     _vrrpGroups = new TreeMap<>();
-
-    computeInterfaceType();
   }
 
   public void addAllowedRanges(List<SubRange> ranges) {
-    _allowedVlans.addAll(ranges);
-  }
-
-  private void computeInterfaceType() {
-    if ((_key != null) && (_owner != null)) {
-      _interfaceType = computeInterfaceType(_key, _owner.getConfigurationFormat());
-    }
+    IntegerSpace.Builder b = IntegerSpace.builder().including(_allowedVlans);
+    ranges.forEach(b::including);
+    _allowedVlans = b.build();
   }
 
   @Override
@@ -560,22 +970,28 @@ public final class Interface extends ComparableStructure<String> {
       return false;
     }
     Interface other = (Interface) o;
-    if (this._accessVlan != other._accessVlan) {
+    if (!Objects.equals(_accessVlan, other._accessVlan)) {
       return false;
     }
-    if (this._active != other._active) {
+    if (_active != other._active) {
       return false;
     }
-    if (!this._allowedVlans.equals(other._allowedVlans)) {
+    if (!Objects.equals(_address, other._address)) {
       return false;
     }
-    if (!this._allAddresses.equals(other._allAddresses)) {
+    if (!Objects.equals(_allowedVlans, other._allowedVlans)) {
       return false;
     }
-    if (this._autoState != other._autoState) {
+    if (!Objects.equals(_allAddresses, other._allAddresses)) {
       return false;
     }
-    if (this._bandwidth.compareTo(other._bandwidth) != 0) {
+    if (_autoState != other._autoState) {
+      return false;
+    }
+    if (!Objects.equals(_bandwidth, other._bandwidth)) {
+      return false;
+    }
+    if (!Objects.equals(_cryptoMap, other._cryptoMap)) {
       return false;
     }
     // we check ACLs for name match only -- full ACL diff can be done
@@ -583,82 +999,103 @@ public final class Interface extends ComparableStructure<String> {
     if (!IpAccessList.bothNullOrSameName(this.getInboundFilter(), other.getInboundFilter())) {
       return false;
     }
-
     if (!IpAccessList.bothNullOrSameName(this.getIncomingFilter(), other.getIncomingFilter())) {
       return false;
     }
-
     if (this._interfaceType != other._interfaceType) {
+      return false;
+    }
+    if (!Objects.equals(_key, other._key)) {
+      return false;
+    }
+
+    if (!Objects.equals(_eigrp, other._eigrp)) {
+      return false;
+    }
+
+    if (!Objects.equals(_encapsulationVlan, other._encapsulationVlan)) {
       return false;
     }
 
     // TODO: check ISIS settings for equality.
-    if (this._mtu != other._mtu) {
+    if (_mtu != other._mtu) {
       return false;
     }
-    if (this._nativeVlan != other._nativeVlan) {
+    if (!Objects.equals(_nativeVlan, other._nativeVlan)) {
       return false;
     }
     // TODO: check OSPF settings for equality.
-
     if (!IpAccessList.bothNullOrSameName(this._outgoingFilter, other._outgoingFilter)) {
       return false;
     }
-
-    if (!Objects.equals(this._address, other._address)) {
+    if (!_proxyArp == other._proxyArp) {
       return false;
     }
-
-    if (!Objects.equals(this._routingPolicy, other._routingPolicy)) {
+    if (!Objects.equals(_routingPolicyName, other._routingPolicyName)) {
       return false;
     }
-
+    if (!Objects.equals(_speed, other._speed)) {
+      return false;
+    }
     if (!Objects.equals(this._switchportMode, other._switchportMode)) {
       return false;
     }
-
-    if (!Objects.equals(this._zone, other._zone)) {
+    if (!Objects.equals(this._zoneName, other._zoneName)) {
+      return false;
+    }
+    if (!IpAccessList.bothNullOrSameName(
+        this._postTransformationIncomingFilter, other._postTransformationIncomingFilter)) {
+      return false;
+    }
+    if (!IpAccessList.bothNullOrSameName(
+        this._preTransformationOutgoingFilter, other._preTransformationOutgoingFilter)) {
       return false;
     }
     return true;
   }
 
+  /** Number of access VLAN when switchport mode is ACCESS. */
   @JsonProperty(PROP_ACCESS_VLAN)
-  @JsonPropertyDescription("Number of access VLAN when switchport mode is ACCESS")
-  public int getAccessVlan() {
+  @Nullable
+  public Integer getAccessVlan() {
     return _accessVlan;
   }
 
+  /** Whether this interface is administratively active (true) or disabled (false). */
   @JsonProperty(PROP_ACTIVE)
-  @JsonPropertyDescription(
-      "Whether this interface is administratively active (true) or disabled (false)")
   public boolean getActive() {
     return _active;
   }
 
+  @JsonProperty(PROP_ADDITIONAL_ARP_IPS)
+  public IpSpace getAdditionalArpIps() {
+    return _additionalArpIps;
+  }
+
+  /** Ranges of allowed VLANs when switchport mode is TRUNK. */
   @JsonProperty(PROP_ALLOWED_VLANS)
-  @JsonPropertyDescription("Ranges of allowed VLANs when switchport mode is TRUNK")
-  public List<SubRange> getAllowedVlans() {
+  public IntegerSpace getAllowedVlans() {
     return _allowedVlans;
   }
 
+  /** All IPV4 address/network assignments on this interface. */
   @JsonProperty(PROP_ALL_PREFIXES)
-  @JsonPropertyDescription("All IPV4 address/network assignments on this interface")
   public Set<InterfaceAddress> getAllAddresses() {
     return _allAddresses;
   }
 
+  /**
+   * Whether this VLAN interface's operational status is dependent on corresponding member
+   * switchports.
+   */
   @JsonProperty(PROP_AUTOSTATE)
-  @JsonPropertyDescription(
-      "Whether this VLAN interface's operational status is dependent on corresponding member "
-          + "switchports")
   public boolean getAutoState() {
     return _autoState;
   }
 
+  /** The nominal bandwidth of this interface in bits/sec for use in protocol cost calculations. */
   @JsonProperty(PROP_BANDWIDTH)
-  @JsonPropertyDescription(
-      "The nominal bandwidth of this interface in bits/sec for use in protocol cost calculations")
+  @Nullable
   public Double getBandwidth() {
     return _bandwidth;
   }
@@ -668,13 +1105,35 @@ public final class Interface extends ComparableStructure<String> {
     return _blacklisted;
   }
 
+  @JsonProperty(PROP_CHANNEL_GROUP)
+  public String getChannelGroup() {
+    return _channelGroup;
+  }
+
+  @JsonProperty(PROP_CHANNEL_GROUP_MEMBERS)
+  public SortedSet<String> getChannelGroupMembers() {
+    return _channelGroupMembers;
+  }
+
+  @JsonProperty(PROP_CRYPTO_MAP)
+  public String getCryptoMap() {
+    return _cryptoMap;
+  }
+
   @JsonProperty(PROP_DECLARED_NAMES)
   public SortedSet<String> getDeclaredNames() {
     return _declaredNames;
   }
 
+  /** Return the set of interfaces this interface depends on (see {@link Dependency}). */
+  @JsonIgnore
+  @Nonnull
+  public Set<Dependency> getDependencies() {
+    return _dependencies;
+  }
+
+  /** Description of this interface. */
   @JsonProperty(PROP_DESCRIPTION)
-  @JsonPropertyDescription("Description of this interface")
   public String getDescription() {
     return _description;
   }
@@ -684,14 +1143,40 @@ public final class Interface extends ComparableStructure<String> {
     return _dhcpRelayAddresses;
   }
 
+  @JsonProperty(PROP_EIGRP)
+  public @Nullable EigrpInterfaceSettings getEigrp() {
+    return _eigrp;
+  }
+
+  @JsonProperty(PROP_ENCAPSULATION_VLAN)
+  public @Nullable Integer getEncapsulationVlan() {
+    return _encapsulationVlan;
+  }
+
+  @JsonProperty(PROP_FIREWALL_SESSION_INTERFACE_INFO)
+  public @Nullable FirewallSessionInterfaceInfo getFirewallSessionInterfaceInfo() {
+    return _firewallSessionInterfaceInfo;
+  }
+
+  /** Mapping: hsrpGroupID -&gt; HsrpGroup */
+  @JsonProperty(PROP_HSRP_GROUPS)
+  public Map<Integer, HsrpGroup> getHsrpGroups() {
+    return _hsrpGroups;
+  }
+
+  /** Version of the HSRP protocol to use */
+  @JsonProperty(PROP_HSRP_VERSION)
+  public @Nullable String getHsrpVersion() {
+    return _hsrpVersion;
+  }
+
   @JsonIgnore
   public IpAccessList getInboundFilter() {
     return _inboundFilter;
   }
 
+  /** The IPV4 access-list used to filter traffic destined for this device on this interface. */
   @JsonProperty(PROP_INBOUND_FILTER)
-  @JsonPropertyDescription(
-      "The IPV4 access-list used to filter traffic destined for this device on this interface.")
   public String getInboundFilterName() {
     if (_inboundFilter != null) {
       return _inboundFilter.getName();
@@ -705,9 +1190,8 @@ public final class Interface extends ComparableStructure<String> {
     return _incomingFilter;
   }
 
+  /** The IPV4 access-list used to filter traffic that arrives on this interface. */
   @JsonProperty(PROP_INCOMING_FILTER)
-  @JsonPropertyDescription(
-      "The IPV4 access-list used to filter traffic that arrives on this interface.")
   public String getIncomingFilterName() {
     if (_incomingFilter != null) {
       return _incomingFilter.getName();
@@ -716,92 +1200,125 @@ public final class Interface extends ComparableStructure<String> {
     }
   }
 
+  @JsonProperty(PROP_INCOMING_TRANSFORMATION)
+  public Transformation getIncomingTransformation() {
+    return _incomingTransformation;
+  }
+
+  /** The type of this interface. */
   @JsonProperty(PROP_INTERFACE_TYPE)
-  @JsonPropertyDescription("The type of this interface")
   public InterfaceType getInterfaceType() {
     return _interfaceType;
   }
 
+  @JsonProperty(PROP_ISIS)
+  public @Nullable IsisInterfaceSettings getIsis() {
+    return _isis;
+  }
+
+  /** The IS-IS cost of this interface. */
   @JsonProperty(PROP_ISIS_COST)
-  @JsonPropertyDescription("The IS-IS cost of this interface")
+  @Deprecated
   public Integer getIsisCost() {
-    return _isisCost;
+    return null;
   }
 
+  /**
+   * Specifies whether this interface is active, passive, or unconfigured with respect to IS-IS
+   * level 1.
+   */
   @JsonProperty(PROP_ISIS_L1_INTERFACE_MODE)
-  @JsonPropertyDescription(
-      "Specifies whether this interface is active, passive, or unconfigured with respect to IS-IS "
-          + "level 1")
+  @Deprecated
   public IsisInterfaceMode getIsisL1InterfaceMode() {
-    return _isisL1InterfaceMode;
+    return null;
   }
 
+  /**
+   * Specifies whether this interface is active, passive, or unconfigured with respect to IS-IS
+   * level 2.
+   */
   @JsonProperty(PROP_ISIS_L2_INTERFACE_MODE)
-  @JsonPropertyDescription(
-      "Specifies whether this interface is active, passive, or unconfigured with respect to IS-IS "
-          + "level 2")
+  @Deprecated
   public IsisInterfaceMode getIsisL2InterfaceMode() {
-    return _isisL2InterfaceMode;
+    // TODO: deprecate properly
+    return null;
   }
 
+  @JsonProperty(PROP_MLAG_ID)
+  @Nullable
+  public Integer getMlagId() {
+    return _mlagId;
+  }
+
+  /** The maximum transmission unit (MTU) of this interface in bytes. */
   @JsonProperty(PROP_MTU)
-  @JsonPropertyDescription("The maximum transmission unit (MTU) of this interface in bytes")
   public int getMtu() {
     return _mtu;
   }
 
+  /** The native VLAN of this interface when switchport mode is TRUNK. */
   @JsonProperty(PROP_NATIVE_VLAN)
-  @JsonPropertyDescription("The native VLAN of this interface when switchport mode is TRUNK")
-  public int getNativeVlan() {
+  @Nullable
+  public Integer getNativeVlan() {
     return _nativeVlan;
   }
 
   @JsonIgnore
+  @Nullable
   public OspfArea getOspfArea() {
-    return _ospfArea;
-  }
-
-  @JsonProperty(PROP_OSPF_AREA)
-  @JsonPropertyDescription("The OSPF area to which this interface belongs.")
-  public Long getOspfAreaName() {
-    if (_ospfArea != null) {
-      return _ospfArea.getName();
-    } else {
-      return _ospfAreaName;
+    if (_ospfProcess == null
+        || _ospfAreaName == null
+        || !_vrf.getOspfProcesses().containsKey(_ospfProcess)) {
+      return null;
     }
+    return _vrf.getOspfProcesses().get(_ospfProcess).getAreas().get(_ospfAreaName);
   }
 
+  /** The OSPF area to which this interface belongs. */
+  @JsonProperty(PROP_OSPF_AREA)
+  public Long getOspfAreaName() {
+    return _ospfAreaName;
+  }
+
+  /** The explicit OSPF cost of this interface. If unset, the cost is automatically calculated. */
   @JsonProperty(PROP_OSPF_COST)
-  @JsonPropertyDescription(
-      "The explicit OSPF cost of this interface. If unset, the cost is automatically calculated.")
   public Integer getOspfCost() {
     return _ospfCost;
   }
 
+  /** Dead-interval in seconds for OSPF updates. */
   @JsonProperty(PROP_OSPF_DEAD_INTERVAL)
-  @JsonPropertyDescription("Dead-interval in seconds for OSPF updates")
   public int getOspfDeadInterval() {
     return _ospfDeadInterval;
   }
 
+  /** Whether or not OSPF is enabled at all on this interface (either actively or passively). */
   @JsonProperty(PROP_OSPF_ENABLED)
-  @JsonPropertyDescription(
-      "Whether or not OSPF is enabled at all on this interface (either actively or passively)")
   public boolean getOspfEnabled() {
     return _ospfEnabled;
   }
 
+  /** Number of OSPF packets to send out during dead-interval period for fast OSPF updates. */
   @JsonProperty(PROP_OSPF_HELLO_MULTIPLIER)
-  @JsonPropertyDescription(
-      "Number of OSPF packets to send out during dead-interval period for fast OSPF updates")
   public int getOspfHelloMultiplier() {
     return _ospfHelloMultiplier;
   }
 
+  /**
+   * "Returns name of the routing policy which is generated from the Global and Interface level
+   * inbound distribute-lists for OSPF"
+   */
+  @JsonProperty(PROP_OSPF_INBOUND_DISTRIBUTE_LIST_POLICY)
+  @Nullable
+  public String getOspfInboundDistributeListPolicy() {
+    return _ospfInboundDistributeListPolicy;
+  }
+
+  /**
+   * Whether or not OSPF is enabled passively on this interface. If passive, this interface is
+   * included in the OSPF RIB, but no OSPF packets are sent from it.
+   */
   @JsonProperty(PROP_OSPF_PASSIVE)
-  @JsonPropertyDescription(
-      "Whether or not OSPF is enabled passively on this interface. If passive, this interface is "
-          + "included in the OSPF RIB, but no OSPF packets are sent from it.")
   public boolean getOspfPassive() {
     return _ospfPassive;
   }
@@ -811,14 +1328,19 @@ public final class Interface extends ComparableStructure<String> {
     return _ospfPointToPoint;
   }
 
+  @JsonProperty(PROP_OSPF_PROCESS)
+  @Nullable
+  public String getOspfProcess() {
+    return _ospfProcess;
+  }
+
   @JsonIgnore
   public IpAccessList getOutgoingFilter() {
     return _outgoingFilter;
   }
 
+  /** The IPV4 access-list used to filter traffic that is sent out this interface. Stored as @id. */
   @JsonProperty(PROP_OUTGOING_FILTER)
-  @JsonPropertyDescription(
-      "The IPV4 access-list used to filter traffic that is sent out this interface. Stored as @id")
   public String getOutgoingFilterName() {
     if (_outgoingFilter != null) {
       return _outgoingFilter.getName();
@@ -827,19 +1349,60 @@ public final class Interface extends ComparableStructure<String> {
     }
   }
 
+  @JsonProperty(PROP_OUTGOING_TRANSFORMATION)
+  public Transformation getOutgoingTransformation() {
+    return _outgoingTransformation;
+  }
+
   @JsonIgnore
   public Configuration getOwner() {
     return _owner;
   }
 
+  /** The primary IPV4 address/network of this interface. */
   @JsonProperty(PROP_PREFIX)
-  @JsonPropertyDescription("The primary IPV4 address/network of this interface")
   public InterfaceAddress getAddress() {
     return _address;
   }
 
-  @JsonPropertyDescription("Whether or not proxy-ARP is enabled on this interface.")
-  public Boolean getProxyArp() {
+  @JsonIgnore
+  public IpAccessList getPostTransformationIncomingFilter() {
+    return _postTransformationIncomingFilter;
+  }
+
+  /** The IPV4 access-list used to filter incoming traffic after applying destination NAT. */
+  @JsonProperty(PROP_POST_TRANSFORMATION_INCOMING_FILTER)
+  public String getPostTransformationIncomingFilterName() {
+    if (_postTransformationIncomingFilter != null) {
+      return _postTransformationIncomingFilter.getName();
+    } else {
+      return _postTransformationIncomingFilterName;
+    }
+  }
+
+  @JsonIgnore
+  public IpAccessList getPreTransformationOutgoingFilter() {
+    return _preTransformationOutgoingFilter;
+  }
+
+  /** The IPV4 access-list used to filter outgoing traffic before applying source NAT. */
+  @JsonProperty(PROP_PRE_TRANSFORMATION_OUTGOING_FILTER)
+  public String getPreTransformationOutgoingFilterName() {
+    if (_preTransformationOutgoingFilter != null) {
+      return _preTransformationOutgoingFilter.getName();
+    } else {
+      return _preTransformationOutgoingFilterName;
+    }
+  }
+
+  @JsonIgnore
+  public @Nullable Prefix getPrimaryNetwork() {
+    return _address != null ? _address.getPrefix() : null;
+  }
+
+  /** Whether or not proxy-ARP is enabled on this interface. */
+  @JsonProperty(PROP_PROXY_ARP)
+  public boolean getProxyArp() {
     return _proxyArp;
   }
 
@@ -853,54 +1416,50 @@ public final class Interface extends ComparableStructure<String> {
     return _ripPassive;
   }
 
-  @JsonIgnore
-  public RoutingPolicy getRoutingPolicy() {
-    return _routingPolicy;
-  }
-
+  /**
+   * The name of the policy used on this interface for policy routing (as opposed to
+   * destination-based routing).
+   */
   @JsonProperty(PROP_ROUTING_POLICY)
-  @JsonPropertyDescription(
-      "The routing policy used on this interface for policy-routing (as opposed to destination-"
-          + "routing). Stored as @id")
   public String getRoutingPolicyName() {
-    if (_routingPolicy != null) {
-      return _routingPolicy.getName();
-    } else {
-      return _routingPolicyName;
-    }
+    return _routingPolicyName;
   }
 
-  @JsonProperty(PROP_SOURCE_NATS)
-  public List<SourceNat> getSourceNats() {
-    return _sourceNats;
-  }
-
+  /** Whether or not spanning-tree portfast feature is enabled. */
   @JsonProperty(PROP_SPANNING_TREE_PORTFAST)
-  @JsonPropertyDescription("Whether or not spanning-tree portfast feature is enabled")
   public boolean getSpanningTreePortfast() {
     return _spanningTreePortfast;
   }
 
+  /** The link speed of this interface */
+  public @Nullable Double getSpeed() {
+    return _speed;
+  }
+
+  /** Whether this interface is configured as a switchport. */
   @JsonProperty(PROP_SWITCHPORT)
-  @JsonPropertyDescription(
-      "Whether this interface is explicitly set as a switchport. Nothing may be inferred from "
-          + "absence of this field.")
-  public Boolean getSwitchport() {
+  public boolean getSwitchport() {
     return _switchport;
   }
 
+  /** The switchport mode (if any) of this interface. */
   @JsonProperty(PROP_SWITCHPORT_MODE)
-  @JsonPropertyDescription("The switchport mode (if any) of this interface")
   public SwitchportMode getSwitchportMode() {
     return _switchportMode;
   }
 
+  /**
+   * The switchport trunk encapsulation type of this interface. Only relevant when switchport mode
+   * is TRUNK.
+   */
   @JsonProperty(PROP_SWITCHPORT_TRUNK_ENCAPSULATION)
-  @JsonPropertyDescription(
-      "The switchport trunk encapsulation type of this interface. Only relevant when switchport "
-          + "mode is TRUNK")
   public SwitchportEncapsulationType getSwitchportTrunkEncapsulation() {
     return _switchportTrunkEncapsulation;
+  }
+
+  @JsonProperty(PROP_VLAN)
+  public @Nullable Integer getVlan() {
+    return _vlan;
   }
 
   @JsonIgnore
@@ -908,8 +1467,8 @@ public final class Interface extends ComparableStructure<String> {
     return _vrf;
   }
 
+  /** The name of the VRF to which this interface belongs. */
   @JsonProperty(PROP_VRF)
-  @JsonPropertyDescription("The name of the VRF to which this interface belongs")
   public String getVrfName() {
     if (_vrf != null) {
       return _vrf.getName();
@@ -923,19 +1482,10 @@ public final class Interface extends ComparableStructure<String> {
     return _vrrpGroups;
   }
 
-  @JsonIgnore
-  public Zone getZone() {
-    return _zone;
-  }
-
+  /** The firewall zone to which this interface belongs. */
   @JsonProperty(PROP_ZONE)
-  @JsonPropertyDescription("The firewall zone to which this interface belongs.")
   public String getZoneName() {
-    if (_zone != null) {
-      return _zone.getName();
-    } else {
-      return _zoneName;
-    }
+    return _zoneName;
   }
 
   public boolean isLoopback(ConfigurationFormat vendor) {
@@ -950,28 +1500,8 @@ public final class Interface extends ComparableStructure<String> {
     return name.startsWith("lo");
   }
 
-  public void resolveReferences(Configuration owner) {
-    _owner = owner;
-    _vrf = owner.getVrfs().get(_vrfName);
-    if (_inboundFilterName != null) {
-      _inboundFilter = owner.getIpAccessLists().get(_inboundFilterName);
-    }
-    if (_incomingFilterName != null) {
-      _incomingFilter = owner.getIpAccessLists().get(_incomingFilterName);
-    }
-    if (_outgoingFilterName != null) {
-      _outgoingFilter = owner.getIpAccessLists().get(_outgoingFilterName);
-    }
-    if (_ospfAreaName != null) {
-      OspfProcess ospfProc = _vrf.getOspfProcess();
-      if (ospfProc != null) {
-        _ospfArea = ospfProc.getAreas().get(_ospfAreaName);
-      }
-    }
-  }
-
   @JsonProperty(PROP_ACCESS_VLAN)
-  public void setAccessVlan(int vlan) {
+  public void setAccessVlan(@Nullable Integer vlan) {
     _accessVlan = vlan;
   }
 
@@ -980,8 +1510,13 @@ public final class Interface extends ComparableStructure<String> {
     _active = active;
   }
 
+  @JsonProperty(PROP_ADDITIONAL_ARP_IPS)
+  public void setAdditionalArpIps(IpSpace additionalArpIps) {
+    _additionalArpIps = firstNonNull(additionalArpIps, EmptyIpSpace.INSTANCE);
+  }
+
   @JsonProperty(PROP_ALLOWED_VLANS)
-  public void setAllowedVlans(List<SubRange> allowedVlans) {
+  public void setAllowedVlans(IntegerSpace allowedVlans) {
     _allowedVlans = allowedVlans;
   }
 
@@ -996,7 +1531,7 @@ public final class Interface extends ComparableStructure<String> {
   }
 
   @JsonProperty(PROP_BANDWIDTH)
-  public void setBandwidth(Double bandwidth) {
+  public void setBandwidth(@Nullable Double bandwidth) {
     _bandwidth = bandwidth;
   }
 
@@ -1005,9 +1540,36 @@ public final class Interface extends ComparableStructure<String> {
     _blacklisted = blacklisted;
   }
 
+  @JsonProperty(PROP_CHANNEL_GROUP)
+  public void setChannelGroup(String channelGroup) {
+    _channelGroup = channelGroup;
+  }
+
+  @JsonProperty(PROP_CHANNEL_GROUP_MEMBERS)
+  public void setChannelGroupMembers(Iterable<String> channelGroupMembers) {
+    _channelGroupMembers = ImmutableSortedSet.copyOf(channelGroupMembers);
+  }
+
+  @JsonProperty(PROP_CRYPTO_MAP)
+  public void setCryptoMap(String cryptoMap) {
+    _cryptoMap = cryptoMap;
+  }
+
   @JsonProperty(PROP_DECLARED_NAMES)
   public void setDeclaredNames(SortedSet<String> declaredNames) {
     _declaredNames = ImmutableSortedSet.copyOf(declaredNames);
+  }
+
+  /** Set (overwrite) all dependencies for this interface */
+  @JsonIgnore
+  public void setDependencies(@Nonnull Collection<Dependency> dependencies) {
+    _dependencies = ImmutableSet.copyOf(dependencies);
+  }
+
+  /** Add an interface dependency to this interface */
+  public void addDependency(@Nonnull Dependency dependency) {
+    _dependencies =
+        ImmutableSet.<Dependency>builder().addAll(_dependencies).add(dependency).build();
   }
 
   @JsonProperty(PROP_DESCRIPTION)
@@ -1017,7 +1579,33 @@ public final class Interface extends ComparableStructure<String> {
 
   @JsonProperty(PROP_DHCP_RELAY_ADDRESSES)
   public void setDhcpRelayAddresses(List<Ip> dhcpRelayAddresses) {
-    _dhcpRelayAddresses = dhcpRelayAddresses;
+    _dhcpRelayAddresses = ImmutableList.copyOf(dhcpRelayAddresses);
+  }
+
+  @JsonProperty(PROP_EIGRP)
+  public void setEigrp(@Nullable EigrpInterfaceSettings eigrp) {
+    _eigrp = eigrp;
+  }
+
+  @JsonProperty(PROP_ENCAPSULATION_VLAN)
+  public void setEncapsulationVlan(@Nullable Integer encapsulationVlan) {
+    _encapsulationVlan = encapsulationVlan;
+  }
+
+  @JsonProperty(PROP_FIREWALL_SESSION_INTERFACE_INFO)
+  public void setFirewallSessionInterfaceInfo(
+      @Nullable FirewallSessionInterfaceInfo firewallSessionInterfaceInfo) {
+    _firewallSessionInterfaceInfo = firewallSessionInterfaceInfo;
+  }
+
+  @JsonProperty(PROP_HSRP_GROUPS)
+  public void setHsrpGroups(@Nonnull Map<Integer, HsrpGroup> hsrpGroups) {
+    _hsrpGroups = hsrpGroups;
+  }
+
+  @JsonProperty(PROP_HSRP_VERSION)
+  public void setHsrpVersion(String hsrpVersion) {
+    _hsrpVersion = hsrpVersion;
   }
 
   @JsonIgnore
@@ -1035,6 +1623,11 @@ public final class Interface extends ComparableStructure<String> {
     _incomingFilter = incomingFilter;
   }
 
+  @JsonProperty(PROP_INCOMING_TRANSFORMATION)
+  public void setIncomingTransformation(Transformation incomingTransformation) {
+    _incomingTransformation = incomingTransformation;
+  }
+
   @JsonProperty(PROP_INCOMING_FILTER)
   public void setIncomingFilterName(String incomingFilterName) {
     _incomingFilterName = incomingFilterName;
@@ -1045,19 +1638,32 @@ public final class Interface extends ComparableStructure<String> {
     _interfaceType = it;
   }
 
+  @JsonProperty(PROP_ISIS)
+  public void setIsis(@Nullable IsisInterfaceSettings isis) {
+    _isis = isis;
+  }
+
   @JsonProperty(PROP_ISIS_COST)
+  @Deprecated
   public void setIsisCost(Integer isisCost) {
-    _isisCost = isisCost;
+    // TODO: deprecate properly
   }
 
   @JsonProperty(PROP_ISIS_L1_INTERFACE_MODE)
+  @Deprecated
   public void setIsisL1InterfaceMode(IsisInterfaceMode mode) {
-    _isisL1InterfaceMode = mode;
+    // TODO: deprecate properly
   }
 
   @JsonProperty(PROP_ISIS_L2_INTERFACE_MODE)
+  @Deprecated
   public void setIsisL2InterfaceMode(IsisInterfaceMode mode) {
-    _isisL2InterfaceMode = mode;
+    // TODO: deprecate properly
+  }
+
+  @JsonProperty(PROP_MLAG_ID)
+  public void setMlagId(Integer mlagId) {
+    _mlagId = mlagId;
   }
 
   @JsonProperty(PROP_MTU)
@@ -1066,13 +1672,17 @@ public final class Interface extends ComparableStructure<String> {
   }
 
   @JsonProperty(PROP_NATIVE_VLAN)
-  public void setNativeVlan(int vlan) {
+  public void setNativeVlan(@Nullable Integer vlan) {
     _nativeVlan = vlan;
   }
 
   @JsonIgnore
-  public void setOspfArea(OspfArea ospfArea) {
-    _ospfArea = ospfArea;
+  public void setOspfArea(@Nullable OspfArea ospfArea) {
+    if (ospfArea == null) {
+      _ospfAreaName = null;
+    } else {
+      _ospfAreaName = ospfArea.getAreaNumber();
+    }
   }
 
   @JsonProperty(PROP_OSPF_AREA)
@@ -1100,6 +1710,11 @@ public final class Interface extends ComparableStructure<String> {
     _ospfHelloMultiplier = multiplier;
   }
 
+  @JsonProperty(PROP_OSPF_INBOUND_DISTRIBUTE_LIST_POLICY)
+  public void setOspfInboundDistributeListPolicy(@Nullable String ospfInboundDistributeListPolicy) {
+    _ospfInboundDistributeListPolicy = ospfInboundDistributeListPolicy;
+  }
+
   @JsonProperty(PROP_OSPF_PASSIVE)
   public void setOspfPassive(boolean passive) {
     _ospfPassive = passive;
@@ -1108,6 +1723,10 @@ public final class Interface extends ComparableStructure<String> {
   @JsonProperty(PROP_OSPF_POINT_TO_POINT)
   public void setOspfPointToPoint(boolean ospfPointToPoint) {
     _ospfPointToPoint = ospfPointToPoint;
+  }
+
+  public void setOspfProcess(@Nullable String ospfProcess) {
+    _ospfProcess = ospfProcess;
   }
 
   @JsonIgnore
@@ -1120,6 +1739,11 @@ public final class Interface extends ComparableStructure<String> {
     _outgoingFilterName = outgoingFilterName;
   }
 
+  @JsonProperty(PROP_OUTGOING_TRANSFORMATION)
+  public void setOutgoingTransformation(Transformation outgoingTransformation) {
+    _outgoingTransformation = outgoingTransformation;
+  }
+
   @JsonIgnore
   public void setOwner(Configuration owner) {
     _owner = owner;
@@ -1130,7 +1754,28 @@ public final class Interface extends ComparableStructure<String> {
     _address = address;
   }
 
-  public void setProxyArp(Boolean proxyArp) {
+  @JsonIgnore
+  public void setPostTransformationIncomingFilter(IpAccessList postTransformationIncomingFilter) {
+    _postTransformationIncomingFilter = postTransformationIncomingFilter;
+  }
+
+  @JsonProperty(PROP_POST_TRANSFORMATION_INCOMING_FILTER)
+  public void setPostTransformationIncomingFilter(String postTransformationIncomingFilterName) {
+    _postTransformationIncomingFilterName = postTransformationIncomingFilterName;
+  }
+
+  @JsonIgnore
+  public void setPreTransformationOutgoingFilter(IpAccessList preTransformationOutgoingFilter) {
+    _preTransformationOutgoingFilter = preTransformationOutgoingFilter;
+  }
+
+  @JsonProperty(PROP_PRE_TRANSFORMATION_OUTGOING_FILTER)
+  public void setPreTransformationOutgoingFilter(String preTransformationOutgoingFilterName) {
+    _preTransformationOutgoingFilterName = preTransformationOutgoingFilterName;
+  }
+
+  @JsonProperty(PROP_PROXY_ARP)
+  public void setProxyArp(boolean proxyArp) {
     _proxyArp = proxyArp;
   }
 
@@ -1144,19 +1789,9 @@ public final class Interface extends ComparableStructure<String> {
     _ripPassive = ripPassive;
   }
 
-  @JsonIgnore
-  public void setRoutingPolicy(RoutingPolicy routingPolicy) {
-    _routingPolicy = routingPolicy;
-  }
-
   @JsonProperty(PROP_ROUTING_POLICY)
   public void setRoutingPolicy(String routingPolicyName) {
     _routingPolicyName = routingPolicyName;
-  }
-
-  @JsonProperty(PROP_SOURCE_NATS)
-  public void setSourceNats(List<SourceNat> sourceNats) {
-    _sourceNats = sourceNats;
   }
 
   @JsonProperty(PROP_SPANNING_TREE_PORTFAST)
@@ -1164,8 +1799,13 @@ public final class Interface extends ComparableStructure<String> {
     _spanningTreePortfast = spanningTreePortfast;
   }
 
+  @JsonProperty(PROP_SPEED)
+  public void setSpeed(@Nullable Double speed) {
+    _speed = speed;
+  }
+
   @JsonProperty(PROP_SWITCHPORT)
-  public void setSwitchport(Boolean switchport) {
+  public void setSwitchport(boolean switchport) {
     _switchport = switchport;
   }
 
@@ -1177,6 +1817,11 @@ public final class Interface extends ComparableStructure<String> {
   @JsonProperty(PROP_SWITCHPORT_TRUNK_ENCAPSULATION)
   public void setSwitchportTrunkEncapsulation(SwitchportEncapsulationType encapsulation) {
     _switchportTrunkEncapsulation = encapsulation;
+  }
+
+  @JsonProperty(PROP_VLAN)
+  public void setVlan(@Nullable Integer vlan) {
+    _vlan = vlan;
   }
 
   @JsonIgnore
@@ -1197,22 +1842,27 @@ public final class Interface extends ComparableStructure<String> {
     _vrrpGroups = vrrpGroups;
   }
 
-  @JsonIgnore
-  public void setZone(Zone zone) {
-    _zone = zone;
-  }
-
   @JsonProperty(PROP_ZONE)
   public void setZoneName(String zoneName) {
     _zoneName = zoneName;
   }
 
-  public JSONObject toJSONObject() throws JSONException {
-    JSONObject iface = new JSONObject();
-    iface.put("node", _owner.getName());
-    iface.put("name", _key);
-    iface.put(PROP_PREFIX, _address.toString());
-    iface.put(PROP_INTERFACE_TYPE, _interfaceType.toString());
-    return iface;
+  /** Blacklist this interface, making it inactive and blacklisted */
+  public void blacklist() {
+    setActive(false);
+    setBlacklisted(true);
+  }
+
+  /**
+   * Check if the given interface name is <b>not</b> one of the special values defined by batfish or
+   * virtual null interface.
+   */
+  public static boolean isRealInterfaceName(@Nonnull String name) {
+    return !ImmutableList.of(
+            UNSET_LOCAL_INTERFACE,
+            DYNAMIC_INTERFACE_NAME,
+            NULL_INTERFACE_NAME,
+            INVALID_LOCAL_INTERFACE)
+        .contains(name);
   }
 }

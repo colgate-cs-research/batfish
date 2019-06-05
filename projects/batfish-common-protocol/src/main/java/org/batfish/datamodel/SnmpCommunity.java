@@ -1,21 +1,15 @@
 package org.batfish.datamodel;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.common.util.ComparableStructure;
 
 public class SnmpCommunity extends ComparableStructure<String> {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _accessList;
 
   private String _accessList6;
-
-  private int _accessList6Line;
-
-  private int _accessListLine;
 
   private boolean _ro;
 
@@ -33,16 +27,6 @@ public class SnmpCommunity extends ComparableStructure<String> {
     return _accessList6;
   }
 
-  @JsonIgnore
-  public int getAccessList6Line() {
-    return _accessList6Line;
-  }
-
-  @JsonIgnore
-  public int getAccessListLine() {
-    return _accessListLine;
-  }
-
   public boolean getRo() {
     return _ro;
   }
@@ -57,16 +41,6 @@ public class SnmpCommunity extends ComparableStructure<String> {
 
   public void setAccessList6(String accessList6) {
     _accessList6 = accessList6;
-  }
-
-  @JsonIgnore
-  public void setAccessList6Line(int accessList6Line) {
-    _accessList6Line = accessList6Line;
-  }
-
-  @JsonIgnore
-  public void setAccessListLine(int accessListLine) {
-    _accessListLine = accessListLine;
   }
 
   public void setRo(boolean ro) {

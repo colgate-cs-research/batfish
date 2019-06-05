@@ -18,17 +18,25 @@ dh_group
 :
    GROUP1
    | GROUP14
+   | GROUP15
+   | GROUP16
+   | GROUP19
    | GROUP2
+   | GROUP20
+   | GROUP24
    | GROUP5
 ;
 
 encryption_algorithm
 :
-   THREEDES_CBC
-   | AES_128_CBC
+   AES_128_CBC
+   | AES_128_GCM
    | AES_192_CBC
+   | AES_192_GCM
    | AES_256_CBC
+   | AES_256_GCM
    | DES_CBC
+   | THREEDES_CBC
 ;
 
 hib_protocol
@@ -110,212 +118,101 @@ ipsec_authentication_algorithm
 ipsec_protocol
 :
    AH
+   | BUNDLE
    | ESP
 ;
 
-junos_application
+nat_interface
 :
-   JUNOS_AOL
-   | JUNOS_BGP
-   | JUNOS_BIFF
-   | JUNOS_BOOTPC
-   | JUNOS_BOOTPS
-   | JUNOS_CHARGEN
-   | JUNOS_CIFS
-   | JUNOS_CVSPSERVER
-   | JUNOS_DHCP_CLIENT
-   | JUNOS_DHCP_RELAY
-   | JUNOS_DHCP_SERVER
-   | JUNOS_DISCARD
-   | JUNOS_DNS_TCP
-   | JUNOS_DNS_UDP
-   | JUNOS_ECHO
-   | JUNOS_FINGER
-   | JUNOS_FTP
-   | JUNOS_GNUTELLA
-   | JUNOS_GOPHER
-   | JUNOS_GRE
-   | JUNOS_GTP
-   | JUNOS_H323
-   | JUNOS_HTTP
-   | JUNOS_HTTP_EXT
-   | JUNOS_HTTPS
-   | JUNOS_ICMP_ALL
-   | JUNOS_ICMP_PING
-   | JUNOS_ICMP6_ALL
-   | JUNOS_ICMP6_DST_UNREACH_ADDR
-   | JUNOS_ICMP6_DST_UNREACH_ADMIN
-   | JUNOS_ICMP6_DST_UNREACH_BEYOND
-   | JUNOS_ICMP6_DST_UNREACH_PORT
-   | JUNOS_ICMP6_DST_UNREACH_ROUTE
-   | JUNOS_ICMP6_ECHO_REPLY
-   | JUNOS_ICMP6_ECHO_REQUEST
-   | JUNOS_ICMP6_PACKET_TO_BIG
-   | JUNOS_ICMP6_PARAM_PROB_HEADER
-   | JUNOS_ICMP6_PARAM_PROB_NEXTHDR
-   | JUNOS_ICMP6_PARAM_PROB_OPTION
-   | JUNOS_ICMP6_TIME_EXCEED_REASSEMBLY
-   | JUNOS_ICMP6_TIME_EXCEED_TRANSIT
-   | JUNOS_IDENT
-   | JUNOS_IKE
-   | JUNOS_IKE_NAT
-   | JUNOS_IMAP
-   | JUNOS_IMAPS
-   | JUNOS_INTERNET_LOCATOR_SERVICE
-   | JUNOS_IRC
-   | JUNOS_L2TP
-   | JUNOS_LDAP
-   | JUNOS_LDP_TCP
-   | JUNOS_LDP_UDP
-   | JUNOS_LPR
-   | JUNOS_MAIL
-   | JUNOS_MGCP
-   | JUNOS_MGCP_CA
-   | JUNOS_MGCP_UA
-   | JUNOS_MS_RPC
-   | JUNOS_MS_RPC_ANY
-   | JUNOS_MS_RPC_EPM
-   | JUNOS_MS_RPC_IIS_COM
-   | JUNOS_MS_RPC_IIS_COM_1
-   | JUNOS_MS_RPC_IIS_COM_ADMINBASE
-   | JUNOS_MS_RPC_MSEXCHANGE
-   | JUNOS_MS_RPC_MSEXCHANGE_DIRECTORY_NSP
-   | JUNOS_MS_RPC_MSEXCHANGE_DIRECTORY_RFR
-   | JUNOS_MS_RPC_MSEXCHANGE_INFO_STORE
-   | JUNOS_MS_RPC_TCP
-   | JUNOS_MS_RPC_UDP
-   | JUNOS_MS_RPC_UUID_ANY_TCP
-   | JUNOS_MS_RPC_UUID_ANY_UDP
-   | JUNOS_MS_RPC_WMIC
-   | JUNOS_MS_RPC_WMIC_ADMIN
-   | JUNOS_MS_RPC_WMIC_ADMIN2
-   | JUNOS_MS_RPC_WMIC_MGMT
-   | JUNOS_MS_RPC_WMIC_WEBM_CALLRESULT
-   | JUNOS_MS_RPC_WMIC_WEBM_CLASSOBJECT
-   | JUNOS_MS_RPC_WMIC_WEBM_LEVEL1LOGIN
-   | JUNOS_MS_RPC_WMIC_WEBM_LOGIN_CLIENTID
-   | JUNOS_MS_RPC_WMIC_WEBM_LOGIN_HELPER
-   | JUNOS_MS_RPC_WMIC_WEBM_OBJECTSINK
-   | JUNOS_MS_RPC_WMIC_WEBM_REFRESHING_SERVICES
-   | JUNOS_MS_RPC_WMIC_WEBM_REMOTE_REFRESHER
-   | JUNOS_MS_RPC_WMIC_WEBM_SERVICES
-   | JUNOS_MS_RPC_WMIC_WEBM_SHUTDOWN
-   | JUNOS_MS_SQL
-   | JUNOS_MSN
-   | JUNOS_NBDS
-   | JUNOS_NBNAME
-   | JUNOS_NETBIOS_SESSION
-   | JUNOS_NFS
-   | JUNOS_NFSD_TCP
-   | JUNOS_NFSD_UDP
-   | JUNOS_NNTP
-   | JUNOS_NS_GLOBAL
-   | JUNOS_NS_GLOBAL_PRO
-   | JUNOS_NSM
-   | JUNOS_NTALK
-   | JUNOS_NTP
-   | JUNOS_OSPF
-   | JUNOS_PC_ANYWHERE
-   | JUNOS_PERSISTENT_NAT
-   | JUNOS_PING
-   | JUNOS_PINGV6
-   | JUNOS_POP3
-   | JUNOS_PPTP
-   | JUNOS_PRINTER
-   | JUNOS_R2CP
-   | JUNOS_RADACCT
-   | JUNOS_RADIUS
-   | JUNOS_REALAUDIO
-   | JUNOS_RIP
-   | JUNOS_ROUTING_INBOUND
-   | JUNOS_RSH
-   | JUNOS_RTSP
-   | JUNOS_SCCP
-   | JUNOS_SCTP_ANY
-   | JUNOS_SIP
-   | JUNOS_SMB
-   | JUNOS_SMB_SESSION
-   | JUNOS_SMTP
-   | JUNOS_SNMP_AGENTX
-   | JUNOS_SNPP
-   | JUNOS_SQL_MONITOR
-   | JUNOS_SQLNET_V1
-   | JUNOS_SQLNET_V2
-   | JUNOS_SSH
-   | JUNOS_STUN
-   | JUNOS_SUN_RPC
-   | JUNOS_SUN_RPC_ANY
-   | JUNOS_SUN_RPC_ANY_TCP
-   | JUNOS_SUN_RPC_ANY_UDP
-   | JUNOS_SUN_RPC_MOUNTD
-   | JUNOS_SUN_RPC_MOUNTD_TCP
-   | JUNOS_SUN_RPC_MOUNTD_UDP
-   | JUNOS_SUN_RPC_NFS
-   | JUNOS_SUN_RPC_NFS_ACCESS
-   | JUNOS_SUN_RPC_NFS_TCP
-   | JUNOS_SUN_RPC_NFS_UDP
-   | JUNOS_SUN_RPC_NLOCKMGR
-   | JUNOS_SUN_RPC_NLOCKMGR_TCP
-   | JUNOS_SUN_RPC_NLOCKMGR_UDP
-   | JUNOS_SUN_RPC_PORTMAP
-   | JUNOS_SUN_RPC_PORTMAP_TCP
-   | JUNOS_SUN_RPC_PORTMAP_UDP
-   | JUNOS_SUN_RPC_RQUOTAD
-   | JUNOS_SUN_RPC_RQUOTAD_TCP
-   | JUNOS_SUN_RPC_RQUOTAD_UDP
-   | JUNOS_SUN_RPC_RUSERD
-   | JUNOS_SUN_RPC_RUSERD_TCP
-   | JUNOS_SUN_RPC_RUSERD_UDP
-   | JUNOS_SUN_RPC_SADMIND
-   | JUNOS_SUN_RPC_SADMIND_TCP
-   | JUNOS_SUN_RPC_SADMIND_UDP
-   | JUNOS_SUN_RPC_SPRAYD
-   | JUNOS_SUN_RPC_SPRAYD_TCP
-   | JUNOS_SUN_RPC_SPRAYD_UDP
-   | JUNOS_SUN_RPC_STATUS
-   | JUNOS_SUN_RPC_STATUS_TCP
-   | JUNOS_SUN_RPC_STATUS_UDP
-   | JUNOS_SUN_RPC_TCP
-   | JUNOS_SUN_RPC_UDP
-   | JUNOS_SUN_RPC_WALLD
-   | JUNOS_SUN_RPC_WALLD_TCP
-   | JUNOS_SUN_RPC_WALLD_UDP
-   | JUNOS_SUN_RPC_YPBIND
-   | JUNOS_SUN_RPC_YPBIND_TCP
-   | JUNOS_SUN_RPC_YPBIND_UDP
-   | JUNOS_SUN_RPC_YPSERV
-   | JUNOS_SUN_RPC_YPSERV_TCP
-   | JUNOS_SUN_RPC_YPSERV_UDP
-   | JUNOS_SYSLOG
-   | JUNOS_TACACS
-   | JUNOS_TACACS_DS
-   | JUNOS_TALK
-   | JUNOS_TCP_ANY
-   | JUNOS_TELNET
-   | JUNOS_TFTP
-   | JUNOS_UDP_ANY
-   | JUNOS_UUCP
-   | JUNOS_VDO_LIVE
-   | JUNOS_VNC
-   | JUNOS_WAIS
-   | JUNOS_WHO
-   | JUNOS_WHOIS
-   | JUNOS_WINFRAME
-   | JUNOS_WXCONTROL
-   | JUNOS_X_WINDOWS
-   | JUNOS_XNM_CLEAR_TEXT
-   | JUNOS_XNM_SSL
-   | JUNOS_YMSG
+   INTERFACE
+   (
+      nati_port_overloading
+      | nati_port_overloading_factor
+   )
+;
+
+nat_pool
+:
+   POOL name = variable
+   (
+      natp_address
+      | natp_description
+      | natp_port
+      | natp_routing_instance
+   )
+;
+
+nat_pool_utilization_alarm
+:
+    POOL_UTILIZATION_ALARM null_filler
+;
+
+nat_pool_default_port_range
+:
+   POOL_DEFAULT_PORT_RANGE low = DEC (TO high = DEC)?
+;
+
+nat_port_randomization
+:
+   PORT_RANDOMIZATION DISABLE
 ;
 
 nat_rule_set
 :
    RULE_SET name = variable
    (
-      rs_from
+      rs_packet_location
       | rs_rule
-      | rs_to
    )
+;
+
+nati_port_overloading
+:
+   PORT_OVERLOADING OFF
+;
+
+nati_port_overloading_factor
+:
+   PORT_OVERLOADING_FACTOR factor = DEC
+;
+
+natp_address
+:
+   ADDRESS
+   (
+      prefix = IP_PREFIX
+      |
+      (
+         from = IP_ADDRESS TO to = IP_ADDRESS
+      )
+      |
+      (
+         from = IP_PREFIX TO to = IP_PREFIX
+      )
+      |
+      (
+         ip_address = IP_ADDRESS PORT port_num = DEC
+      )
+   )
+;
+
+natp_port
+:
+   PORT
+   (
+      NO_TRANSLATION
+      | RANGE from = DEC (TO to = DEC)?
+   )
+;
+
+natp_description
+:
+   DESCRIPTION null_filler
+;
+
+natp_routing_instance
+:
+   ROUTING_INSTANCE name = variable
 ;
 
 proposal_set_type
@@ -325,9 +222,27 @@ proposal_set_type
    | STANDARD
 ;
 
-rs_from
+rs_interface
 :
-   FROM rsf_common
+    INTERFACE name = interface_id
+;
+
+rs_packet_location
+:
+   (
+     FROM
+     | TO
+   )
+   (
+     rs_interface
+     | rs_routing_instance
+     | rs_zone
+   )
+;
+
+rs_routing_instance
+:
+    ROUTING_INSTANCE name = variable
 ;
 
 rs_rule
@@ -340,17 +255,7 @@ rs_rule
    )
 ;
 
-rs_to
-:
-   TO rsf_common
-;
-
-rsf_common
-:
-   rsf_zone
-;
-
-rsf_zone
+rs_zone
 :
    ZONE name = variable
 ;
@@ -365,8 +270,11 @@ rsr_match
    MATCH
    (
       rsrm_destination_address
+      | rsrm_destination_address_name
       | rsrm_destination_port
       | rsrm_source_address
+      | rsrm_source_address_name
+      | rsrm_source_port
    )
 ;
 
@@ -374,7 +282,8 @@ rsr_then
 :
    THEN
    (
-      rsrt_source_nat
+      rsrt_destination_nat
+      | rsrt_source_nat
       | rsrt_static_nat
    )
 ;
@@ -382,6 +291,11 @@ rsr_then
 rsrm_destination_address
 :
    DESTINATION_ADDRESS IP_PREFIX
+;
+
+rsrm_destination_address_name
+:
+   DESTINATION_ADDRESS_NAME name = variable
 ;
 
 rsrm_destination_port
@@ -397,13 +311,53 @@ rsrm_source_address
    SOURCE_ADDRESS IP_PREFIX
 ;
 
+rsrm_source_address_name
+:
+   SOURCE_ADDRESS_NAME name = variable
+;
+
+rsrm_source_port
+:
+   SOURCE_PORT from = DEC
+    (
+        TO to = DEC
+    )?
+;
+
+rsrt_destination_nat
+:
+   DESTINATION_NAT
+   (
+      rsrt_nat_off
+      | rsrt_nat_pool
+   )
+;
+
+rsrt_nat_interface
+:
+   INTERFACE
+;
+
+rsrt_nat_off
+:
+   OFF
+;
+
+rsrt_nat_pool
+:
+   POOL name = variable
+   (
+      rsrtnp_persistent_nat
+   )?
+;
+
 rsrt_source_nat
 :
    SOURCE_NAT
    (
-      rsrts_interface
-      | rsrts_off
-      | rsrts_pool
+      rsrt_nat_interface
+      | rsrt_nat_off
+      | rsrt_nat_pool
    )
 ;
 
@@ -412,61 +366,32 @@ rsrt_static_nat
    STATIC_NAT
    (
       rsrtst_prefix
+      | rsrtst_prefix_name
    )
 ;
 
-rsrts_interface
-:
-   INTERFACE
-;
-
-rsrts_off
-:
-   OFF
-;
-
-rsrts_pool
-:
-   POOL
-   (
-      rsrtsp_common
-      | rsrtsp_named
-   )
-;
-
-rsrtsp_common
-:
-   apply
-   | rsrtsp_persistent_nat
-;
-
-rsrtsp_named
-:
-   name = variable rsrtsp_common
-;
-
-rsrtsp_persistent_nat
+rsrtnp_persistent_nat
 :
    PERSISTENT_NAT
    (
       apply
-      | rsrtspp_inactivity_timeout
-      | rsrtspp_max_session_number
-      | rsrtspp_permit
+      | rsrtnpp_inactivity_timeout
+      | rsrtnpp_max_session_number
+      | rsrtnpp_permit
    )
 ;
 
-rsrtspp_inactivity_timeout
+rsrtnpp_inactivity_timeout
 :
    INACTIVITY_TIMEOUT seconds = DEC
 ;
 
-rsrtspp_max_session_number
+rsrtnpp_max_session_number
 :
    MAX_SESSION_NUMBER max = DEC
 ;
 
-rsrtspp_permit
+rsrtnpp_permit
 :
    PERMIT
    (
@@ -485,6 +410,16 @@ rsrtst_prefix
    )
 ;
 
+rsrtst_prefix_name
+:
+   PREFIX_NAME
+   (
+      rsrtstp_prefix_name
+      | rsrtstp_routing_instance
+   )
+;
+
+
 rsrtstp_mapped_port
 :
    MAPPED_PORT low = DEC
@@ -498,18 +433,41 @@ rsrtstp_prefix
    IP_PREFIX
 ;
 
+rsrtstp_prefix_name
+:
+   name = variable
+;
+
+rsrtstp_routing_instance
+:
+   ROUTING_INSTANCE name = variable
+;
+
 s_security
 :
    SECURITY
    (
-      se_authentication_key_chain
+      se_address_book
+      | se_authentication_key_chain
       | se_certificates
       | se_ike
       | se_ipsec
       | se_nat
       | se_null
       | se_policies
+      | se_screen
       | se_zones
+   )
+;
+
+se_address_book
+:
+   ADDRESS_BOOK name = variable
+   (
+       apply
+       | sead_address
+       | sead_address_set
+       | sead_attach
    )
 ;
 
@@ -555,7 +513,8 @@ se_nat
 :
    NAT
    (
-      sen_proxy_arp
+      sen_destination
+      | sen_proxy_arp
       | sen_source
       | sen_static
    )
@@ -568,7 +527,6 @@ se_null
       | APPLICATION_TRACKING
       | FLOW
       | LOG
-      | SCREEN
    ) null_filler
 ;
 
@@ -578,7 +536,17 @@ se_policies
    (
       sep_default_policy
       | sep_from_zone
+      | sep_global
    )
+;
+
+se_screen
+:
+    SCREEN
+    (
+        ses_ids_option
+        | ses_null
+    )
 ;
 
 se_zones
@@ -608,7 +576,50 @@ sea_key
 
 sea_tolerance
 :
-  TOLERANCE DEC
+   TOLERANCE DEC
+;
+
+sead_address
+:
+   ADDRESS name = variable
+   (
+      apply
+      | DESCRIPTION null_filler
+      | address = IP_ADDRESS
+      | prefix = IP_PREFIX
+      | WILDCARD_ADDRESS wildcard_address
+   )
+;
+
+sead_address_set
+:
+   ADDRESS_SET name = variable
+   (
+      apply
+      | seada_address
+      | seada_address_set
+      | seada_description
+   )
+;
+
+sead_attach
+:
+   ATTACH ZONE name = variable
+;
+
+seada_address
+:
+   ADDRESS name = variable
+;
+
+seada_address_set
+:
+   ADDRESS_SET name = variable
+;
+
+seada_description
+:
+   DESCRIPTION null_filler
 ;
 
 sec_local
@@ -795,7 +806,11 @@ seikp_proposal_set
 
 seikp_proposals
 :
-   PROPOSALS name = variable
+   PROPOSALS OPEN_BRACKET
+   (
+       proposals += variable
+   )+
+   CLOSE_BRACKET
 ;
 
 seikpr_authentication_algorithm
@@ -876,7 +891,11 @@ seipp_proposal_set
 
 seipp_proposals
 :
-   PROPOSALS name = variable
+   PROPOSALS OPEN_BRACKET
+   (
+       proposals += variable
+   )+
+   CLOSE_BRACKET
 ;
 
 seippr_authentication_algorithm
@@ -1001,6 +1020,18 @@ seipvv_source_interface
    SOURCE_INTERFACE interface_id
 ;
 
+sen_destination
+:
+   DESTINATION
+   (
+      nat_rule_set
+      | nat_interface
+      | nat_pool
+      | nat_pool_utilization_alarm
+      | nat_port_randomization
+   )
+;
+
 sen_proxy_arp
 :
    PROXY_ARP
@@ -1015,9 +1046,11 @@ sen_source
    SOURCE
    (
       nat_rule_set
-      | sens_interface
-      | sens_pool
-      | sens_port_randomization
+      | nat_interface
+      | nat_pool
+      | nat_pool_utilization_alarm
+      | nat_port_randomization
+      | nat_pool_default_port_range
    )
 ;
 
@@ -1051,52 +1084,6 @@ senpi_address
    )?
 ;
 
-sens_interface
-:
-   INTERFACE
-   (
-      sensi_port_overloading
-      | sensi_port_overloading_factor
-   )
-;
-
-sens_pool
-:
-   POOL name = variable
-   (
-      sensp_address
-      | sensp_description
-   )
-;
-
-sens_port_randomization
-:
-   PORT_RANDOMIZATION DISABLE
-;
-
-sensi_port_overloading
-:
-   PORT_OVERLOADING OFF
-;
-
-sensi_port_overloading_factor
-:
-   PORT_OVERLOADING_FACTOR factor = DEC
-;
-
-sensp_address
-:
-   ADDRESS IP_PREFIX
-   (
-      TO IP_PREFIX
-   )?
-;
-
-sensp_description
-:
-   DESCRIPTION null_filler
-;
-
 sep_default_policy
 :
    DEFAULT_POLICY
@@ -1112,68 +1099,91 @@ sep_from_zone
    FROM_ZONE from = zone TO_ZONE to = zone
    (
       apply
-      | sepf_policy
+      | sepctx_policy
    )
 ;
 
-sepf_policy
+sep_global
 :
-   POLICY name = variable
+   GLOBAL
    (
       apply
-      | sepfp_description
-      | sepfp_match
-      | sepfp_then
+      | sepctx_policy
    )
 ;
 
-sepfp_description
+sepctx_policy
+:
+   POLICY name = variable_policy
+   (
+      apply
+      | sepctxp_description
+      | sepctxp_match
+      | sepctxp_then
+   )
+;
+
+sepctxp_description
 :
    DESCRIPTION null_filler
 ;
 
-sepfp_match
+sepctxp_match
 :
    MATCH
    (
-      sepfpm_application
-      | sepfpm_destination_address
-      | sepfpm_source_address
-      | sepfpm_source_identity
+      sepctxpm_application
+      | sepctxpm_destination_address
+      | sepctxpm_destination_address_excluded
+      | sepctxpm_source_address
+      | sepctxpm_source_address_excluded
+      | sepctxpm_source_identity
    )
 ;
 
-sepfp_then
+sepctxp_then
 :
    THEN
    (
-      sepfpt_deny
-      | sepfpt_log
-      | sepfpt_permit
+      sepctxpt_count
+      | sepctxpt_deny
+      | sepctxpt_log
+      | sepctxpt_permit
+      | sepctxpt_trace
    )
 ;
 
-sepfpm_application
+sepctxpm_application
 :
    APPLICATION
    (
-      ANY
-      | junos_application
+      junos_application
+      | junos_application_set
       | name = variable
    )
 ;
 
-sepfpm_destination_address
+sepctxpm_destination_address
 :
    DESTINATION_ADDRESS address_specifier
 ;
 
-sepfpm_source_address
+sepctxpm_destination_address_excluded
+:
+   DESTINATION_ADDRESS_EXCLUDED
+;
+
+sepctxpm_source_address
 :
    SOURCE_ADDRESS address_specifier
 ;
 
-sepfpm_source_identity
+sepctxpm_source_address_excluded
+:
+   SOURCE_ADDRESS_EXCLUDED
+;
+
+sepctxpm_source_identity
 :
    SOURCE_IDENTITY
    (
@@ -1182,38 +1192,458 @@ sepfpm_source_identity
    )
 ;
 
-sepfpt_deny
+sepctxpt_count
+:
+   COUNT
+;
+
+sepctxpt_deny
 :
    DENY
    | REJECT
 ;
 
-sepfpt_log
+sepctxpt_log
 :
    LOG null_filler
 ;
 
-sepfpt_permit
+sepctxpt_permit
 :
    PERMIT
    (
       apply
-      | sepfptp_tunnel
+      | sepctxptp_tunnel
    )
 ;
 
-sepfptp_tunnel
+sepctxpt_trace
+:
+   TRACE
+;
+
+sepctxptp_tunnel
 :
    TUNNEL
    (
       apply
-      | sepfptpt_ipsec_vpn
+      | sepctxptpt_ipsec_vpn
    )
 ;
 
-sepfptpt_ipsec_vpn
+sepctxptpt_ipsec_vpn
 :
    IPSEC_VPN name = variable
+;
+
+ses_ids_option
+:
+   IDS_OPTION name = variable
+   (
+      seso_alarm
+      | seso_description
+      | seso_icmp
+      | seso_ip
+      | seso_tcp
+      | seso_udp
+      | seso_limit_session
+   )+
+;
+
+ses_null
+:
+   ( TRACEOPTIONS | TRAP ) null_filler
+;
+
+seso_alarm
+:
+   ALARM_WITHOUT_DROP
+;
+
+seso_description
+:
+   DESCRIPTION string
+;
+
+seso_icmp
+:
+   ICMP
+   (
+      sesoi_flood
+      | sesoi_fragment
+      | sesoi_icmpv6_malformed
+      | sesoi_ip_sweep
+      | sesoi_large
+      | sesoi_ping_death
+   )
+;
+
+seso_ip
+:
+   IP
+   (
+      sesop_bad_option
+      | sesop_block_frag
+      | sesop_ipv6_extension_header
+      | sesop_ipv6_extension_header_limit
+      | sesop_ipv6_malformed_header
+      | sesop_loose_source_route_option
+      | sesop_record_route_option
+      | sesop_security_option
+      | sesop_source_route_option
+      | sesop_spoofing
+      | sesop_stream_option
+      | sesop_strict_source_route_option
+      | sesop_tear_drop
+      | sesop_timestamp_option
+      | sesop_unknown_protocol
+      | sesop_tunnel
+   )
+;
+
+seso_limit_session
+:
+   LIMIT_SESSION
+   (
+      DESTINATION_IP_BASED DEC
+      | SOURCE_IP_BASED DEC
+   )
+;
+
+seso_tcp
+:
+   TCP
+   (
+      sesot_fin_no_ack
+      | sesot_land
+      | sesot_port_scan
+      | sesot_syn_ack_ack_proxy
+      | sesot_syn_fin
+      | sesot_syn_flood
+      | sesot_syn_frag
+      | sesot_tcp_no_flag
+      | sesot_tcp_sweep
+      | sesot_winnuke
+   )
+;
+
+seso_udp
+:
+   UDP
+   (
+      sesou_flood
+      | sesou_port_scan
+      | sesou_udp_sweep
+   )
+;
+
+sesoi_flood
+:
+   FLOOD threshold
+;
+
+sesoi_fragment
+:
+   FRAGMENT
+;
+
+sesoi_icmpv6_malformed
+:
+   ICMPV6_MALFORMED
+;
+
+sesoi_ip_sweep
+:
+   IP_SWEEP threshold
+;
+
+sesoi_large
+:
+   LARGE
+;
+
+sesoi_ping_death
+:
+   PING_DEATH
+;
+
+sesop_bad_option
+:
+   BAD_OPTION
+;
+
+sesop_block_frag
+:
+   BLOCK_FRAG
+;
+
+sesop_ipv6_extension_header
+:
+   IPV6_EXTENSION_HEADER
+   (
+       AH_HEADER
+       | ESP_HEADER
+       | HIP_HEADER
+       | sesop6_dst_header
+       | FRAGMENT_HEADER
+       | sesop6_hop_header
+       | MOBILITY_HEADER
+       | NO_NEXT_HEADER
+       | ROUTING_HEADER
+       | SHIM6_HEADER
+       | sesop6_user_option
+   )
+;
+
+sesop_ipv6_extension_header_limit
+:
+   IPV6_EXTENSION_HEADER_LIMIT limit=DEC
+;
+
+sesop_ipv6_malformed_header
+:
+   IPV6_MALFORMED_HEADER
+;
+
+sesop_loose_source_route_option
+:
+   LOOSE_SOURCE_ROUTE_OPTION
+;
+
+sesop_record_route_option
+:
+   RECORD_ROUTE_OPTION
+;
+
+sesop_security_option
+:
+   SECURITY_OPTION
+;
+
+sesop_source_route_option
+:
+   SOURCE_ROUTE_OPTION
+;
+
+sesop_spoofing
+:
+   SPOOFING
+;
+
+sesop_stream_option
+:
+   STREAM_OPTION
+;
+
+sesop_strict_source_route_option
+:
+   STRICT_SOURCE_ROUTE_OPTION
+;
+
+sesop_tear_drop
+:
+   TEAR_DROP
+;
+
+sesop_timestamp_option
+:
+   TIMESTAMP_OPTION
+;
+
+sesop_tunnel
+:
+   TUNNEL
+   (
+      sesopt_gre
+      | sesopt_ip_in_udp
+      | sesopt_ipip
+      | BAD_INNER_HEADER
+   )
+;
+
+sesop_unknown_protocol
+:
+   UNKNOWN_PROTOCOL
+;
+
+sesop6_dst_header
+:
+   DESTINATION_HEADER
+   (
+      ILNP_NONCE_OPTION
+      | HOME_ADDRESS_OPTION
+      | LINE_IDENTIFICATION_OPTION
+      | TUNNEL_ENCAPSULATION_LIMIT_OPTION
+      | sesop6_user_option
+   )
+;
+
+sesop6_hop_header
+:
+   HOP_BY_HOP_HEADER
+   (
+      CALIPSO_OPTION
+      | RPL_OPTION
+      | SFM_DPD_OPTION
+      | JUMBO_PAYLOAD_OPTION
+      | QUICK_START_OPTION
+      | ROUTER_ALERT_OPTION
+      | sesop6_user_option
+   )
+;
+
+sesop6_user_option
+:
+   USER_DEFINED_OPTION_TYPE type_low=DEC (TO type_high=DEC)?
+;
+
+sesot_fin_no_ack
+:
+   FIN_NO_ACK
+;
+
+sesot_land
+:
+   LAND
+;
+
+sesot_port_scan
+:
+   PORT_SCAN threshold
+;
+
+sesot_syn_ack_ack_proxy
+:
+   SYN_ACK_ACK_PROXY threshold
+;
+
+sesot_syn_fin
+:
+   SYN_FIN
+;
+
+sesot_syn_flood
+:
+   SYN_FLOOD
+   (
+      sesots_alarm_thred
+      | sesots_attack_thred
+      | sesots_dst_thred
+      | sesots_src_thred
+      | sesots_timeout
+      | sesots_whitelist
+  )
+;
+
+sesot_syn_frag
+:
+   SYN_FRAG
+;
+
+sesot_tcp_no_flag
+:
+   TCP_NO_FLAG
+;
+
+sesot_tcp_sweep
+:
+   TCP_SWEEP threshold
+;
+
+sesot_winnuke
+:
+   WINNUKE
+;
+
+sesots_alarm_thred
+:
+   ALARM_THRESHOLD number=DEC
+;
+
+sesots_attack_thred
+:
+   ATTACK_THRESHOLD number=DEC
+;
+
+sesots_dst_thred
+:
+   DESTINATION_THRESHOLD number=DEC
+;
+
+sesots_src_thred
+:
+   SOURCE_THRESHOLD number=DEC
+;
+
+sesots_timeout
+:
+   TIMEOUT seconds=DEC
+;
+
+sesots_whitelist
+:
+   WHITE_LIST name=variable
+   (
+      sesotsw_dst
+      | sesotsw_src
+   )*
+;
+
+sesotsw_dst
+:
+   DESTINATION_ADDRESS address=IP_ADDRESS
+;
+
+sesotsw_src
+:
+   SOURCE_ADDRESS address=IP_ADDRESS
+;
+
+sesou_flood
+:
+   FLOOD threshold
+;
+
+sesou_port_scan
+:
+   PORT_SCAN threshold
+;
+
+sesou_udp_sweep
+:
+   UDP_SWEEP threshold
+;
+
+
+sesopt_gre
+:
+   GRE
+   (
+      GRE_4IN4
+      | GRE_4IN6
+      | GRE_6IN4
+      | GRE_6IN6
+   )
+;
+
+sesopt_ip_in_udp
+:
+   IP_IN_UDP TEREDO
+;
+
+sesopt_ipip
+:
+   IPIP
+   (
+      IPIP_4IN4
+      | IPIP_4IN6
+      | IPIP_6IN4
+      | IPIP_6IN6
+      | IPIP_6OVER4
+      | IPIP_6TO4RELAY
+      | ISATAP
+      | DSLITE
+   )
 ;
 
 sez_security_zone
@@ -1283,7 +1713,9 @@ sezsa_address
    ADDRESS name = variable
    (
       apply
-      | IP_PREFIX
+      | address = IP_ADDRESS
+      | prefix = IP_PREFIX
+      | WILDCARD_ADDRESS wildcard_address
    )
 ;
 
@@ -1292,17 +1724,17 @@ sezsa_address_set
    ADDRESS_SET name = variable
    (
       apply
-      | sezsaa_address
-      | sezsaa_address_set
+      | sezsaad_address
+      | sezsaad_address_set
    )
 ;
 
-sezsaa_address
+sezsaad_address
 :
    ADDRESS name = variable
 ;
 
-sezsaa_address_set
+sezsaad_address_set
 :
    ADDRESS_SET name = variable
 ;

@@ -1,9 +1,11 @@
 package org.batfish.question;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableSet;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -12,6 +14,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import org.batfish.common.Answerer;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.common.plugin.Plugin;
@@ -20,32 +24,35 @@ import org.batfish.datamodel.ConnectedRoute;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.OspfExternalRoute;
-import org.batfish.datamodel.OspfProcess;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Vrf;
 import org.batfish.datamodel.answers.AnswerElement;
 import org.batfish.datamodel.collections.NodeInterfacePair;
-import org.batfish.datamodel.questions.InterfacesSpecifier;
-import org.batfish.datamodel.questions.NodesSpecifier;
+import org.batfish.datamodel.ospf.OspfProcess;
 import org.batfish.datamodel.questions.Question;
 import org.batfish.datamodel.routing_policy.Environment.Direction;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 import org.batfish.question.OspfStatusQuestionPlugin.OspfStatusAnswerElement.OspfStatus;
+import org.batfish.specifier.AllInterfacesInterfaceSpecifier;
+import org.batfish.specifier.AllNodesNodeSpecifier;
+import org.batfish.specifier.InterfaceSpecifier;
+import org.batfish.specifier.NodeSpecifier;
+import org.batfish.specifier.SpecifierFactories;
 
 @AutoService(Plugin.class)
 public class OspfStatusQuestionPlugin extends QuestionPlugin {
 
-  public static class OspfStatusAnswerElement implements AnswerElement {
+  public static class OspfStatusAnswerElement extends AnswerElement {
 
     public enum OspfStatus {
+      DISABLED_EXPORTED,
+      DISABLED_NOT_EXPORTED,
       ENABLED_ACTIVE,
       ENABLED_PASSIVE,
-      DISABLED_EXPORTED,
-      DISABLED_NOT_EXPORTED
+      SWITCHPORT
     }
 
     public static class OspfInfo implements Comparable<OspfInfo> {
-
       private static final String PROP_INTERFACE = "interface";
       private static final String PROP_OSPF_STATUS = "ospfStatus";
 
@@ -104,14 +111,6 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
     public SortedSet<OspfInfo> getOspfStatus() {
       return _ospfStatuses;
     }
-
-    @Override
-    public String prettyPrint() {
-      StringBuilder sb = new StringBuilder("Results for OSPF loopbacks check\n");
-      _ospfStatuses.forEach(
-          info -> sb.append("  " + info.getInterface() + " " + info.getOspfStatus() + "\n"));
-      return sb.toString();
-    }
   }
 
   public static class OspfStatusAnswerer extends Answerer {
@@ -128,35 +127,38 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
       OspfStatusAnswerElement answerElement = new OspfStatusAnswerElement();
 
       Map<String, Configuration> configurations = _batfish.loadConfigurations();
-      Set<String> includeNodes = question.getNodeRegex().getMatchingNodes(configurations);
+      Set<String> includeNodes = question.getNodeSpecifier().resolve(_batfish.specifierContext());
 
-      for (Entry<String, Configuration> e : configurations.entrySet()) {
-        String hostname = e.getKey();
-        if (!includeNodes.contains(hostname)) {
-          continue;
-        }
-        Configuration c = e.getValue();
+      for (String hostname : includeNodes) {
+        Configuration c = configurations.get(hostname);
+        Set<NodeInterfacePair> includeInterfaces =
+            question
+                .getInterfaceSpecifier()
+                .resolve(ImmutableSet.of(hostname), _batfish.specifierContext());
         for (Vrf vrf : c.getVrfs().values()) {
           for (Entry<String, Interface> e2 : vrf.getInterfaces().entrySet()) {
             String interfaceName = e2.getKey();
             Interface iface = e2.getValue();
-            if (question.getInterfacesSpecifier().matches(iface)) {
-              if (iface.getOspfEnabled()) {
+            if (includeInterfaces.contains(new NodeInterfacePair(iface))) {
+              if (iface.getSwitchport()) {
+                // it's a layer2 interface
+                conditionalAdd(
+                    question, answerElement, hostname, interfaceName, OspfStatus.SWITCHPORT);
+              } else if (iface.getOspfEnabled()) {
                 // ospf is running either passively or actively
                 if (iface.getOspfPassive()) {
-                  if (question.matchesStatus(OspfStatus.ENABLED_PASSIVE)) {
-                    answerElement.add(hostname, interfaceName, OspfStatus.ENABLED_PASSIVE);
-                  }
+                  conditionalAdd(
+                      question, answerElement, hostname, interfaceName, OspfStatus.ENABLED_PASSIVE);
                 } else {
-                  if (question.matchesStatus(OspfStatus.ENABLED_ACTIVE)) {
-                    answerElement.add(hostname, interfaceName, OspfStatus.ENABLED_ACTIVE);
-                  }
+                  conditionalAdd(
+                      question, answerElement, hostname, interfaceName, OspfStatus.ENABLED_ACTIVE);
                 }
               } else {
                 // check if exported as external ospf route
                 boolean exported = false;
-                OspfProcess proc = vrf.getOspfProcess();
-                if (proc != null) {
+                if (iface.getOspfProcess() != null
+                    && vrf.getOspfProcesses().containsKey(iface.getOspfProcess())) {
+                  OspfProcess proc = vrf.getOspfProcesses().get(iface.getOspfProcess());
                   String exportPolicyName = proc.getExportPolicy();
                   if (exportPolicyName != null) {
                     RoutingPolicy exportPolicy = c.getRoutingPolicies().get(exportPolicyName);
@@ -164,11 +166,11 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
                       for (InterfaceAddress address : iface.getAllAddresses()) {
                         ConnectedRoute route =
                             new ConnectedRoute(
-                                new Prefix(address.getIp(), address.getNetworkBits()),
+                                Prefix.create(address.getIp(), address.getNetworkBits()),
                                 interfaceName);
                         if (exportPolicy.process(
                             route,
-                            new OspfExternalRoute.Builder(),
+                            OspfExternalRoute.builder(),
                             null,
                             vrf.getName(),
                             Direction.OUT)) {
@@ -178,13 +180,19 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
                     }
                   }
                   if (exported) {
-                    if (question.matchesStatus(OspfStatus.DISABLED_EXPORTED)) {
-                      answerElement.add(hostname, interfaceName, OspfStatus.DISABLED_EXPORTED);
-                    }
+                    conditionalAdd(
+                        question,
+                        answerElement,
+                        hostname,
+                        interfaceName,
+                        OspfStatus.DISABLED_EXPORTED);
                   } else {
-                    if (question.matchesStatus(OspfStatus.DISABLED_NOT_EXPORTED)) {
-                      answerElement.add(hostname, interfaceName, OspfStatus.DISABLED_NOT_EXPORTED);
-                    }
+                    conditionalAdd(
+                        question,
+                        answerElement,
+                        hostname,
+                        interfaceName,
+                        OspfStatus.DISABLED_NOT_EXPORTED);
                   }
                 }
               }
@@ -195,45 +203,46 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
 
       return answerElement;
     }
+
+    private static void conditionalAdd(
+        OspfStatusQuestion question,
+        OspfStatusAnswerElement answerElement,
+        String hostname,
+        String interfaceName,
+        OspfStatus status) {
+      if (question.matchesStatus(status)) {
+        answerElement.add(hostname, interfaceName, status);
+      }
+    }
   }
 
-  // <question_page_comment>
-
-  /**
-   * Lists the OSPF status of interfaces.
-   *
-   * <p>When running OSPF, it is a good practice to announce loopbacks interface IPs into OSPF. This
-   * question produces the list of nodes for which such announcements are happening.
-   *
-   * @type OspfStatus onefile
-   * @param interfacesSpecifier Expression for interfaces to include. Default value is '.*' (all
-   *     interfaces).
-   * @param nodeRegex Regular expression for names of nodes to include. Default value is '.*' (all
-   *     nodes).
-   * @example bf_answer("OspfStatus", nodeRegex='as2.*') Answers the question only for nodes whose
-   *     names start with 'as2'.
-   */
+  /** Lists the OSPF status of interfaces. */
+  @ParametersAreNonnullByDefault
   public static class OspfStatusQuestion extends Question {
-
-    private static final String PROP_INTERFACES_SPECIFIER = "interfacesSpecifier";
-
-    private static final String PROP_NODE_REGEX = "nodeRegex";
-
+    private static final String PROP_INTERFACES = "interfaces";
+    private static final String PROP_NODES = "nodes";
     private static final String PROP_STATUS = "status";
 
-    @Nonnull private InterfacesSpecifier _interfacesSpecifier;
+    @Nullable private String _interfaces;
 
-    @Nonnull private NodesSpecifier _nodeRegex;
+    @Nullable private String _nodes;
 
     @Nonnull private Pattern _statusRegex;
 
     @JsonCreator
+    private static OspfStatusQuestion create(
+        @Nullable @JsonProperty(PROP_INTERFACES) String ifaceSpec,
+        @Nullable @JsonProperty(PROP_NODES) String nodeSpec,
+        @Nullable @JsonProperty(PROP_STATUS) String status) {
+      return new OspfStatusQuestion(ifaceSpec, nodeSpec, status);
+    }
+
     private OspfStatusQuestion(
-        @JsonProperty(PROP_INTERFACES_SPECIFIER) InterfacesSpecifier ifaceSpec,
-        @JsonProperty(PROP_NODE_REGEX) NodesSpecifier nodeSpec,
+        @Nullable @JsonProperty(PROP_INTERFACES) String ifaceSpec,
+        @Nullable @JsonProperty(PROP_NODES) String nodeSpec,
         @JsonProperty(PROP_STATUS) String status) {
-      _interfacesSpecifier = (ifaceSpec == null) ? InterfacesSpecifier.ALL : ifaceSpec;
-      _nodeRegex = (nodeSpec == null) ? NodesSpecifier.ALL : nodeSpec;
+      _interfaces = ifaceSpec;
+      _nodes = nodeSpec;
       _statusRegex =
           Strings.isNullOrEmpty(status)
               ? Pattern.compile(".*")
@@ -250,14 +259,28 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
       return "ospfstatus";
     }
 
-    @JsonProperty(PROP_INTERFACES_SPECIFIER)
-    public InterfacesSpecifier getInterfacesSpecifier() {
-      return _interfacesSpecifier;
+    @Nullable
+    @JsonProperty(PROP_INTERFACES)
+    public String getInterfaces() {
+      return _interfaces;
     }
 
-    @JsonProperty(PROP_NODE_REGEX)
-    public NodesSpecifier getNodeRegex() {
-      return _nodeRegex;
+    @Nonnull
+    @JsonIgnore
+    InterfaceSpecifier getInterfaceSpecifier() {
+      return SpecifierFactories.getInterfaceSpecifierOrDefault(
+          _interfaces, AllInterfacesInterfaceSpecifier.INSTANCE);
+    }
+
+    @Nullable
+    @JsonProperty(PROP_NODES)
+    public String getNodes() {
+      return _nodes;
+    }
+
+    @JsonIgnore
+    NodeSpecifier getNodeSpecifier() {
+      return SpecifierFactories.getNodeSpecifierOrDefault(_nodes, AllNodesNodeSpecifier.INSTANCE);
     }
 
     @JsonProperty(PROP_STATUS)
@@ -267,15 +290,6 @@ public class OspfStatusQuestionPlugin extends QuestionPlugin {
 
     public boolean matchesStatus(OspfStatus status) {
       return _statusRegex.matcher(status.toString()).matches();
-    }
-
-    @Override
-    public String prettyPrint() {
-      String retString =
-          String.format(
-              "ospfStatus %snodeRegex=\"%s\", interfaceSpecifier=\"%s\", statuses=\"%s\"",
-              prettyPrintBase(), _nodeRegex, _interfacesSpecifier, _statusRegex);
-      return retString;
     }
   }
 

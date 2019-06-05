@@ -1,13 +1,14 @@
 package org.batfish.datamodel.routing_policy.expr;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.PrefixSpace;
 import org.batfish.datamodel.routing_policy.Environment;
 
 public class ExplicitPrefixSet extends PrefixSetExpr {
+  private static final String PROP_PREFIX_SPACE = "prefixSpace";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private PrefixSpace _prefixSpace;
@@ -41,6 +42,7 @@ public class ExplicitPrefixSet extends PrefixSetExpr {
     return true;
   }
 
+  @JsonProperty(PROP_PREFIX_SPACE)
   public PrefixSpace getPrefixSpace() {
     return _prefixSpace;
   }
@@ -59,6 +61,7 @@ public class ExplicitPrefixSet extends PrefixSetExpr {
     return value;
   }
 
+  @JsonProperty(PROP_PREFIX_SPACE)
   public void setPrefixSpace(PrefixSpace prefixSpace) {
     _prefixSpace = prefixSpace;
   }

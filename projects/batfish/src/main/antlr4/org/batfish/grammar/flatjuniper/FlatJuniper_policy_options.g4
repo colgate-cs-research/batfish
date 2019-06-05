@@ -52,6 +52,11 @@ po_as_path
    AS_PATH name = variable regex = AS_PATH_REGEX
 ;
 
+po_as_path_group
+:
+  AS_PATH_GROUP name = variable poapg_as_path
+;
+
 po_community
 :
    COMMUNITY name = variable
@@ -68,11 +73,7 @@ po_condition
 
 po_policy_statement
 :
-   POLICY_STATEMENT
-   (
-      WILDCARD
-      | name = variable
-   )
+   POLICY_STATEMENT name = variable
    (
       pops_term
       | pops_common
@@ -88,6 +89,11 @@ po_prefix_list
       | poplt_network
       | poplt_network6
    )
+;
+
+poapg_as_path
+:
+  AS_PATH name = variable regex = AS_PATH_REGEX
 ;
 
 poc_invert_match
@@ -145,6 +151,7 @@ pops_from
    (
       popsf_area
       | popsf_as_path
+      | popsf_as_path_group
       | popsf_color
       | popsf_community
       | popsf_family
@@ -169,11 +176,7 @@ pops_from
 
 pops_term
 :
-   TERM
-   (
-      WILDCARD
-      | name = variable
-   ) pops_common
+   TERM name = variable pops_common
 ;
 
 pops_then
@@ -203,6 +206,11 @@ popsf_as_path
    )?
 ;
 
+popsf_as_path_group
+:
+   AS_PATH_GROUP name = variable
+;
+
 popsf_color
 :
    COLOR color = DEC
@@ -217,8 +225,18 @@ popsf_family
 :
    FAMILY
    (
-      INET
+      EVPN
+      | INET
+      | INET_MDT
+      | INET_MVPN
+      | INET_VPN
       | INET6
+      | INET6_MVPN
+      | INET6_VPN
+      | ISO
+      | ISO_VPN
+      | ROUTE_TARGET
+      | TRAFFIC_ENGINEERING
    )
 ;
 
@@ -348,12 +366,22 @@ popsfpl_orlonger
 
 popsfrf_common
 :
-   popsfrf_exact
+   popsfrf_address_mask
+   | popsfrf_exact
    | popsfrf_longer
    | popsfrf_orlonger
    | popsfrf_prefix_length_range
    | popsfrf_through
    | popsfrf_upto
+;
+
+popsfrf_address_mask
+:
+   ADDRESS_MASK
+   (
+      IP_ADDRESS
+      | IPV6_ADDRESS
+   )
 ;
 
 popsfrf_exact
@@ -407,11 +435,7 @@ popst_as_path_expand
 
 popst_as_path_prepend
 :
-   AS_PATH_PREPEND
-   (
-      DEC
-      | DOUBLE_QUOTED_STRING
-   )
+   AS_PATH_PREPEND bgp_asn+
 ;
 
 popst_color
@@ -458,10 +482,12 @@ popst_common
    | popst_metric2
    | popst_metric2_expression
    | popst_next_hop
+   | popst_next_hop_self
    | popst_next_policy
    | popst_next_term
    | popst_null
    | popst_origin
+   | popst_preference
    | popst_priority
    | popst_reject
    | popst_tag
@@ -562,8 +588,12 @@ popst_next_hop
       IP_ADDRESS
       | IPV6_ADDRESS
       | PEER_ADDRESS
-      | SELF
    )
+;
+
+popst_next_hop_self
+:
+   NEXT_HOP SELF
 ;
 
 popst_next_policy
@@ -583,7 +613,17 @@ popst_null
 
 popst_origin
 :
-   ORIGIN IGP
+   ORIGIN
+   (
+      EGP
+      | IGP
+      | INCOMPLETE
+   )
+;
+
+popst_preference
+:
+   PREFERENCE preference = DEC
 ;
 
 popst_priority
@@ -641,6 +681,7 @@ s_policy_options
    (
       apply
       | po_as_path
+      | po_as_path_group
       | po_community
       | po_condition
       | po_policy_statement

@@ -7,9 +7,9 @@ import org.batfish.datamodel.routing_policy.expr.BooleanExpr;
 import org.batfish.datamodel.routing_policy.expr.CallExpr;
 import org.batfish.datamodel.routing_policy.expr.Conjunction;
 
+/** Represents a group of policy-statements that should be evaluated as a conjunction */
 public final class PsFromPolicyStatementConjunction extends PsFrom {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private final Set<String> _conjuncts;
@@ -26,7 +26,7 @@ public final class PsFromPolicyStatementConjunction extends PsFrom {
   public BooleanExpr toBooleanExpr(JuniperConfiguration jc, Configuration c, Warnings warnings) {
     Conjunction conj = new Conjunction();
     for (String conjunct : _conjuncts) {
-      PolicyStatement conjunctPs = jc.getPolicyStatements().get(conjunct);
+      PolicyStatement conjunctPs = jc.getMasterLogicalSystem().getPolicyStatements().get(conjunct);
       if (conjunctPs != null) {
         conj.getConjuncts().add(new CallExpr(conjunct));
       } else {

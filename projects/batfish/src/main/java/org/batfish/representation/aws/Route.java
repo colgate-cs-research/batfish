@@ -1,16 +1,17 @@
 package org.batfish.representation.aws;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 import java.util.Set;
 import java.util.TreeSet;
 import javax.annotation.Nullable;
 import org.batfish.common.BatfishException;
-import org.batfish.common.BatfishLogger;
-import org.batfish.common.Pair;
+import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
+import org.batfish.datamodel.IpAccessList;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.StaticRoute;
 import org.codehaus.jettison.json.JSONException;
@@ -43,7 +44,7 @@ public class Route implements Serializable {
   private String _target;
   private TargetType _targetType;
 
-  public Route(JSONObject jObj, BatfishLogger logger) throws JSONException {
+  public Route(JSONObject jObj) throws JSONException {
     _destinationCidrBlock =
         Prefix.parse(jObj.getString(AwsVpcEntity.JSON_KEY_DESTINATION_CIDR_BLOCK));
     _state = State.valueOf(jObj.getString(AwsVpcEntity.JSON_KEY_STATE).toUpperCase());
@@ -81,7 +82,8 @@ public class Route implements Serializable {
       @Nullable Ip igwAddress,
       @Nullable Ip vgwAddress,
       Subnet subnet,
-      Configuration subnetCfgNode) {
+      Configuration subnetCfgNode,
+      Warnings warnings) {
     // setting the common properties
     StaticRoute.Builder srBuilder =
         StaticRoute.builder()
@@ -126,10 +128,10 @@ public class Route implements Serializable {
           NetworkInterface networkInterface = region.getNetworkInterfaces().get(_target);
           String networkInterfaceSubnetId = networkInterface.getSubnetId();
           if (networkInterfaceSubnetId.equals(subnet.getId())) {
-            Set<Ip> networkInterfaceIps = new TreeSet<>();
-            networkInterfaceIps.addAll(networkInterface.getIpAddressAssociations().keySet());
+            Set<Ip> networkInterfaceIps =
+                new TreeSet<>(networkInterface.getIpAddressAssociations().keySet());
             Ip lowestIp = networkInterfaceIps.toArray(new Ip[] {})[0];
-            if (!subnet.getCidrBlock().contains(lowestIp)) {
+            if (!subnet.getCidrBlock().containsIp(lowestIp)) {
               throw new BatfishException(
                   "Ip of network interface specified in static route not in containing subnet");
             }
@@ -144,9 +146,9 @@ public class Route implements Serializable {
             // need to create a link between subnet on which route is created
             // and instance containing network interface
             String subnetIfaceName = _target;
-            Pair<InterfaceAddress, InterfaceAddress> instanceLink =
-                awsConfiguration.getNextGeneratedLinkSubnet();
-            InterfaceAddress subnetIfaceAddress = instanceLink.getFirst();
+            Prefix instanceLink = awsConfiguration.getNextGeneratedLinkSubnet();
+            InterfaceAddress subnetIfaceAddress =
+                new InterfaceAddress(instanceLink.getStartIp(), instanceLink.getPrefixLength());
             Utils.newInterface(subnetIfaceName, subnetCfgNode, subnetIfaceAddress);
 
             // set up instance interface
@@ -154,12 +156,28 @@ public class Route implements Serializable {
             String instanceIfaceName = subnet.getId();
             Configuration instanceCfgNode =
                 awsConfiguration.getConfigurationNodes().get(instanceId);
-            InterfaceAddress instanceIfaceAddress = instanceLink.getSecond();
+            InterfaceAddress instanceIfaceAddress =
+                new InterfaceAddress(instanceLink.getEndIp(), instanceLink.getPrefixLength());
             Interface instanceIface =
                 Utils.newInterface(instanceIfaceName, instanceCfgNode, instanceIfaceAddress);
-            Instance instance = region.getInstances().get(instanceId);
-            instanceIface.setIncomingFilter(instance.getInAcl());
-            instanceIface.setOutgoingFilter(instance.getOutAcl());
+            instanceIface.setIncomingFilter(
+                instanceCfgNode
+                    .getIpAccessLists()
+                    .getOrDefault(
+                        Region.SG_INGRESS_ACL_NAME,
+                        IpAccessList.builder()
+                            .setName(Region.SG_INGRESS_ACL_NAME)
+                            .setLines(new LinkedList<>())
+                            .build()));
+            instanceIface.setOutgoingFilter(
+                instanceCfgNode
+                    .getIpAccessLists()
+                    .getOrDefault(
+                        Region.SG_EGRESS_ACL_NAME,
+                        IpAccessList.builder()
+                            .setName(Region.SG_EGRESS_ACL_NAME)
+                            .setLines(new LinkedList<>())
+                            .build()));
             Ip nextHopIp = instanceIfaceAddress.getIp();
             srBuilder.setNextHopIp(nextHopIp);
           }
@@ -177,14 +195,12 @@ public class Route implements Serializable {
           Configuration remoteVpcCfgNode =
               awsConfiguration.getConfigurationNodes().get(remoteVpcId);
           if (remoteVpcCfgNode == null) {
-            awsConfiguration
-                .getWarnings()
-                .redFlag(
-                    "VPC \""
-                        + localVpcId
-                        + "\" cannot peer with non-existent VPC: \""
-                        + remoteVpcId
-                        + "\"");
+            warnings.redFlag(
+                "VPC \""
+                    + localVpcId
+                    + "\" cannot peer with non-existent VPC: \""
+                    + remoteVpcId
+                    + "\"");
             return null;
           }
 
@@ -195,15 +211,16 @@ public class Route implements Serializable {
           if (!subnetCfgNode.getDefaultVrf().getInterfaces().containsKey(subnetIfaceName)) {
             // create prefix on which subnet and remote vpc router will
             // connect
-            Pair<InterfaceAddress, InterfaceAddress> peeringLink =
-                awsConfiguration.getNextGeneratedLinkSubnet();
-            InterfaceAddress subnetIfaceAddress = peeringLink.getFirst();
+            Prefix peeringLink = awsConfiguration.getNextGeneratedLinkSubnet();
+            InterfaceAddress subnetIfaceAddress =
+                new InterfaceAddress(peeringLink.getStartIp(), peeringLink.getPrefixLength());
             Utils.newInterface(subnetIfaceName, subnetCfgNode, subnetIfaceAddress);
 
             // set up remote vpc router interface
-            InterfaceAddress remoteVpcIfaceAddress = peeringLink.getSecond();
+            InterfaceAddress remoteVpcIfaceAddress =
+                new InterfaceAddress(peeringLink.getEndIp(), peeringLink.getPrefixLength());
             Interface remoteVpcIface = new Interface(remoteVpcIfaceName, remoteVpcCfgNode);
-            remoteVpcCfgNode.getInterfaces().put(remoteVpcIfaceName, remoteVpcIface);
+            remoteVpcCfgNode.getAllInterfaces().put(remoteVpcIfaceName, remoteVpcIface);
             remoteVpcCfgNode
                 .getDefaultVrf()
                 .getInterfaces()
@@ -226,14 +243,12 @@ public class Route implements Serializable {
 
         case Instance:
           // TODO: create route for instance
-          awsConfiguration
-              .getWarnings()
-              .redFlag(
-                  "Skipping creating route to "
-                      + _destinationCidrBlock
-                      + " for instance: \""
-                      + _target
-                      + "\"");
+          warnings.redFlag(
+              "Skipping creating route to "
+                  + _destinationCidrBlock
+                  + " for instance: \""
+                  + _target
+                  + "\"");
           return null;
 
         default:

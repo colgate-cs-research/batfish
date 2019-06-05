@@ -55,9 +55,6 @@ public class ParseEnvironmentBgpTableJob extends BatfishJob<ParseEnvironmentBgpT
     String currentPath = _file.toAbsolutePath().toString();
     ParserRuleContext tree = null;
     _logger.infof("Processing: '%s'\n", currentPath);
-    // String relativePathStr =
-    // _settings.getActiveTestrigSettings().getEnvironmentSettings().getEnvPath()
-    // .relativize(_file).toString();
     BgpTablePlugin plugin = null;
     BgpTableFormat format = BgpTableFormatDetector.identifyBgpTableFormat(_fileText);
     switch (format) {
@@ -110,7 +107,9 @@ public class ParseEnvironmentBgpTableJob extends BatfishJob<ParseEnvironmentBgpT
       extractor = plugin.extractor(_hostname, _fileText, combinedParser, _warnings);
       tree = Batfish.parse(combinedParser, _logger, _settings);
       if (_settings.getPrintParseTree()) {
-        _ptSentences = ParseTreePrettyPrinter.getParseTreeSentences(tree, combinedParser);
+        _ptSentences =
+            ParseTreePrettyPrinter.getParseTreeSentences(
+                tree, combinedParser, _settings.getPrintParseTreeLineNums());
       }
       _logger.info("\tPost-processing...");
       extractor.processParseTree(tree);

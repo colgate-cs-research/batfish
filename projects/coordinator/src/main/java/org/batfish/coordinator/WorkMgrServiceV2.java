@@ -1,12 +1,18 @@
 package org.batfish.coordinator;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static org.batfish.common.CoordConstsV2.QP_VERBOSE;
+
 import java.util.List;
+import java.util.Map;
+import javax.annotation.Nonnull;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -16,7 +22,7 @@ import org.batfish.common.BatfishLogger;
 import org.batfish.common.Container;
 import org.batfish.common.CoordConsts;
 import org.batfish.common.CoordConstsV2;
-import org.batfish.coordinator.resources.ContainerResource;
+import org.batfish.coordinator.resources.NetworkResource;
 
 /**
  * The Work Manager is a RESTful service for servicing client API calls.
@@ -38,28 +44,68 @@ public class WorkMgrServiceV2 {
   /** Information on the URI of a request, injected by the server framework at runtime. */
   @Context private UriInfo _uriInfo;
 
-  /** Returns the list of {@link Container containers} that the given API key may access. */
+  /**
+   * Returns the list of {@link Container containers} that the given API key may access. Deprecated
+   * in favor of {@link #getNetworks()} getNetworks}.
+   */
   @GET
-  @Path(CoordConsts.SVC_KEY_CONTAINERS)
+  @Path(CoordConstsV2.RSC_CONTAINERS)
+  @Deprecated
   public Response getContainers() {
-    _logger.info("WMS2:getContainers\n");
+    return getNetworks();
+  }
+
+  /** Returns the list of {@link Container networks} that the given API key may access. */
+  @GET
+  @Path(CoordConstsV2.RSC_NETWORKS)
+  public Response getNetworks() {
+    _logger.info("WMS2:getNetworks\n");
     List<Container> containers = Main.getWorkMgr().getContainers(_apiKey);
     return Response.ok(containers).build();
   }
 
-  /** Redirect to /containers if the user does not supply a container ID. */
   @GET
-  @Path(CoordConsts.SVC_KEY_CONTAINER_NAME)
+  @Path(CoordConstsV2.RSC_QUESTION_TEMPLATES)
+  public @Nonnull Response getQuestionTemplates(@QueryParam(QP_VERBOSE) boolean verbose) {
+    Map<String, String> questionTemplates = Main.getQuestionTemplates(verbose);
+    checkNotNull(questionTemplates, "Question templates not configured");
+    return Response.ok().entity(questionTemplates).build();
+  }
+
+  /**
+   * Redirect to /networks if the user does not supply a network ID. Deprecated in favor of {@link
+   * #redirectNetwork() redirectNetwork}.
+   */
+  @GET
+  @Path(CoordConstsV2.RSC_CONTAINER)
+  @Deprecated
   public Response redirectContainer() {
-    _logger.info("WMS2:redirect container\n");
+    return redirectNetwork();
+  }
+
+  /** Redirect to /networks if the user does not supply a network ID. */
+  @GET
+  @Path(CoordConstsV2.RSC_NETWORK)
+  public Response redirectNetwork() {
+    _logger.info("WMS2:redirect network\n");
     return Response.status(Status.MOVED_PERMANENTLY)
-        .location(_uriInfo.getRequestUri().resolve(CoordConsts.SVC_KEY_CONTAINERS))
+        .location(_uriInfo.getRequestUri().resolve(CoordConstsV2.RSC_NETWORKS))
         .build();
   }
 
+  /**
+   * Relocate the request to ContainerResource. Deprecated in favor of {@link
+   * #getNetworkResource(String)} getNetworkResource}.
+   */
+  @Path(CoordConstsV2.RSC_CONTAINERS + "/{id}")
+  @Deprecated
+  public NetworkResource getContainerResource(@PathParam("id") String id) {
+    return getNetworkResource(id);
+  }
+
   /** Relocate the request to ContainerResource. */
-  @Path("containers/{id}")
-  public ContainerResource getResource(@PathParam("id") String id) {
-    return new ContainerResource(_uriInfo, _apiKey, id);
+  @Path(CoordConstsV2.RSC_NETWORKS + "/{id}")
+  public NetworkResource getNetworkResource(@PathParam("id") String id) {
+    return new NetworkResource(_apiKey, id);
   }
 }

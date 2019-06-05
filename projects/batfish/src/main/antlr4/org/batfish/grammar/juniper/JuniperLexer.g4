@@ -20,6 +20,11 @@ public String printStateVariables() {
 
 }
 
+REPLACE
+:
+  'replace:'
+;
+
 CLOSE_BRACE
 :
    '}'
@@ -40,9 +45,14 @@ INACTIVE
    'inactive:'
 ;
 
+// Handle Juniper-style and RANCID-header-style line comments
 LINE_COMMENT
 :
-   '#' F_NonNewlineChar* F_NewlineChar+ -> channel(HIDDEN)
+    (
+        '#'
+        | '!'
+    )
+    F_NonNewlineChar* F_NewlineChar+ -> channel(HIDDEN)
 ;
 
 MULTILINE_COMMENT

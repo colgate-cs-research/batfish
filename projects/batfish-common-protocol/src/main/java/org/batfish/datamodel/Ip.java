@@ -1,38 +1,64 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.BitSet;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import org.batfish.common.BatfishException;
+import java.util.Optional;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
+/** An IPv4 address */
 public class Ip implements Comparable<Ip>, Serializable {
 
-  private static Map<Ip, BitSet> _addressBitsCache = new ConcurrentHashMap<>();
+  // Soft values: let it be garbage collected in times of pressure.
+  // Maximum size 2^20: Just some upper bound on cache size, well less than GiB.
+  //   (8 bytes seems smallest possible entry (long), would be 8 MiB total).
+  private static final LoadingCache<Ip, Ip> CACHE =
+      CacheBuilder.newBuilder().softValues().maximumSize(1 << 20).build(CacheLoader.from(x -> x));
 
-  public static final Ip AUTO = new Ip(-1L);
+  public static final Ip AUTO = create(-1L);
 
-  public static final Ip FIRST_CLASS_A_PRIVATE_IP = new Ip("10.0.0.0");
+  public static final Ip FIRST_CLASS_A_PRIVATE_IP = parse("10.0.0.0");
 
-  public static final Ip FIRST_CLASS_B_PRIVATE_IP = new Ip("172.16.0.0");
+  public static final Ip FIRST_CLASS_B_PRIVATE_IP = parse("172.16.0.0");
 
-  public static final Ip FIRST_CLASS_C_PRIVATE_IP = new Ip("192.168.0.0");
+  public static final Ip FIRST_CLASS_C_PRIVATE_IP = parse("192.168.0.0");
 
-  public static final Ip FIRST_CLASS_E_EXPERIMENTAL_IP = new Ip("240.0.0.0");
+  public static final Ip FIRST_CLASS_E_EXPERIMENTAL_IP = parse("240.0.0.0");
 
-  public static final Ip FIRST_MULTICAST_IP = new Ip("224.0.0.0");
+  public static final Ip FIRST_MULTICAST_IP = parse("224.0.0.0");
 
-  public static final Ip MAX = new Ip(0xFFFFFFFFL);
-
-  private static final int NUM_BYTES = 4;
+  public static final Ip MAX = create(0xFFFFFFFFL);
 
   private static final long serialVersionUID = 1L;
 
-  public static final Ip ZERO = new Ip(0L);
+  public static final Ip ZERO = create(0L);
+
+  /**
+   * See {@link #getBitAtPosition(long, int)}. Equivalent to {@code getBitAtPosition(ip.asLong(),
+   * position)}
+   */
+  public static boolean getBitAtPosition(Ip ip, int position) {
+    return getBitAtPosition(ip.asLong(), position);
+  }
+
+  /**
+   * Return the boolean value of a bit at the given position.
+   *
+   * @param bits the representation of an IP address as a long
+   * @param position bit position (0 means most significant, 31 least significant)
+   * @return a boolean representation of the bit value
+   */
+  public static boolean getBitAtPosition(long bits, int position) {
+    checkArgument(
+        position >= 0 && position < Prefix.MAX_PREFIX_LENGTH, "Invalid bit position %s", position);
+    return (bits & (1 << (Prefix.MAX_PREFIX_LENGTH - 1 - position))) != 0;
+  }
 
   private static long ipStrToLong(String addr) {
     String[] addrArray = addr.split("\\.");
@@ -47,19 +73,21 @@ public class Ip implements Comparable<Ip>, Serializable {
           }
         }
       }
-      throw new IllegalArgumentException("Invalid ip string: \"" + addr + "\"");
+      throw new IllegalArgumentException("Invalid IPv4 address: " + addr);
     }
     long num = 0;
-    for (int i = 0; i < addrArray.length; i++) {
-      int power = 3 - i;
-      String segmentStr = addrArray[i];
-      try {
-        int segment = Integer.parseInt(segmentStr);
-        num += ((segment % 256 * Math.pow(256, power)));
-      } catch (NumberFormatException e) {
-        throw new IllegalArgumentException(
-            "Invalid ip segment: \"" + segmentStr + "\" in ip string: \"" + addr + "\"", e);
+    try {
+      for (int i = 0; i < 4; i++) {
+        long segment = Long.parseLong(addrArray[i]);
+        checkArgument(
+            0 <= segment && segment <= 255,
+            "Invalid IPv4 address: %s. %s is an invalid octet",
+            addr,
+            addrArray[i]);
+        num = (num << 8) + segment;
       }
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Invalid IPv4 address: " + addr, e);
     }
     return num;
   }
@@ -77,18 +105,36 @@ public class Ip implements Comparable<Ip>, Serializable {
 
   public static Ip numSubnetBitsToSubnetMask(int numBits) {
     long mask = numSubnetBitsToSubnetLong(numBits);
-    return new Ip(mask);
+    return create(mask);
+  }
+
+  /**
+   * Return an {@link Optional} {@link Ip} from a string, or {@link Optional#empty} if the string
+   * does not represent an {@link Ip}.
+   */
+  public static @Nonnull Optional<Ip> tryParse(@Nonnull String text) {
+    try {
+      return Optional.of(parse(text));
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
   }
 
   private final long _ip;
 
-  public Ip(long ipAsLong) {
+  private Ip(long ipAsLong) {
     _ip = ipAsLong;
   }
 
   @JsonCreator
-  public Ip(String ipAsString) {
-    _ip = ipStrToLong(ipAsString);
+  public static Ip parse(String ipAsString) {
+    return create(ipStrToLong(ipAsString));
+  }
+
+  public static Ip create(long ipAsLong) {
+    checkArgument(ipAsLong <= 0xFFFFFFFFL, "Invalid IP value: %d", ipAsLong);
+    Ip ip = new Ip(ipAsLong);
+    return CACHE.getUnchecked(ip);
   }
 
   public long asLong() {
@@ -101,7 +147,7 @@ public class Ip implements Comparable<Ip>, Serializable {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(@Nullable Object o) {
     if (o == this) {
       return true;
     } else if (!(o instanceof Ip)) {
@@ -111,74 +157,42 @@ public class Ip implements Comparable<Ip>, Serializable {
     return _ip == rhs._ip;
   }
 
-  /**
-   * Return the boolean value of a bit at the given position.
-   *
-   * @param bits the representation of an IP address as a long
-   * @param position bit position (0 means most significant, 31 least significant)
-   * @return a boolean representation of the bit value
-   */
-  public static boolean getBitAtPosition(long bits, int position) {
-    return (bits & (1 << (Prefix.MAX_PREFIX_LENGTH - 1 - position))) != 0;
-  }
-
-  /**
-   * See {@link #getBitAtPosition(long, int)}. Equivalent to {@code getBitAtPosition(ip.asLong(),
-   * position)}
-   */
-  public static boolean getBitAtPosition(Ip ip, int position) {
-    return getBitAtPosition(ip.asLong(), position);
-  }
-
-  /** @deprecated In favor of much simpler {@link #getBitAtPosition(Ip, int)} */
-  @Deprecated
-  public BitSet getAddressBits() {
-    BitSet bits = _addressBitsCache.get(this);
-    if (bits == null) {
-      int addressAsInt = (int) (_ip);
-      ByteBuffer b = ByteBuffer.allocate(NUM_BYTES);
-      b.order(ByteOrder.LITTLE_ENDIAN); // optional, the initial order of a
-      // byte
-      // buffer is always BIG_ENDIAN.
-      b.putInt(addressAsInt);
-      BitSet bitsWithHighestMostSignificant = BitSet.valueOf(b.array());
-      bits = new BitSet(Prefix.MAX_PREFIX_LENGTH);
-      for (int i = Prefix.MAX_PREFIX_LENGTH - 1, j = 0; i >= 0; i--, j++) {
-        bits.set(j, bitsWithHighestMostSignificant.get(i));
-      }
-      _addressBitsCache.put(this, bits);
-    }
-    return bits;
-  }
-
   public Ip getClassMask() {
     long firstOctet = _ip >> 24;
-    if (firstOctet <= 126) {
-      return new Ip(0xFF000000L);
-    } else if (firstOctet >= 128 && firstOctet <= 191) {
-      return new Ip(0XFFFF0000L);
-    } else if (firstOctet >= 192 && firstOctet <= 223) {
-      return new Ip(0xFFFFFF00L);
+    if (firstOctet <= 127) {
+      return create(0xFF000000L);
+    } else if (firstOctet <= 191) {
+      return create(0XFFFF0000L);
+    } else if (firstOctet <= 223) {
+      return create(0xFFFFFF00L);
     } else {
-      throw new BatfishException("Cannot compute classmask");
+      throw new IllegalArgumentException("Cannot compute classmask");
+    }
+  }
+
+  /**
+   * Returns the size of an IPv4 network in IPv4 Address Class of this {@link Ip}. Returns {@code
+   * -1} if the class does not have a defined subnet size, e.g. the experimental subnet.
+   */
+  public int getClassNetworkSize() {
+    long firstOctet = _ip >> 24;
+    if (firstOctet <= 127) {
+      return 8;
+    } else if (firstOctet <= 191) {
+      return 16;
+    } else if (firstOctet <= 223) {
+      return 24;
+    } else {
+      return -1;
     }
   }
 
   public Ip getNetworkAddress(int subnetBits) {
-    long mask = numSubnetBitsToSubnetLong(subnetBits);
-    return new Ip(_ip & mask);
-  }
-
-  public Ip getNetworkAddress(Ip mask) {
-    return new Ip(_ip & mask.asLong());
-  }
-
-  public Ip getSubnetEnd(Ip mask) {
-    return new Ip(_ip | mask.inverted().asLong());
-  }
-
-  public Ip getWildcardEndIp(Ip wildcard) {
-    return new Ip(_ip | wildcard.asLong());
+    long masked = _ip & numSubnetBitsToSubnetLong(subnetBits);
+    if (masked == _ip) {
+      return this;
+    }
+    return create(masked);
   }
 
   @Override
@@ -188,15 +202,7 @@ public class Ip implements Comparable<Ip>, Serializable {
 
   public Ip inverted() {
     long invertedLong = (~_ip) & 0xFFFFFFFFL;
-    return new Ip(invertedLong);
-  }
-
-  public String networkString(int prefixLength) {
-    return toString() + "/" + prefixLength;
-  }
-
-  public String networkString(Ip mask) {
-    return toString() + "/" + mask.numSubnetBits();
+    return create(invertedLong);
   }
 
   public int numSubnetBits() {
@@ -206,6 +212,11 @@ public class Ip implements Comparable<Ip>, Serializable {
     } else {
       return Prefix.MAX_PREFIX_LENGTH - numTrailingZeros;
     }
+  }
+
+  @Nonnull
+  public IpIpSpace toIpSpace() {
+    return new IpIpSpace(this);
   }
 
   @Override

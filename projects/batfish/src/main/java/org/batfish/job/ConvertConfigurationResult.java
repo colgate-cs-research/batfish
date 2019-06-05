@@ -1,13 +1,18 @@
 package org.batfish.job;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
+import com.google.common.base.Throwables;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BatfishLogger.BatfishLoggerHistory;
+import org.batfish.common.ErrorDetails;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.answers.ConvertConfigurationAnswerElement;
+import org.batfish.datamodel.answers.ConvertStatus;
 
 public class ConvertConfigurationResult
     extends BatfishJobResult<Map<String, Configuration>, ConvertConfigurationAnswerElement> {
@@ -18,7 +23,7 @@ public class ConvertConfigurationResult
 
   private String _name;
 
-  private Warnings _warnings;
+  private Map<String, Warnings> _warningsByHost;
 
   public ConvertConfigurationResult(
       long elapsedTime, BatfishLoggerHistory history, String name, Throwable failureCause) {
@@ -29,13 +34,13 @@ public class ConvertConfigurationResult
   public ConvertConfigurationResult(
       long elapsedTime,
       BatfishLoggerHistory history,
-      Warnings warnings,
+      Map<String, Warnings> warningsByHost,
       String name,
       Map<String, Configuration> configurations,
       ConvertConfigurationAnswerElement answerElement) {
     super(elapsedTime, history);
     _name = name;
-    _warnings = warnings;
+    _warningsByHost = warningsByHost;
     _configurations = configurations;
     _answerElement = answerElement;
   }
@@ -65,22 +70,30 @@ public class ConvertConfigurationResult
           throw new BatfishException("Duplicate hostname: " + hostname);
         } else {
           configurations.put(hostname, config);
-          if (!_warnings.isEmpty()) {
-            answerElement.getWarnings().put(hostname, _warnings);
+          if (_warningsByHost.containsKey(hostname) && !_warningsByHost.get(hostname).isEmpty()) {
+            answerElement.getWarnings().put(hostname, _warningsByHost.get(hostname));
+            answerElement.getConvertStatus().put(_name, ConvertStatus.WARNINGS);
+          } else {
+            answerElement.getConvertStatus().put(_name, ConvertStatus.PASSED);
           }
-          if (!_answerElement.getUnusedStructures().isEmpty()) {
-            answerElement.getUnusedStructures().putAll(_answerElement.getUnusedStructures());
-          }
-          if (!_answerElement.getUndefinedReferences().isEmpty()) {
-            answerElement.getUndefinedReferences().putAll(_answerElement.getUndefinedReferences());
-          }
+          answerElement.getDefinedStructures().putAll(_answerElement.getDefinedStructures());
+          answerElement.getUndefinedReferences().putAll(_answerElement.getUndefinedReferences());
+          answerElement.getReferencedStructures().putAll(_answerElement.getReferencedStructures());
+          answerElement.getFileMap().putAll(_answerElement.getFileMap());
         }
       }
     } else {
-      answerElement.getFailed().add(_name);
+      answerElement.getConvertStatus().put(_name, ConvertStatus.FAILED);
       answerElement
           .getErrors()
           .put(_name, ((BatfishException) _failureCause).getBatfishStackTrace());
+      answerElement
+          .getErrorDetails()
+          .put(
+              _name,
+              new ErrorDetails(
+                  Throwables.getStackTraceAsString(
+                      firstNonNull(_failureCause.getCause(), _failureCause))));
     }
   }
 

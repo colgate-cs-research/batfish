@@ -5,7 +5,6 @@ import org.batfish.datamodel.routing_policy.Environment;
 
 public class VarRouteType extends RouteTypeExpr {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _var;
@@ -42,7 +41,6 @@ public class VarRouteType extends RouteTypeExpr {
   @Override
   public RouteType evaluate(Environment environment) {
     throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
   }
 
   public String getVar() {

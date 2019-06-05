@@ -10,16 +10,12 @@ import org.batfish.datamodel.routing_policy.expr.NamedAsPathSet;
 
 public class RoutePolicyBooleanAsPathIn extends RoutePolicyBoolean {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private final AsPathSetExpr _asExpr;
 
-  private final int _expressionLine;
-
-  public RoutePolicyBooleanAsPathIn(AsPathSetExpr expr, int expressionLine) {
+  public RoutePolicyBooleanAsPathIn(AsPathSetExpr expr) {
     _asExpr = expr;
-    _expressionLine = expressionLine;
   }
 
   public AsPathSetExpr getName() {
@@ -33,14 +29,8 @@ public class RoutePolicyBooleanAsPathIn extends RoutePolicyBoolean {
       String name = named.getName();
       AsPathSet asPathSet = cc.getAsPathSets().get(name);
       if (asPathSet == null) {
-        cc.undefined(
-            CiscoStructureType.AS_PATH_SET,
-            name,
-            CiscoStructureUsage.ROUTE_POLICY_AS_PATH_IN,
-            _expressionLine);
-        return BooleanExprs.False.toStaticBooleanExpr();
-      } else {
-        asPathSet.getReferers().put(this, "as-path in");
+        // Undefined, return false.
+        return BooleanExprs.FALSE;
       }
     }
     MatchAsPath match = new MatchAsPath(_asExpr);

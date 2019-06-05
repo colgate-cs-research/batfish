@@ -3,6 +3,7 @@ package org.batfish.common;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -10,11 +11,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
-public class BatfishLogger {
+public final class BatfishLogger {
 
   public static class BatfishLoggerHistory extends ArrayList<HistoryItem> {
-    /** */
     private static final long serialVersionUID = 1L;
 
     public String toString(int logLevel) {
@@ -28,20 +30,22 @@ public class BatfishLogger {
     }
   }
 
-  private static class HistoryItem extends Pair<Integer, String> {
-    /** */
+  private static class HistoryItem implements Serializable {
     private static final long serialVersionUID = 1L;
+    private final int _level;
+    @Nonnull private final String _message;
 
-    private HistoryItem(int i, String s) {
-      super(i, s);
+    private HistoryItem(int i, @Nonnull String s) {
+      _level = i;
+      _message = s;
     }
 
     public int getLevel() {
-      return _first;
+      return _level;
     }
 
     public String getMessage() {
-      return _second;
+      return _message;
     }
   }
 
@@ -175,7 +179,11 @@ public class BatfishLogger {
   }
 
   public BatfishLogger(
-      String logLevel, boolean timestamp, String logFile, boolean logTee, boolean rotateLog) {
+      String logLevel,
+      boolean timestamp,
+      @Nullable String logFile,
+      boolean logTee,
+      boolean rotateLog) {
     _history = null;
     _timestamp = timestamp;
     String levelStr = logLevel;
@@ -334,7 +342,7 @@ public class BatfishLogger {
         // FileNotFoundException
         // this should not happen since we know that logFile can be created
         // in case it does happen, we cannot log this error to the log :)
-        System.err.print("Could not rotate log" + e.getMessage());
+        System.err.println("Could not rotate log" + e.getMessage());
       }
     }
   }
@@ -355,7 +363,7 @@ public class BatfishLogger {
     warn(String.format(format, args));
   }
 
-  private synchronized void write(int level, String msg) {
+  private synchronized void write(int level, @Nonnull String msg) {
     if (isActive(level)) {
       String outputMsg;
       if (_timestamp) {

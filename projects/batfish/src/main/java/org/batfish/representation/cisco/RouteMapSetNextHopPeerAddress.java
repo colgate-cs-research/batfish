@@ -9,13 +9,12 @@ import org.batfish.datamodel.routing_policy.statement.Statement;
 
 public class RouteMapSetNextHopPeerAddress extends RouteMapSetLine {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   @Override
   public void applyTo(
       List<Statement> statements, CiscoConfiguration cc, Configuration c, Warnings w) {
-    statements.add(new SetNextHop(new PeerAddressNextHop(), false));
+    statements.add(new SetNextHop(PeerAddressNextHop.getInstance(), false));
   }
 
   @Override

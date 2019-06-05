@@ -1,49 +1,42 @@
 package org.batfish.datamodel.routing_policy.expr;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Objects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 
-public class MatchTag extends BooleanExpr {
+/**
+ * Boolean expression that evaluates whether an {@link Environment}'s route's BGP tag matches a
+ * given {@link IntExpr} using a given {@link IntComparator}.
+ */
+@ParametersAreNonnullByDefault
+public final class MatchTag extends BooleanExpr {
+  private static final String PROP_CMP = "cmp";
+  private static final String PROP_TAG = "tag";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private IntComparator _cmp;
-
-  private IntExpr _tag;
+  @Nonnull private final IntComparator _cmp;
+  @Nonnull private final IntExpr _tag;
 
   @JsonCreator
-  private MatchTag() {}
+  private static MatchTag jsonCreator(
+      @Nullable @JsonProperty(PROP_CMP) IntComparator cmp,
+      @Nullable @JsonProperty(PROP_TAG) IntExpr tag) {
+    checkArgument(cmp != null, "%s must be provided", PROP_CMP);
+    checkArgument(tag != null, "%s must be provided", PROP_TAG);
+    return new MatchTag(cmp, tag);
+  }
 
   public MatchTag(IntComparator cmp, IntExpr tag) {
     _cmp = cmp;
     _tag = tag;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    MatchTag other = (MatchTag) obj;
-    if (_cmp != other._cmp) {
-      return false;
-    }
-    if (_tag == null) {
-      if (other._tag != null) {
-        return false;
-      }
-    } else if (!_tag.equals(other._tag)) {
-      return false;
-    }
-    return true;
   }
 
   @Override
@@ -60,28 +53,31 @@ public class MatchTag extends BooleanExpr {
     return _cmp.apply(lhs, rhs);
   }
 
+  @JsonProperty(PROP_CMP)
+  @Nonnull
   public IntComparator getCmp() {
     return _cmp;
   }
 
+  @JsonProperty(PROP_TAG)
+  @Nonnull
   public IntExpr getTag() {
     return _tag;
   }
 
   @Override
+  public boolean equals(@Nullable Object obj) {
+    if (this == obj) {
+      return true;
+    } else if (!(obj instanceof MatchTag)) {
+      return false;
+    }
+    MatchTag other = (MatchTag) obj;
+    return _cmp == other._cmp && Objects.equals(_tag, other._tag);
+  }
+
+  @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((_cmp == null) ? 0 : _cmp.ordinal());
-    result = prime * result + ((_tag == null) ? 0 : _tag.hashCode());
-    return result;
-  }
-
-  public void setCmp(IntComparator cmp) {
-    _cmp = cmp;
-  }
-
-  public void setTag(IntExpr tag) {
-    _tag = tag;
+    return Objects.hash(_cmp.ordinal(), _tag);
   }
 }

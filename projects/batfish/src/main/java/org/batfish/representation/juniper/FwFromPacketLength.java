@@ -4,12 +4,11 @@ import com.google.common.collect.Iterables;
 import java.util.List;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
-import org.batfish.datamodel.IpAccessListLine;
+import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.SubRange;
 
 public class FwFromPacketLength extends FwFrom {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private boolean _except;
@@ -22,11 +21,17 @@ public class FwFromPacketLength extends FwFrom {
   }
 
   @Override
-  public void applyTo(IpAccessListLine line, JuniperConfiguration jc, Warnings w, Configuration c) {
+  public void applyTo(
+      HeaderSpace.Builder headerSpaceBuilder,
+      JuniperConfiguration jc,
+      Warnings w,
+      Configuration c) {
     if (_except) {
-      line.setNotPacketLengths(Iterables.concat(line.getNotPacketLengths(), _range));
+      headerSpaceBuilder.setNotPacketLengths(
+          Iterables.concat(headerSpaceBuilder.getNotPacketLengths(), _range));
     } else {
-      line.setPacketLengths(Iterables.concat(line.getPacketLengths(), _range));
+      headerSpaceBuilder.setPacketLengths(
+          Iterables.concat(headerSpaceBuilder.getPacketLengths(), _range));
     }
   }
 }

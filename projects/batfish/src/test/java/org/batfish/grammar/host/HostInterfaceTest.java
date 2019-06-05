@@ -1,16 +1,15 @@
 package org.batfish.grammar.host;
 
-import static org.batfish.datamodel.matchers.InterfaceMatchers.hasSourceNats;
-import static org.batfish.datamodel.matchers.SourceNatMatchers.hasPoolIpFirst;
-import static org.batfish.datamodel.matchers.SourceNatMatchers.hasPoolIpLast;
-import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.empty;
+import static org.batfish.datamodel.matchers.InterfaceMatchers.hasEncapsulationVlan;
+import static org.batfish.datamodel.matchers.InterfaceMatchers.isProxyArp;
+import static org.batfish.datamodel.transformation.Transformation.always;
+import static org.batfish.datamodel.transformation.TransformationStep.assignSourceIp;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import org.batfish.common.Warnings;
 import org.batfish.common.util.BatfishObjectMapper;
@@ -48,13 +47,10 @@ public class HostInterfaceTest {
 
   private NetworkFactory _factory;
 
-  private ObjectMapper _mapper;
-
   private Warnings _w;
 
   @Before
   public void setup() {
-    _mapper = new BatfishObjectMapper();
     _factory = new NetworkFactory();
     _c =
         _factory
@@ -66,27 +62,37 @@ public class HostInterfaceTest {
   }
 
   @Test
+  public void testToInterface() {
+    String name = "eth0";
+    HostInterface hi = new HostInterface(name);
+    hi.setCanonicalName(name);
+    Interface i = hi.toInterface(_c, new Warnings());
+
+    /* Check defaults */
+    assertThat(i, isProxyArp(equalTo(false)));
+  }
+
+  @Test
   public void testShared() throws IOException {
-    Ip sharedIp = new Ip("1.0.0.1");
+    Ip sharedIp = Ip.parse("1.0.0.1");
     InterfaceAddress sharedAddress = new InterfaceAddress(sharedIp, 24);
     Prefix nonShared1Prefix = Prefix.parse("2.0.0.2/24");
     Prefix nonShared2Prefix = Prefix.parse("3.0.0.2/24");
     String ifaceSharedText =
-        "{\"name\":\"shared_interface\", \"prefix\":\""
-            + sharedAddress.toString()
-            + "\", \"shared\":true}";
+        "{\"name\":\"shared_interface\", \"prefix\":\"" + sharedAddress + "\", \"shared\":true}";
     String ifaceNonShared1Text =
         "{\"name\":\"non_shared1_interface\", \"prefix\":\""
-            + nonShared1Prefix.toString()
+            + nonShared1Prefix
             + "\", \"shared\":false}";
     String ifaceNonShared2Text =
-        "{\"name\":\"non_shared2_interface\", \"prefix\":\"" + nonShared2Prefix.toString() + "\"}";
+        "{\"name\":\"non_shared2_interface\", \"prefix\":\"" + nonShared2Prefix + "\"}";
 
-    HostInterface sharedHostInterface = _mapper.readValue(ifaceSharedText, HostInterface.class);
+    HostInterface sharedHostInterface =
+        BatfishObjectMapper.mapper().readValue(ifaceSharedText, HostInterface.class);
     HostInterface nonShared1HostInterface =
-        _mapper.readValue(ifaceNonShared1Text, HostInterface.class);
+        BatfishObjectMapper.mapper().readValue(ifaceNonShared1Text, HostInterface.class);
     HostInterface nonShared2HostInterface =
-        _mapper.readValue(ifaceNonShared2Text, HostInterface.class);
+        BatfishObjectMapper.mapper().readValue(ifaceNonShared2Text, HostInterface.class);
     Interface sharedInterface = sharedHostInterface.toInterface(_c, _w);
     Interface nonShared1Interface = nonShared1HostInterface.toInterface(_c, _w);
     Interface nonShared2Interface = nonShared2HostInterface.toInterface(_c, _w);
@@ -103,9 +109,24 @@ public class HostInterfaceTest {
      * should not contain any source NAT information.
      */
     assertThat(
-        sharedInterface,
-        hasSourceNats(hasItem(allOf(hasPoolIpFirst(sharedIp), hasPoolIpLast(sharedIp)))));
-    assertThat(nonShared1Interface, hasSourceNats(empty()));
-    assertThat(nonShared2Interface, hasSourceNats(empty()));
+        sharedInterface.getOutgoingTransformation(),
+        equalTo(always().apply(assignSourceIp(sharedIp, sharedIp)).build()));
+    assertThat(nonShared1Interface.getOutgoingTransformation(), nullValue());
+    assertThat(nonShared2Interface.getOutgoingTransformation(), nullValue());
+  }
+
+  @Test
+  public void testEncapsulationVlan() throws IOException {
+    Integer encapsulationVlan = 5;
+    HostInterface hi = new HostInterface("e0");
+    hi.setEncapsulationVlan(encapsulationVlan);
+    HostInterface des = BatfishObjectMapper.clone(hi, HostInterface.class);
+
+    assertEquals(des.getEncapsulationVlan(), encapsulationVlan);
+
+    Configuration c = new Configuration("h1", ConfigurationFormat.HOST);
+    Interface i = des.toInterface(c, new Warnings());
+
+    assertThat(i, hasEncapsulationVlan(encapsulationVlan));
   }
 }

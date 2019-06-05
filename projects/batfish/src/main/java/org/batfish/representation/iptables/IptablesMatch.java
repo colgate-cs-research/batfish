@@ -22,7 +22,6 @@ public class IptablesMatch implements Serializable {
     SOURCE_PORT,
   }
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private boolean _inverted;
@@ -70,10 +69,10 @@ public class IptablesMatch implements Serializable {
     }
 
     if (_matchData instanceof Ip) {
-      Prefix pfx = new Prefix((Ip) _matchData, Prefix.MAX_PREFIX_LENGTH);
-      return new IpWildcard(pfx);
+      Prefix pfx = Prefix.create((Ip) _matchData, Prefix.MAX_PREFIX_LENGTH);
+      return IpWildcard.create(pfx);
     } else if (_matchData instanceof Prefix) {
-      return new IpWildcard((Prefix) _matchData);
+      return IpWildcard.create((Prefix) _matchData);
     } else {
       throw new BatfishException("Unknown matchdata type: " + _matchData);
     }

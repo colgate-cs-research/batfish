@@ -1,18 +1,26 @@
 package org.batfish.representation.juniper;
 
-import java.util.Set;
+import java.io.Serializable;
+import java.util.SortedMap;
+import java.util.SortedSet;
 import org.batfish.common.Warnings;
-import org.batfish.common.util.ComparableStructure;
-import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.IpWildcard;
 
-public abstract class AddressBookEntry extends ComparableStructure<String> {
+public abstract class AddressBookEntry implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
+  private final String _name;
+
   public AddressBookEntry(String name) {
-    super(name);
+    _name = name;
   }
 
-  public abstract Set<Prefix> getPrefixes(Warnings w);
+  public abstract SortedMap<String, AddressSetEntry> getEntries();
+
+  public abstract SortedSet<IpWildcard> getIpWildcards(Warnings w);
+
+  public final String getName() {
+    return _name;
+  }
 }

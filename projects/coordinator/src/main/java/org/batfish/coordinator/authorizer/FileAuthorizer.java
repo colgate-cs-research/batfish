@@ -83,7 +83,7 @@ public class FileAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean isAccessibleContainer(String apiKey, String containerName, boolean logError) {
+  public boolean isAccessibleNetwork(String apiKey, String containerName, boolean logError) {
     Permissions allPerms = loadPermissions();
     boolean allowed = accessAllowed(apiKey, containerName, allPerms);
     if (!allowed && logError) {
@@ -125,16 +125,13 @@ public class FileAuthorizer implements Authorizer {
   }
 
   private static boolean accessAllowed(String apiKey, String container, Permissions permissions) {
-    return permissions
-        .perms
-        .stream()
+    return permissions.perms.stream()
         .anyMatch(p -> apiKey.equals(p.apikey) && container.equals(p.container));
   }
 
   private Permissions loadPermissions() {
     try {
-      BatfishObjectMapper mapper = new BatfishObjectMapper();
-      return mapper.readerFor(Permissions.class).readValue(_permsFile.toFile());
+      return BatfishObjectMapper.mapper().readValue(_permsFile.toFile(), Permissions.class);
     } catch (IOException e) {
       throw new BatfishException(
           String.format("Error loading permissions from '%s'", _permsFile.toAbsolutePath()), e);
@@ -143,8 +140,7 @@ public class FileAuthorizer implements Authorizer {
 
   private void savePermissions(Permissions p) {
     try {
-      BatfishObjectMapper mapper = new BatfishObjectMapper();
-      mapper.writerFor(Permissions.class).writeValue(_permsFile.toFile(), p);
+      BatfishObjectMapper.prettyWriter().writeValue(_permsFile.toFile(), p);
     } catch (IOException e) {
       throw new BatfishException(
           String.format("Error saving permissions to '%s'", _permsFile.toAbsolutePath()), e);
@@ -153,8 +149,7 @@ public class FileAuthorizer implements Authorizer {
 
   private Users loadUsers() {
     try {
-      BatfishObjectMapper mapper = new BatfishObjectMapper();
-      return mapper.readerFor(Users.class).readValue(_usersFile.toFile());
+      return BatfishObjectMapper.mapper().readValue(_usersFile.toFile(), Users.class);
     } catch (IOException e) {
       throw new BatfishException(
           String.format("Error loading users from '%s'", _usersFile.toAbsolutePath()), e);

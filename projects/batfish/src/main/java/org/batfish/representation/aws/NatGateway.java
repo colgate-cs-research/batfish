@@ -3,7 +3,7 @@ package org.batfish.representation.aws;
 import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
-import org.batfish.common.BatfishLogger;
+import org.batfish.common.Warnings;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Ip;
 import org.codehaus.jettison.json.JSONArray;
@@ -24,7 +24,7 @@ public class NatGateway implements AwsVpcEntity, Serializable {
 
   private String _vpcId;
 
-  public NatGateway(JSONObject jObj, BatfishLogger logger) throws JSONException {
+  public NatGateway(JSONObject jObj) throws JSONException {
     _natGatewayId = jObj.getString(JSON_KEY_NAT_GATEWAY_ID);
     _subnetId = jObj.getString(JSON_KEY_SUBNET_ID);
     _vpcId = jObj.getString(JSON_KEY_VPC_ID);
@@ -34,8 +34,8 @@ public class NatGateway implements AwsVpcEntity, Serializable {
       JSONObject childObject = addresses.getJSONObject(index);
       String allocationId = childObject.getString(JSON_KEY_ALLOCATION_ID);
       String networkInterfaceId = childObject.getString(JSON_KEY_NETWORK_INTERFACE_ID);
-      Ip privateIp = new Ip(childObject.getString(JSON_KEY_PRIVATE_IP));
-      Ip publicIp = new Ip(childObject.getString(JSON_KEY_PUBLIC_IP));
+      Ip privateIp = Ip.parse(childObject.getString(JSON_KEY_PRIVATE_IP));
+      Ip publicIp = Ip.parse(childObject.getString(JSON_KEY_PUBLIC_IP));
       _natGatewayAddresses.add(
           new NatGatewayAddress(allocationId, networkInterfaceId, privateIp, publicIp));
     }
@@ -58,7 +58,8 @@ public class NatGateway implements AwsVpcEntity, Serializable {
     return _vpcId;
   }
 
-  public Configuration toConfigurationNode(AwsConfiguration awsConfiguration, Region region) {
+  public Configuration toConfigurationNode(
+      AwsConfiguration awsConfiguration, Region region, Warnings warnings) {
     Configuration cfgNode = Utils.newAwsConfiguration(_natGatewayId, "aws");
     cfgNode.getVendorFamily().getAws().setRegion(region.getName());
 

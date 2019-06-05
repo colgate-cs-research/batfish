@@ -1,19 +1,20 @@
 package org.batfish.representation.iptables;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
-import org.batfish.common.util.ComparableStructure;
 import org.batfish.representation.iptables.IptablesChain.ChainPolicy;
 
-public class IptablesTable extends ComparableStructure<String> {
+public class IptablesTable implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private Map<String, IptablesChain> _chains;
 
+  private final String _name;
+
   public IptablesTable(String name) {
-    super(name);
+    _name = name;
     _chains = new HashMap<>();
   }
 
@@ -30,6 +31,10 @@ public class IptablesTable extends ComparableStructure<String> {
 
   public Map<String, IptablesChain> getChains() {
     return _chains;
+  }
+
+  public String getName() {
+    return _name;
   }
 
   public void setChainPolicy(String chainName, ChainPolicy policy) {

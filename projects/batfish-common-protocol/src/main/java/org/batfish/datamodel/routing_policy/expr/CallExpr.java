@@ -1,26 +1,31 @@
 package org.batfish.datamodel.routing_policy.expr;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 
-public class CallExpr extends BooleanExpr {
-
+/** Boolean expression that calls a given {@link RoutingPolicy} on an {@link Environment}. */
+public final class CallExpr extends BooleanExpr {
   private static final String PROP_CALLED_POLICY_NAME = "calledPolicyName";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private String _calledPolicyName;
+  private final String _calledPolicyName;
 
   @JsonCreator
-  private CallExpr() {}
+  private static CallExpr create(@JsonProperty(PROP_CALLED_POLICY_NAME) String calledPolicyName) {
+    checkArgument(calledPolicyName != null, "%s must be provided", PROP_CALLED_POLICY_NAME);
+    return new CallExpr(calledPolicyName);
+  }
 
   public CallExpr(String includedPolicyName) {
     _calledPolicyName = includedPolicyName;
@@ -46,46 +51,19 @@ public class CallExpr extends BooleanExpr {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    CallExpr other = (CallExpr) obj;
-    if (_calledPolicyName == null) {
-      if (other._calledPolicyName != null) {
-        return false;
-      }
-    } else if (!_calledPolicyName.equals(other._calledPolicyName)) {
-      return false;
-    }
-    return true;
-  }
-
-  @Override
   public Result evaluate(Environment environment) {
-    RoutingPolicy policy =
-        environment.getConfiguration().getRoutingPolicies().get(_calledPolicyName);
-    Result result;
+    RoutingPolicy policy = environment.getRoutingPolicies().get(_calledPolicyName);
     if (policy == null) {
-      result = new Result();
       environment.setError(true);
-      result.setBooleanValue(false);
-    } else {
-      boolean oldCallExprContext = environment.getCallExprContext();
-      boolean oldLocalDefaultAction = environment.getLocalDefaultAction();
-      environment.setCallExprContext(true);
-      result = policy.call(environment);
-      result.setReturn(false);
-      environment.setCallExprContext(oldCallExprContext);
-      environment.setLocalDefaultAction(oldLocalDefaultAction);
+      return new Result(false);
     }
-    return result;
+    boolean oldCallExprContext = environment.getCallExprContext();
+    boolean oldLocalDefaultAction = environment.getLocalDefaultAction();
+    environment.setCallExprContext(true);
+    Result policyResult = policy.call(environment);
+    environment.setCallExprContext(oldCallExprContext);
+    environment.setLocalDefaultAction(oldLocalDefaultAction);
+    return policyResult.toBuilder().setReturn(false).build();
   }
 
   @JsonProperty(PROP_CALLED_POLICY_NAME)
@@ -94,20 +72,24 @@ public class CallExpr extends BooleanExpr {
   }
 
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((_calledPolicyName == null) ? 0 : _calledPolicyName.hashCode());
-    return result;
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof CallExpr)) {
+      return false;
+    }
+    CallExpr other = (CallExpr) obj;
+    return Objects.equals(_calledPolicyName, other._calledPolicyName);
   }
 
-  @JsonProperty(PROP_CALLED_POLICY_NAME)
-  public void setCalledPolicyName(String calledPolicyName) {
-    _calledPolicyName = calledPolicyName;
+  @Override
+  public int hashCode() {
+    return Objects.hash(_calledPolicyName);
   }
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + "<" + _calledPolicyName + ">";
+    return toStringHelper().add(PROP_CALLED_POLICY_NAME, _calledPolicyName).toString();
   }
 }

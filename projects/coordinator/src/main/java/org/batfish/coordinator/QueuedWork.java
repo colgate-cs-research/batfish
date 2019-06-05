@@ -1,10 +1,16 @@
 package org.batfish.coordinator;
 
+import com.google.common.collect.ImmutableMap;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import javax.annotation.Nonnull;
+import org.batfish.common.BfConsts;
 import org.batfish.common.CoordConsts.WorkStatusCode;
 import org.batfish.common.Task;
 import org.batfish.common.WorkItem;
+import org.batfish.datamodel.pojo.WorkStatus;
 
 public class QueuedWork {
 
@@ -40,6 +46,14 @@ public class QueuedWork {
 
   public String getAssignedWorker() {
     return _assignedWorker;
+  }
+
+  public Date getDateCreated() {
+    return _dateCreated;
+  }
+
+  public Date getDateTerminated() {
+    return _dateTerminated;
   }
 
   public WorkDetails getDetails() {
@@ -81,6 +95,9 @@ public class QueuedWork {
               + ". Desired = "
               + status);
     }
+    if (!_status.isTerminated() && status.isTerminated()) {
+      _dateTerminated = new Date();
+    }
     _status = status;
   }
 
@@ -96,5 +113,30 @@ public class QueuedWork {
         _assignedWorker,
         (_lastTaskCheckResult == null) ? "null" : _lastTaskCheckResult.getStatus(),
         _dateLastTaskCheckedStatus);
+  }
+
+  public @Nonnull WorkStatus toWorkStatus() {
+    return new WorkStatus(_workItem, _status, _lastTaskCheckResult);
+  }
+
+  /**
+   * Returns request params with names replaced with IDs. Adds SNAPSHOT_NAME for worker tasks that
+   * need it.
+   */
+  public @Nonnull Map<String, String> resolveRequestParams() {
+    Map<String, String> params = new HashMap<>(_workItem.getRequestParams());
+    params.put(BfConsts.ARG_CONTAINER, _details.getNetworkId().getId());
+    params.put(BfConsts.ARG_TESTRIG, _details.getSnapshotId().getId());
+    params.put(BfConsts.ARG_SNAPSHOT_NAME, _workItem.getSnapshot());
+    if (_details.getQuestionId() != null) {
+      params.put(BfConsts.ARG_QUESTION_NAME, _details.getQuestionId().getId());
+    }
+    if (_details.getAnalysisId() != null) {
+      params.put(BfConsts.ARG_ANALYSIS_NAME, _details.getAnalysisId().getId());
+    }
+    if (_details.getReferenceSnapshotId() != null) {
+      params.put(BfConsts.ARG_DELTA_TESTRIG, _details.getReferenceSnapshotId().getId());
+    }
+    return ImmutableMap.copyOf(params);
   }
 }

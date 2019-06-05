@@ -1,52 +1,80 @@
 package org.batfish.representation.juniper;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import org.batfish.common.Warnings;
-import org.batfish.common.util.ComparableStructure;
-import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.IpWildcard;
 
-public final class AddressBook extends ComparableStructure<String> {
+@ParametersAreNonnullByDefault
+public final class AddressBook implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private final Map<String, AddressBookEntry> _entries;
+  @Nonnull private final Map<String, AddressBookEntry> _entries;
 
-  private final Map<String, AddressBook> _globalBooks;
+  @Nullable private final AddressBook _parentBook; // null for global address book
 
-  public AddressBook(String name, Map<String, AddressBook> globalBooks) {
-    super(name);
+  @Nonnull private final String _name;
+
+  public AddressBook(String name, @Nullable AddressBook parentBook) {
+    _name = name;
     _entries = new TreeMap<>();
-    _globalBooks = globalBooks;
+    _parentBook = parentBook;
   }
 
+  /** Get address book for the corresponding entry. */
+  private @Nullable AddressBook getAddressBook(String entryName) {
+    if (_entries.get(entryName) != null) {
+      return this;
+    } else if (_parentBook != null && _parentBook._entries.get(entryName) != null) {
+      return _parentBook;
+    }
+    return null;
+  }
+
+  /** Get the address book name for the corresponding entry. */
+  @Nullable
+  String getAddressBookName(String entryName) {
+    AddressBook addressBook = getAddressBook(entryName);
+    return (addressBook == null) ? null : addressBook.getName();
+  }
+
+  @Nonnull
   public Map<String, AddressBookEntry> getEntries() {
     return _entries;
   }
 
-  public Set<Prefix> getPrefixes(String entryName, Warnings w) {
-    AddressBookEntry entry = _entries.get(entryName);
-    if (entry == null) {
-      for (AddressBook globalBook : _globalBooks.values()) {
-        entry = globalBook._entries.get(entryName);
-        if (entry != null) {
-          break;
-        }
-      }
+  SortedSet<IpWildcard> getIpWildcards(String entryName, Warnings w) {
+    AddressBook addressBook = getAddressBook(entryName);
+    AddressBookEntry entry = null;
+    if (addressBook != null) {
+      entry = addressBook.getEntries().get(entryName);
     }
     if (entry == null) {
       w.redFlag(
           "Could not find entry: \""
               + entryName
               + "\" in address book: \""
-              + _key
+              + _name
               + "\" or any global address book");
-      return Collections.emptySet();
+      return Collections.emptySortedSet();
     } else {
-      return entry.getPrefixes(w);
+      return entry.getIpWildcards(w);
     }
+  }
+
+  @Nonnull
+  public String getName() {
+    return _name;
+  }
+
+  public boolean isGlobal() {
+    return _parentBook == null;
   }
 }

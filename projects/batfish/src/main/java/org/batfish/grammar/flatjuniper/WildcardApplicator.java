@@ -31,17 +31,16 @@ public class WildcardApplicator extends FlatJuniperParserBaseListener {
   @Override
   public void enterFlat_juniper_configuration(Flat_juniper_configurationContext ctx) {
     _configurationContext = ctx;
-    _newConfigurationLines = new ArrayList<>();
-    _newConfigurationLines.addAll(ctx.children);
+    _newConfigurationLines = new ArrayList<>(ctx.children);
   }
 
   @Override
   public void enterInterface_id(Interface_idContext ctx) {
-    if (_enablePathRecording && (ctx.unit != null || ctx.suffix != null || ctx.node != null)) {
+    if (_enablePathRecording && (ctx.unit != null || ctx.chnl != null || ctx.node != null)) {
       _enablePathRecording = false;
       _reenablePathRecording = true;
       String text = ctx.getText();
-      _currentPath.addNode(text);
+      _currentPath.addNode(text, ctx.getStart().getLine());
     }
   }
 
@@ -68,7 +67,9 @@ public class WildcardApplicator extends FlatJuniperParserBaseListener {
   public void exitSet_line(Set_lineContext ctx) {
     if (_currentPath.containsWildcard()) {
       List<ParseTree> lines =
-          _hierarchy.getMasterTree().applyWildcardPath(_currentPath, _configurationContext);
+          _hierarchy
+              .getMasterTree()
+              .applyWildcardPath(_currentPath, _configurationContext, _hierarchy.getTokenInputs());
       int insertionIndex = _newConfigurationLines.indexOf(ctx);
       _newConfigurationLines.addAll(insertionIndex, lines);
     }
@@ -84,10 +85,11 @@ public class WildcardApplicator extends FlatJuniperParserBaseListener {
   public void visitTerminal(TerminalNode node) {
     if (_enablePathRecording) {
       String text = node.getText();
-      if (node.getSymbol().getType() == FlatJuniperLexer.WILDCARD) {
-        _currentPath.addWildcardNode(text);
+      int line = node.getSymbol().getLine();
+      if (node.getSymbol().getType() == FlatJuniperLexer.WILDCARD_ARTIFACT) {
+        _currentPath.addWildcardNode(text, line);
       } else {
-        _currentPath.addNode(text);
+        _currentPath.addNode(text, line);
       }
     }
   }

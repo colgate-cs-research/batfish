@@ -99,24 +99,40 @@ i_arp_resp
    ARP_RESP
 ;
 
+i_bandwidth
+:
+    BANDWIDTH bandwidth
+;
+
 i_common
 :
    apply
    | i_arp_resp
    | i_description
+   | i_common_physical
    | i_disable
    | i_enable
-   | i_ether_options
-   | i_fastether_options
-   | i_gigether_options
    | i_family
-   | i_mtu
    | i_null
-   | i_redundant_ether_options
-   | i_speed
    | i_vlan_id
    | i_vlan_id_list
    | i_vlan_tagging
+;
+
+// configuration relevant for physical interfaces; there can be overlap with non-physical ones
+i_common_physical
+:
+    apply
+    | i_description
+    | i_disable
+    | i_ether_options
+    | i_fastether_options
+    | i_gigether_options
+    | i_mac
+    | i_mtu
+    | i_null
+    | i_redundant_ether_options
+    | i_speed
 ;
 
 i_description
@@ -173,6 +189,11 @@ i_link_mode
    LINK_MODE FULL_DUPLEX
 ;
 
+i_mac
+:
+   MAC mac = MAC_ADDRESS
+;
+
 i_mtu
 :
    MTU size = DEC
@@ -187,14 +208,15 @@ i_null
 :
    (
       AGGREGATED_ETHER_OPTIONS
-      | BANDWIDTH
       | ENCAPSULATION
       | FABRIC_OPTIONS
+      | FORWARDING_CLASS_ACCOUNTING
       | FRAMING
       | HOLD_TIME
       | INTERFACE_TRANSMIT_STATISTICS
       | MULTISERVICE_OPTIONS
       | NO_TRAPS
+      | PROXY_MACIP_ADVERTISEMENT
       | REDUNDANT_ETHER_OPTIONS
       | SONET_OPTIONS
       | TRACEOPTIONS
@@ -227,11 +249,12 @@ i_unit
 :
    UNIT
    (
-      WILDCARD
+      wildcard
       | num = DEC
    )
    (
       i_common
+      | i_bandwidth
       | i_peer_unit
    )
 ;
@@ -256,6 +279,7 @@ if_bridge
    BRIDGE
    (
       apply
+      | if_storm_control
       | ifbr_filter
       | ifbr_interface_mode
       | ifbr_vlan_id_list
@@ -272,6 +296,7 @@ if_ethernet_switching
    ETHERNET_SWITCHING
    (
       apply
+      | if_storm_control
       | ife_filter
       | ife_interface_mode
       | ife_native_vlan_id
@@ -291,6 +316,7 @@ if_inet
       | ifi_no_redirects
       | ifi_null
       | ifi_rpf_check
+      | ifi_tcp_mss
    )
 ;
 
@@ -320,6 +346,11 @@ if_mpls
    )
 ;
 
+if_storm_control
+:
+    STORM_CONTROL null_filler
+;
+
 ifbr_filter
 :
    filter
@@ -337,7 +368,7 @@ ifbr_vlan_id_list
 
 ife_filter
 :
-   FILTER direction name = variable
+   filter
 ;
 
 ife_interface_mode
@@ -351,7 +382,7 @@ ife_interface_mode
 
 ife_native_vlan_id
 :
-   NATIVE_VLAN_ID name = variable
+   NATIVE_VLAN_ID id = DEC
 ;
 
 ife_port_mode
@@ -369,7 +400,7 @@ ife_vlan
    (
       ALL
       | range
-      | variable
+      | name = variable
    )
 ;
 
@@ -379,7 +410,7 @@ ifi_address
    (
       IP_ADDRESS
       | IP_PREFIX
-      | WILDCARD
+      | wildcard
    )
    (
       ifia_arp
@@ -421,9 +452,17 @@ ifi_rpf_check
    RPF_CHECK FAIL_FILTER name = variable
 ;
 
+ifi_tcp_mss
+:
+  TCP_MSS size = DEC
+;
+
 ifia_arp
 :
-   ARP IP_ADDRESS
+   ARP ip = IP_ADDRESS
+   (
+      L2_INTERFACE interface_id
+   )?
    (
       MAC
       | MULTICAST_MAC
@@ -450,7 +489,6 @@ ifia_vrrp_group
    VRRP_GROUP
    (
       number = DEC
-      | WILDCARD
       | name = variable
    )
    (
@@ -491,7 +529,7 @@ ifiav_authentication_type
 
 ifiav_preempt
 :
-   PREEMPT
+   PREEMPT (HOLD_TIME DEC)?
 ;
 
 ifiav_priority
@@ -558,13 +596,18 @@ ifm_mtu
 
 int_interface_range
 :
-   INTERFACE_RANGE irange = variable MEMBER member = DOUBLE_QUOTED_STRING
+   INTERFACE_RANGE irange = variable
+   (
+       i_common_physical
+       | intir_member
+       | intir_member_range
+   )
 ;
 
 int_named
 :
    (
-      WILDCARD
+      wildcard
       | interface_id
    )
    (
@@ -587,6 +630,20 @@ int_null
 interface_mode
 :
    TRUNK
+;
+
+intir_member
+:
+   MEMBER
+   (
+       DOUBLE_QUOTED_STRING
+       | interface_id
+   )
+;
+
+intir_member_range
+:
+   MEMBER_RANGE from_i = interface_id TO to_i = interface_id
 ;
 
 s_interfaces

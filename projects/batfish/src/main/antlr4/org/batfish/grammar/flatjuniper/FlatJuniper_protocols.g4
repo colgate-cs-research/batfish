@@ -1,7 +1,7 @@
 parser grammar FlatJuniper_protocols;
 
 import
-FlatJuniper_common, FlatJuniper_bgp, FlatJuniper_isis, FlatJuniper_mpls, FlatJuniper_ospf;
+FlatJuniper_common, FlatJuniper_bgp, FlatJuniper_evpn, FlatJuniper_isis, FlatJuniper_mpls, FlatJuniper_ospf;
 
 options {
    tokenVocab = FlatJuniperLexer;
@@ -13,6 +13,7 @@ s_protocols
    (
       p_bgp
       | p_connections
+      | p_evpn
       | p_isis
       | p_mpls
       | p_null
@@ -29,6 +30,7 @@ s_protocols
       | ICCP
       | IGMP
       | IGMP_SNOOPING
+      | L2_LEARNING
       | L2CIRCUIT
       | L2VPN
       | LACP
@@ -48,6 +50,7 @@ s_protocols
       | RSVP
       | SFLOW
       | STP
+      | UPLINK_FAILURE_DETECTION
       | VRRP
       | VSTP
    ) null_filler

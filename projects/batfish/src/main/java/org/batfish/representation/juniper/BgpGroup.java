@@ -1,8 +1,9 @@
 package org.batfish.representation.juniper;
 
 import java.io.Serializable;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
+import javax.annotation.Nullable;
 import org.batfish.datamodel.BgpAuthenticationAlgorithm;
 import org.batfish.datamodel.Ip;
 
@@ -13,58 +14,39 @@ public class BgpGroup implements Serializable {
     INTERNAL
   }
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private Boolean _advertiseExternal;
-
   private Boolean _advertiseInactive;
-
   private Boolean _advertisePeerAs;
-
   private BgpAuthenticationAlgorithm _authenticationAlgorithm;
-
   private String _authenticationKey;
-
   private String _authenticationKeyChainName;
-
   private Ip _clusterId;
-
   private String _description;
-
+  @Nullable private Boolean _disable;
+  private boolean _dynamic;
   private Boolean _ebgpMultihop;
-
-  private final Map<String, Integer> _exportPolicies;
-
+  private Boolean _enforceFirstAs;
+  private final List<String> _exportPolicies;
   protected String _groupName;
-
-  private final Map<String, Integer> _importPolicies;
-
+  private final List<String> _importPolicies;
   protected transient boolean _inherited;
-
   private boolean _ipv6;
-
   private Ip _localAddress;
-
-  private Integer _localAs;
-
+  private Long _localAs;
   private Integer _loops;
-
   private Boolean _multipath;
-
   private Boolean _multipathMultipleAs;
-
   private BgpGroup _parent;
-
-  private Integer _peerAs;
-
+  private Long _peerAs;
   private Boolean _removePrivate;
-
+  @Nullable private String _ribGroup;
   private BgpGroupType _type;
 
   public BgpGroup() {
-    _exportPolicies = new LinkedHashMap<>();
-    _importPolicies = new LinkedHashMap<>();
+    _exportPolicies = new LinkedList<>();
+    _importPolicies = new LinkedList<>();
   }
 
   public final void cascadeInheritance() {
@@ -98,17 +80,23 @@ public class BgpGroup implements Serializable {
       if (_description == null) {
         _description = _parent._description;
       }
+      if (_disable == null) {
+        _disable = _parent._disable;
+      }
+      if (_enforceFirstAs == null) {
+        _enforceFirstAs = _parent._enforceFirstAs;
+      }
       if (_ebgpMultihop == null) {
         _ebgpMultihop = _parent._ebgpMultihop;
       }
-      if (_exportPolicies.size() == 0) {
-        _exportPolicies.putAll(_parent._exportPolicies);
+      if (_exportPolicies.isEmpty()) {
+        _exportPolicies.addAll(_parent._exportPolicies);
       }
       if (_groupName == null) {
         _groupName = _parent._groupName;
       }
-      if (_importPolicies.size() == 0) {
-        _importPolicies.putAll(_parent._importPolicies);
+      if (_importPolicies.isEmpty()) {
+        _importPolicies.addAll(_parent._importPolicies);
       }
       if (_localAs == null) {
         _localAs = _parent._localAs;
@@ -127,6 +115,9 @@ public class BgpGroup implements Serializable {
       }
       if (_peerAs == null) {
         _peerAs = _parent._peerAs;
+      }
+      if (_ribGroup == null) {
+        _ribGroup = _parent._ribGroup;
       }
       if (_type == null) {
         _type = _parent._type;
@@ -166,11 +157,24 @@ public class BgpGroup implements Serializable {
     return _description;
   }
 
+  @Nullable
+  public Boolean getDisable() {
+    return _disable;
+  }
+
+  public boolean getDynamic() {
+    return _dynamic;
+  }
+
   public Boolean getEbgpMultihop() {
     return _ebgpMultihop;
   }
 
-  public final Map<String, Integer> getExportPolicies() {
+  public Boolean getEnforceFirstAs() {
+    return _enforceFirstAs;
+  }
+
+  public final List<String> getExportPolicies() {
     return _exportPolicies;
   }
 
@@ -178,7 +182,7 @@ public class BgpGroup implements Serializable {
     return _groupName;
   }
 
-  public final Map<String, Integer> getImportPolicies() {
+  public final List<String> getImportPolicies() {
     return _importPolicies;
   }
 
@@ -190,7 +194,7 @@ public class BgpGroup implements Serializable {
     return _localAddress;
   }
 
-  public final Integer getLocalAs() {
+  public final Long getLocalAs() {
     return _localAs;
   }
 
@@ -210,12 +214,17 @@ public class BgpGroup implements Serializable {
     return _parent;
   }
 
-  public Integer getPeerAs() {
+  public Long getPeerAs() {
     return _peerAs;
   }
 
   public Boolean getRemovePrivate() {
     return _removePrivate;
+  }
+
+  @Nullable
+  public String getRibGroup() {
+    return _ribGroup;
   }
 
   public final BgpGroupType getType() {
@@ -254,8 +263,20 @@ public class BgpGroup implements Serializable {
     _description = description;
   }
 
+  public void setDisable(boolean disable) {
+    _disable = disable;
+  }
+
+  public void setDynamic(boolean dynamic) {
+    this._dynamic = dynamic;
+  }
+
   public void setEbgpMultihop(boolean ebgpMultihop) {
     _ebgpMultihop = ebgpMultihop;
+  }
+
+  public void setEnforceFirstAs(Boolean enforceFirstAs) {
+    _enforceFirstAs = enforceFirstAs;
   }
 
   public void setIpv6(boolean ipv6) {
@@ -266,7 +287,7 @@ public class BgpGroup implements Serializable {
     _localAddress = localAddress;
   }
 
-  public final void setLocalAs(int localAs) {
+  public final void setLocalAs(@Nullable Long localAs) {
     _localAs = localAs;
   }
 
@@ -286,12 +307,16 @@ public class BgpGroup implements Serializable {
     _parent = parent;
   }
 
-  public void setPeerAs(int peerAs) {
+  public void setPeerAs(long peerAs) {
     _peerAs = peerAs;
   }
 
   public void setRemovePrivate(boolean removePrivate) {
     _removePrivate = removePrivate;
+  }
+
+  public void setRibGroup(@Nullable String ribGroup) {
+    _ribGroup = ribGroup;
   }
 
   public final void setType(BgpGroupType type) {

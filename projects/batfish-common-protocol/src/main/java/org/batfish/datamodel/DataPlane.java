@@ -1,25 +1,34 @@
 package org.batfish.datamodel;
 
+import com.google.common.collect.Table;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
-import org.batfish.datamodel.collections.FibRow;
-import org.batfish.datamodel.collections.NodeInterfacePair;
 
 public interface DataPlane extends Serializable {
 
-  /** Mapping: hostname -> vrfName -> fibRows */
-  Map<String, Map<String, SortedSet<FibRow>>> getFibRows();
+  Table<String, String, Set<Bgpv4Route>> getBgpRoutes(boolean multipath);
 
-  Set<NodeInterfacePair> getFlowSinks();
-
-  SortedMap<String, Map<Ip, SortedSet<Edge>>> getPolicyRouteFibNodeMap();
-
-  SortedMap<String, SortedMap<String, GenericRib<AbstractRoute>>> getRibs();
+  Map<String, Configuration> getConfigurations();
 
   Map<String, Map<String, Fib>> getFibs();
 
-  SortedSet<Edge> getTopologyEdges();
+  ForwardingAnalysis getForwardingAnalysis();
+
+  /**
+   * Return the map of Vrfs that own each Ip (as computed during dataplane computation). Map
+   * structure: Ip -&gt; hostname -&gt; set of Vrfs
+   */
+  Map<Ip, Map<String, Set<String>>> getIpVrfOwners();
+
+  /** Return the set of all (main) RIBs. Map structure: hostname -&gt; VRF name -&gt; GenericRib */
+  SortedMap<String, SortedMap<String, GenericRib<AnnotatedRoute<AbstractRoute>>>> getRibs();
+
+  /**
+   * Return the summary of route prefix propagation. Map structure: Hostname -&gt; VRF name -&gt;
+   * Prefix -&gt; action taken -&gt; set of hostnames (peers).
+   */
+  SortedMap<String, SortedMap<String, Map<Prefix, Map<String, Set<String>>>>>
+      getPrefixTracingInfoSummary();
 }

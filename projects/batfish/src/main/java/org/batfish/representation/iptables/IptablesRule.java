@@ -18,7 +18,6 @@ public class IptablesRule implements Serializable {
     RETURN
   }
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   public static IptablesActionType fromChainPolicyToActionType(ChainPolicy policy) {
@@ -56,9 +55,9 @@ public class IptablesRule implements Serializable {
 
   public LineAction getIpAccessListLineAction() {
     if (_actionType == IptablesActionType.ACCEPT) {
-      return LineAction.ACCEPT;
+      return LineAction.PERMIT;
     } else if (_actionType == IptablesActionType.DROP) {
-      return LineAction.REJECT;
+      return LineAction.DENY;
     } else {
       throw new BatfishException(
           "Unsupported IptablesActionType for mapping to LineAction: " + _actionType);

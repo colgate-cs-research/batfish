@@ -1,15 +1,16 @@
 package org.batfish.datamodel.routing_policy.statement;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.OspfExternalRoute;
-import org.batfish.datamodel.OspfMetricType;
+import org.batfish.datamodel.ospf.OspfMetricType;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 
 public class SetOspfMetricType extends Statement {
+  private static final String PROP_METRIC_TYPE = "metricType";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private OspfMetricType _metricType;
@@ -51,6 +52,7 @@ public class SetOspfMetricType extends Statement {
     return result;
   }
 
+  @JsonProperty(PROP_METRIC_TYPE)
   public OspfMetricType getMetricType() {
     return _metricType;
   }
@@ -63,6 +65,7 @@ public class SetOspfMetricType extends Statement {
     return result;
   }
 
+  @JsonProperty(PROP_METRIC_TYPE)
   public void setMetricType(OspfMetricType metricType) {
     _metricType = metricType;
   }

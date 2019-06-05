@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.SortedSet;
 import javax.annotation.Nonnull;
 import org.batfish.common.BatfishException;
+import org.batfish.datamodel.bgp.community.Community;
 
 /**
  * Instances of this class represent hypothetical BGP advertisements used for testing, or where the
@@ -62,7 +63,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
 
     private SortedSet<Long> _clusterList;
 
-    private SortedSet<Long> _communities;
+    private SortedSet<Community> _communities;
 
     private Ip _dstIp;
 
@@ -70,7 +71,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
 
     private String _dstVrf;
 
-    private int _localPreference;
+    private long _localPreference;
 
     private long _med;
 
@@ -126,7 +127,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
       return this;
     }
 
-    public Builder setCommunities(SortedSet<Long> communities) {
+    public Builder setCommunities(SortedSet<Community> communities) {
       _communities = communities;
       return this;
     }
@@ -146,7 +147,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
       return this;
     }
 
-    public Builder setLocalPreference(int localPreference) {
+    public Builder setLocalPreference(long localPreference) {
       _localPreference = localPreference;
       return this;
     }
@@ -208,42 +209,24 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
   }
 
   private static final String PROP_AS_PATH = "asPath";
-
   private static final String PROP_CLUSTER_LIST = "clusterList";
-
   private static final String PROP_COMMUNITIES = "communities";
-
   private static final String PROP_DST_IP = "dstIp";
-
   private static final String PROP_DST_NODE = "dstNode";
-
   private static final String PROP_DST_VRF = "dstVrf";
-
   private static final String PROP_LOCAL_PREFERENCE = "localPreference";
-
   private static final String PROP_MED = "med";
-
   private static final String PROP_NETWORK = "network";
-
   private static final String PROP_NEXT_HOP_IP = "nextHopIp";
-
   private static final String PROP_ORIGIN_TYPE = "originType";
-
   private static final String PROP_ORIGINATOR_IP = "originatorIp";
-
   private static final String PROP_SRC_IP = "srcIp";
-
   private static final String PROP_SRC_NODE = "srcNode";
-
   private static final String PROP_SRC_PROTOCOL = "srcProtocol";
-
   private static final String PROP_SRC_VRF = "srcVrf";
-
   private static final String PROP_TYPE = "type";
-
   private static final String PROP_WEIGHT = "weight";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   public static final int UNSET_LOCAL_PREFERENCE = 0;
@@ -256,7 +239,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
 
   private final SortedSet<Long> _clusterList;
 
-  private final SortedSet<Long> _communities;
+  private final SortedSet<Community> _communities;
 
   private final Ip _dstIp;
 
@@ -264,7 +247,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
 
   private final String _dstVrf;
 
-  private final int _localPreference;
+  private final long _localPreference;
 
   private final long _med;
 
@@ -301,12 +284,12 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
       @JsonProperty(PROP_DST_IP) @Nonnull Ip dstIp,
       @JsonProperty(PROP_SRC_PROTOCOL) @Nonnull RoutingProtocol srcProtocol,
       @JsonProperty(PROP_ORIGIN_TYPE) @Nonnull OriginType originType,
-      @JsonProperty(PROP_LOCAL_PREFERENCE) int localPreference,
+      @JsonProperty(PROP_LOCAL_PREFERENCE) long localPreference,
       @JsonProperty(PROP_MED) long med,
       @JsonProperty(PROP_ORIGINATOR_IP) Ip originatorIp,
       @JsonProperty(PROP_AS_PATH) @Nonnull AsPath asPath,
-      @JsonProperty(PROP_COMMUNITIES) @Nonnull SortedSet<Long> communities,
-      @JsonProperty(PROP_CLUSTER_LIST) @Nonnull SortedSet<Long> clusterList,
+      @JsonProperty(PROP_COMMUNITIES) SortedSet<Community> communities,
+      @JsonProperty(PROP_CLUSTER_LIST) SortedSet<Long> clusterList,
       @JsonProperty(PROP_WEIGHT) int weight) {
     _type = type;
     _network = network;
@@ -328,6 +311,10 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
     _clusterList =
         clusterList == null ? Collections.emptySortedSet() : ImmutableSortedSet.copyOf(clusterList);
     _weight = weight;
+  }
+
+  public static Builder builder() {
+    return new Builder();
   }
 
   @Override
@@ -371,7 +358,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
     if (ret != 0) {
       return ret;
     }
-    ret = Integer.compare(_localPreference, rhs._localPreference);
+    ret = Long.compare(_localPreference, rhs._localPreference);
     if (ret != 0) {
       return ret;
     }
@@ -494,7 +481,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
   }
 
   @JsonProperty(PROP_COMMUNITIES)
-  public SortedSet<Long> getCommunities() {
+  public SortedSet<Community> getCommunities() {
     return _communities;
   }
 
@@ -514,7 +501,7 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
   }
 
   @JsonProperty(PROP_LOCAL_PREFERENCE)
-  public int getLocalPreference() {
+  public long getLocalPreference() {
     return _localPreference;
   }
 
@@ -594,36 +581,6 @@ public class BgpAdvertisement implements Comparable<BgpAdvertisement>, Serializa
         _srcVrf,
         _type.ordinal(),
         _weight);
-  }
-
-  public String prettyPrint(String prefix) {
-    String net = getNetwork().toString();
-    String prot = _srcProtocol.protocolName();
-    String routeStr =
-        String.format(
-            "%s%s dstNode:%s dstVrf:%s dstIp:%s srcNode:%s srcVrf:%s srcIp:%s net:%s nhip:%s "
-                + "origin:%s lp:%s med:%s weight:%s asPath:%s communities:%s orIp:%s clst:%s "
-                + "srcProt:%s\n",
-            prefix,
-            _type,
-            _dstNode,
-            _dstVrf,
-            _dstIp,
-            _srcNode,
-            _srcVrf,
-            _srcIp,
-            net,
-            _nextHopIp,
-            _originType,
-            _localPreference,
-            _med,
-            _weight,
-            _asPath,
-            _communities,
-            _originatorIp,
-            _clusterList,
-            prot);
-    return routeStr;
   }
 
   @Override

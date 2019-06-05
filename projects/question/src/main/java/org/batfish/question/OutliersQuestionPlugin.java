@@ -34,10 +34,8 @@ import org.batfish.role.OutliersHypothesis;
 @AutoService(Plugin.class)
 public class OutliersQuestionPlugin extends QuestionPlugin {
 
-  public static class OutliersAnswerElement implements AnswerElement {
-
+  public static class OutliersAnswerElement extends AnswerElement {
     private static final String PROP_NAMED_STRUCTURE_OUTLIERS = "namedStructureOutliers";
-
     private static final String PROP_SERVER_OUTLIERS = "serverOutliers";
 
     private SortedSet<NamedStructureOutlierSet<?>> _namedStructureOutliers;
@@ -57,58 +55,6 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
     @JsonProperty(PROP_SERVER_OUTLIERS)
     public SortedSet<OutlierSet<NavigableSet<String>>> getServerOutliers() {
       return _serverOutliers;
-    }
-
-    @Override
-    public String prettyPrint() {
-      if (_namedStructureOutliers.size() == 0 && _serverOutliers.size() == 0) {
-        return "";
-      }
-
-      StringBuilder sb = new StringBuilder("Results for outliers\n");
-
-      for (OutlierSet<?> outlier : _serverOutliers) {
-        sb.append("  Hypothesis: every node should have the following set of ");
-        sb.append(outlier.getName() + ": " + outlier.getDefinition() + "\n");
-        sb.append("  Outliers: ");
-        sb.append(outlier.getOutliers() + "\n");
-        sb.append("  Conformers: ");
-        sb.append(outlier.getConformers() + "\n\n");
-      }
-
-      for (NamedStructureOutlierSet<?> outlier : _namedStructureOutliers) {
-        switch (outlier.getHypothesis()) {
-          case SAME_DEFINITION:
-            sb.append(
-                "  Hypothesis: every "
-                    + outlier.getStructType()
-                    + " named "
-                    + outlier.getName()
-                    + " should have the same definition\n");
-            break;
-          case SAME_NAME:
-            sb.append("  Hypothesis:");
-            if (outlier.getNamedStructure() != null) {
-              sb.append(" every ");
-            } else {
-              sb.append(" no ");
-            }
-            sb.append(
-                "node should define a "
-                    + outlier.getStructType()
-                    + " named "
-                    + outlier.getName()
-                    + "\n");
-            break;
-          default:
-            throw new BatfishException("Unexpected hypothesis" + outlier.getHypothesis());
-        }
-        sb.append("  Outliers: ");
-        sb.append(outlier.getOutliers() + "\n");
-        sb.append("  Conformers: ");
-        sb.append(outlier.getConformers() + "\n\n");
-      }
-      return sb.toString();
     }
 
     @JsonProperty(PROP_NAMED_STRUCTURE_OUTLIERS)
@@ -154,8 +100,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
         String name = entry.getKey();
         SortedSet<NamedStructureEquivalenceSet<T>> eClasses = entry.getValue();
         NamedStructureEquivalenceSet<T> max =
-            eClasses
-                .stream()
+            eClasses.stream()
                 .max(Comparator.comparingInt(es -> es.getNodes().size()))
                 .orElseThrow(
                     () ->
@@ -164,8 +109,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
         SortedSet<String> conformers = max.getNodes();
 
         SortedSet<String> outliers =
-            eClasses
-                .stream()
+            eClasses.stream()
                 .filter(eClass -> eClass != max)
                 .flatMap(eClass -> eClass.getNodes().stream())
                 .collect(ImmutableSortedSet.toImmutableSortedSet(Comparator.naturalOrder()));
@@ -191,9 +135,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
       // the equivalence class of the largest size is treated as the one whose value is
       // hypothesized to be the correct one
       Map.Entry<T, SortedSet<String>> max =
-          equivSets
-              .entrySet()
-              .stream()
+          equivSets.entrySet().stream()
               .max(Comparator.comparingInt(e -> e.getValue().size()))
               .orElseThrow(
                   () -> new BatfishException("Set " + name + " has no equivalence classes"));
@@ -205,7 +147,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
         outliers.addAll(nodes);
       }
       if (_verbose || isWithinThreshold(conformers, outliers)) {
-        rankedOutliers.add(new OutlierSet<T>(name, definition, conformers, outliers));
+        rankedOutliers.add(new OutlierSet<>(name, definition, conformers, outliers));
       }
     }
 
@@ -216,7 +158,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
       _answerElement = new OutliersAnswerElement();
 
       _configurations = _batfish.loadConfigurations();
-      _nodes = question.getNodeRegex().getMatchingNodes(_configurations);
+      _nodes = question.getNodeRegex().getMatchingNodes(_batfish);
       _verbose = question.getVerbose();
 
       switch (question.getHypothesis()) {
@@ -250,11 +192,13 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
 
       // first get the results of compareSameName
       CompareSameNameQuestionPlugin.CompareSameNameQuestion inner =
-          new CompareSameNameQuestionPlugin.CompareSameNameQuestion();
-      inner.setNodeRegex(question.getNodeRegex());
-      inner.setNamedStructTypes(question.getNamedStructTypes());
-      inner.setExcludedNamedStructTypes(new TreeSet<>());
-      inner.setSingletons(true);
+          new CompareSameNameQuestionPlugin.CompareSameNameQuestion(
+              null,
+              new TreeSet<>(),
+              null,
+              question.getNamedStructTypes(),
+              question.getNodeRegex(),
+              true);
       CompareSameNameQuestionPlugin.CompareSameNameAnswerer innerAnswerer =
           new CompareSameNameQuestionPlugin().createAnswerer(inner, _batfish);
       CompareSameNameQuestionPlugin.CompareSameNameAnswerElement innerAnswer =
@@ -340,8 +284,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
           eSets.getSameNamedStructures().entrySet()) {
         SortedSet<NamedStructureEquivalenceSet<T>> eSetSets = entry.getValue();
         SortedSet<String> presentNodes =
-            eSetSets
-                .stream()
+            eSetSets.stream()
                 .flatMap(eSet -> eSet.getNodes().stream())
                 .collect(ImmutableSortedSet.toImmutableSortedSet(Comparator.naturalOrder()));
         T struct = eSetSets.first().getNamedStructure();
@@ -349,7 +292,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
         SortedSet<String> absentNodes =
             ImmutableSortedSet.copyOf(Sets.difference(ImmutableSet.copyOf(nodes), presentNodes));
         NamedStructureEquivalenceSet<T> presentSet =
-            new NamedStructureEquivalenceSet<T>(presentNodes.first(), struct);
+            new NamedStructureEquivalenceSet<>(presentNodes.first(), struct);
         presentSet.setNodes(presentNodes);
         String name = entry.getKey();
         ImmutableSortedSet.Builder<NamedStructureEquivalenceSet<T>> eqSetsBuilder =
@@ -357,7 +300,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
         eqSetsBuilder.add(presentSet);
         if (!absentNodes.isEmpty()) {
           NamedStructureEquivalenceSet<T> absentSet =
-              new NamedStructureEquivalenceSet<T>(absentNodes.first(), null);
+              new NamedStructureEquivalenceSet<>(absentNodes.first(), null);
           absentSet.setNodes(absentNodes);
           eqSetsBuilder.add(absentSet);
         }
@@ -383,7 +326,6 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
     }
   }
 
-  // <question_page_comment>
   /**
    * Detects and ranks outliers based on a comparison of nodes' configurations.
    *
@@ -391,38 +333,12 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
    * If many nodes have a structure named N whose definition is identical, and a few nodes have a
    * structure named N that is defined differently, this may indicate an error. This question
    * leverages this and similar intuition to find outliers.
-   *
-   * @type Outliers multifile
-   * @param serverSets Set of server-set names to analyze drawn from ( DnsServers, LoggingServers,
-   *     NtpServers, SnmpTrapServers, TacacsServers) Default value is '[]' (which denotes all
-   *     server-set names). This option is applicable to the "sameServers" hypothesis.
-   * @param namedStructTypes Set of structure types to analyze drawn from ( AsPathAccessList,
-   *     AuthenticationKeyChain, CommunityList, IkeGateway, IkePolicy, IkeProposal, IpAccessList,
-   *     IpsecPolicy, IpsecProposal, IpsecVpn, RouteFilterList, RoutingPolicy) Default value is '[]'
-   *     (which denotes all structure types). This option is applicable to the "sameName" and
-   *     "sameDefinition" hypotheses.
-   * @param nodeRegex Regular expression for names of nodes to include. Default value is '.*' (all
-   *     nodes).
-   * @param hypothesis A string that indicates the hypothesis being used to identify outliers.
-   *     "sameDefinition" indicates a hypothesis that same-named structures should have identical
-   *     definitions. "sameName" indicates a hypothesis that all nodes should have structures of the
-   *     same names. "sameServers" indicates a hypothesis that all nodes should have the same set of
-   *     protocol-specific servers (e.g., DNS servers). Default is "sameDefinition".
-   * @param verbose A boolean that indicates whether all results should be returned, including
-   *     situations when a hypothesis yields no outliers and situations when a hypothesis yields a
-   *     number of outliers that exceeds our threshold for considering it a likely error. Default
-   *     value is false.
    */
   public static final class OutliersQuestion extends Question implements INodeRegexQuestion {
-
     private static final String PROP_HYPOTHESIS = "hypothesis";
-
     private static final String PROP_NAMED_STRUCT_TYPES = "namedStructTypes";
-
     private static final String PROP_NODE_REGEX = "nodeRegex";
-
     private static final String PROP_SERVER_SETS = "serverSets";
-
     private static final String PROP_VERBOSE = "verbose";
 
     private OutliersHypothesis _hypothesis;
@@ -462,6 +378,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
       return _namedStructTypes;
     }
 
+    @Override
     @JsonProperty(PROP_NODE_REGEX)
     public NodesSpecifier getNodeRegex() {
       return _nodeRegex;
@@ -487,6 +404,7 @@ public class OutliersQuestionPlugin extends QuestionPlugin {
       _namedStructTypes = namedStructTypes;
     }
 
+    @Override
     @JsonProperty(PROP_NODE_REGEX)
     public void setNodeRegex(NodesSpecifier regex) {
       _nodeRegex = regex;

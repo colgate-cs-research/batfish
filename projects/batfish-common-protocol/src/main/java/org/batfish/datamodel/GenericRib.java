@@ -1,13 +1,9 @@
 package org.batfish.datamodel;
 
 import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import org.batfish.datamodel.collections.MultiSet;
 
-public interface GenericRib<R extends AbstractRoute> extends Serializable {
+public interface GenericRib<R extends AbstractRouteDecorator> extends Serializable {
 
   /**
    * Compare the preferability of one route with anther
@@ -19,27 +15,38 @@ public interface GenericRib<R extends AbstractRoute> extends Serializable {
    */
   int comparePreference(R lhs, R rhs);
 
-  MultiSet<Prefix> getPrefixCount();
+  /** Return set of {@link AbstractRoute abstract routes} this RIB contains. */
+  Set<AbstractRoute> getRoutes();
 
-  SortedSet<Prefix> getPrefixes();
-
-  /** Get all the IPs for which there is a matching route */
-  IpSpace getRoutableIps();
+  /** Return set of {@link R typed routes} this RIB contains. */
+  Set<R> getTypedRoutes();
 
   /**
-   * For each prefix appearing in a route in the RIB, get the IPs for which the longest-prefix match
-   * is a route of that prefix.
+   * Execute the longest prefix match for a given IP address.
+   *
+   * <p><strong>Note</strong>: this function returns only forwarding routes, aka, routes where
+   * {@link AbstractRoute#getNonForwarding()} returns false.
+   *
+   * @param address the IP address to match
+   * @return a set of routes with the maximum allowable prefix length that match the {@code address}
    */
-  Map<Prefix, IpSpace> getMatchingIps();
-
-  /** Return a set of routes this RIB contains. */
-  Set<R> getRoutes();
-
-  Map<Integer, Map<Ip, List<AbstractRoute>>> getRoutesByPrefixPopularity();
-
   Set<R> longestPrefixMatch(Ip address);
 
-  boolean mergeRoute(R route);
+  /**
+   * Execute a constrained longest prefix match for a given IP address.
+   *
+   * <p><strong>Note</strong>: this function returns only forwarding routes, aka, routes where
+   * {@link AbstractRoute#getNonForwarding()} returns false.
+   *
+   * <p>Most callers should use {@link #longestPrefixMatch(Ip)}; this function may be used when the
+   * longest prefix matches are unsatisfactory and less specific routes are required.
+   *
+   * @param address the IP address to match
+   * @param maxPrefixLength the maximum prefix length allowed (i.e., do not match more specific
+   *     routes). This is a less than or equal constraint.
+   * @return a set of routes that match the {@code address} given the constraint.
+   */
+  Set<R> longestPrefixMatch(Ip address, int maxPrefixLength);
 
-  Map<Prefix, Set<Ip>> nextHopIpsByPrefix();
+  boolean mergeRoute(R route);
 }

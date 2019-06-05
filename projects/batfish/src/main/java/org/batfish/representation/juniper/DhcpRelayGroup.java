@@ -1,35 +1,27 @@
 package org.batfish.representation.juniper;
 
+import java.io.Serializable;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import org.batfish.common.util.ComparableStructure;
 
-public class DhcpRelayGroup extends ComparableStructure<String> {
+public class DhcpRelayGroup implements Serializable {
 
   public static final String MASTER_DHCP_RELAY_GROUP_NAME = "~MASTER_DHCP_RELAY_GROUP~";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _activeServerGroup;
-
-  private int _activeServerGroupLine;
 
   private boolean _allInterfaces;
 
   private SortedSet<String> _interfaces;
 
-  public DhcpRelayGroup(String name) {
-    super(name);
+  public DhcpRelayGroup() {
     _interfaces = new TreeSet<>();
   }
 
   public String getActiveServerGroup() {
     return _activeServerGroup;
-  }
-
-  public int getActiveServerGroupLine() {
-    return _activeServerGroupLine;
   }
 
   public boolean getAllInterfaces() {
@@ -42,10 +34,6 @@ public class DhcpRelayGroup extends ComparableStructure<String> {
 
   public void setActiveServerGroup(String activeServerGroup) {
     _activeServerGroup = activeServerGroup;
-  }
-
-  public void setActiveServerGroupLine(int activeServerGroupLine) {
-    _activeServerGroupLine = activeServerGroupLine;
   }
 
   public void setAllInterfaces(boolean allInterfaces) {

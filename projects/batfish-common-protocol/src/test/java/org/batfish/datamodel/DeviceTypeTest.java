@@ -48,7 +48,8 @@ public class DeviceTypeTest {
   public void hostWithBgpIsHost() {
     Configuration c = _cb.setConfigurationFormat(ConfigurationFormat.HOST).build();
     Vrf vrf = _vb.setOwner(c).build();
-    _nf.bgpProcessBuilder().setVrf(vrf).build();
+    // Choose arbitrary BGP admin costs for HOST format
+    vrf.setBgpProcess(new BgpProcess(Ip.ZERO, 10, 100));
     postProcessConfiguration(c);
     assertThat(c.getDeviceType(), is(DeviceType.HOST));
   }
@@ -58,7 +59,11 @@ public class DeviceTypeTest {
     Configuration c = _cb.build();
     _vb.setOwner(c).build();
     Vrf vrf = _vb.setOwner(c).build();
-    _nf.bgpProcessBuilder().setVrf(vrf).build();
+    _nf.bgpProcessBuilder()
+        .setVrf(vrf)
+        .setRouterId(Ip.ZERO)
+        .setAdminCostsToVendorDefaults(ConfigurationFormat.CISCO_IOS)
+        .build();
     postProcessConfiguration(c);
     assertThat(c.getDeviceType(), is(DeviceType.ROUTER));
   }
@@ -67,7 +72,11 @@ public class DeviceTypeTest {
   public void configWithBgpIsRouter() {
     Configuration c = _cb.build();
     Vrf vrf = _vb.setOwner(c).build();
-    _nf.bgpProcessBuilder().setVrf(vrf).build();
+    _nf.bgpProcessBuilder()
+        .setVrf(vrf)
+        .setRouterId(Ip.ZERO)
+        .setAdminCostsToVendorDefaults(ConfigurationFormat.CISCO_IOS)
+        .build();
     postProcessConfiguration(c);
     assertThat(c.getDeviceType(), is(DeviceType.ROUTER));
   }
@@ -100,15 +109,12 @@ public class DeviceTypeTest {
       // If vrf has BGP, OSPF, or RIP process and device isn't a host, set device type to router
       if (c.getDeviceType() == null
           && (vrf.getBgpProcess() != null
-              || vrf.getOspfProcess() != null
+              || !vrf.getOspfProcesses().isEmpty()
               || vrf.getRipProcess() != null)) {
         c.setDeviceType(DeviceType.ROUTER);
       }
       // Compute OSPF interface costs where they are missing
-      OspfProcess proc = vrf.getOspfProcess();
-      if (proc != null) {
-        proc.initInterfaceCosts(c);
-      }
+      vrf.getOspfProcesses().values().forEach(proc -> proc.initInterfaceCosts(c));
     }
     // If device was not a host or router, call it a switch
     if (c.getDeviceType() == null) {

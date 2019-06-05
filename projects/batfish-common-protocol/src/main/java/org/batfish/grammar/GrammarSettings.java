@@ -4,10 +4,10 @@ package org.batfish.grammar;
 public interface GrammarSettings {
 
   /**
-   * Controls whether or not unrecognized lines will trigger recovery mode wherein they are
-   * collected and ignored, i.e. they do not trigger a crash.
-   *
-   * @return true iff recovery from unrecognized lines is disabled
+   * When {@code true}, unrecognized lines will trigger a crash. When {@code false}, custom recovery
+   * via {@link BatfishANTLRErrorStrategy} will be performed for supported grammars; for other
+   * grammars, vanilla ANTLR recovery will be performed and syntax errors logged via {@link
+   * BatfishParserErrorListener} and {@link BatfishLexerErrorListener}.
    */
   boolean getDisableUnrecognized();
 
@@ -42,6 +42,13 @@ public interface GrammarSettings {
   boolean getPrintParseTree();
 
   /**
+   * Controls whether parse tree line numbers are printed in parse trees.
+   *
+   * @return true iff parse trees should include line numbers
+   */
+  boolean getPrintParseTreeLineNums();
+
+  /**
    * Whether or not to throw an exception immediately upon a report of an error to the {@link
    * BatfishLexerErrorListener}, ceasing processing for the given text.
    *
@@ -74,6 +81,14 @@ public interface GrammarSettings {
    *     GrammarSettings#getPrintParseTree()}
    */
   void setPrintParseTree(boolean printParseTree);
+
+  /**
+   * See {@link GrammarSettings#getPrintParseTreeLineNums()}
+   *
+   * @param printParseTreeLineNums The new value to be returned by subsequent calls to {@link
+   *     GrammarSettings#getPrintParseTreeLineNums()}
+   */
+  void setPrintParseTreeLineNums(boolean printParseTreeLineNums);
 
   /**
    * See {@link GrammarSettings#getThrowOnLexerError()}

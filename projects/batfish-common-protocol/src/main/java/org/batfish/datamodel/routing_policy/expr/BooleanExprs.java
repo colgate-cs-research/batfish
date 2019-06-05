@@ -1,73 +1,104 @@
 package org.batfish.datamodel.routing_policy.expr;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.common.BatfishException;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 
-public enum BooleanExprs {
-  CallExprContext,
-  CallStatementContext,
-  False,
-  True;
+public final class BooleanExprs {
+  public enum StaticExpressionType {
+    CallExprContext,
+    CallStatementContext,
+    False,
+    True,
+  }
 
-  public static class StaticBooleanExpr extends BooleanExpr {
-    /** */
+  /**
+   * Boolean expression that evaluates to true iff the given {@link Environment} has {@link
+   * Environment#getCallExprContext() callExprContext} set.
+   */
+  public static final StaticBooleanExpr CALL_EXPR_CONTEXT =
+      new StaticBooleanExpr(StaticExpressionType.CallExprContext);
+
+  /**
+   * Boolean expression that evaluates to true iff the given {@link Environment} has {@link
+   * Environment#getCallStatementContext()} callStatementContext} set.
+   */
+  public static final StaticBooleanExpr CALL_STATEMENT_CONTEXT =
+      new StaticBooleanExpr(StaticExpressionType.CallStatementContext);
+
+  /** Boolean expression that always evaluates to false. */
+  public static final StaticBooleanExpr FALSE = new StaticBooleanExpr(StaticExpressionType.False);
+
+  /** Boolean expression that always evaluates to true. */
+  public static final StaticBooleanExpr TRUE = new StaticBooleanExpr(StaticExpressionType.True);
+
+  public static final class StaticBooleanExpr extends BooleanExpr {
+
     private static final long serialVersionUID = 1L;
-
     private static final String PROP_TYPE = "type";
 
-    private BooleanExprs _type;
+    private final StaticExpressionType _type;
 
-    @JsonCreator
-    public StaticBooleanExpr(@JsonProperty(PROP_TYPE) BooleanExprs type) {
+    private StaticBooleanExpr(StaticExpressionType type) {
       _type = type;
     }
 
-    @Override
-    public boolean equals(Object rhs) {
-      if (rhs instanceof StaticBooleanExpr) {
-        return _type.equals(((StaticBooleanExpr) rhs)._type);
+    @JsonCreator
+    private static StaticBooleanExpr create(@JsonProperty(PROP_TYPE) StaticExpressionType type) {
+      checkArgument(type != null, "%s must be provided", PROP_TYPE);
+      switch (type) {
+        case CallExprContext:
+          return CALL_EXPR_CONTEXT;
+
+        case CallStatementContext:
+          return CALL_STATEMENT_CONTEXT;
+
+        case False:
+          return FALSE;
+
+        case True:
+          return TRUE;
+
+        default:
+          throw new BatfishException(
+              "Unhandled " + StaticBooleanExpr.class.getCanonicalName() + ": " + type);
       }
-      return false;
     }
 
     @Override
     public Result evaluate(Environment environment) {
-      Result result = new Result();
       switch (_type) {
         case CallExprContext:
-          result.setBooleanValue(environment.getCallExprContext());
-          break;
+          return new Result(environment.getCallExprContext());
         case CallStatementContext:
-          result.setBooleanValue(environment.getCallStatementContext());
-          break;
+          return new Result(environment.getCallStatementContext());
         case False:
-          result.setBooleanValue(false);
-          break;
+          return new Result(false);
         case True:
-          result.setBooleanValue(true);
-          break;
+          return new Result(true);
         default:
           throw new BatfishException(
-              "Unhandled " + BooleanExprs.class.getCanonicalName() + ": " + _type);
+              "Unhandled " + StaticBooleanExpr.class.getCanonicalName() + ": " + _type);
       }
-      return result;
     }
 
     @JsonProperty(PROP_TYPE)
-    public BooleanExprs getType() {
+    public StaticExpressionType getType() {
       return _type;
+    }
+
+    @Override
+    public boolean equals(Object rhs) {
+      return rhs instanceof StaticBooleanExpr && _type == ((StaticBooleanExpr) rhs)._type;
     }
 
     @Override
     public int hashCode() {
       return _type.ordinal();
     }
-  }
-
-  public StaticBooleanExpr toStaticBooleanExpr() {
-    return new StaticBooleanExpr(this);
   }
 }

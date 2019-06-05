@@ -1,14 +1,16 @@
 package org.batfish.representation.juniper;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import com.google.common.collect.ImmutableSet;
+import java.io.Serializable;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.batfish.common.util.ComparableStructure;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IsoAddress;
@@ -17,7 +19,7 @@ import org.batfish.datamodel.SwitchportEncapsulationType;
 import org.batfish.datamodel.SwitchportMode;
 import org.batfish.datamodel.VrrpGroup;
 
-public class Interface extends ComparableStructure<String> {
+public class Interface implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
@@ -28,88 +30,80 @@ public class Interface extends ComparableStructure<String> {
       return 1E9;
     } else if (name.startsWith("fe")) {
       return 1E8;
+    } else if (name.startsWith("irb")) {
+      return 1E9;
+    } else if (name.startsWith("et")) {
+      return 1E11;
     } else {
       return 1E12;
     }
   }
 
-  private int _accessVlan;
-
-  private boolean _active;
-
-  private final ArrayList<SubRange> _allowedVlans;
-
-  private final Set<InterfaceAddress> _allAddresses;
-
-  private final Set<Ip> _allAddressIps;
-
-  private double _bandwidth;
-
-  private final int _definitionLine;
-
-  private String _incomingFilter;
-
-  private int _incomingFilterLine;
-
-  private transient boolean _inherited;
-
-  private final IsisInterfaceSettings _isisSettings;
-
-  private IsoAddress _isoAddress;
-
-  private Integer _mtu;
-
-  private int _nativeVlan;
-
-  private Ip _ospfActiveArea;
-
-  private Integer _ospfCost;
-
-  private int _ospfDeadInterval;
-
-  private int _ospfHelloMultiplier;
-
-  private final Set<Ip> _ospfPassiveAreas;
-
-  private String _outgoingFilter;
-
-  private int _outgoingFilterLine;
-
-  private Interface _parent;
-
-  private InterfaceAddress _preferredAddress;
-
-  private InterfaceAddress _primaryAddress;
-
-  private String _routingInstance;
-
-  private SwitchportMode _switchportMode;
-
-  private SwitchportEncapsulationType _switchportTrunkEncapsulation;
-
-  private final SortedMap<String, Interface> _units;
-
-  private final SortedMap<Integer, VrrpGroup> _vrrpGroups;
-
-  @SuppressWarnings("unused")
-  private Interface() {
-    this("", -1);
+  /** Represents the type of interface for OSPF */
+  public enum OspfInterfaceType {
+    /** This is not an explicit type -- assumed by default */
+    BROADCAST,
+    /** non-broadcast multi-access */
+    NBMA,
+    /** Point to multipoint */
+    P2MP,
+    /** Point to multipoint over lan */
+    P2MP_OVER_LAN,
+    /** Point to point */
+    P2P
   }
 
-  public Interface(String name, int definitionLine) {
-    super(name);
+  private String _accessVlan;
+  private boolean _active;
+  private Set<Ip> _additionalArpIps;
+  private final Set<InterfaceAddress> _allAddresses;
+  // Dumb name to appease checkstyle
+  private String _agg8023adInterface;
+  private final Set<Ip> _allAddressIps;
+  private final List<SubRange> _allowedVlans;
+  private final List<String> _allowedVlanNames;
+  private double _bandwidth;
+  private String _description;
+  private String _incomingFilter;
+  private transient boolean _inherited;
+  @Nonnull private final IsisInterfaceSettings _isisSettings;
+  private IsoAddress _isoAddress;
+  private Integer _mtu;
+  private final String _name;
+  @Nullable private Integer _nativeVlan;
+  private Ip _ospfArea;
+  private Integer _ospfCost;
+  private int _ospfDeadInterval;
+  @Nullable private Boolean _ospfDisable;
+  private int _ospfHelloMultiplier;
+  private boolean _ospfPassive;
+  private OspfInterfaceType _ospfInterfaceType;
+  private String _outgoingFilter;
+  private Interface _parent;
+  private InterfaceAddress _preferredAddress;
+  private InterfaceAddress _primaryAddress;
+  @Nullable private String _redundantParentInterface;
+  private String _routingInstance;
+  private SwitchportMode _switchportMode;
+  private SwitchportEncapsulationType _switchportTrunkEncapsulation;
+  private final SortedMap<String, Interface> _units;
+  private final SortedMap<Integer, VrrpGroup> _vrrpGroups;
+  private Integer _tcpMss;
+
+  public Interface(String name) {
     _active = true;
+    _additionalArpIps = ImmutableSet.of();
     _allAddresses = new LinkedHashSet<>();
     _allAddressIps = new LinkedHashSet<>();
     _bandwidth = getDefaultBandwidthByName(name);
-    _definitionLine = definitionLine;
     _isisSettings = new IsisInterfaceSettings();
-    _nativeVlan = 1;
+    _name = name;
+    _ospfInterfaceType = OspfInterfaceType.BROADCAST;
     _switchportMode = SwitchportMode.NONE;
     _switchportTrunkEncapsulation = SwitchportEncapsulationType.DOT1Q;
-    _allowedVlans = new ArrayList<>();
+    _allowedVlans = new LinkedList<>();
+    _allowedVlanNames = new LinkedList<>();
     _ospfCost = null;
-    _ospfPassiveAreas = new HashSet<>();
     _units = new TreeMap<>();
     _vrrpGroups = new TreeMap<>();
   }
@@ -118,7 +112,11 @@ public class Interface extends ComparableStructure<String> {
     _allowedVlans.addAll(ranges);
   }
 
-  public int getAccessVlan() {
+  public String get8023adInterface() {
+    return _agg8023adInterface;
+  }
+
+  public String getAccessVlan() {
     return _accessVlan;
   }
 
@@ -126,8 +124,8 @@ public class Interface extends ComparableStructure<String> {
     return _active;
   }
 
-  public List<SubRange> getAllowedVlans() {
-    return _allowedVlans;
+  public Set<Ip> getAdditionalArpIps() {
+    return _additionalArpIps;
   }
 
   public Set<InterfaceAddress> getAllAddresses() {
@@ -138,22 +136,27 @@ public class Interface extends ComparableStructure<String> {
     return _allAddressIps;
   }
 
+  public List<SubRange> getAllowedVlans() {
+    return _allowedVlans;
+  }
+
+  public List<String> getAllowedVlanNames() {
+    return _allowedVlanNames;
+  }
+
   public double getBandwidth() {
     return _bandwidth;
   }
 
-  public int getDefinitionLine() {
-    return _definitionLine;
+  public String getDescription() {
+    return _description;
   }
 
   public String getIncomingFilter() {
     return _incomingFilter;
   }
 
-  public int getIncomingFilterLine() {
-    return _incomingFilterLine;
-  }
-
+  @Nonnull
   public IsisInterfaceSettings getIsisSettings() {
     return _isisSettings;
   }
@@ -162,16 +165,22 @@ public class Interface extends ComparableStructure<String> {
     return _isoAddress;
   }
 
+  @Nullable
   public Integer getMtu() {
     return _mtu;
   }
 
-  public int getNativeVlan() {
+  public String getName() {
+    return _name;
+  }
+
+  @Nullable
+  public Integer getNativeVlan() {
     return _nativeVlan;
   }
 
-  public Ip getOspfActiveArea() {
-    return _ospfActiveArea;
+  public Ip getOspfArea() {
+    return _ospfArea;
   }
 
   public Integer getOspfCost() {
@@ -182,20 +191,25 @@ public class Interface extends ComparableStructure<String> {
     return _ospfDeadInterval;
   }
 
+  @Nullable
+  public Boolean getOspfDisable() {
+    return _ospfDisable;
+  }
+
   public int getOspfHelloMultiplier() {
     return _ospfHelloMultiplier;
   }
 
-  public Set<Ip> getOspfPassiveAreas() {
-    return _ospfPassiveAreas;
+  public OspfInterfaceType getOspfInterfaceType() {
+    return _ospfInterfaceType;
+  }
+
+  public boolean getOspfPassive() {
+    return _ospfPassive;
   }
 
   public String getOutgoingFilter() {
     return _outgoingFilter;
-  }
-
-  public int getOutgoingFilterLine() {
-    return _outgoingFilterLine;
   }
 
   public Interface getParent() {
@@ -208,6 +222,11 @@ public class Interface extends ComparableStructure<String> {
 
   public InterfaceAddress getPrimaryAddress() {
     return _primaryAddress;
+  }
+
+  @Nullable
+  public String getRedundantParentInterface() {
+    return _redundantParentInterface;
   }
 
   public String getRoutingInstance() {
@@ -231,17 +250,55 @@ public class Interface extends ComparableStructure<String> {
   }
 
   public void inheritUnsetFields() {
-    if (_parent == null || !_inherited) {
+    if (_parent == null || _inherited) {
       return;
     }
     _inherited = true;
     _parent.inheritUnsetFields();
+    if (_description == null) {
+      _description = _parent._description;
+    }
     if (_mtu == null) {
       _mtu = _parent._mtu;
     }
+    if (_ospfCost == null) {
+      _ospfCost = _parent._ospfCost;
+    }
+    if (_ospfArea == null) {
+      _ospfArea = _parent._ospfArea;
+    }
+    if (_ospfDisable == null) {
+      _ospfDisable = _parent._ospfDisable;
+    }
   }
 
-  public void setAccessVlan(int vlan) {
+  /**
+   * Copies the values of fields associated with physical interfaces from {@code bestower} to this
+   * interface.
+   *
+   * <p>TODO: This list is incomplete. We don't have a clean separation of which properties are
+   * physical only
+   */
+  public void inheritUnsetPhysicalFields(Interface bestower) {
+    if (_agg8023adInterface == null) {
+      _agg8023adInterface = bestower._agg8023adInterface;
+    }
+    if (_description == null) {
+      _description = bestower._description;
+    }
+    if (_mtu == null) {
+      _mtu = bestower._mtu;
+    }
+    if (_redundantParentInterface == null) {
+      _redundantParentInterface = bestower._redundantParentInterface;
+    }
+  }
+
+  public void set8023adInterface(String interfaceName) {
+    _agg8023adInterface = interfaceName;
+  }
+
+  public void setAccessVlan(String vlan) {
     _accessVlan = vlan;
   }
 
@@ -249,16 +306,20 @@ public class Interface extends ComparableStructure<String> {
     _active = active;
   }
 
-  public void setBandwidth(Double bandwidth) {
+  public void setAdditionalArpIps(Iterable<Ip> additionalArpIps) {
+    _additionalArpIps = ImmutableSet.copyOf(additionalArpIps);
+  }
+
+  public void setBandwidth(double bandwidth) {
     _bandwidth = bandwidth;
+  }
+
+  public void setDescription(String description) {
+    _description = description;
   }
 
   public void setIncomingFilter(String accessListName) {
     _incomingFilter = accessListName;
-  }
-
-  public void setIncomingFilterLine(int incomingFilterLine) {
-    _incomingFilterLine = incomingFilterLine;
   }
 
   public void setIsoAddress(IsoAddress address) {
@@ -269,32 +330,40 @@ public class Interface extends ComparableStructure<String> {
     _mtu = mtu;
   }
 
-  public void setNativeVlan(int vlan) {
+  public void setNativeVlan(Integer vlan) {
     _nativeVlan = vlan;
   }
 
-  public void setOspfActiveArea(Ip ospfActiveArea) {
-    _ospfActiveArea = ospfActiveArea;
+  public void setOspfArea(Ip ospfArea) {
+    _ospfArea = ospfArea;
   }
 
-  public void setOspfCost(int defaultOspfCost) {
-    _ospfCost = defaultOspfCost;
+  public void setOspfCost(int ospfCost) {
+    _ospfCost = ospfCost;
   }
 
   public void setOspfDeadInterval(int seconds) {
     _ospfDeadInterval = seconds;
   }
 
+  public void setOspfDisable(boolean disable) {
+    _ospfDisable = disable;
+  }
+
   public void setOspfHelloMultiplier(int multiplier) {
     _ospfHelloMultiplier = multiplier;
   }
 
-  public void setOutgoingFilter(String accessListName) {
-    _outgoingFilter = accessListName;
+  public void setOspfPassive(boolean ospfPassive) {
+    _ospfPassive = true;
   }
 
-  public void setOutgoingFilterLine(int outgoingFilterLine) {
-    _outgoingFilterLine = outgoingFilterLine;
+  public void setOspfInterfaceType(OspfInterfaceType ospfInterfaceType) {
+    _ospfInterfaceType = ospfInterfaceType;
+  }
+
+  public void setOutgoingFilter(String accessListName) {
+    _outgoingFilter = accessListName;
   }
 
   public void setParent(Interface parent) {
@@ -309,6 +378,10 @@ public class Interface extends ComparableStructure<String> {
     _primaryAddress = address;
   }
 
+  public void setRedundantParentInterface(@Nullable String redundantParentInterface) {
+    _redundantParentInterface = redundantParentInterface;
+  }
+
   public void setRoutingInstance(String routingInstance) {
     _routingInstance = routingInstance;
   }
@@ -319,5 +392,18 @@ public class Interface extends ComparableStructure<String> {
 
   public void setSwitchportTrunkEncapsulation(SwitchportEncapsulationType encapsulation) {
     _switchportTrunkEncapsulation = encapsulation;
+  }
+
+  public void setTcpMss(@Nullable Integer tcpMss) {
+    _tcpMss = tcpMss;
+  }
+
+  public @Nullable Integer getTcpMss() {
+    return _tcpMss;
+  }
+
+  @Override
+  public String toString() {
+    return _name + " parent=" + _parent;
   }
 }

@@ -2,11 +2,9 @@ package org.batfish.datamodel.routing_policy.statement;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
-import java.util.SortedSet;
 import org.batfish.datamodel.AbstractRoute;
-import org.batfish.datamodel.AsPath;
 import org.batfish.datamodel.BgpRoute;
+import org.batfish.datamodel.BgpRoute.Builder;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 
@@ -27,13 +25,13 @@ public enum Statements {
   SetLocalDefaultActionReject,
   SetReadIntermediateBgpAttributes,
   SetWriteIntermediateBgpAttributes,
-  UnsetWriteIntermediateBgpAttributes;
+  Suppress,
+  UnsetWriteIntermediateBgpAttributes,
+  Unsuppress;
 
   public static class StaticStatement extends Statement {
-
     private static final String PROP_TYPE = "type";
 
-    /** */
     private static final long serialVersionUID = 1L;
 
     private Statements _type;
@@ -53,63 +51,51 @@ public enum Statements {
 
     @Override
     public Result execute(Environment environment) {
-      Result result = new Result();
       switch (this._type) {
         case DefaultAction:
-          result.setExit(true);
-          result.setBooleanValue(environment.getDefaultAction());
-          break;
+          return Result.builder()
+              .setExit(true)
+              .setBooleanValue(environment.getDefaultAction())
+              .build();
 
         case DeleteAllCommunities:
           break;
 
         case ExitAccept:
-          result.setExit(true);
-          result.setBooleanValue(true);
-          break;
+          return Result.builder().setExit(true).setBooleanValue(true).build();
 
         case ExitReject:
-          result.setExit(true);
-          result.setBooleanValue(false);
-          break;
+          return Result.builder().setExit(true).setBooleanValue(false).build();
 
         case FallThrough:
-          result.setReturn(true);
-          result.setFallThrough(true);
-          break;
+          return Result.builder().setReturn(true).setFallThrough(true).build();
 
         case RemovePrivateAs:
           {
-            BgpRoute.Builder bgpRouteBuilder = (BgpRoute.Builder) environment.getOutputRoute();
-            List<SortedSet<Integer>> newAsPath =
-                AsPath.removePrivateAs(bgpRouteBuilder.getAsPath());
-            bgpRouteBuilder.setAsPath(newAsPath);
+            BgpRoute.Builder<?, ?> bgpRouteBuilder =
+                (BgpRoute.Builder<?, ?>) environment.getOutputRoute();
+            bgpRouteBuilder.setAsPath(bgpRouteBuilder.getAsPath().removePrivateAs());
             if (environment.getWriteToIntermediateBgpAttributes()) {
-              BgpRoute.Builder ir = environment.getIntermediateBgpAttributes();
-              List<SortedSet<Integer>> iAsPath = AsPath.removePrivateAs(ir.getAsPath());
-              ir.setAsPath(iAsPath);
+              BgpRoute.Builder<?, ?> ir = environment.getIntermediateBgpAttributes();
+              ir.setAsPath(ir.getAsPath().removePrivateAs());
             }
             break;
           }
 
         case Return:
-          result.setReturn(true);
-          break;
+          return Result.builder().setReturn(true).build();
 
         case ReturnFalse:
-          result.setReturn(true);
-          result.setBooleanValue(false);
-          break;
+          return Result.builder().setReturn(true).setBooleanValue(false).build();
 
         case ReturnLocalDefaultAction:
-          result.setReturn(true);
-          result.setBooleanValue(environment.getLocalDefaultAction());
-          break;
+          return Result.builder()
+              .setReturn(true)
+              .setBooleanValue(environment.getLocalDefaultAction())
+              .build();
 
         case ReturnTrue:
-          result.setReturn(true);
-          result.setBooleanValue(true);
-          break;
+          return Result.builder().setReturn(true).setBooleanValue(true).build();
 
         case SetDefaultActionAccept:
           environment.setDefaultAction(true);
@@ -132,24 +118,33 @@ public enum Statements {
           break;
 
         case SetWriteIntermediateBgpAttributes:
-          if (environment.getIntermediateBgpAttributes() == null) {
-            BgpRoute.Builder ir = new BgpRoute.Builder();
-            environment.setIntermediateBgpAttributes(ir);
-            AbstractRoute or = environment.getOriginalRoute();
-            ir.setMetric(or.getMetric());
-            ir.setTag(or.getTag());
+          if (environment.getOutputRoute() instanceof BgpRoute.Builder<?, ?>) {
+            environment.setWriteToIntermediateBgpAttributes(true);
+            if (environment.getIntermediateBgpAttributes() == null) {
+              BgpRoute.Builder<?, ?> bgpRouteBuilder = (Builder<?, ?>) environment.getOutputRoute();
+              AbstractRoute or = environment.getOriginalRoute();
+              environment.setIntermediateBgpAttributes(
+                  bgpRouteBuilder.newBuilder().setMetric(or.getMetric()).setTag(or.getTag()));
+            }
           }
-          environment.setWriteToIntermediateBgpAttributes(true);
+          break;
+
+        case Suppress:
+          environment.setSuppressed(true);
           break;
 
         case UnsetWriteIntermediateBgpAttributes:
           environment.setWriteToIntermediateBgpAttributes(false);
           break;
 
+        case Unsuppress:
+          environment.setSuppressed(false);
+          break;
+
         default:
           break;
       }
-      return result;
+      return new Result(false);
     }
 
     @JsonProperty(PROP_TYPE)

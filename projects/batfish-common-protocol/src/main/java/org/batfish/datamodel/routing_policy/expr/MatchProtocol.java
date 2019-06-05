@@ -1,64 +1,77 @@
 package org.batfish.datamodel.routing_policy.expr;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.batfish.datamodel.RoutingProtocol.ISIS_EL1;
+import static org.batfish.datamodel.RoutingProtocol.ISIS_EL2;
+import static org.batfish.datamodel.RoutingProtocol.ISIS_L1;
+import static org.batfish.datamodel.RoutingProtocol.ISIS_L2;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.EnumSet;
+import java.util.Objects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import org.batfish.datamodel.RoutingProtocol;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 
-public class MatchProtocol extends BooleanExpr {
-
-  /** */
+/**
+ * Boolean expression that evaluates whether an {@link Environment} has a route that matches a given
+ * {@link RoutingProtocol}.
+ */
+@ParametersAreNonnullByDefault
+public final class MatchProtocol extends BooleanExpr {
+  private static final String PROP_PROTOCOL = "protocol";
   private static final long serialVersionUID = 1L;
+  private static final EnumSet<RoutingProtocol> ISIS_EXPANSION =
+      EnumSet.of(ISIS_L1, ISIS_L2, ISIS_EL1, ISIS_EL2);
 
-  private RoutingProtocol _protocol;
-
-  @JsonCreator
-  private MatchProtocol() {}
+  /** TODO: ideally, this should be a list of protocols, treated as a disjunction (match any) */
+  @Nonnull private final RoutingProtocol _protocol;
 
   public MatchProtocol(RoutingProtocol protocol) {
     _protocol = protocol;
   }
 
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    MatchProtocol other = (MatchProtocol) obj;
-    if (_protocol != other._protocol) {
-      return false;
-    }
-    return true;
+  @JsonCreator
+  private static MatchProtocol create(
+      @Nullable @JsonProperty(PROP_PROTOCOL) RoutingProtocol protocol) {
+    checkArgument(protocol != null, "MatchProtocol missing %s", PROP_PROTOCOL);
+    return new MatchProtocol(protocol);
   }
 
   @Override
   public Result evaluate(Environment environment) {
-    Result result = new Result();
-    boolean value = environment.getOriginalRoute().getProtocol().equals(_protocol);
-    result.setBooleanValue(value);
-    return result;
+    // Workaround: Treat ISIS_ANY as a special value
+    if (_protocol == RoutingProtocol.ISIS_ANY) {
+      return new Result(ISIS_EXPANSION.contains(environment.getOriginalRoute().getProtocol()));
+    }
+    return new Result(environment.getOriginalRoute().getProtocol().equals(_protocol));
   }
 
+  @Nonnull
+  @JsonProperty(PROP_PROTOCOL)
   public RoutingProtocol getProtocol() {
     return _protocol;
   }
 
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((_protocol == null) ? 0 : _protocol.ordinal());
-    return result;
+  public boolean equals(@Nullable Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof MatchProtocol)) {
+      return false;
+    }
+    MatchProtocol that = (MatchProtocol) o;
+    return _protocol == that._protocol;
   }
 
-  public void setProtocol(RoutingProtocol protocol) {
-    _protocol = protocol;
+  @Override
+  public int hashCode() {
+    return Objects.hash(_protocol.ordinal());
   }
 
   @Override

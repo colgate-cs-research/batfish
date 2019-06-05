@@ -8,7 +8,6 @@ public class MasterBgpPeerGroup extends BgpPeerGroup {
 
   private static final String MASTER_BGP_PEER_GROUP_NAME = "~MASTER_BGP_PEER_GROUP~";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   public MasterBgpPeerGroup() {
@@ -19,7 +18,8 @@ public class MasterBgpPeerGroup extends BgpPeerGroup {
     _advertiseInactive = false;
     _allowAsIn = false;
     _defaultOriginate = false;
-    _disablePeerAsCheck = false;
+    // True for all OS, except NXOS
+    _disablePeerAsCheck = true;
     _ebgpMultihop = false;
     _routeReflectorClient = false;
     _sendCommunity = false;

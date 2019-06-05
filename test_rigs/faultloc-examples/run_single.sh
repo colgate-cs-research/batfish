@@ -40,10 +40,11 @@ run_batfish_commands() {
     echo -e "$1" | allinone -runmode interactive || exit 1
 }
 
-# Create container, if necessary
-if [ ! -d containers/$NETWORK ]; then
-    run_batfish_commands "init-container -setname $NETWORK"
+# Create network, if necessary
+if [ ! -f containers/network_ids/$NETWORK.id ]; then
+    run_batfish_commands "init-network -setname $NETWORK"
 fi
+NETWORK_ID=`cat containers/network_ids/$NETWORK.id`
 
 echo -e "\n\n##### SCENARIO: $NETWORK/$SCENARIO ###################################\n"
 
@@ -53,13 +54,13 @@ echo -e "====================================================="
 diff -ru $ORIG_CONFIGS $SCENARIO_CONFIGS
 echo -e "=====================================================\n"
 
-# Delete testrig, if necessary
-if [ -d containers/$NETWORK/testrigs/$SCENARIO ]; then
-    run_batfish_commands "set-container $NETWORK\ndel-testrig $SCENARIO"
+# Delete snapshot, if necessary
+if [ -f containers/$NETWORK_ID/snapshot_ids/$SCENARIO.id ]; then
+    run_batfish_commands "set-network $NETWORK\ndel-snapshot $SCENARIO"
 fi
 
 # Check policies
 echo -e "CHECK POLICIES"
 echo -e "====================================================="
-run_batfish_commands "set-container $NETWORK\ninit-testrig $TESTRIG_DIR $SCENARIO\n`cat $OPTIONS $POLICIES`"
+run_batfish_commands "set-network $NETWORK\ninit-snapshot $TESTRIG_DIR $SCENARIO\n`cat $OPTIONS $POLICIES`"
 echo -e "\n====================================================="

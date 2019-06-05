@@ -11,10 +11,8 @@ import org.batfish.datamodel.routing_policy.Result;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 
 public class CallStatement extends Statement {
-
   private static final String PROP_CALLED_POLICY_NAME = "calledPolicyName";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _calledPolicyName;
@@ -70,21 +68,16 @@ public class CallStatement extends Statement {
 
   @Override
   public Result execute(Environment environment) {
-    RoutingPolicy policy =
-        environment.getConfiguration().getRoutingPolicies().get(_calledPolicyName);
-    Result result;
+    RoutingPolicy policy = environment.getRoutingPolicies().get(_calledPolicyName);
     if (policy == null) {
-      result = new Result();
       environment.setError(true);
-      result.setBooleanValue(false);
-    } else {
-      boolean oldCallStatementContext = environment.getCallStatementContext();
-      environment.setCallStatementContext(true);
-      result = policy.call(environment);
-      result.setReturn(false);
-      environment.setCallStatementContext(oldCallStatementContext);
+      return Result.builder().setBooleanValue(false).build();
     }
-    return result;
+    boolean oldCallStatementContext = environment.getCallStatementContext();
+    environment.setCallStatementContext(true);
+    Result policyResult = policy.call(environment);
+    environment.setCallStatementContext(oldCallStatementContext);
+    return policyResult.toBuilder().setReturn(false).build();
   }
 
   @JsonProperty(PROP_CALLED_POLICY_NAME)

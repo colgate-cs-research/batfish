@@ -1,8 +1,15 @@
 package org.batfish.datamodel.answers;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
 
+/** A general way to summarize what the answer contains, using three basic integers */
 public class AnswerSummary {
+  private static final String PROP_NOTES = "notes";
+  private static final String PROP_NUM_FAILED = "numFailed";
+  private static final String PROP_NUM_PASSED = "numPassed";
+  private static final String PROP_NUM_RESULTS = "numResults";
 
   private String _notes = "";
 
@@ -12,6 +19,7 @@ public class AnswerSummary {
 
   private int _numResults;
 
+  @JsonCreator
   public AnswerSummary() {}
 
   public AnswerSummary(String notes, int numFailed, int numPassed, int numResults) {
@@ -21,6 +29,11 @@ public class AnswerSummary {
     _numResults = numResults;
   }
 
+  /**
+   * Combined the current summary with another summary, by summing up individual fields.
+   *
+   * @param other The other summary to be combined with.
+   */
   public void combine(AnswerSummary other) {
     if (other != null) {
       _notes =
@@ -31,32 +44,24 @@ public class AnswerSummary {
     }
   }
 
+  @JsonProperty(PROP_NOTES)
   public String getNotes() {
     return _notes;
   }
 
+  @JsonProperty(PROP_NUM_FAILED)
   public int getNumFailed() {
     return _numFailed;
   }
 
+  @JsonProperty(PROP_NUM_PASSED)
   public int getNumPassed() {
     return _numPassed;
   }
 
+  @JsonProperty(PROP_NUM_RESULTS)
   public int getNumResults() {
     return _numResults;
-  }
-
-  public String prettyPrint() {
-    String retString = "";
-    if (_numPassed != 0 || _numFailed != 0) {
-      retString += String.format("Assertions: %d passed, %d failed; ", _numPassed, _numFailed);
-    }
-    retString += String.format("%d (non-assertion) results; ", _numResults);
-    if (!Strings.isNullOrEmpty(_notes)) {
-      retString += String.format("Notes: %s", _notes);
-    }
-    return retString;
   }
 
   public void reset() {
@@ -66,18 +71,22 @@ public class AnswerSummary {
     _numResults = 0;
   }
 
+  @JsonProperty(PROP_NOTES)
   public void setNotes(String notes) {
     this._notes = notes;
   }
 
+  @JsonProperty(PROP_NUM_FAILED)
   public void setNumFailed(int numFailed) {
     this._numFailed = numFailed;
   }
 
+  @JsonProperty(PROP_NUM_PASSED)
   public void setNumPassed(int numPassed) {
     this._numPassed = numPassed;
   }
 
+  @JsonProperty(PROP_NUM_RESULTS)
   public void setNumResults(int numResults) {
     this._numResults = numResults;
   }

@@ -1,24 +1,45 @@
 package org.batfish.datamodel;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
+import static com.google.common.base.Preconditions.checkArgument;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Objects;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 
-public class ConnectedRoute extends AbstractRoute {
+/**
+ * Represents directly connected routes. These are typically generated based on interface
+ * adjacencies.
+ */
+@ParametersAreNonnullByDefault
+public final class ConnectedRoute extends AbstractRoute {
 
   private static final long serialVersionUID = 1L;
 
-  private final String _nextHopInterface;
+  @Nonnull private final String _nextHopInterface;
 
   @JsonCreator
-  public ConnectedRoute(
-      @JsonProperty(PROP_NETWORK) Prefix network,
-      @JsonProperty(PROP_NEXT_HOP_INTERFACE) String nextHopInterface) {
-    super(network);
-    _nextHopInterface = firstNonNull(nextHopInterface, Route.UNSET_NEXT_HOP_INTERFACE);
+  private static ConnectedRoute create(
+      @Nullable @JsonProperty(PROP_NETWORK) Prefix network,
+      @Nullable @JsonProperty(PROP_NEXT_HOP_INTERFACE) String nextHopInterface,
+      @JsonProperty(PROP_ADMINISTRATIVE_COST) int adminCost) {
+    checkArgument(network != null, "Cannot create connected route: missing %s", PROP_NETWORK);
+    return new ConnectedRoute(
+        network, firstNonNull(nextHopInterface, Route.UNSET_NEXT_HOP_INTERFACE));
+  }
+
+  /** Create a connected route with admin cost of 0 */
+  public ConnectedRoute(Prefix network, String nextHopInterface) {
+    this(network, nextHopInterface, 0);
+  }
+
+  public ConnectedRoute(Prefix network, String nextHopInterface, int adminCost) {
+    super(network, adminCost, false, false);
+    _nextHopInterface = nextHopInterface;
   }
 
   @Override
@@ -29,13 +50,16 @@ public class ConnectedRoute extends AbstractRoute {
       return false;
     }
     ConnectedRoute rhs = (ConnectedRoute) o;
-    boolean res = _network.equals(rhs._network);
-    return res && _nextHopInterface.equals(rhs._nextHopInterface);
+    return _network.equals(rhs._network)
+        && _admin == rhs._admin
+        && getNonRouting() == rhs.getNonRouting()
+        && getNonForwarding() == rhs.getNonForwarding()
+        && _nextHopInterface.equals(rhs._nextHopInterface);
   }
 
   @Override
-  public int getAdministrativeCost() {
-    return 0;
+  public int hashCode() {
+    return Objects.hash(_network, _admin, getNonRouting(), getNonForwarding(), _nextHopInterface);
   }
 
   @Override
@@ -68,21 +92,40 @@ public class ConnectedRoute extends AbstractRoute {
   }
 
   @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + _network.hashCode();
-    result = prime * result + _nextHopInterface.hashCode();
-    return result;
+  public Builder toBuilder() {
+    return builder()
+        .setNetwork(getNetwork())
+        .setAdmin(_admin)
+        .setNonRouting(getNonRouting())
+        .setNonForwarding(getNonForwarding())
+        .setNextHopInterface(_nextHopInterface);
   }
 
-  @Override
-  protected String protocolRouteString() {
-    return "";
+  /** Builder for {@link ConnectedRoute} */
+  public static final class Builder extends AbstractRouteBuilder<Builder, ConnectedRoute> {
+    @Nullable private String _nextHopInterface;
+
+    @Nonnull
+    @Override
+    public ConnectedRoute build() {
+      checkArgument(
+          _nextHopInterface != null, "ConnectedRoute must have %s", PROP_NEXT_HOP_INTERFACE);
+      return new ConnectedRoute(getNetwork(), _nextHopInterface, getAdmin());
+    }
+
+    @Nonnull
+    @Override
+    protected Builder getThis() {
+      return this;
+    }
+
+    public Builder setNextHopInterface(String nextHopInterface) {
+      _nextHopInterface = nextHopInterface;
+      return getThis();
+    }
   }
 
-  @Override
-  public int routeCompare(AbstractRoute rhs) {
-    return 0;
+  public static Builder builder() {
+    return new Builder();
   }
 }

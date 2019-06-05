@@ -6,7 +6,6 @@ import java.util.Set;
 
 public class IsisSettings implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private Set<String> _exportPolicies;
@@ -16,6 +15,12 @@ public class IsisSettings implements Serializable {
   private final IsisLevelSettings _level2Settings;
 
   private boolean _noIpv4Routing;
+
+  private boolean _overload;
+
+  private Integer _overloadTimeout;
+
+  private Double _referenceBandwidth;
 
   private boolean _trafficEngineeringCredibilityProtocolPreference;
 
@@ -43,6 +48,18 @@ public class IsisSettings implements Serializable {
     return _noIpv4Routing;
   }
 
+  public boolean getOverload() {
+    return _overload;
+  }
+
+  public Integer getOverloadTimeout() {
+    return _overloadTimeout;
+  }
+
+  public Double getReferenceBandwidth() {
+    return _referenceBandwidth;
+  }
+
   public boolean getTrafficEngineeringCredibilityProtocolPreference() {
     return _trafficEngineeringCredibilityProtocolPreference;
   }
@@ -53,6 +70,18 @@ public class IsisSettings implements Serializable {
 
   public void setNoIpv4Routing(boolean noIpv4Routing) {
     _noIpv4Routing = noIpv4Routing;
+  }
+
+  public void setOverload(boolean overload) {
+    _overload = overload;
+  }
+
+  public void setOverloadTimeout(int overloadTimeout) {
+    _overloadTimeout = overloadTimeout;
+  }
+
+  public void setReferenceBandwidth(double referenceBandwidth) {
+    _referenceBandwidth = referenceBandwidth;
   }
 
   public void setTrafficEngineeringCredibilityProtocolPreference(

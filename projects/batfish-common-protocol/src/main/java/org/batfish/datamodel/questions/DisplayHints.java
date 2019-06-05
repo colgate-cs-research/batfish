@@ -1,109 +1,26 @@
 package org.batfish.datamodel.questions;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.batfish.common.BatfishException;
-import org.batfish.datamodel.Flow;
-import org.batfish.datamodel.FlowTrace;
-import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.Prefix;
-import org.batfish.datamodel.collections.FileLinePair;
-import org.batfish.datamodel.collections.NodeInterfacePair;
-import org.batfish.datamodel.pojo.Environment;
-import org.batfish.datamodel.pojo.Node;
+import org.batfish.datamodel.answers.Schema;
 
 public class DisplayHints {
 
-  public static class Schema {
-
-    private static String getClassString(Class<?> cls) {
-      return String.format("class:%s", cls.getCanonicalName());
-    }
-
-    private static final Map<String, String> schemaAliases =
-        ImmutableMap.<String, String>builder()
-            .put("Environment", getClassString(Environment.class))
-            .put("FileLine", getClassString(FileLinePair.class))
-            .put("Flow", getClassString(Flow.class))
-            .put("FlowTrace", getClassString(FlowTrace.class))
-            .put("Integer", getClassString(Long.class))
-            .put("Interface", getClassString(NodeInterfacePair.class))
-            .put("Ip", getClassString(Ip.class))
-            .put("Node", getClassString(Node.class))
-            .put("Prefix", getClassString(Prefix.class))
-            .put("String", getClassString(String.class))
-            .build();
-
-    private Class<?> _baseType;
-
-    private boolean _isListType;
-
-    private String _schemaStr;
-
-    public Schema(String schema) {
-      _schemaStr = schema;
-
-      String baseTypeName = schema;
-      _isListType = false;
-
-      Matcher matcher = Pattern.compile("List<(.+)>").matcher(schema);
-      if (matcher.find()) {
-        baseTypeName = matcher.group(1);
-        _isListType = true;
-      }
-
-      if (!schemaAliases.containsKey(baseTypeName)) {
-        throw new BatfishException("Unknown schema type: " + baseTypeName);
-      }
-
-      baseTypeName = schemaAliases.get(baseTypeName);
-
-      if (!baseTypeName.startsWith("class:")) {
-        throw new BatfishException("Only class-based schemas are supported. Got " + baseTypeName);
-      }
-
-      baseTypeName = baseTypeName.replaceFirst("class:", "");
-
-      try {
-        _baseType = Class.forName(baseTypeName);
-      } catch (ClassNotFoundException e) {
-        throw new BatfishException("Could not get a class from " + baseTypeName);
-      }
-    }
-
-    public Class<?> getBaseType() {
-      return _baseType;
-    }
-
-    public boolean isList() {
-      return _isListType;
-    }
-
-    public String toString() {
-      return _schemaStr;
-    }
-
-    public boolean isIntOrIntList() {
-      return _baseType.equals(Long.class);
-    }
-  }
-
   public static class Composition {
-
     private static final String PROP_SCHEMA = "schema";
-
     private static final String PROP_DICTIONARY = "dictionary";
 
     private Map<String, String> _dictionary;
@@ -140,8 +57,8 @@ public class DisplayHints {
     }
 
     @JsonProperty(PROP_SCHEMA)
-    public void setSchema(String schema) {
-      _schema = new Schema(schema);
+    public void setSchema(Schema schema) {
+      _schema = schema;
     }
 
     public void validate(String varName) {
@@ -153,7 +70,6 @@ public class DisplayHints {
 
   public static class Extraction {
     private static final String PROP_METHOD = "method";
-
     private static final String PROP_SCHEMA = "schema";
 
     private Map<String, JsonNode> _method;
@@ -181,8 +97,8 @@ public class DisplayHints {
     }
 
     @JsonProperty(PROP_SCHEMA)
-    public void setSchema(String schema) {
-      _schema = new Schema(schema);
+    public void setSchema(Schema schema) {
+      _schema = schema;
     }
 
     public void validate(String varName) {
@@ -193,9 +109,7 @@ public class DisplayHints {
   }
 
   private static final String PROP_COMPOSITIONS = "compositions";
-
   private static final String PROP_EXTRACTIONS = "extractions";
-
   private static final String PROP_TEXT_DESC = "textDesc";
 
   private Map<String, Composition> _compositions;
@@ -211,29 +125,22 @@ public class DisplayHints {
       @JsonProperty(PROP_COMPOSITIONS) Map<String, Composition> compositions,
       @JsonProperty(PROP_EXTRACTIONS) Map<String, Extraction> extractions,
       @JsonProperty(PROP_TEXT_DESC) String textDesc) {
-
-    if (compositions == null) {
-      compositions = new HashMap<>();
-    }
-    if (extractions == null) {
-      extractions = new HashMap<>();
-    }
-    if (textDesc == null) {
-      textDesc = "";
-    }
+    _compositions = firstNonNull(compositions, new HashMap<>());
+    _extractions = firstNonNull(extractions, new HashMap<>());
+    _textDesc = firstNonNull(textDesc, "");
 
     Set<String> varsInEntities = new HashSet<>();
-    for (Entry<String, Composition> entry : compositions.entrySet()) {
+    for (Entry<String, Composition> entry : _compositions.entrySet()) {
       entry.getValue().validate(entry.getKey());
       varsInEntities.addAll(entry.getValue().getVars());
     }
 
-    for (Entry<String, Extraction> entry : extractions.entrySet()) {
+    for (Entry<String, Extraction> entry : _extractions.entrySet()) {
       entry.getValue().validate(entry.getKey());
     }
 
     // all extraction vars mentioned in entity configuration should have extraction hints
-    Set<String> varsInExtractionHints = extractions.keySet();
+    Set<String> varsInExtractionHints = _extractions.keySet();
     SetView<String> missingExtractionVars = Sets.difference(varsInEntities, varsInExtractionHints);
     if (!missingExtractionVars.isEmpty()) {
       throw new BatfishException(
@@ -241,28 +148,11 @@ public class DisplayHints {
     }
 
     // the names of entities and extraction vars should have no overlap
-    Set<String> commonNames = Sets.intersection(varsInExtractionHints, compositions.keySet());
+    Set<String> commonNames = Sets.intersection(varsInExtractionHints, _compositions.keySet());
     if (!commonNames.isEmpty()) {
       throw new BatfishException(
           "entities and extraction vars should not have common names: " + commonNames);
     }
-
-    // names in text description should correspond to those of entities or extraction vars
-    Set<String> namesInTextDesc = new HashSet<>();
-    Matcher matcher = Pattern.compile("\\$\\{([^\\}]+)\\}").matcher(textDesc);
-    while (matcher.find()) {
-      namesInTextDesc.add(matcher.group(1));
-    }
-    SetView<String> missingEntities =
-        Sets.difference(namesInTextDesc, Sets.union(compositions.keySet(), extractions.keySet()));
-    if (!missingEntities.isEmpty()) {
-      throw new BatfishException(
-          "textDesc has names that are neither entities nor extractions: " + missingEntities);
-    }
-
-    _compositions = compositions;
-    _extractions = extractions;
-    _textDesc = textDesc;
   }
 
   @JsonProperty(PROP_COMPOSITIONS)
@@ -280,6 +170,21 @@ public class DisplayHints {
     return _textDesc;
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof DisplayHints)) {
+      return false;
+    }
+    // ignore extactions and compositions -- we will remove those soon from this class
+    return Objects.equals(_textDesc, ((DisplayHints) o)._textDesc);
+  }
+
+  @Override
+  public int hashCode() {
+    // ignore extactions and compositions -- we will remove those soon from this class
+    return Objects.hash(_textDesc);
+  }
+
   @JsonProperty(PROP_COMPOSITIONS)
   public void setCompositions(Map<String, Composition> compositions) {
     _compositions = compositions;
@@ -291,7 +196,8 @@ public class DisplayHints {
   }
 
   @JsonProperty(PROP_TEXT_DESC)
-  public void setTextDesc(String textDesc) {
+  public DisplayHints setTextDesc(String textDesc) {
     _textDesc = textDesc;
+    return this;
   }
 }

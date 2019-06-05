@@ -1,6 +1,6 @@
 parser grammar Cisco_bgp;
 
-import Cisco_common;
+import Cisco_bgp_nxos, Cisco_common;
 
 options {
    tokenVocab = CiscoLexer;
@@ -52,6 +52,9 @@ address_family_rb_stanza
    address_family_header
    (
       additional_paths_rb_stanza
+      | additional_paths_receive_xr_rb_stanza
+      | additional_paths_selection_xr_rb_stanza
+      | additional_paths_send_xr_rb_stanza
       | aggregate_address_rb_stanza
       | bgp_tail
       |
@@ -78,43 +81,62 @@ af_group_rb_stanza
 
 aggregate_address_rb_stanza
 :
-   AGGREGATE_ADDRESS
-   (
-      (
-         network = IP_ADDRESS subnet = IP_ADDRESS
-      )
-      | prefix = IP_PREFIX
-      | ipv6_prefix = IPV6_PREFIX
-   )
-   (
-      as_set = AS_SET
-      | summary_only = SUMMARY_ONLY
-      |
-      (
-         ATTRIBUTE_MAP mapname = variable
-      )
-   )* NEWLINE
+  AGGREGATE_ADDRESS
+  (
+    (
+      network = IP_ADDRESS subnet = IP_ADDRESS
+    )
+    | prefix = IP_PREFIX
+    | ipv6_prefix = IPV6_PREFIX
+  )
+  (
+    as_set = AS_SET
+    | summary_only = SUMMARY_ONLY
+    |
+    (
+      ATTRIBUTE_MAP mapname = variable
+    )
+    |
+    (
+      ROUTE_POLICY rp = variable
+    )
+  )* NEWLINE
 ;
 
 additional_paths_rb_stanza
 :
    BGP ADDITIONAL_PATHS
    (
-      SELECT ALL
-      |
-      (
-         SEND RECEIVE?
-      )
-      |
-      (
-         RECEIVE SEND?
-      )
+      INSTALL
+      | SELECT ALL
+      | SEND RECEIVE?
+      | RECEIVE SEND?
    ) NEWLINE
+;
+
+additional_paths_receive_xr_rb_stanza
+:
+  ADDITIONAL_PATHS RECEIVE NEWLINE
+;
+
+additional_paths_selection_xr_rb_stanza
+:
+  ADDITIONAL_PATHS SELECTION ROUTE_POLICY name = variable NEWLINE
+;
+
+additional_paths_send_xr_rb_stanza
+:
+  ADDITIONAL_PATHS SEND NEWLINE
 ;
 
 advertise_bgp_tail
 :
    ADVERTISE ADDITIONAL_PATHS ALL NEWLINE
+;
+
+advertise_map_bgp_tail
+:
+  ADVERTISE_MAP am_name = variable EXIST_MAP em_name = variable NEWLINE
 ;
 
 allowas_in_bgp_tail
@@ -166,8 +188,13 @@ bgp_listen_range_rb_stanza
       | IPV6_PREFIX
    ) PEER_GROUP name = variable
    (
-      REMOTE_AS as = DEC
+      REMOTE_AS bgp_asn
    )? NEWLINE
+;
+
+bgp_maxas_limit_rb_stanza
+:
+   BGP MAXAS_LIMIT limit = DEC NEWLINE
 ;
 
 bgp_redistribute_internal_rb_stanza
@@ -175,13 +202,20 @@ bgp_redistribute_internal_rb_stanza
    BGP REDISTRIBUTE_INTERNAL NEWLINE
 ;
 
+bgp_scan_time_bgp_tail
+:
+   BGP SCAN_TIME secs = DEC NEWLINE
+;
+
 bgp_tail
 :
    activate_bgp_tail
    | advertise_bgp_tail
+   | advertise_map_bgp_tail
    | allowas_in_bgp_tail
    | as_override_bgp_tail
    | cluster_id_bgp_tail
+   | bgp_scan_time_bgp_tail
    | default_metric_bgp_tail
    | default_originate_bgp_tail
    | default_shutdown_bgp_tail
@@ -200,6 +234,7 @@ bgp_tail
    | prefix_list_bgp_tail
    | redistribute_aggregate_bgp_tail
    | redistribute_connected_bgp_tail
+   | redistribute_eigrp_bgp_tail
    | redistribute_ospf_bgp_tail
    | redistribute_ospfv3_bgp_tail
    | redistribute_rip_bgp_tail
@@ -212,6 +247,7 @@ bgp_tail
    | send_community_bgp_tail
    | shutdown_bgp_tail
    | subnet_bgp_tail
+   | unsuppress_map_bgp_tail
    | update_source_bgp_tail
    | weight_bgp_tail
 ;
@@ -273,7 +309,11 @@ disable_peer_as_check_bgp_tail
 
 distribute_list_bgp_tail
 :
-   DISTRIBUTE_LIST ~NEWLINE* NEWLINE
+   DISTRIBUTE_LIST  list_name = variable
+   (
+      IN
+      | OUT
+   ) NEWLINE
 ;
 
 ebgp_multihop_bgp_tail
@@ -310,7 +350,7 @@ inherit_peer_session_bgp_tail
 
 local_as_bgp_tail
 :
-   LOCAL_AS as = DEC
+   LOCAL_AS bgp_asn
    (
       NO_PREPEND
       | REPLACE_AS
@@ -349,11 +389,6 @@ neighbor_block_address_family
    )+ address_family_footer
 ;
 
-neighbor_block_inherit
-:
-   INHERIT PEER name = VARIABLE NEWLINE
-;
-
 neighbor_block_rb_stanza
 locals
 [java.util.Set<String> addressFamilies, java.util.Set<String> consumedAddressFamilies]
@@ -370,11 +405,13 @@ locals
       | ipv6_prefix = IPV6_PREFIX
    )
    (
-      REMOTE_AS asnum = DEC
+      REMOTE_AS asnum = bgp_asn
+   )?
+   (
+      REMOTE_AS ROUTE_MAP mapname = variable
    )? NEWLINE
    (
       bgp_tail
-      | neighbor_block_inherit
       | no_shutdown_rb_stanza
       | remote_as_bgp_tail
       | use_neighbor_group_bgp_tail
@@ -458,7 +495,9 @@ vrf_block_rb_stanza
    VRF name = ~NEWLINE NEWLINE
    (
       address_family_rb_stanza
+      | aggregate_address_rb_stanza
       | always_compare_med_rb_stanza
+      | as_path_multipath_relax_rb_stanza
       | bgp_listen_range_rb_stanza
       | bgp_tail
       | neighbor_flat_rb_stanza
@@ -470,7 +509,6 @@ vrf_block_rb_stanza
       | peer_group_assignment_rb_stanza
       | peer_group_creation_rb_stanza
       | router_id_rb_stanza
-      | template_peer_rb_stanza
       | template_peer_session_rb_stanza
    )*
 ;
@@ -513,7 +551,7 @@ no_neighbor_shutdown_rb_stanza
 
 no_network_bgp_tail
 :
-   NO NETWORK ~NEWLINE* NEWLINE
+   NO NETWORK null_rest_of_line
 ;
 
 no_redistribute_connected_rb_stanza
@@ -522,7 +560,7 @@ no_redistribute_connected_rb_stanza
    (
       CONNECTED
       | DIRECT
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 no_shutdown_rb_stanza
@@ -567,10 +605,8 @@ null_bgp_tail
             (
                BESTPATH
                (
-                  AS_PATH
-                  (
-                     CONFED
-                  )
+                  AS_PATH CONFED
+                  | MED
                )
             )
             | CLIENT_TO_CLIENT
@@ -588,7 +624,6 @@ null_bgp_tail
             | NEXTHOP
             | NON_DETERMINISTIC_MED
             | REDISTRIBUTE_INTERNAL
-            | SCAN_TIME
          )
       )
       | CAPABILITY
@@ -639,6 +674,7 @@ null_bgp_tail
       | TABLE_MAP
       | TIMERS
       | TRANSPORT
+      | UPDATE
       |
       (
          USE
@@ -647,7 +683,7 @@ null_bgp_tail
          )
       )
       | VERSION
-   ) ~NEWLINE* NEWLINE
+   ) null_rest_of_line
 ;
 
 null_no_neighbor_rb_stanza
@@ -690,7 +726,7 @@ prefix_list_bgp_tail
 
 remote_as_bgp_tail
 :
-   REMOTE_AS as = DEC NEWLINE
+   REMOTE_AS remote = bgp_asn (ALTERNATE_AS alt_ases += bgp_asn+)? NEWLINE
 ;
 
 remove_private_as_bgp_tail
@@ -759,9 +795,14 @@ redistribute_connected_bgp_tail
    )* NEWLINE
 ;
 
+redistribute_eigrp_bgp_tail
+:
+   REDISTRIBUTE EIGRP id = DEC null_rest_of_line
+;
+
 redistribute_ospf_bgp_tail
 :
-   REDISTRIBUTE OSPF procnum = DEC
+   REDISTRIBUTE OSPF (procname = variable)?
    (
       (
          ROUTE_MAP map = variable
@@ -783,7 +824,7 @@ redistribute_ospf_bgp_tail
 
 redistribute_ospfv3_bgp_tail
 :
-   REDISTRIBUTE OSPFV3 procnum = DEC
+   REDISTRIBUTE (OSPFV3 | OSPF3) (procname = variable)?
    (
       (
          ROUTE_MAP map = variable
@@ -839,8 +880,11 @@ router_bgp_stanza
 :
    ROUTER BGP
    (
-      procnum = DEC
-   )? NEWLINE router_bgp_stanza_tail+
+      procnum = bgp_asn
+   )? NEWLINE (
+      {!_nxos}? router_bgp_stanza_tail
+      | {_nxos}? router_bgp_nxos_toplevel
+   )*
 ;
 
 router_bgp_stanza_tail
@@ -855,6 +899,7 @@ router_bgp_stanza_tail
    | bgp_advertise_inactive_rb_stanza
    | bgp_confederation_rb_stanza
    | bgp_listen_range_rb_stanza
+   | bgp_maxas_limit_rb_stanza
    | bgp_redistribute_internal_rb_stanza
    | bgp_tail
    | cluster_id_rb_stanza
@@ -876,7 +921,6 @@ router_bgp_stanza_tail
    | peer_group_creation_rb_stanza
    | router_id_rb_stanza
    | session_group_rb_stanza
-   | template_peer_rb_stanza
    | template_peer_policy_rb_stanza
    | template_peer_session_rb_stanza
    | vrf_block_rb_stanza
@@ -935,52 +979,6 @@ template_peer_address_family
    address_family_header bgp_tail* address_family_footer
 ;
 
-template_peer_rb_stanza
-locals [java.util.Set<String> addressFamilies] @init {
-   $addressFamilies = new java.util.HashSet<String>();
-}
-:
-   TEMPLATE PEER name = VARIABLE NEWLINE template_peer_rb_stanza_tail
-   [$addressFamilies]
-;
-
-template_peer_rb_stanza_tail [java.util.Set<String> addressFamilies]
-locals [boolean active]
-:
-{
-   if (_input.LT(1).getType() == ADDRESS_FAMILY) {
-      String addressFamilyString = "";
-      for (int i = 1, currentType = -1; _input.LT(i).getType() != NEWLINE; i++) {
-         addressFamilyString += " " + _input.LT(i).getText();
-      }
-      if ($addressFamilies.contains(addressFamilyString)) {
-         $active = false;
-      }
-      else {
-         $addressFamilies.add(addressFamilyString);
-         $active = true;
-      }
-   }
-   else {
-      $active = true;
-   }
-}
-
-   (
-      {$active}?
-
-      (
-         bgp_tail
-         | inherit_peer_session_bgp_tail
-         | no_shutdown_rb_stanza
-         | remote_as_bgp_tail
-         | template_peer_address_family
-      ) template_peer_rb_stanza_tail [$addressFamilies]
-      | // intentional blank
-
-   )
-;
-
 template_peer_policy_rb_stanza
 :
    TEMPLATE PEER_POLICY name = VARIABLE NEWLINE
@@ -1003,6 +1001,11 @@ template_peer_session_rb_stanza
    (
       EXIT_PEER_SESSION NEWLINE
    )?
+;
+
+unsuppress_map_bgp_tail
+:
+    UNSUPPRESS_MAP mapname = variable_permissive NEWLINE
 ;
 
 update_source_bgp_tail

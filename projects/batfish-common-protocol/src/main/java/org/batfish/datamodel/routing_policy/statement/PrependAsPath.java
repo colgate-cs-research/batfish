@@ -1,24 +1,35 @@
 package org.batfish.datamodel.routing_policy.statement;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSortedSet;
 import java.util.List;
-import java.util.SortedSet;
+import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
+import org.batfish.datamodel.AsPath;
+import org.batfish.datamodel.AsSet;
 import org.batfish.datamodel.BgpRoute;
 import org.batfish.datamodel.routing_policy.Environment;
 import org.batfish.datamodel.routing_policy.Result;
 import org.batfish.datamodel.routing_policy.expr.AsPathListExpr;
 
-public class PrependAsPath extends Statement {
+@ParametersAreNonnullByDefault
+public final class PrependAsPath extends Statement {
+  private static final String PROP_EXPR = "expr";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
-  private AsPathListExpr _expr;
+  @Nonnull private AsPathListExpr _expr;
 
   @JsonCreator
-  private PrependAsPath() {}
+  private static PrependAsPath jsonCreator(@Nullable @JsonProperty(PROP_EXPR) AsPathListExpr expr) {
+    checkArgument(expr != null, "%s must be provided", PROP_EXPR);
+    return new PrependAsPath(expr);
+  }
 
   public PrependAsPath(AsPathListExpr expr) {
     _expr = expr;
@@ -28,50 +39,42 @@ public class PrependAsPath extends Statement {
   public boolean equals(Object obj) {
     if (this == obj) {
       return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
+    } else if (!(obj instanceof PrependAsPath)) {
       return false;
     }
     PrependAsPath other = (PrependAsPath) obj;
-    if (_expr == null) {
-      if (other._expr != null) {
-        return false;
-      }
-    } else if (!_expr.equals(other._expr)) {
-      return false;
-    }
-    return true;
+    return _expr.equals(other._expr);
   }
 
   @Override
   public Result execute(Environment environment) {
-    List<Integer> toPrepend = _expr.evaluate(environment);
-    List<SortedSet<Integer>> newAsPaths =
-        toPrepend.stream().map(ImmutableSortedSet::of).collect(ImmutableList.toImmutableList());
+    List<Long> toPrepend = _expr.evaluate(environment);
+    List<AsSet> newAsPaths = toPrepend.stream().map(AsSet::of).collect(Collectors.toList());
 
-    BgpRoute.Builder bgpRouteBuilder = (BgpRoute.Builder) environment.getOutputRoute();
+    BgpRoute.Builder<?, ?> bgpRouteBuilder = (BgpRoute.Builder<?, ?>) environment.getOutputRoute();
     bgpRouteBuilder.setAsPath(
-        ImmutableList.<SortedSet<Integer>>builder()
-            .addAll(newAsPaths)
-            .addAll(bgpRouteBuilder.getAsPath())
-            .build());
+        AsPath.of(
+            ImmutableList.<AsSet>builder()
+                .addAll(newAsPaths)
+                .addAll(bgpRouteBuilder.getAsPath().getAsSets())
+                .build()));
 
     if (environment.getWriteToIntermediateBgpAttributes()) {
-      BgpRoute.Builder ir = environment.getIntermediateBgpAttributes();
+      BgpRoute.Builder<?, ?> ir = environment.getIntermediateBgpAttributes();
       ir.setAsPath(
-          ImmutableList.<SortedSet<Integer>>builder()
-              .addAll(newAsPaths)
-              .addAll(ir.getAsPath())
-              .build());
+          AsPath.of(
+              ImmutableList.<AsSet>builder()
+                  .addAll(newAsPaths)
+                  .addAll(ir.getAsPath().getAsSets())
+                  .build()));
     }
 
     Result result = new Result();
     return result;
   }
 
+  @JsonProperty(PROP_EXPR)
+  @Nonnull
   public AsPathListExpr getExpr() {
     return _expr;
   }
@@ -80,7 +83,7 @@ public class PrependAsPath extends Statement {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((_expr == null) ? 0 : _expr.hashCode());
+    result = prime * result + _expr.hashCode();
     return result;
   }
 

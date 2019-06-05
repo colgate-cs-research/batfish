@@ -1,19 +1,17 @@
 package org.batfish.representation.aws;
 
 import java.io.Serializable;
-import org.batfish.common.BatfishLogger;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 public class RouteTableAssociation implements Serializable {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private boolean _isMain;
   private String _subnetId = null;
 
-  public RouteTableAssociation(JSONObject jObj, BatfishLogger logger) throws JSONException {
+  public RouteTableAssociation(JSONObject jObj) throws JSONException {
 
     _isMain = jObj.getBoolean(AwsVpcEntity.JSON_KEY_MAIN);
 

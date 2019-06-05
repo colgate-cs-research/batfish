@@ -6,12 +6,9 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.batfish.datamodel.answers.AnswerElement;
 
-public class LoadQuestionAnswerElement implements AnswerElement {
-
+public class LoadQuestionAnswerElement extends AnswerElement {
   private static final String PROP_ADDED = "added";
-
   private static final String PROP_NUM_LOADED = "numLoaded";
-
   private static final String PROP_REPLACED = "replaced";
 
   private SortedSet<String> _added;
@@ -39,20 +36,6 @@ public class LoadQuestionAnswerElement implements AnswerElement {
   @JsonProperty(PROP_REPLACED)
   public SortedSet<String> getReplaced() {
     return _replaced;
-  }
-
-  @Override
-  public String prettyPrint() {
-    if (_numLoaded == 0) {
-      return "WARNING: no question .json files found in provided path\n";
-    } else {
-      StringBuilder sb = new StringBuilder();
-      sb.append("Loaded " + _numLoaded + " questions");
-      if (!_replaced.isEmpty()) {
-        sb.append(" (Added:" + _added.size() + " Replaced:" + _replaced.size() + ")\n");
-      }
-      return sb.toString();
-    }
   }
 
   @JsonProperty(PROP_ADDED)

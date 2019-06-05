@@ -1,10 +1,16 @@
 package org.batfish.job;
 
-import java.nio.file.Path;
+import static com.google.common.base.MoreObjects.firstNonNull;
+
+import com.google.common.base.Throwables;
+import com.google.common.collect.Multimap;
+import java.io.File;
 import java.util.Map;
+import javax.annotation.Nonnull;
 import org.batfish.common.BatfishException;
 import org.batfish.common.BatfishLogger;
 import org.batfish.common.BatfishLogger.BatfishLoggerHistory;
+import org.batfish.common.ErrorDetails;
 import org.batfish.common.ParseTreeSentences;
 import org.batfish.common.Warnings;
 import org.batfish.datamodel.answers.ParseStatus;
@@ -15,47 +21,60 @@ public class ParseVendorConfigurationResult
     extends BatfishJobResult<
         Map<String, VendorConfiguration>, ParseVendorConfigurationAnswerElement> {
 
-  private final Path _file;
+  /** Information about duplicate hostnames is collected here */
+  private Multimap<String, String> _duplicateHostnames;
 
-  private ParseTreeSentences _parseTree;
+  private final String _filename;
+
+  @Nonnull private ParseTreeSentences _parseTree;
 
   private final ParseStatus _status;
 
   private VendorConfiguration _vc;
 
-  private Warnings _warnings;
+  @Nonnull private final Warnings _warnings;
 
   public ParseVendorConfigurationResult(
-      long elapsedTime, BatfishLoggerHistory history, Path file, Throwable failureCause) {
+      long elapsedTime,
+      BatfishLoggerHistory history,
+      String filename,
+      @Nonnull Warnings warnings,
+      @Nonnull ParseTreeSentences parseTree,
+      @Nonnull Throwable failureCause) {
     super(elapsedTime, history, failureCause);
-    _file = file;
+    _filename = filename;
+    _parseTree = parseTree;
     _status = ParseStatus.FAILED;
+    _warnings = warnings;
   }
 
   public ParseVendorConfigurationResult(
       long elapsedTime,
       BatfishLoggerHistory history,
-      Path file,
+      String filename,
       VendorConfiguration vc,
-      Warnings warnings,
-      ParseTreeSentences parseTree) {
+      @Nonnull Warnings warnings,
+      @Nonnull ParseTreeSentences parseTree,
+      @Nonnull ParseStatus status,
+      @Nonnull Multimap<String, String> duplicateHostnames) {
     super(elapsedTime, history);
-    _file = file;
+    _filename = filename;
     _parseTree = parseTree;
     _vc = vc;
     _warnings = warnings;
-    // parse status is determined from other fields
-    _status = null;
+    _status = status;
+    _duplicateHostnames = duplicateHostnames;
   }
 
   public ParseVendorConfigurationResult(
       long elapsedTime,
       BatfishLoggerHistory history,
-      Path file,
-      Warnings warnings,
-      ParseStatus status) {
+      String filename,
+      @Nonnull Warnings warnings,
+      @Nonnull ParseStatus status) {
     super(elapsedTime, history);
-    _file = file;
+    _filename = filename;
+    _parseTree = new ParseTreeSentences();
     _status = status;
     _warnings = warnings;
   }
@@ -68,7 +87,7 @@ public class ParseVendorConfigurationResult
     } else if (_vc != null) {
       terseLogLevelPrefix = _vc.getHostname() + ": ";
     } else {
-      terseLogLevelPrefix = _file + ": ";
+      terseLogLevelPrefix = _filename + ": ";
     }
     logger.append(_history, terseLogLevelPrefix);
   }
@@ -79,43 +98,81 @@ public class ParseVendorConfigurationResult
       BatfishLogger logger,
       ParseVendorConfigurationAnswerElement answerElement) {
     appendHistory(logger);
+    answerElement.getParseStatus().put(_filename, _status);
     if (_vc != null) {
       String hostname = _vc.getHostname();
       if (vendorConfigurations.containsKey(hostname)) {
-        throw new BatfishException("Duplicate hostname: " + hostname);
-      } else {
-        vendorConfigurations.put(hostname, _vc);
-        if (!_warnings.isEmpty()) {
-          answerElement.getWarnings().put(hostname, _warnings);
-        }
-        if (!_parseTree.isEmpty()) {
-          answerElement.getParseTrees().put(hostname, _parseTree);
-        }
-        if (_vc.getUnrecognized()) {
-          answerElement.getParseStatus().put(hostname, ParseStatus.PARTIALLY_UNRECOGNIZED);
-        } else {
-          answerElement.getParseStatus().put(hostname, ParseStatus.PASSED);
-          answerElement.getFileMap().put(hostname, _file.getFileName().toString());
-        }
+        /*
+         * Modify the hostname of what is already in the vendorConfigurations map. Ideally, we'd add
+         * a warning but the getWarnings object around here is null
+         */
+        VendorConfiguration oldVc = vendorConfigurations.get(hostname);
+        String modifiedOldName = getModifiedName(hostname, oldVc.getFilename());
+        oldVc.setHostname(modifiedOldName);
+        vendorConfigurations.remove(hostname);
+        vendorConfigurations.put(modifiedOldName, oldVc);
+        _duplicateHostnames.put(hostname, modifiedOldName);
       }
-    } else {
-      String filename = _file.getFileName().toString();
-      answerElement.getParseStatus().put(filename, _status);
-      if (_status == ParseStatus.FAILED) {
+      if (_duplicateHostnames.containsKey(hostname)) {
+        String modifiedNewName = getModifiedName(hostname, _vc.getFilename());
+        _warnings.redFlag(
+            String.format("Duplicate hostname %s. Changed to %s", hostname, modifiedNewName));
+        _vc.setHostname(modifiedNewName);
+        _duplicateHostnames.put(hostname, modifiedNewName);
+        hostname = modifiedNewName;
+      }
+      vendorConfigurations.put(hostname, _vc);
+      answerElement.getFileMap().put(hostname, _filename);
+      if (!_warnings.isEmpty()) {
+        answerElement.getWarnings().put(_filename, _warnings);
+      }
+      if (!_parseTree.isEmpty()) {
+        answerElement.getParseTrees().put(_filename, _parseTree);
+      }
+    } else if (_status == ParseStatus.FAILED) {
+      assert _failureCause != null; // status == FAILED, failureCause must be non-null
+      answerElement
+          .getErrors()
+          .put(_filename, ((BatfishException) _failureCause).getBatfishStackTrace());
+      ErrorDetails errorDetails = _warnings.getErrorDetails();
+      // Pass existing errorDetails through, if applicable (e.g. exception caught while walking
+      // parse tree and details [including parser context] already populated)
+      if (errorDetails != null) {
+        answerElement.getErrorDetails().put(_filename, errorDetails);
+      } else {
         answerElement
-            .getErrors()
-            .put(filename, ((BatfishException) _failureCause).getBatfishStackTrace());
+            .getErrorDetails()
+            .put(
+                _filename,
+                new ErrorDetails(
+                    Throwables.getStackTraceAsString(
+                        firstNonNull(_failureCause.getCause(), _failureCause))));
       }
     }
   }
 
-  public Path getFile() {
-    return _file;
+  public String getFilename() {
+    return _filename;
   }
 
   @Override
   public BatfishLoggerHistory getHistory() {
     return _history;
+  }
+
+  private String getModifiedName(String baseName, String filename) {
+    String modifiedName = getModifiedNameBase(baseName, filename);
+    int index = 0;
+    while (_duplicateHostnames.containsEntry(baseName, modifiedName)) {
+      modifiedName = getModifiedNameBase(baseName, filename) + "." + index;
+      index++;
+    }
+    return modifiedName;
+  }
+
+  /** Returns a modified host name to use when duplicate hostnames are encountered */
+  public static String getModifiedNameBase(String baseName, String filename) {
+    return baseName + "__" + filename.replaceAll(File.separator, "__");
   }
 
   public VendorConfiguration getVendorConfiguration() {
@@ -127,7 +184,7 @@ public class ParseVendorConfigurationResult
     if (_vc == null) {
       return "<EMPTY OR UNSUPPORTED FORMAT>";
     } else if (_vc.getHostname() == null) {
-      return "<File: \"" + _file + "\" has indeterminate hostname>";
+      return "<File: \"" + _filename + "\" has indeterminate hostname>";
     } else {
       return "<" + _vc.getHostname() + ">";
     }

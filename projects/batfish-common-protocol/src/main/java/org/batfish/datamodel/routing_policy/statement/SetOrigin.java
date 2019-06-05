@@ -1,6 +1,7 @@
 package org.batfish.datamodel.routing_policy.statement;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.batfish.datamodel.BgpRoute;
 import org.batfish.datamodel.OriginType;
 import org.batfish.datamodel.routing_policy.Environment;
@@ -8,8 +9,8 @@ import org.batfish.datamodel.routing_policy.Result;
 import org.batfish.datamodel.routing_policy.expr.OriginExpr;
 
 public class SetOrigin extends Statement {
+  private static final String PROP_ORIGIN_TYPE = "originType";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private OriginExpr _origin;
@@ -45,7 +46,7 @@ public class SetOrigin extends Statement {
 
   @Override
   public Result execute(Environment environment) {
-    BgpRoute.Builder bgpRoute = (BgpRoute.Builder) environment.getOutputRoute();
+    BgpRoute.Builder<?, ?> bgpRoute = (BgpRoute.Builder<?, ?>) environment.getOutputRoute();
     OriginType originType = _origin.evaluate(environment);
     bgpRoute.setOriginType(originType);
     if (environment.getWriteToIntermediateBgpAttributes()) {
@@ -55,6 +56,7 @@ public class SetOrigin extends Statement {
     return result;
   }
 
+  @JsonProperty(PROP_ORIGIN_TYPE)
   public OriginExpr getOriginType() {
     return _origin;
   }
@@ -67,6 +69,7 @@ public class SetOrigin extends Statement {
     return result;
   }
 
+  @JsonProperty(PROP_ORIGIN_TYPE)
   public void setOriginType(OriginExpr origin) {
     _origin = origin;
   }

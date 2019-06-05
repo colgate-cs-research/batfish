@@ -1,10 +1,10 @@
 package org.batfish.datamodel;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
 
+import com.google.common.testing.EqualsTester;
+import org.batfish.datamodel.ospf.OspfMetricType;
 import org.junit.Test;
 
 /** Test for {@link OspfExternalType2Route} */
@@ -12,24 +12,43 @@ public class OspfExternalType2RouteTest {
 
   @Test
   public void testEquals() {
+    OspfExternalType2Route.Builder b =
+        OspfExternalRoute.builder()
+            .setNetwork(Prefix.create(Ip.parse("1.1.1.1"), 32))
+            .setNextHopIp(Ip.ZERO)
+            .setAdmin(1)
+            .setMetric(1)
+            .setLsaMetric(1)
+            .setArea(1)
+            .setCostToAdvertiser(1)
+            .setAdvertiser("")
+            .setOspfMetricType(OspfMetricType.E2);
 
-    OspfExternalType2Route r1 =
-        new OspfExternalType2Route(new Prefix(new Ip("1.1.1.1"), 32), Ip.ZERO, 1, 1, 1, 1, 1, "");
-    OspfExternalType2Route r1DiffObj =
-        new OspfExternalType2Route(new Prefix(new Ip("1.1.1.1"), 32), Ip.ZERO, 1, 1, 1, 1, 1, "");
-    OspfExternalType2Route r2 =
-        new OspfExternalType2Route(new Prefix(new Ip("1.1.1.1"), 32), Ip.ZERO, 1, 1, 1, 1, 2, "");
-    OspfExternalType1Route type1Route =
-        new OspfExternalType1Route(new Prefix(new Ip("1.1.1.1"), 32), Ip.ZERO, 1, 1, 1, 1, 2, "");
+    OspfExternalRoute r1 = b.build();
+    OspfExternalRoute r1DiffObj = b.build();
+    OspfExternalRoute r2 = b.setCostToAdvertiser(2).build();
+    OspfExternalRoute r2t1 = b.setOspfMetricType(OspfMetricType.E1).build();
 
-    // Simple equality checks
-    assertThat(r1, equalTo(r1));
-    assertThat(r1, equalTo(r1DiffObj));
-    assertThat(r1, not(equalTo(nullValue())));
+    new EqualsTester()
+        .addEqualityGroup(r1, r1DiffObj)
+        .addEqualityGroup(r2)
+        .addEqualityGroup(r2t1)
+        .testEquals();
+  }
 
-    // Cost to advertiser differs
-    assertThat(r1, not(equalTo(r2)));
-    // Not the same type
-    assertThat(r1, not(equalTo(type1Route)));
+  @Test
+  public void testToBuilder() {
+    OspfExternalRoute r =
+        OspfExternalRoute.builder()
+            .setOspfMetricType(OspfMetricType.E2)
+            .setNetwork(Prefix.parse("1.1.1.0/24"))
+            .setMetric(1L)
+            .setLsaMetric(2L)
+            .setCostToAdvertiser(3L)
+            .setAdvertiser("advertiser")
+            .setArea(4L)
+            .build();
+    assertThat(r.toBuilder().build(), equalTo(r));
+    assertThat(r.toBuilder().build() instanceof OspfExternalType2Route, equalTo(true));
   }
 }

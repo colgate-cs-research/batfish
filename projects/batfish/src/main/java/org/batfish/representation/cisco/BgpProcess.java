@@ -1,12 +1,12 @@
 package org.batfish.representation.cisco;
 
+import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import org.batfish.common.util.ComparableStructure;
 import org.batfish.datamodel.BgpTieBreaker;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.Ip;
@@ -15,7 +15,7 @@ import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Prefix6;
 import org.batfish.datamodel.RoutingProtocol;
 
-public class BgpProcess extends ComparableStructure<Integer> {
+public class BgpProcess implements Serializable {
 
   private static final int DEFAULT_BGP_DEFAULT_METRIC = 0;
 
@@ -65,14 +65,15 @@ public class BgpProcess extends ComparableStructure<Integer> {
 
   private Map<String, NamedBgpPeerGroup> _peerSessions;
 
+  private final long _procnum;
+
   private final Map<RoutingProtocol, BgpRedistributionPolicy> _redistributionPolicies;
 
   private Ip _routerId;
 
   private BgpTieBreaker _tieBreaker;
 
-  public BgpProcess(ConfigurationFormat format, int procnum) {
-    super(procnum);
+  public BgpProcess(ConfigurationFormat format, long procnum) {
     _afGroups = new HashMap<>();
     _aggregateNetworks = new HashMap<>();
     _aggregateIpv6Networks = new HashMap<>();
@@ -86,6 +87,7 @@ public class BgpProcess extends ComparableStructure<Integer> {
     _ipv6Networks = new LinkedHashMap<>();
     _ipv6PeerGroups = new HashMap<>();
     _peerSessions = new HashMap<>();
+    _procnum = procnum;
     _redistributionPolicies = new EnumMap<>(RoutingProtocol.class);
     _masterBgpPeerGroup = new MasterBgpPeerGroup();
     if (format == ConfigurationFormat.ARISTA) {
@@ -94,7 +96,6 @@ public class BgpProcess extends ComparableStructure<Integer> {
     switch (format) {
       case CISCO_IOS:
       case CISCO_IOS_XR:
-      case CISCO_NX:
         _masterBgpPeerGroup.setAdvertiseInactive(true);
         break;
 
@@ -107,6 +108,9 @@ public class BgpProcess extends ComparableStructure<Integer> {
 
   public DynamicIpBgpPeerGroup addDynamicIpPeerGroup(Prefix prefix) {
     DynamicIpBgpPeerGroup pg = new DynamicIpBgpPeerGroup(prefix);
+    if (_defaultIpv4Activate) {
+      pg.setActive(true);
+    }
     _dynamicIpPeerGroups.put(prefix, pg);
     _allPeerGroups.add(pg);
     return pg;
@@ -114,6 +118,9 @@ public class BgpProcess extends ComparableStructure<Integer> {
 
   public DynamicIpv6BgpPeerGroup addDynamicIpv6PeerGroup(Prefix6 prefix6) {
     DynamicIpv6BgpPeerGroup pg = new DynamicIpv6BgpPeerGroup(prefix6);
+    if (_defaultIpv6Activate) {
+      pg.setActive(true);
+    }
     _dynamicIpv6PeerGroups.put(prefix6, pg);
     _allPeerGroups.add(pg);
     return pg;
@@ -137,14 +144,14 @@ public class BgpProcess extends ComparableStructure<Integer> {
     _allPeerGroups.add(pg);
   }
 
-  public void addNamedPeerGroup(String name, int definitionLine) {
-    NamedBgpPeerGroup pg = new NamedBgpPeerGroup(name, definitionLine);
+  public void addNamedPeerGroup(String name) {
+    NamedBgpPeerGroup pg = new NamedBgpPeerGroup(name);
     _namedPeerGroups.put(name, pg);
     _allPeerGroups.add(pg);
   }
 
-  public void addPeerSession(String name, int definitionLine) {
-    NamedBgpPeerGroup pg = new NamedBgpPeerGroup(name, definitionLine);
+  public void addPeerSession(String name) {
+    NamedBgpPeerGroup pg = new NamedBgpPeerGroup(name);
     _peerSessions.put(name, pg);
     _allPeerGroups.add(pg);
   }
@@ -231,6 +238,10 @@ public class BgpProcess extends ComparableStructure<Integer> {
 
   public Map<String, NamedBgpPeerGroup> getPeerSessions() {
     return _peerSessions;
+  }
+
+  public long getProcnum() {
+    return _procnum;
   }
 
   public Map<RoutingProtocol, BgpRedistributionPolicy> getRedistributionPolicies() {

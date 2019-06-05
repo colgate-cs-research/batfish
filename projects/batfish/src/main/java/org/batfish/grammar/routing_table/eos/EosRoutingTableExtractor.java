@@ -1,6 +1,9 @@
 package org.batfish.grammar.routing_table.eos;
 
+import static org.batfish.datamodel.Route.AMBIGUOUS_NEXT_HOP;
+
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -9,7 +12,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.batfish.common.BatfishException;
 import org.batfish.common.Warnings;
 import org.batfish.common.plugin.IBatfish;
-import org.batfish.common.util.CommonUtil;
+import org.batfish.common.topology.TopologyUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.Ip;
@@ -18,6 +21,7 @@ import org.batfish.datamodel.Route;
 import org.batfish.datamodel.RouteBuilder;
 import org.batfish.datamodel.RoutingProtocol;
 import org.batfish.datamodel.collections.RoutesByVrf;
+import org.batfish.grammar.BatfishParseTreeWalker;
 import org.batfish.grammar.RoutingTableExtractor;
 import org.batfish.grammar.routing_table.eos.EosRoutingTableParser.Eos_routing_tableContext;
 import org.batfish.grammar.routing_table.eos.EosRoutingTableParser.ProtocolContext;
@@ -37,7 +41,7 @@ public class EosRoutingTableExtractor extends EosRoutingTableParserBaseListener
 
   private final String _hostname;
 
-  private final Map<Ip, String> _ipOwners;
+  private final Map<Ip, Set<String>> _ipOwners;
 
   @SuppressWarnings("unused")
   private EosRoutingTableCombinedParser _parser;
@@ -60,8 +64,7 @@ public class EosRoutingTableExtractor extends EosRoutingTableParserBaseListener
     _parser = parser;
     _w = w;
     Map<String, Configuration> configurations = batfish.loadConfigurations();
-    Map<Ip, String> ipOwnersSimple = CommonUtil.computeIpOwnersSimple(configurations, true);
-    _ipOwners = ipOwnersSimple;
+    _ipOwners = TopologyUtil.computeIpNodeOwners(configurations, true);
   }
 
   private BatfishException convError(Class<?> type, ParserRuleContext ctx) {
@@ -104,7 +107,7 @@ public class EosRoutingTableExtractor extends EosRoutingTableParserBaseListener
       } else {
         admin = toInteger(ctx.admin);
         cost = toInteger(ctx.cost);
-        nextHopIp = new Ip(ctx.nexthops.get(i).getText());
+        nextHopIp = Ip.parse(ctx.nexthops.get(i).getText());
       }
       RouteBuilder rb = new RouteBuilder();
       rb.setNode(_hostname);
@@ -116,9 +119,13 @@ public class EosRoutingTableExtractor extends EosRoutingTableParserBaseListener
       }
       if (!nextHopIp.equals(Route.UNSET_ROUTE_NEXT_HOP_IP)) {
         rb.setNextHopIp(nextHopIp);
-        String nextHop = _ipOwners.get(nextHopIp);
-        if (nextHop != null) {
-          rb.setNextHop(nextHop);
+        Set<String> nextHops = _ipOwners.get(nextHopIp);
+        if (nextHops != null) {
+          if (nextHops.size() == 1) {
+            rb.setNextHop(nextHops.iterator().next());
+          } else if (nextHops.size() > 1) {
+            rb.setNextHop(AMBIGUOUS_NEXT_HOP);
+          }
         }
       }
       if (nextHopInterface != null) {
@@ -152,7 +159,7 @@ public class EosRoutingTableExtractor extends EosRoutingTableParserBaseListener
 
   @Override
   public void processParseTree(ParserRuleContext tree) {
-    ParseTreeWalker walker = new ParseTreeWalker();
+    ParseTreeWalker walker = new BatfishParseTreeWalker(_parser);
     walker.walk(this, tree);
   }
 

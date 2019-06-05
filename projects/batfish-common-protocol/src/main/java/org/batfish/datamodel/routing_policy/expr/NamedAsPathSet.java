@@ -9,7 +9,6 @@ import org.batfish.datamodel.BgpRoute;
 import org.batfish.datamodel.routing_policy.Environment;
 
 public final class NamedAsPathSet extends AsPathSetExpr {
-  /** */
   private static final long serialVersionUID = 1L;
 
   private static final String PROP_NAME = "name";
@@ -48,16 +47,17 @@ public final class NamedAsPathSet extends AsPathSetExpr {
 
   @Override
   public boolean matches(Environment environment) {
-    AsPathAccessList list = environment.getConfiguration().getAsPathAccessLists().get(_name);
+    AsPathAccessList list = environment.getAsPathAccessLists().get(_name);
     if (list != null) {
       boolean match = false;
       AsPath inputAsPath = null;
       if (environment.getUseOutputAttributes()
-          && environment.getOutputRoute() instanceof BgpRoute.Builder) {
-        BgpRoute.Builder bgpRouteBuilder = (BgpRoute.Builder) environment.getOutputRoute();
-        inputAsPath = new AsPath(bgpRouteBuilder.getAsPath());
+          && environment.getOutputRoute() instanceof BgpRoute.Builder<?, ?>) {
+        BgpRoute.Builder<?, ?> bgpRouteBuilder =
+            (BgpRoute.Builder<?, ?>) environment.getOutputRoute();
+        inputAsPath = bgpRouteBuilder.getAsPath();
       } else if (environment.getReadFromIntermediateBgpAttributes()) {
-        inputAsPath = new AsPath(environment.getIntermediateBgpAttributes().getAsPath());
+        inputAsPath = environment.getIntermediateBgpAttributes().getAsPath();
       } else if (environment.getOriginalRoute() instanceof BgpRoute) {
         BgpRoute bgpRoute = (BgpRoute) environment.getOriginalRoute();
         inputAsPath = bgpRoute.getAsPath();

@@ -1,61 +1,138 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.Interner;
+import com.google.common.collect.Interners;
+import java.util.Objects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 
-public class OspfInterAreaRoute extends OspfInternalRoute {
+/** OSPF inter-area area (can traverse OSPF areas). */
+@ParametersAreNonnullByDefault
+public final class OspfInterAreaRoute extends OspfInternalRoute {
 
   private static final long serialVersionUID = 1L;
+  private static final Interner<OspfInterAreaRoute> _cache = Interners.newWeakInterner();
 
   @JsonCreator
-  public OspfInterAreaRoute(
-      @JsonProperty(PROP_NETWORK) Prefix network,
-      @JsonProperty(PROP_NEXT_HOP_IP) Ip nextHopIp,
-      @JsonProperty(PROP_ADMINISTRATIVE_COST) int admin,
-      @JsonProperty(PROP_METRIC) long metric,
-      @JsonProperty(PROP_AREA) long area) {
-    super(network, nextHopIp, admin, metric, area);
+  private static OspfInterAreaRoute jsonCreator(
+      @Nullable @JsonProperty(PROP_NETWORK) Prefix network,
+      @Nullable @JsonProperty(PROP_NEXT_HOP_IP) Ip nextHopIp,
+      @Nullable @JsonProperty(PROP_ADMINISTRATIVE_COST) Integer admin,
+      @Nullable @JsonProperty(PROP_METRIC) Long metric,
+      @Nullable @JsonProperty(PROP_AREA) Long area) {
+    checkArgument(network != null, "%s must be specified", PROP_NETWORK);
+    checkArgument(nextHopIp != null, "%s must be specified", PROP_NEXT_HOP_IP);
+    checkArgument(admin != null, "%s must be specified", PROP_ADMINISTRATIVE_COST);
+    checkArgument(metric != null, "%s must be specified", PROP_METRIC);
+    checkArgument(area != null, "%s must be specified", PROP_AREA);
+    return new OspfInterAreaRoute(network, nextHopIp, admin, metric, area, false, false);
   }
 
+  private OspfInterAreaRoute(
+      Prefix network,
+      Ip nextHopIp,
+      int admin,
+      long metric,
+      long area,
+      boolean nonForwarding,
+      boolean nonRouting) {
+    super(network, nextHopIp, admin, metric, area, nonForwarding, nonRouting);
+  }
+
+  @Nonnull
   @Override
   public RoutingProtocol getProtocol() {
     return RoutingProtocol.OSPF_IA;
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(@Nullable Object o) {
     if (o == this) {
       return true;
     } else if (!(o instanceof OspfInterAreaRoute)) {
       return false;
     }
     OspfInterAreaRoute other = (OspfInterAreaRoute) o;
-    if (_nextHopIp == null) {
-      if (other._nextHopIp != null) {
-        return false;
-      }
-    } else if (!_nextHopIp.equals(other._nextHopIp)) {
-      return false;
-    }
-    if (_admin != other._admin) {
-      return false;
-    }
-    if (_area != other._area) {
-      return false;
-    }
-    if (_metric != other._metric) {
-      return false;
-    }
-    return _network.equals(other._network);
+    return _network.equals(other._network)
+        && _admin == other._admin
+        && getNonRouting() == other.getNonRouting()
+        && getNonForwarding() == other.getNonForwarding()
+        && _area == other._area
+        && _metric == other._metric
+        && _nextHopIp.equals(other._nextHopIp);
   }
 
   @Override
-  public int routeCompare(AbstractRoute rhs) {
-    if (getClass() != rhs.getClass()) {
-      return 0;
+  public int hashCode() {
+    return Objects.hash(_network, _admin, _area, _metric, _nextHopIp);
+  }
+
+  @Override
+  public Builder toBuilder() {
+    return builder()
+        // AbstractRoute properties
+        .setNetwork(getNetwork())
+        .setNextHopIp(getNextHopIp())
+        .setAdmin(getAdministrativeCost())
+        .setMetric(getMetric())
+        .setNonForwarding(getNonForwarding())
+        .setNonRouting(getNonRouting())
+        // OspfInterAreaRoute properties
+        .setArea(getArea());
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /** Allows easy upgrading of {@link OspfIntraAreaRoute intra-area} routes to inter-area routes */
+  public static Builder builder(OspfIntraAreaRoute route) {
+    return builder()
+        // AbstractRoute properties
+        .setNetwork(route.getNetwork())
+        .setNextHopIp(route.getNextHopIp())
+        .setAdmin(route.getAdministrativeCost())
+        .setMetric(route.getMetric())
+        .setNonForwarding(route.getNonForwarding())
+        .setNonRouting(route.getNonRouting())
+        // OspfInterAreaRoute properties
+        .setArea(route.getArea());
+  }
+
+  public static final class Builder extends AbstractRouteBuilder<Builder, OspfInterAreaRoute> {
+
+    private Long _area;
+
+    @Nonnull
+    @Override
+    public OspfInterAreaRoute build() {
+      return _cache.intern(
+          new OspfInterAreaRoute(
+              getNetwork(),
+              getNextHopIp(),
+              getAdmin(),
+              getMetric(),
+              _area,
+              getNonForwarding(),
+              getNonRouting()));
     }
-    OspfInterAreaRoute castRhs = (OspfInterAreaRoute) rhs;
-    int ret = Long.compare(_area, castRhs._area);
-    return ret;
+
+    @Nonnull
+    @Override
+    protected Builder getThis() {
+      return this;
+    }
+
+    public Builder setArea(long area) {
+      _area = area;
+      return this;
+    }
+
+    private Builder() {}
   }
 }

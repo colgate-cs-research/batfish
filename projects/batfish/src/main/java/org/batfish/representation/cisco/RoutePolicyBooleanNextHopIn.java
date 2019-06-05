@@ -17,7 +17,6 @@ import org.batfish.datamodel.routing_policy.expr.PrefixSetExpr;
 
 public class RoutePolicyBooleanNextHopIn extends RoutePolicyBoolean {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private RoutePolicyPrefixSet _prefixSet;
@@ -31,7 +30,8 @@ public class RoutePolicyBooleanNextHopIn extends RoutePolicyBoolean {
     PrefixSetExpr prefixSetExpr = _prefixSet.toPrefixSetExpr(cc, c, w);
     if (prefixSetExpr != null) {
       return new MatchPrefixSet(
-          new IpPrefix(new NextHopIp(), new LiteralInt(Prefix.MAX_PREFIX_LENGTH)), prefixSetExpr);
+          new IpPrefix(NextHopIp.instance(), new LiteralInt(Prefix.MAX_PREFIX_LENGTH)),
+          prefixSetExpr);
     } else {
       Prefix6SetExpr prefix6SetExpr = _prefixSet.toPrefix6SetExpr(cc, c, w);
       return new MatchPrefix6Set(

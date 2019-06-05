@@ -10,7 +10,6 @@ import org.batfish.common.BatfishException;
 
 public final class PrefixRange implements Serializable, Comparable<PrefixRange> {
 
-  /** */
   private static final long serialVersionUID = 2L;
 
   public PrefixRange(Prefix prefix, SubRange lengthRange) {
@@ -18,7 +17,7 @@ public final class PrefixRange implements Serializable, Comparable<PrefixRange> 
     // relevant length.
     int realPrefixLength = Math.min(prefix.getPrefixLength(), lengthRange.getEnd());
     Ip realPrefixAddress = prefix.getStartIp().getNetworkAddress(realPrefixLength);
-    this._prefix = new Prefix(realPrefixAddress, prefix.getPrefixLength());
+    this._prefix = Prefix.create(realPrefixAddress, prefix.getPrefixLength());
     this._lengthRange = lengthRange;
   }
 
@@ -38,6 +37,12 @@ public final class PrefixRange implements Serializable, Comparable<PrefixRange> 
     } else {
       throw new BatfishException("Invalid PrefixRange string: '" + prefixRangeStr + "'");
     }
+  }
+
+  /** Returns a {@link PrefixRange} that represents all more specific prefixes. */
+  public static PrefixRange moreSpecificThan(Prefix prefix) {
+    return new PrefixRange(
+        prefix, new SubRange(prefix.getPrefixLength() + 1, Prefix.MAX_PREFIX_LENGTH));
   }
 
   public SubRange getLengthRange() {

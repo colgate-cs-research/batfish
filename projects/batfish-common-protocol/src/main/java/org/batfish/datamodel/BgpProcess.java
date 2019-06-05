@@ -1,25 +1,30 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+import static com.google.common.base.Preconditions.checkArgument;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableSet;
-import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.batfish.datamodel.NetworkFactory.NetworkFactoryBuilder;
 
 /** Represents a bgp process on a router */
-@JsonSchemaDescription("A BGP routing process")
 public class BgpProcess implements Serializable {
 
   public static class Builder extends NetworkFactoryBuilder<BgpProcess> {
 
+    private Integer _ebgpAdminCost;
+    private Integer _ibgpAdminCost;
     private Ip _routerId;
     private Vrf _vrf;
 
@@ -29,22 +34,41 @@ public class BgpProcess implements Serializable {
 
     @Override
     public BgpProcess build() {
-      BgpProcess bgpProcess = new BgpProcess();
+      checkArgument(_routerId != null, "Missing %s", PROP_ROUTER_ID);
+      checkArgument(_ebgpAdminCost != null, "Missing %s", PROP_EBGP_ADMIN_COST);
+      checkArgument(_ibgpAdminCost != null, "Missing %s", PROP_IBGP_ADMIN_COST);
+      BgpProcess bgpProcess = new BgpProcess(_routerId, _ebgpAdminCost, _ibgpAdminCost);
       if (_vrf != null) {
         _vrf.setBgpProcess(bgpProcess);
-      }
-      if (_routerId != null) {
-        bgpProcess.setRouterId(_routerId);
       }
       return bgpProcess;
     }
 
-    public BgpProcess.Builder setRouterId(Ip routerId) {
+    /**
+     * Sets {@link #setEbgpAdminCost(int) ebgpAdminCost} and {@link #setIbgpAdminCost(int)
+     * ibgpAdminCost} to default BGP administrative costs for the given {@link ConfigurationFormat}.
+     */
+    public Builder setAdminCostsToVendorDefaults(@Nonnull ConfigurationFormat format) {
+      return setEbgpAdminCost(RoutingProtocol.BGP.getDefaultAdministrativeCost(format))
+          .setIbgpAdminCost(RoutingProtocol.IBGP.getDefaultAdministrativeCost(format));
+    }
+
+    public Builder setEbgpAdminCost(int ebgpAdminCost) {
+      _ebgpAdminCost = ebgpAdminCost;
+      return this;
+    }
+
+    public Builder setIbgpAdminCost(int ibgpAdminCost) {
+      _ibgpAdminCost = ibgpAdminCost;
+      return this;
+    }
+
+    public Builder setRouterId(Ip routerId) {
       _routerId = routerId;
       return this;
     }
 
-    public BgpProcess.Builder setVrf(Vrf vrf) {
+    public Builder setVrf(Vrf vrf) {
       _vrf = vrf;
       return this;
     }
@@ -55,61 +79,112 @@ public class BgpProcess implements Serializable {
 
     @Override
     public Set<Long> get() {
-      return _neighbors
-          .values()
-          .stream()
-          .map(BgpNeighbor::getClusterId)
+      return _activeNeighbors.values().stream()
+          .map(BgpPeerConfig::getClusterId)
+          .filter(Objects::nonNull)
           .collect(ImmutableSet.toImmutableSet());
     }
   }
 
-  private static final String PROP_GENERATED_ROUTES = "generatedRoutes";
-
+  private static final String PROP_EBGP_ADMIN_COST = "ebgpAdminCost";
+  private static final String PROP_IBGP_ADMIN_COST = "ibgpAdminCost";
+  private static final String PROP_INTERFACE_NEIGHBORS = "interfaceNeighbors";
+  private static final String PROP_PASSIVE_NEIGHBORS = "dynamicNeighbors";
   private static final String PROP_MULTIPATH_EBGP = "multipathEbgp";
-
+  private static final String PROP_MULTIPATH_EQUIVALENT_AS_PATH_MATCH_MODE =
+      "multipathEquivalentAsPathMatchMode";
   private static final String PROP_MULTIPATH_IBGP = "multipathIbgp";
-
-  private static final String PROP_NEIGHBORS = "neighbors";
-
+  private static final String PROP_ACTIVE_NEIGHBORS = "neighbors";
   private static final String PROP_ROUTER_ID = "routerId";
-
   private static final String PROP_TIE_BREAKER = "tieBreaker";
 
-  /** */
   private static final long serialVersionUID = 1L;
 
+  private final int _ebgpAdminCost;
+  private final int _ibgpAdminCost;
   private Supplier<Set<Long>> _clusterIds;
-
-  /**
-   * The set of <i>neighbor-independent</i> generated routes that may be advertised by this process
-   * if permitted by their respective generation policies
-   */
-  private SortedSet<GeneratedRoute> _generatedRoutes;
-
+  @Nonnull private SortedMap<String, BgpUnnumberedPeerConfig> _interfaceNeighbors;
   private boolean _multipathEbgp;
-
   private MultipathEquivalentAsPathMatchMode _multipathEquivalentAsPathMatchMode;
-
   private boolean _multipathIbgp;
 
   /**
-   * A map of all the bgp neighbors with which the router owning this process is configured to peer,
-   * keyed by prefix
+   * A map of all non-dynamic bgp neighbors with which the router owning this process is configured
+   * to peer, keyed by unique ID.
    */
-  private SortedMap<Prefix, BgpNeighbor> _neighbors;
+  @Nonnull private SortedMap<Prefix, BgpActivePeerConfig> _activeNeighbors;
 
-  private transient PrefixSpace _originationSpace;
+  /**
+   * A map of all dynamic bgp neighbors with which the router owning this process is configured to
+   * peer, keyed by unique ID.
+   */
+  @Nonnull private SortedMap<Prefix, BgpPassivePeerConfig> _passiveNeighbors;
 
-  private Ip _routerId;
+  /** Space of prefixes to be advertised using explicit network statements */
+  private PrefixSpace _originationSpace;
+
+  @Nonnull private final Ip _routerId;
 
   private BgpTieBreaker _tieBreaker;
 
-  /** Constructs a BgpProcess */
-  public BgpProcess() {
-    _neighbors = new TreeMap<>();
-    _generatedRoutes = new TreeSet<>();
+  /**
+   * Constructs a BgpProcess with the default admin costs for the given {@link ConfigurationFormat},
+   * for convenient creation of BGP processes in tests.
+   */
+  @VisibleForTesting
+  public BgpProcess(@Nonnull Ip routerId, @Nonnull ConfigurationFormat configurationFormat) {
+    this(
+        routerId,
+        RoutingProtocol.BGP.getDefaultAdministrativeCost(configurationFormat),
+        RoutingProtocol.IBGP.getDefaultAdministrativeCost(configurationFormat));
+  }
+
+  /** Constructs a BgpProcess with the given router ID and admin costs */
+  public BgpProcess(@Nonnull Ip routerId, int ebgpAdminCost, int ibgpAdminCost) {
+    _activeNeighbors = new TreeMap<>();
+    _ebgpAdminCost = ebgpAdminCost;
+    _ibgpAdminCost = ibgpAdminCost;
+    _interfaceNeighbors = new TreeMap<>();
     _tieBreaker = BgpTieBreaker.ARRIVAL_ORDER;
     _clusterIds = new ClusterIdsSupplier();
+    _originationSpace = new PrefixSpace();
+    _passiveNeighbors = new TreeMap<>();
+    _routerId = routerId;
+  }
+
+  @JsonCreator
+  private static BgpProcess create(
+      @Nullable @JsonProperty(PROP_ROUTER_ID) Ip routerId,
+      @Nullable @JsonProperty(PROP_EBGP_ADMIN_COST) Integer ebgpAdminCost,
+      @Nullable @JsonProperty(PROP_IBGP_ADMIN_COST) Integer ibgpAdminCost) {
+    checkArgument(routerId != null, "Missing %s", routerId);
+    // In the absence of provided values, default to Cisco IOS values
+    return new BgpProcess(
+        routerId,
+        firstNonNull(
+            ebgpAdminCost,
+            RoutingProtocol.BGP.getDefaultAdministrativeCost(ConfigurationFormat.CISCO_IOS)),
+        firstNonNull(
+            ibgpAdminCost,
+            RoutingProtocol.IBGP.getDefaultAdministrativeCost(ConfigurationFormat.CISCO_IOS)));
+  }
+
+  /**
+   * Expand the origination space for this prefix
+   *
+   * @param space {@link PrefixSpace} to add
+   */
+  public void addToOriginationSpace(PrefixSpace space) {
+    _originationSpace.addSpace(space);
+  }
+
+  /**
+   * Expand the origination space for this prefix
+   *
+   * @param prefix {@link Prefix} to add
+   */
+  public void addToOriginationSpace(Prefix prefix) {
+    _originationSpace.addPrefix(prefix);
   }
 
   /**
@@ -121,12 +196,45 @@ public class BgpProcess implements Serializable {
     return _clusterIds.get();
   }
 
-  /** @return {@link #_generatedRoutes} */
-  @JsonProperty(PROP_GENERATED_ROUTES)
-  @JsonPropertyDescription(
-      "IPV4 routes generated in the BGP RIB that are not imported into the main RIB for this VRF")
-  public SortedSet<GeneratedRoute> getGeneratedRoutes() {
-    return _generatedRoutes;
+  /** Neighbor relationships configured for this BGP process. */
+  @JsonProperty(PROP_ACTIVE_NEIGHBORS)
+  @Nonnull
+  public SortedMap<Prefix, BgpActivePeerConfig> getActiveNeighbors() {
+    return _activeNeighbors;
+  }
+
+  /** Returns the admin cost of the given BGP protocol */
+  @JsonIgnore
+  public int getAdminCost(RoutingProtocol protocol) {
+    switch (protocol) {
+      case BGP:
+        return _ebgpAdminCost;
+      case IBGP:
+        return _ibgpAdminCost;
+      default:
+        throw new IllegalArgumentException(String.format("Unrecognized BGP protocol %s", protocol));
+    }
+  }
+
+  /** Returns the admin cost for eBGP routes in this process */
+  @JsonProperty(PROP_EBGP_ADMIN_COST)
+  @Nonnull
+  private int getEbgpAdminCost() {
+    return _ebgpAdminCost;
+  }
+
+  /** Returns the admin cost for iBGP routes in this process */
+  @JsonProperty(PROP_IBGP_ADMIN_COST)
+  @Nonnull
+  private int getIbgpAdminCost() {
+    return _ibgpAdminCost;
+  }
+
+  /** Returns BGP unnumbered peer configurations keyed by peer-interface */
+  @JsonProperty(PROP_INTERFACE_NEIGHBORS)
+  @Nonnull
+  public SortedMap<String, BgpUnnumberedPeerConfig> getInterfaceNeighbors() {
+    return _interfaceNeighbors;
   }
 
   @JsonProperty(PROP_MULTIPATH_EBGP)
@@ -134,6 +242,7 @@ public class BgpProcess implements Serializable {
     return _multipathEbgp;
   }
 
+  @JsonProperty(PROP_MULTIPATH_EQUIVALENT_AS_PATH_MATCH_MODE)
   public MultipathEquivalentAsPathMatchMode getMultipathEquivalentAsPathMatchMode() {
     return _multipathEquivalentAsPathMatchMode;
   }
@@ -143,11 +252,11 @@ public class BgpProcess implements Serializable {
     return _multipathIbgp;
   }
 
-  /** @return {@link #_neighbors} */
-  @JsonProperty(PROP_NEIGHBORS)
-  @JsonPropertyDescription("Neighbor relationships configured for this BGP process")
-  public SortedMap<Prefix, BgpNeighbor> getNeighbors() {
-    return _neighbors;
+  /** Neighbor relationships configured for this BGP process. */
+  @JsonProperty(PROP_PASSIVE_NEIGHBORS)
+  @Nonnull
+  public SortedMap<Prefix, BgpPassivePeerConfig> getPassiveNeighbors() {
+    return _passiveNeighbors;
   }
 
   @JsonIgnore
@@ -155,10 +264,12 @@ public class BgpProcess implements Serializable {
     return _originationSpace;
   }
 
+  /**
+   * The configured router ID for this BGP process. Note that it can be overridden for individual
+   * neighbors.
+   */
+  @Nonnull
   @JsonProperty(PROP_ROUTER_ID)
-  @JsonPropertyDescription(
-      "The configured router ID for this BGP process. Note that it can be overridden for "
-          + "individual neighbors.")
   public Ip getRouterId() {
     return _routerId;
   }
@@ -168,9 +279,10 @@ public class BgpProcess implements Serializable {
     return _tieBreaker;
   }
 
-  @JsonProperty(PROP_GENERATED_ROUTES)
-  public void setGeneratedRoutes(SortedSet<GeneratedRoute> generatedRoutes) {
-    _generatedRoutes = generatedRoutes;
+  @JsonProperty(PROP_INTERFACE_NEIGHBORS)
+  public void setInterfaceNeighbors(
+      @Nonnull SortedMap<String, BgpUnnumberedPeerConfig> interfaceNeighbors) {
+    _interfaceNeighbors = interfaceNeighbors;
   }
 
   @JsonProperty(PROP_MULTIPATH_EBGP)
@@ -178,6 +290,7 @@ public class BgpProcess implements Serializable {
     _multipathEbgp = multipathEbgp;
   }
 
+  @JsonProperty(PROP_MULTIPATH_EQUIVALENT_AS_PATH_MATCH_MODE)
   public void setMultipathEquivalentAsPathMatchMode(
       MultipathEquivalentAsPathMatchMode multipathEquivalentAsPathMatchMode) {
     _multipathEquivalentAsPathMatchMode = multipathEquivalentAsPathMatchMode;
@@ -188,18 +301,18 @@ public class BgpProcess implements Serializable {
     _multipathIbgp = multipathIbgp;
   }
 
-  @JsonProperty(PROP_NEIGHBORS)
-  public void setNeighbors(SortedMap<Prefix, BgpNeighbor> neighbors) {
-    _neighbors = neighbors;
+  @JsonProperty(PROP_ACTIVE_NEIGHBORS)
+  public void setNeighbors(SortedMap<Prefix, BgpActivePeerConfig> neighbors) {
+    _activeNeighbors = firstNonNull(neighbors, new TreeMap<>());
   }
 
   public void setOriginationSpace(PrefixSpace originationSpace) {
     _originationSpace = originationSpace;
   }
 
-  @JsonProperty(PROP_ROUTER_ID)
-  public void setRouterId(Ip routerId) {
-    _routerId = routerId;
+  @JsonProperty(PROP_PASSIVE_NEIGHBORS)
+  public void setPassiveNeighbors(@Nullable SortedMap<Prefix, BgpPassivePeerConfig> neighbors) {
+    _passiveNeighbors = firstNonNull(neighbors, new TreeMap<>());
   }
 
   @JsonProperty(PROP_TIE_BREAKER)

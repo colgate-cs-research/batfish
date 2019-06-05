@@ -8,14 +8,13 @@ import org.batfish.datamodel.SubRange;
 
 public final class Route6FilterLineThrough extends Route6FilterLine {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private final Prefix6 _throughPrefix6;
 
   public Route6FilterLineThrough(Prefix6 prefix6, Prefix6 throughPrefix6) {
     super(prefix6);
-    _throughPrefix6 = prefix6;
+    _throughPrefix6 = throughPrefix6;
   }
 
   @Override
@@ -27,7 +26,7 @@ public final class Route6FilterLineThrough extends Route6FilterLine {
       Prefix6 currentPrefix6 = new Prefix6(currentNetworkAddress, i);
       org.batfish.datamodel.Route6FilterLine line =
           new org.batfish.datamodel.Route6FilterLine(
-              LineAction.ACCEPT, currentPrefix6, new SubRange(i, i));
+              LineAction.PERMIT, currentPrefix6, new SubRange(i, i));
       rfl.addLine(line);
     }
   }

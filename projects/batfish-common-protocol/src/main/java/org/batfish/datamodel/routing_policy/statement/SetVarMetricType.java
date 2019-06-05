@@ -6,7 +6,6 @@ import org.batfish.datamodel.routing_policy.Result;
 
 public class SetVarMetricType extends Statement {
 
-  /** */
   private static final long serialVersionUID = 1L;
 
   private String _var;
@@ -43,7 +42,6 @@ public class SetVarMetricType extends Statement {
   @Override
   public Result execute(Environment environment) {
     throw new UnsupportedOperationException("no implementation for generated method");
-    // TODO Auto-generated method stub
   }
 
   public String getVar() {

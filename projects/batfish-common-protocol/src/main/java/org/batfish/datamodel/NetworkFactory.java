@@ -1,29 +1,45 @@
 package org.batfish.datamodel;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.Nullable;
+import org.batfish.datamodel.bgp.Ipv4UnicastAddressFamily;
+import org.batfish.datamodel.ospf.OspfArea;
+import org.batfish.datamodel.ospf.OspfProcess;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 
+/**
+ * Network Factory -- helpful in creating test networks, as it allows child builders to
+ * automatically generate names/ID for objects they create.
+ *
+ * <p>Some builders pre-populate required fields with a default (usually based on Cisco IOS, if
+ * vendor-dependent).
+ */
 public class NetworkFactory {
 
+  /** Base class for all network factory builders */
   public abstract static class NetworkFactoryBuilder<T> {
 
-    private final NetworkFactory _networkFactory;
+    @Nullable private final NetworkFactory _networkFactory;
 
     private final Class<T> _outputClass;
 
-    protected NetworkFactoryBuilder(NetworkFactory networkFactory, Class<T> outputClass) {
+    protected NetworkFactoryBuilder(@Nullable NetworkFactory networkFactory, Class<T> outputClass) {
       _networkFactory = networkFactory;
       _outputClass = outputClass;
     }
 
     public abstract T build();
 
-    long generateLong() {
+    protected long generateLong() {
+      checkState(_networkFactory != null, "Cannot generate a long value without a network factory");
       return _networkFactory.generateLong(_outputClass);
     }
 
     protected String generateName() {
+      checkState(_networkFactory != null, "Cannot generate a name without a network factory");
       return _networkFactory.generateName(_outputClass);
     }
   }
@@ -41,8 +57,14 @@ public class NetworkFactory {
     return new IpAccessList.Builder(this);
   }
 
-  public BgpNeighbor.Builder bgpNeighborBuilder() {
-    return new BgpNeighbor.Builder(this);
+  public BgpActivePeerConfig.Builder bgpNeighborBuilder() {
+    return BgpActivePeerConfig.builder()
+        .setIpv4UnicastAddressFamily(Ipv4UnicastAddressFamily.instance());
+  }
+
+  public BgpPassivePeerConfig.Builder bgpDynamicNeighborBuilder() {
+    return BgpPassivePeerConfig.builder()
+        .setIpv4UnicastAddressFamily(Ipv4UnicastAddressFamily.instance());
   }
 
   public BgpProcess.Builder bgpProcessBuilder() {
@@ -71,11 +93,12 @@ public class NetworkFactory {
   }
 
   public OspfArea.Builder ospfAreaBuilder() {
-    return new OspfArea.Builder(this);
+    return OspfArea.builder(this);
   }
 
+  /** Return an OSPF builder. Pre-defines required fields (e.g., reference bandwidth) */
   public OspfProcess.Builder ospfProcessBuilder() {
-    return new OspfProcess.Builder(this);
+    return OspfProcess.builder(this).setReferenceBandwidth(1e8);
   }
 
   public RipProcess.Builder ripProcessBuilder() {

@@ -1,5 +1,6 @@
 package org.batfish.representation.aws;
 
+import static org.batfish.datamodel.matchers.IpAccessListMatchers.hasLines;
 import static org.batfish.representation.aws.AwsVpcEntity.JSON_KEY_DB_INSTANCES;
 import static org.batfish.representation.aws.matchers.RdsInstanceMatchers.hasAvailabilityZone;
 import static org.batfish.representation.aws.matchers.RdsInstanceMatchers.hasAzSubnetIds;
@@ -9,6 +10,7 @@ import static org.batfish.representation.aws.matchers.RdsInstanceMatchers.hasMul
 import static org.batfish.representation.aws.matchers.RdsInstanceMatchers.hasSecurityGroups;
 import static org.batfish.representation.aws.matchers.RdsInstanceMatchers.hasVpcId;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
@@ -18,20 +20,28 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.batfish.common.topology.TopologyUtil;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.Edge;
+import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
+import org.batfish.datamodel.IpAccessListLine;
+import org.batfish.datamodel.IpProtocol;
+import org.batfish.datamodel.IpWildcard;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.StaticRoute;
+import org.batfish.datamodel.SubRange;
+import org.batfish.datamodel.TcpFlagsMatchConditions;
 import org.batfish.datamodel.Topology;
 import org.batfish.datamodel.collections.NodeInterfacePair;
 import org.batfish.main.Batfish;
@@ -82,7 +92,7 @@ public class RdsInstanceTest {
   @Test
   public void testRdsSubnetEdge() throws IOException {
     Map<String, Configuration> configurations = loadAwsConfigurations();
-    Topology topology = CommonUtil.synthesizeTopology(configurations);
+    Topology topology = TopologyUtil.synthesizeL3Topology(configurations);
 
     // check that RDS instance is a neighbor of both  subnets in which its interfaces are
     assertThat(
@@ -105,10 +115,8 @@ public class RdsInstanceTest {
 
     // check that  IPs are unique for all the interfaces
     List<Ip> ipsAsList =
-        configurations
-            .values()
-            .stream()
-            .map(Configuration::getInterfaces)
+        configurations.values().stream()
+            .map(Configuration::getAllInterfaces)
             .map(Map::values)
             .flatMap(Collection::stream)
             .map(Interface::getAllAddresses)
@@ -122,14 +130,63 @@ public class RdsInstanceTest {
   @Test
   public void testDefaultRoute() throws IOException {
     Map<String, Configuration> configurations = loadAwsConfigurations();
-    StaticRoute defaultRoute1 = _staticRouteBuilder.setNextHopIp(new Ip("172.31.0.1")).build();
-    StaticRoute defaultRoute2 = _staticRouteBuilder.setNextHopIp(new Ip("192.168.2.17")).build();
+    StaticRoute defaultRoute1 = _staticRouteBuilder.setNextHopIp(Ip.parse("172.31.0.1")).build();
+    StaticRoute defaultRoute2 = _staticRouteBuilder.setNextHopIp(Ip.parse("192.168.2.17")).build();
 
     // checking that both default routes exist(to both the subnets) in RDS instance
     assertThat(configurations, hasKey("test-rds"));
     assertThat(
         configurations.get("test-rds").getDefaultVrf().getStaticRoutes(),
         containsInAnyOrder(defaultRoute1, defaultRoute2));
+  }
+
+  @Test
+  public void testSecurityGroupsAcl() throws IOException {
+    Map<String, Configuration> configurations = loadAwsConfigurations();
+
+    assertThat(configurations, hasKey("test-rds"));
+    assertThat(configurations.get("test-rds").getAllInterfaces().entrySet(), hasSize(2));
+
+    for (Interface iface : configurations.get("test-rds").getAllInterfaces().values()) {
+      assertThat(
+          iface.getOutgoingFilter(),
+          hasLines(
+              equalTo(
+                  ImmutableList.of(
+                      IpAccessListLine.acceptingHeaderSpace(
+                          HeaderSpace.builder()
+                              .setIpProtocols(Sets.newHashSet(IpProtocol.TCP))
+                              .setDstIps(
+                                  Sets.newHashSet(
+                                      IpWildcard.parse("1.2.3.4/32"),
+                                      IpWildcard.parse("10.193.16.105/32")))
+                              .setSrcPorts(Sets.newHashSet(new SubRange(45, 50)))
+                              .setTcpFlags(ImmutableSet.of(TcpFlagsMatchConditions.ACK_TCP_FLAG))
+                              .build()),
+                      IpAccessListLine.acceptingHeaderSpace(
+                          HeaderSpace.builder()
+                              .setDstIps(Sets.newHashSet(IpWildcard.parse("0.0.0.0/0")))
+                              .build())))));
+      assertThat(
+          iface.getIncomingFilter(),
+          hasLines(
+              equalTo(
+                  ImmutableList.of(
+                      IpAccessListLine.acceptingHeaderSpace(
+                          HeaderSpace.builder()
+                              .setSrcIps(Sets.newHashSet(IpWildcard.parse("0.0.0.0/0")))
+                              .setTcpFlags(ImmutableSet.of(TcpFlagsMatchConditions.ACK_TCP_FLAG))
+                              .build()),
+                      IpAccessListLine.acceptingHeaderSpace(
+                          HeaderSpace.builder()
+                              .setIpProtocols(Sets.newHashSet(IpProtocol.TCP))
+                              .setSrcIps(
+                                  Sets.newHashSet(
+                                      IpWildcard.parse("1.2.3.4/32"),
+                                      IpWildcard.parse("10.193.16.105/32")))
+                              .setDstPorts(Sets.newHashSet(new SubRange(45, 50)))
+                              .build())))));
+    }
   }
 
   @Test
@@ -140,7 +197,7 @@ public class RdsInstanceTest {
     JSONArray rdsArray = jObj.getJSONArray(JSON_KEY_DB_INSTANCES);
     List<RdsInstance> rdsList = new LinkedList<>();
     for (int i = 0; i < rdsArray.length(); i++) {
-      rdsList.add(new RdsInstance(rdsArray.getJSONObject(i), null));
+      rdsList.add(new RdsInstance(rdsArray.getJSONObject(i)));
     }
 
     // checking the count of RDS initialized
