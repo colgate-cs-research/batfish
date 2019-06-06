@@ -1,0 +1,70 @@
+{
+    "class": "org.batfish.minesweeper.question.SmtReachabilityQuestionPlugin$ReachabilityQuestion",
+    "differential": false,
+    "ingressNodeRegex": "${ingressNodeRegex}",
+    "failNode1Regex": "${node1}",
+    "failNode2Regex": "${node2}",
+    "failures": "${failures}",
+    "diffType": null,
+    "envDiff": false,
+    "baseEnvType": "none",
+    "deltaEnvType": "none",
+    "finalNodeRegex": "${finalNodeRegex}",
+    "srcIps": "${srcIps}",
+    "dstIps": "${dstIps}",
+    "instance": {
+        "description": "Ensure that the network is tolerant to interface failures",
+        "instanceName": "smtReachability",
+        "tags": [
+            "dataPlane",
+            "reachability",
+            "experimental"
+        ],
+        "variables": {
+            "ingressNodeRegex": {
+                "description": "Starting nodes",
+                "optional": true,
+                "type": "nodeSpec",
+                "value": ".*"
+            },
+            "node1": {
+                "description": "Regex to specify the first node that is part of the link to fail",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ".*"
+            },
+            "node2": {
+                "description": "Regex to specify the second node that is part of the link to fail",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ".*"
+            },
+            "failures": {
+                "description": "Number of failures to analyze",
+                "type": "integer",
+                "optional": true,
+                "value": 1
+            },
+            "finalNodeRegex": {
+                "description": "Final nodes",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ".*"
+            },
+            "srcIps": {
+                "description": "srcIPs",
+                "type": "string",
+                "minElements": 0,
+                "optional": true,
+                "value": 1
+            },
+            "dstIps": {
+                "description": "dstIPs",
+                "type": "string",
+                "minElements": 0,
+                "optional": true,
+                "value": 1
+            }
+        }
+    }
+}
