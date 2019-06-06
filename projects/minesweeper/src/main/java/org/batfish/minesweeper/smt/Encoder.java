@@ -1331,6 +1331,7 @@ public class Encoder {
             }
           }
           _faultlocStats.setTimeElapsedDuringMUSGeneration(System.currentTimeMillis() - time_start);
+          _faultlocStats.setNumMUSesGenerated(muses.size());
           System.out.println("Number of MUSES: " + muses.size());
 
           Set<String> candidates = new HashSet<>();
@@ -1390,7 +1391,6 @@ public class Encoder {
         throw new BatfishException("ERROR: satisfiability unknown");
       }
       else if (s == Status.UNSATISFIABLE) {
-        _faultlocStats.setNumCounterExamples(numCounterexamples);
         _faultlocStats.setCheckTime(time_check);
 
         System.out.println("\nLOCALIZE FAULTS");
@@ -1445,6 +1445,7 @@ public class Encoder {
         addCounterExampleConstraints(packetModel, counterExampleVariableAssignments);
       }
     } while (numCounterexamples < _settings.getInt(ARG_NUM_ITERS_FAULTLOC));
+    _faultlocStats.setNumCounterExamples(numCounterexamples);
     System.out.println("Number of Counter Examples generated: " + numCounterexamples);
 
     if (_settings.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES)) {
