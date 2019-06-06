@@ -40,6 +40,8 @@ run_batfish_commands() {
     echo -e "$1" | allinone -runmode interactive || exit 1
 }
 
+echo "travis_fold:start:$NETWORK.$SCENARIO"
+
 # Create network, if necessary
 if [ ! -f containers/network_ids/$NETWORK.id ]; then
     run_batfish_commands "init-network -setname $NETWORK"
@@ -64,3 +66,5 @@ echo -e "CHECK POLICIES"
 echo -e "====================================================="
 run_batfish_commands "set-network $NETWORK\ninit-snapshot $TESTRIG_DIR $SCENARIO\n`cat $OPTIONS $POLICIES`"
 echo -e "\n====================================================="
+
+echo "travis_fold:end:$NETWORK.$SCENARIO"

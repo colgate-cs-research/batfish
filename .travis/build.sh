@@ -12,7 +12,9 @@ trap 'kill -9 $(pgrep -g $$ | grep -v $$) >& /dev/null' EXIT SIGINT SIGTERM
 
 
 # Build batfish
+echo "travis_fold:start:build_batfish"
 batfish_build_all || exit 1
+echo "travis_fold:end:build_batfish"
 
 # Run faultloc examples
 echo -e "\n  ..... Running faultloc examples"
