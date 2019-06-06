@@ -55,8 +55,6 @@ def process_network(experiment_name, network_name, base_dir, writer):
 def process_snapshot(experiment_name, network_name, snapshot_name, base_dir,
         writer):
     filepath = os.path.join(base_dir, "output", "experiment.csv")
-    print("%s %s %s" % (experiment_name, network_name, snapshot_name))
-    print("\t%s" % (base_dir))
     try:
         with open(filepath, "r") as experiment_file:
             reader = csv.reader(experiment_file)
