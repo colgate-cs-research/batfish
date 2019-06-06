@@ -1,3 +1,2 @@
 p1
 ACLS_INBOUND b GigabitEthernet0/2 null
-ACLS_INBOUND c GigabitEthernet0/2 null
