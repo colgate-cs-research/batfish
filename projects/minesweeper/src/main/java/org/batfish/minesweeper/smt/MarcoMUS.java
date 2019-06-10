@@ -37,7 +37,7 @@ public class MarcoMUS {
         //List of constraints in the test constraint system.
         BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
 
-        enumerate(constraints,ctx, MAX_MUS_COUNT, MAX_MSS_COUNT,true);
+        enumerate(constraints,ctx, MAX_MUS_COUNT, MAX_MSS_COUNT,true, null);
 
     }
 
@@ -52,7 +52,8 @@ public class MarcoMUS {
     public static List<Set<Integer>> enumerate(BoolExpr[] constraints, Context ctx,
                                                int maxMUSCount,
                                                int maxMSSCount,
-                                               boolean shouldReturnMUSes){
+                                               boolean shouldReturnMUSes,
+                                               FaultlocStats faultlocStats){
         SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
         MapSolver mapSolver = new MapSolver(constraints.length, ctx);
 
@@ -61,6 +62,8 @@ public class MarcoMUS {
 
         List<Set<Integer>> indexOfMUSes = new ArrayList<>();
         List<Set<Integer>> indexOfMSSes = new ArrayList<>();
+
+        boolean firstMUSGenerated = false; //Variable to track how long the first MUS takes
 
 		long start_time = System.currentTimeMillis();
         while (true){
@@ -86,6 +89,12 @@ public class MarcoMUS {
             }else{
                 Set<Integer> mus = subsetSolver.shrink(seed);
                 indexOfMUSes.add(mus);
+                if (!firstMUSGenerated){
+                    if (faultlocStats!=null){
+                        faultlocStats.setFirstMUSGenTime(System.currentTimeMillis() - faultlocStats.getTimeToUNSAT());
+                    }
+                    firstMUSGenerated = true;
+                }
                 List<Expr> musLits = subsetSolver.toIndicatorLiterals(mus);
                 MUSes.add(musLits);
                 mapSolver.blockUp(mus);

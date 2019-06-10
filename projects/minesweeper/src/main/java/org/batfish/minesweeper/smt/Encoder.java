@@ -53,9 +53,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.Map.Entry;
-
-import javax.annotation.Nullable;
 
 /**
  * A class responsible for building a symbolic encoding of the entire network. The encoder does this
@@ -926,7 +923,6 @@ public class Encoder {
   /**
    * Adds solver constraints that need not be varied for fault localization,
    * namely, packet variables.
-   * @param packetModel variables pertaining to packet
    * @param counterExampleVariableAssignments values for all variables in model
    */
   private void addPacketConstraints(
@@ -1009,8 +1005,6 @@ public class Encoder {
         minimalCore.add(unsatCoreNames.get(j));
       }
     }
-    long time_minimization=System.currentTimeMillis()-start_mini;
-    _faultlocStats.setMinimizeTime(time_minimization);
     return minimalCore;
   }
 
@@ -1040,7 +1034,7 @@ public class Encoder {
       }
     }
     long time_slice=System.currentTimeMillis()-start_slice;
-    _faultlocStats.setSliceTime(time_slice);
+    _faultlocStats.setFirstCEGenTime(time_slice);
     return processed;
   }
 
@@ -1232,7 +1226,9 @@ public class Encoder {
    */
   void localizeForAllFailures(HashMap<SortedMap<String, ArithExpr>,SortedMap<String, ArithExpr>> failureSets){
 
-
+    int totalNumMUSesGenerated = 0;
+    long time_start = System.currentTimeMillis();
+    boolean isFirstFailSet = true;
 
     System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
     Map<String, BoolExpr> predicates = new HashMap<>();
@@ -1251,7 +1247,6 @@ public class Encoder {
         }
       }
     }
-
 
     List<BoolExpr> allConstraints =new ArrayList<>();
     List<PredicateLabel> labels = new ArrayList<>();
@@ -1304,10 +1299,15 @@ public class Encoder {
                 solver.getUnsatCore().length);
 
         System.out.println("Running Marco");
-        long time_start = System.currentTimeMillis();
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
-        List<Set<Integer>> muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true);
-
+        List<Set<Integer>> muses;
+        if (isFirstFailSet) {
+          muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true, _faultlocStats);
+          _faultlocStats.setFailSetMUSGenTime(System.currentTimeMillis() - _faultlocStats.getFirstMUSGenTime());
+          isFirstFailSet = false;
+        }else{
+          muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true, null);
+        }
         int[] predicateFrequency = new int[predNames.size()];
 
 
@@ -1318,9 +1318,8 @@ public class Encoder {
             }
           }
         }
-        _faultlocStats.setTimeElapsedDuringMUSGeneration(System.currentTimeMillis() - time_start);
-        _faultlocStats.setNumMUSesGenerated(muses.size());
-        System.out.println("Number of MUSES: " + muses.size());
+
+        totalNumMUSesGenerated += muses.size();
 
         Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
         for (int i = 0; i < predicateFrequency.length; i++) {
@@ -1337,6 +1336,8 @@ public class Encoder {
         outUnfound(unfound,faultyPreds);
       }
     }
+    _faultlocStats.setTimeElapsedDuringMUSGeneration(System.currentTimeMillis() - time_start);
+    _faultlocStats.setNumMUSesGenerated(totalNumMUSesGenerated);
   }
 
 
@@ -1379,7 +1380,7 @@ public class Encoder {
         throw new BatfishException("ERROR: satisfiability unknown");
       }
       else if (s == Status.UNSATISFIABLE) {
-        _faultlocStats.setCheckTime(time_check);
+        _faultlocStats.setTimeToUNSAT(time_check-_faultlocStats.getFirstCEGenTime());
 
         System.out.println("\nLOCALIZE FAULTS");
         System.out.println("=====================================================");
@@ -1415,6 +1416,7 @@ public class Encoder {
         failureSets.put(failures,nonfailures);
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 1) {
+          _faultlocStats.setFirstCEGenTime(System.currentTimeMillis()- check_start);
           addPacketConstraints(counterExampleVariableAssignments);
 
           //// ***
@@ -1444,6 +1446,10 @@ public class Encoder {
         System.out.println(
               variableName + " { " + String.join(";", variableHistoryMap.get(variableName)) + " }");
       }
+    }
+
+    if (numCounterexamples == _settings.getInt(ARG_NUM_ITERS_FAULTLOC)){
+      _faultlocStats.setTimeToUNSAT(time_check-_faultlocStats.getFirstCEGenTime()); //Never reaches UNSAT
     }
     //FORALL LOCALIZATION
     localizeForAllFailures(failureSets); // Pass in list of failedLinkSets
@@ -1533,7 +1539,7 @@ public class Encoder {
       //long start_mini=System.currentTimeMillis();
       unsatCore = minimizeUnsatCore(unsatCore, predicatesNameToExprMap);
       //long time_minimization=System.currentTimeMillis()-start_mini;
-      //_faultlocStats.setMinimizeTime(time_minimization);
+      //_faultlocStats.setTimeToUNSAT(time_minimization);
     }
 
     // Compute predicates in not unsat core
@@ -1569,7 +1575,7 @@ public class Encoder {
       // Compute Slice
       Set<String> backwardSlice = computeBackwardSlice(faultCandidates, assignedTo, referencedTo);
       // long time_slice=System.currentTimeMillis()-start_slice;
-      // _faultlocStats.setSliceTime(time_slice);
+      // _faultlocStats.setFirstCEGenTime(time_slice);
       faultCandidates = backwardSlice;
       //print out slice results
       outSlice(predicatesNameToExprMap,predicatesNameToLabelMap,backwardSlice);
@@ -1665,7 +1671,7 @@ print out unfound items in Faultloc
             _ctx,
             _settings.getInt(ARG_MAX_MUS_COUNT),
             _settings.getInt(ARG_MAX_MSS_COUNT),
-            shouldUseMUSes);
+            shouldUseMUSes, _faultlocStats);
     long time_elapsed = System.currentTimeMillis() - start_time;
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);
 

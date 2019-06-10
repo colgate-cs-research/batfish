@@ -14,9 +14,9 @@ import org.batfish.common.plugin.IBatfish;
  */
 
 public class FaultlocStats {
-    static final String FILE_HEADER= "examples,foundpreds,unfoundpreds,extraconfigpred," +
+    static final String FILE_HEADER= "num-CEs,foundpreds,missedpreds,extraconfigpred," +
             "extracomputepred,includecomputable,notnegating,minimize" +
-            ",slice,unfoundpred,slicetime,minimizationtime,checktime,numMUSGenerated, musGenTimeElapsed\n";
+            ",slice,unfoundpred,firstCEgenTime,timeToUNSAT,firstMUSGenTime, failSetAllMUS-genTime,allMUS-GenTime, numMUSGenerated,\n";
     static final String EXPERIMENT_RESULT_FILE_NAME = "experiment.csv";
     static final String COMMA=",";
     static final String NEW_LINE="\n";
@@ -35,9 +35,10 @@ public class FaultlocStats {
     private boolean minimize;
     private boolean slice;
     private String unfoundPreds;
-    private long sliceTime;
-    private long minimizeTime;
-    private long checkTime;
+    private long firstCEGenTime;
+    private long timeToUNSAT;
+    private long firstMUSGenTime;
+    private long failSetMUSGenTime; //all MUSes for first failure set.
     private int nMUSesGenerated;
     private long timeElapsedDuringMUSGeneration;
 
@@ -71,9 +72,9 @@ public class FaultlocStats {
         this.minimize = _settings.getBoolean(Encoder.ARG_MINIMIZE_UNSAT_CORE);
         this.slice = _settings.getBoolean(Encoder.ARG_ENABLE_SLICING);
         this.unfoundPreds = "";
-        this.sliceTime = 0;
-        this.minimizeTime = 0;
-        this.checkTime = 0;
+        this.firstCEGenTime = 0;
+        this.timeToUNSAT = 0;
+        this.firstMUSGenTime = 0;
         this.nMUSesGenerated = 0;
         this.timeElapsedDuringMUSGeneration = 0;
     }
@@ -98,17 +99,19 @@ public class FaultlocStats {
         this.nExtraComputePreds = nExtraComputePreds;
     }
 
-    public void setSliceTime(long sliceTime) {
-        this.sliceTime = sliceTime;
+    public void setFirstCEGenTime(long firstCEGenTime) {
+        this.firstCEGenTime = firstCEGenTime;
     }
 
-    public void setMinimizeTime(long minimizeTime) {
-        this.minimizeTime = minimizeTime;
+    public void setTimeToUNSAT(long minimizeTime) {
+        this.timeToUNSAT = minimizeTime;
     }
 
-    public void setCheckTime(long checkTime) {
-        this.checkTime = checkTime;
+    public void setFirstMUSGenTime(long checkTime) {
+        this.firstMUSGenTime = checkTime;
     }
+
+    public void setFailSetMUSGenTime(long failSetMUSGenTime){this.failSetMUSGenTime = failSetMUSGenTime;}
 
     public void setUnfoundPreds(String unfoundPreds) {
         this.unfoundPreds = unfoundPreds;
@@ -139,11 +142,12 @@ public class FaultlocStats {
                     .add(Boolean.toString(minimize))
                     .add(Boolean.toString(slice))
                     .add(unfoundPreds)
-                    .add(Long.toString(sliceTime))
-                    .add(Long.toString(minimizeTime))
-                    .add(Long.toString(checkTime))
-                    .add(Integer.toString(nMUSesGenerated))
-                    .add(Long.toString(timeElapsedDuringMUSGeneration));
+                    .add(Long.toString(firstCEGenTime))
+                    .add(Long.toString(timeToUNSAT))
+                    .add(Long.toString(firstMUSGenTime))
+                    .add(Long.toString(failSetMUSGenTime))
+                    .add(Long.toString(timeElapsedDuringMUSGeneration))
+                    .add(Integer.toString(nMUSesGenerated));
             String result = resultBuilder.toString();
             experimentWriter.append(result);
             experimentWriter.append(NEW_LINE);
@@ -169,5 +173,26 @@ public class FaultlocStats {
                 .resolve(EXPERIMENT_RESULT_FILE_NAME);
         System.out.printf("Writing out experiment results to %s", outputFilePath.toString());
         return outputFilePath.toFile();
+    }
+
+
+    public long getFirstCEGenTime() {
+        return firstCEGenTime;
+    }
+
+    public long getTimeToUNSAT() {
+        return timeToUNSAT;
+    }
+
+    public long getFirstMUSGenTime() {
+        return firstMUSGenTime;
+    }
+
+    public long getFailSetMUSGenTime() {
+        return failSetMUSGenTime;
+    }
+
+    public long getTimeElapsedDuringMUSGeneration() {
+        return timeElapsedDuringMUSGeneration;
     }
 }
