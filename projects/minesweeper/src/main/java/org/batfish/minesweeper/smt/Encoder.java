@@ -580,11 +580,8 @@ public class Encoder {
       }
     }
 
-
-
     ArrayList<String> sortedKeys = new ArrayList<String>(model.keySet());
     Collections.sort(sortedKeys);
-
 
     // Packet model
     SymbolicPacket p = enc.getMainSlice().getSymbolicPacket();
@@ -779,6 +776,16 @@ public class Encoder {
                         failures.put("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")", e);
                       }else{
                         nonfailures.put("link(" +  ge.getRouter() + "," +  ge.getStart().getName()+ ")", e);
+                      }
+                    });
+
+    _symbolicFailures
+            .getFailedNodes()
+            .forEach(
+                    (x,e) -> {
+                      String s = valuation.get(e);
+                      if ("1".equals(s)){
+                        failures.put("node(" + x + ")", e);
                       }
                     });
   }
@@ -1185,7 +1192,7 @@ public class Encoder {
         }
         SortedSet<String> failuresStringSet = new TreeSet<>(failures.keySet());
         result =
-            new VerificationResult(false, model, packetModel, envModel, fwdModel, failuresStringSet, stats);
+            new VerificationResult(false, null, packetModel, envModel, fwdModel, failuresStringSet, stats);
 
         System.out.println("Localization called.");
         // Localize faults
@@ -1380,6 +1387,17 @@ public class Encoder {
 
 
 
+    if (_settings.getBoolean(ARG_PRINT_SMT)) {
+        System.out.println("\nSMT");
+        System.out.println("-------------------------------------------");
+        _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
+        for (String predName : _unsatCore.getTrackingVars().keySet()) {
+            System.out.println(_unsatCore.getTrackingLabels().get(predName));
+            System.out.println(
+                    _unsatCore.getTrackingVars().get(predName).getSExpr());
+        }
+      System.out.println("-------------------------------------------");
+    }
 
     do {
       // Solve
@@ -1442,7 +1460,7 @@ public class Encoder {
 
 
         }
-        updateFailedEdgeMap(numCounterexamples, failedEdgesCEMap, variableHistoryMap,ce);
+        updateFailedEdgeMap(numCounterexamples, failedEdgesCEMap, variableHistoryMap, ce);
         addCounterExampleConstraints(packetModel, counterExampleVariableAssignments);
       }
     } while (numCounterexamples < _settings.getInt(ARG_NUM_ITERS_FAULTLOC));
