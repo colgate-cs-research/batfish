@@ -1115,6 +1115,19 @@ public class Encoder {
       numEdges += e.getValue().size();
     }
 
+    if (_settings.getBoolean(ARG_PRINT_SMT)) {
+        System.out.println("\nSMT");
+        System.out.println("-------------------------------------------");
+        _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
+        for (String predName : _unsatCore.getTrackingVars().keySet()) {
+            System.out.println(_unsatCore.getTrackingLabels().get(predName));
+            System.out.println(
+                    _unsatCore.getTrackingVars().get(predName).getSExpr());
+        }
+      System.out.println("-------------------------------------------");
+    }
+
+
     long start = System.currentTimeMillis();
     Status status = _solver.check();
     long time = System.currentTimeMillis() - start;
@@ -1358,17 +1371,6 @@ public class Encoder {
 
 
 
-    if (_settings.getBoolean(ARG_PRINT_SMT)) {
-        System.out.println("\nSMT");
-        System.out.println("-------------------------------------------");
-        _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
-        for (String predName : _unsatCore.getTrackingVars().keySet()) {
-            System.out.println(_unsatCore.getTrackingLabels().get(predName));
-            System.out.println(
-                    _unsatCore.getTrackingVars().get(predName).getSExpr());
-        }
-      System.out.println("-------------------------------------------");
-    }
 
     do {
       // Solve
