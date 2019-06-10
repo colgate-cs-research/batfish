@@ -562,7 +562,6 @@ public class Encoder {
           SortedMap<String, ArithExpr> failures,
           SortedMap<String, ArithExpr> nonfailures,
           SortedMap<Expr, Expr> variableAssignments) {
-
     SortedMap<Expr, String> valuation = new TreeMap<>();
     // If user asks for the full model
     for (Entry<String, Expr> entry : _allVariables.entrySet()) {
@@ -572,9 +571,8 @@ public class Encoder {
       Expr val = m.evaluate(e, true);
       if (!val.equals(e)) { // excluding constants in the model.
         String s = val.toString();
-        if (_question.getFullModel()) {
-          model.put(name, s);
-        }
+        model.put(name, s);
+
         valuation.put(e, s);
         // counterExampleState.put(name, s);
         if (name.contains("reachable-id")){ //this fixes issue with bgp-acls
@@ -775,27 +773,16 @@ public class Encoder {
                     });
 
     _symbolicFailures
-        .getFailedEdgeLinks()
-        .forEach(
-            (ge, e) -> {
-              String s = valuation.get(e);
-              if ("1".equals(s)) {
-                failures.put("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")", e);
-              }
-              else {
-                nonfailures.put("link(" +  ge.getRouter() + "," +  ge.getStart().getName()+ ")", e);
-              }
-            });
-
-    _symbolicFailures
-        .getFailedNodes()
-        .forEach(
-            (x, e) -> {
-              String s = valuation.get(e);
-              if ("1".equals(s)) {
-                failures.put("node(" + x + ")", e);
-              }
-            });
+            .getFailedEdgeLinks()
+            .forEach(
+                    (ge, e) -> {
+                      String s = valuation.get(e);
+                      if ("1".equals(s)) {
+                        failures.put("link(" + ge.getRouter() + "," + ge.getStart().getName() + ")", e);
+                      }else{
+                        nonfailures.put("link(" +  ge.getRouter() + "," +  ge.getStart().getName()+ ")", e);
+                      }
+                    });
   }
 
   /*
@@ -942,18 +929,18 @@ public class Encoder {
    * @param packetModel variables pertaining to packet
    * @param counterExampleVariableAssignments values for all variables in model
    */
-  private void addPacketConstraints(Map<String, String> packetModel,
+  private void addPacketConstraints(
       Map<Expr, Expr> counterExampleVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
 
     PredicateLabel label=new PredicateLabel(labels.PACKET);
-    for (Expr var : counterExampleVariableAssignments.keySet()) {
-      if (packetModel.containsKey(var.toString())) {
-        newEqs.add(_ctx.mkEq(var, counterExampleVariableAssignments.get(var)));
-      }
+    SortedSet<Expr> packetVars = getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
+    for (Expr var : packetVars){
+      newEqs.add(_ctx.mkEq(var, counterExampleVariableAssignments.get(var)));
     }
-    BoolExpr andPcktVars = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
-    _faultlocUnsatCore.track(_faultlocSolver, _ctx, andPcktVars, label);
+
+    BoolExpr andPacketConstraints = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
+    _faultlocUnsatCore.track(_faultlocSolver, _ctx, andPacketConstraints, label);
   }
 
 
@@ -1245,110 +1232,111 @@ public class Encoder {
    */
   void localizeForAllFailures(HashMap<SortedMap<String, ArithExpr>,SortedMap<String, ArithExpr>> failureSets){
 
-      System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
-      Map<String, BoolExpr> predicates = new HashMap<>();
 
-      Map<String, PredicateLabel> predNameToLabelsMap = _faultlocUnsatCore.getTrackingLabels();
-      Map<String, BoolExpr> predNameToExprMap = _faultlocUnsatCore.getTrackingVars();
 
-      for (String key : predNameToLabelsMap.keySet()){
-        PredicateLabel predLabel = predNameToLabelsMap.get(key);
-        if (!predLabel.gettype().equals(labels.COUNTEREXAMPLE)) {
-          if (predLabel.gettype() == labels.POLICY){
-            //re-negate (no negate)
-            predicates.put(key,_ctx.mkNot(predNameToExprMap.get(key)));
-          }else{
-            predicates.put(key,predNameToExprMap.get(key));
-          }
+    System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
+    Map<String, BoolExpr> predicates = new HashMap<>();
+
+    Map<String, PredicateLabel> predNameToLabelsMap = _faultlocUnsatCore.getTrackingLabels();
+    Map<String, BoolExpr> predNameToExprMap = _faultlocUnsatCore.getTrackingVars();
+
+    for (String key : predNameToLabelsMap.keySet()){
+      PredicateLabel predLabel = predNameToLabelsMap.get(key);
+      if (!predLabel.gettype().equals(labels.COUNTEREXAMPLE)) {
+        if (predLabel.gettype() == labels.POLICY){
+          //re-negate (no negate)
+          predicates.put(key,_ctx.mkNot(predNameToExprMap.get(key)));
+        }else{
+          predicates.put(key,predNameToExprMap.get(key));
         }
       }
+    }
 
 
-      List<BoolExpr> allConstraints =new ArrayList<>();
-      List<PredicateLabel> labels = new ArrayList<>();
-      List<String> predNames = new ArrayList<>();
-      Solver solver;
-      for (SortedMap<String, ArithExpr> failureSet : failureSets.keySet()){
+    List<BoolExpr> allConstraints =new ArrayList<>();
+    List<PredicateLabel> labels = new ArrayList<>();
+    List<String> predNames = new ArrayList<>();
+    Solver solver;
+    for (SortedMap<String, ArithExpr> failureSet : failureSets.keySet()){
 
-        System.out.println("\n********FAILURE SET***********");
-        for(String key: failureSet.keySet()){
-          System.out.println(key + " : " + failureSet.get(key));
-        }
-        if (failureSet.keySet().size()==0){
-          System.out.println("Scenario : No links failing");
-        }
-        System.out.println("******************************\n");
-
-
-        solver = _ctx.mkSolver();
-        for (String key:  predicates.keySet()){
-          // Adding Network and policy (unnegated)
-          solver.assertAndTrack(predicates.get(key), _ctx.mkBoolConst(key));
-          allConstraints.add(predicates.get(key));
-          labels.add(predNameToLabelsMap.get(key));
-          predNames.add(key);
-        }
-        for (String key : failureSet.keySet()){
-          BoolExpr failureExpr = mkEq(failureSet.get(key), mkInt(1));
-          //Don't assert and track failure constraint
-          solver.add(failureExpr);
-          allConstraints.add(failureExpr);
-          labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
-        }
-        for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
-          BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
-          //Don't assert and track failure constraint
-          solver.add(failureExpr);
-          allConstraints.add(failureExpr);
-          labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
-        }
-
-        Status result = solver.check();
-
-        if (result==Status.SATISFIABLE){
-          System.out.println("Satisfiable with fixed failure set. THIS SHOULD NOT HAPPEN!");
-        }else {
-
-
-          System.out.printf("# of predicates in solver : %d | " +
-                          "# of predicates in initial unsat core : %d\n",
-                  solver.getNumAssertions(),
-                  solver.getUnsatCore().length);
-
-          System.out.println("Running Marco");
-          long time_start = System.currentTimeMillis();
-          BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
-          List<Set<Integer>> muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true);
-
-          int[] predicateFrequency = new int[predNames.size()];
-
-
-          for (Set<Integer> mus : muses) {
-            for (Integer pred_num : mus) {
-              if (pred_num<predicateFrequency.length){
-                predicateFrequency[pred_num]++; //TODO : How to deal with failure set constraints that appear in MUSes.
-              }
-            }
-          }
-          _faultlocStats.setTimeElapsedDuringMUSGeneration(System.currentTimeMillis() - time_start);
-          _faultlocStats.setNumMUSesGenerated(muses.size());
-          System.out.println("Number of MUSES: " + muses.size());
-
-          Set<String> candidates = new HashSet<>();
-          for (int i = 0; i < predicateFrequency.length; i++) {
-            if (predicateFrequency[i] > 0) {
-              candidates.add(predNames.get(i)); //Union of MUSes...TODO : Need to factor rank in.
-              System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
-            }
-          }
-
-          HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc();
-          HashMap<String, ArrayList<PredicateLabel>> faultyPreds= loadFaultloc();
-
-          computeExtrapredicates(predNameToLabelsMap,unfound,faultyPreds,candidates);
-          outUnfound(unfound,faultyPreds);
-        }
+      System.out.println("\n********FAILURE SET***********");
+      for(String key: failureSet.keySet()){
+        System.out.println(key + " : " + failureSet.get(key));
       }
+      if (failureSet.keySet().size()==0){
+        System.out.println("Scenario : No links failing");
+      }
+      System.out.println("******************************\n");
+
+
+      solver = _ctx.mkSolver();
+      for (String key:  predicates.keySet()){
+        // Adding Network and policy (unnegated)
+        solver.assertAndTrack(predicates.get(key), _ctx.mkBoolConst(key));
+        allConstraints.add(predicates.get(key));
+        labels.add(predNameToLabelsMap.get(key));
+        predNames.add(key);
+      }
+      for (String key : failureSet.keySet()){
+        BoolExpr failureExpr = mkEq(failureSet.get(key), mkInt(1));
+        //Don't assert and track failure constraint
+        solver.add(failureExpr);
+        allConstraints.add(failureExpr);
+        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
+      }
+      for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
+        BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
+        //Don't assert and track failure constraint
+        solver.add(failureExpr);
+        allConstraints.add(failureExpr);
+        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
+      }
+
+      Status result = solver.check();
+
+      if (result==Status.SATISFIABLE){
+        System.out.println("Satisfiable with fixed failure set. THIS SHOULD NOT HAPPEN!");
+      }else {
+
+        System.out.printf("# of predicates in solver : %d | " +
+                        "# of predicates in initial unsat core : %d\n",
+                solver.getNumAssertions(),
+                solver.getUnsatCore().length);
+
+        System.out.println("Running Marco");
+        long time_start = System.currentTimeMillis();
+        BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
+        List<Set<Integer>> muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true);
+
+        int[] predicateFrequency = new int[predNames.size()];
+
+
+        for (Set<Integer> mus : muses) {
+          for (Integer pred_num : mus) {
+            if (pred_num<predicateFrequency.length){
+              predicateFrequency[pred_num]++; //TODO : How to deal with failure set constraints that appear in MUSes.
+            }
+          }
+        }
+        _faultlocStats.setTimeElapsedDuringMUSGeneration(System.currentTimeMillis() - time_start);
+        _faultlocStats.setNumMUSesGenerated(muses.size());
+        System.out.println("Number of MUSES: " + muses.size());
+
+        Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
+        for (int i = 0; i < predicateFrequency.length; i++) {
+          if (predicateFrequency[i] > 0) {
+            candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
+            System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+          }
+        }
+
+        HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc(); //Predicates that are at fault
+        HashMap<String, ArrayList<PredicateLabel>> faultyPreds= loadFaultloc(); //This is the OG list of faulty preds
+
+        computeExtrapredicates(predNameToLabelsMap,unfound,faultyPreds,candidatePredicateLabels);
+        outUnfound(unfound,faultyPreds);
+      }
+    }
   }
 
 
@@ -1427,7 +1415,7 @@ public class Encoder {
         failureSets.put(failures,nonfailures);
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 1) {
-          addPacketConstraints(packetModel, counterExampleVariableAssignments);
+          addPacketConstraints(counterExampleVariableAssignments);
 
           //// ***
           //Check if predicates at fault are in the model. //TODO : Check this.UPDATE: This works.
@@ -1589,28 +1577,25 @@ public class Encoder {
     }
 
     // Determine which labels are not found
-    computeExtrapredicates(predicatesNameToLabelMap, unfound, Faultloc, faultCandidates);
-    outUnfound(unfound, Faultloc);
+//    computeExtrapredicates(predicatesNameToLabelMap, unfound, Faultloc, faultCandidates);
+//    outUnfound(unfound, Faultloc);
 
   }
 
   // Determine which labels are not found
   void computeExtrapredicates(Map<String, PredicateLabel> predicatesNameToLabelMap,
                               HashMap<String, ArrayList<PredicateLabel>> unfound,
-                              HashMap<String, ArrayList<PredicateLabel>> Faultloc,
-                              Set<String> faultCandidates){
+                              HashMap<String, ArrayList<PredicateLabel>> faultyPredicates,
+                              Set<PredicateLabel> candidatePredLabels){
     int extraComputable = 0;
     int extraConfigurable = 0;
-    List<PredicateLabel> combination= new ArrayList<> ();
-    for (String predicate : faultCandidates) {
-      PredicateLabel label = predicatesNameToLabelMap.get(predicate);
-      combination.add(label);
-    }
-    combination.addAll(edgeToLabel());
-    for (PredicateLabel label:combination) {
-      for (String q : Faultloc.keySet()) {
+
+    candidatePredLabels.addAll(edgeToLabel()); //Adds all possible BGP edges? TODO: WHY?
+
+    for (PredicateLabel label:candidatePredLabels) {
+      for (String q : faultyPredicates.keySet()) {
         unfound.get(q).remove(label);
-        if (!Faultloc.get(q).contains(label)) {
+        if (!faultyPredicates.get(q).contains(label)) {
           if (label.isComputable())
             extraComputable += 1;
           if (label.isConfigurable())
