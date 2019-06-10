@@ -125,6 +125,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
   private static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
 
+  private static final String ARG_PRINT_GRAPH = "printGraph";
+
   private static final String ARG_PRINT_SMT = "printSmt";
 
   private static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
@@ -548,70 +550,6 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     return _config.getString(ARG_DATAPLANE_ENGINE_NAME);
   }
 
-  public Integer getNumIters() {
-    return _config.getInt(ARG_NUM_ITERS_FAULTLOC);
-  }
-
-  public boolean shouldNotNegateProperty(){
-    return _config.getBoolean(ARG_NO_NEGATE_PROPERTY);
-  }
-
-  public boolean shouldPrintUnsatExpr(){
-    return _config.getBoolean(ARG_PRINT_UNSAT_EXPR);
-  }
-  
-  public boolean shouldEnableSlicing() {
-    return _config.getBoolean(ARG_ENABLE_SLICING);
-  }
-  
-  public boolean shouldIncludeComputable() {
-    return _config.getBoolean(ARG_INCLUDE_COMPUTABLE);
-  }
-
-  public boolean shouldRemoveUnsatCoreFilters(){
-    return _config.getBoolean(ARG_NO_FILTER_UNSAT_CORE);
-  }
-
-  public boolean shouldMinimizeUnsatCore(){
-    return _config.getBoolean(ARG_MINIMIZE_UNSAT_CORE);
-  }
-
-  public boolean shouldSplitITEs(){
-      return _config.getBoolean(ARG_SPLIT_ITE);
-  }
-
-  public String getMarcoType(){
-    return _config.getString(ARG_USE_MARCO);
-  }
-
-  public int getMaxMSSCount(){
-    return _config.getInt(ARG_MAX_MSS_COUNT);
-  }
-
-  public int getMaxMUSCount(){
-    return _config.getInt(ARG_MAX_MUS_COUNT);
-  }
-
-  public boolean shouldUseMUSIntersection(){
-    return _config.getBoolean(ARG_MUS_INTERSECT);
-  }
-
-  public boolean shouldUseMUSUnion(){
-    return _config.getBoolean(ARG_MUS_UNION);
-  }
-
-  public boolean shouldBulkSaveMUSes(){
-    return _config.getBoolean(ARG_BULK_SAVE_MUS);
-  }
-
-  public boolean shouldPrintCounterExampleDiffs(){
-    return _config.getBoolean(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
-  }
-  
-  public boolean shouldPrintSmt(){
-    return _config.getBoolean(ARG_PRINT_SMT);
-  }
-
   private void initConfigDefaults() {
     setDefaultProperty(BfConsts.ARG_ANALYSIS_NAME, null);
     setDefaultProperty(BfConsts.ARG_BDP_DETAIL, false);
@@ -704,6 +642,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     setDefaultProperty(ARG_BULK_SAVE_MUS,false);
     setDefaultProperty(ARG_MAX_MUS_COUNT, Integer.MAX_VALUE);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
+    setDefaultProperty(ARG_PRINT_GRAPH, false);
     setDefaultProperty(ARG_PRINT_SMT, false);
     setDefaultProperty(ARG_ENABLE_SLICING,false);
     setDefaultProperty(ARG_INCLUDE_COMPUTABLE,false);
@@ -959,6 +898,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
+    addBooleanOption(ARG_PRINT_GRAPH, "print graph used to construct SMT formulation");
+
     addBooleanOption(ARG_PRINT_SMT, "print SMT predicates");
 
     addOption(ARG_NUM_ITERS_FAULTLOC, "Minumum Number of CounterExamples to produce", "numIters");
@@ -1089,6 +1030,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
     getBooleanOptionValue(ARG_SPLIT_ITE);
     getStringOptionValue(ARG_USE_MARCO);
+    getBooleanOptionValue(ARG_PRINT_GRAPH);
     getBooleanOptionValue(ARG_PRINT_SMT);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
     getIntegerOptionValue(ARG_MAX_MSS_COUNT);

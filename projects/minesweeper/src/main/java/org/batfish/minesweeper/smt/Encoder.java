@@ -81,6 +81,7 @@ public class Encoder {
 
   public static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
   public static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
+  public static final String ARG_PRINT_GRAPH = "printGraph";
   public static final String ARG_PRINT_SMT = "printSmt";
   public static final String ARG_PRINT_COUNTER_EXAMPLE_CHANGES = "printCeDiff";
   public static final String ARG_PRINT_UNSAT_EXPR = "printUnsatExpr";
@@ -1114,6 +1115,14 @@ public class Encoder {
     for (Map.Entry<String, Set<String>> e : mainSlice.getGraph().getNeighbors().entrySet()) {
       numEdges += e.getValue().size();
     }
+
+    if (_settings.getBoolean(ARG_PRINT_GRAPH)) {
+      System.out.println("\nGRAPH");
+      System.out.println("-------------------------------------------");
+      System.out.println(mainSlice.getGraph());
+      System.out.println("-------------------------------------------");
+    }
+
 
     if (_settings.getBoolean(ARG_PRINT_SMT)) {
         System.out.println("\nSMT");
