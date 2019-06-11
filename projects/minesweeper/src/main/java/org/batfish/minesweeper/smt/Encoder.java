@@ -1114,6 +1114,7 @@ public class Encoder {
    * @return A VerificationResult indicating the status of the check.
    */
   public Tuple<VerificationResult, Model> verify() {
+
     int numVariables = _allVariables.size();
     int numConstraints = _solver.getAssertions().length;
     EncoderSlice mainSlice = _slices.get(MAIN_SLICE_NAME);
@@ -1129,7 +1130,6 @@ public class Encoder {
       System.out.println(mainSlice.getGraph());
       System.out.println("-------------------------------------------");
     }
-
 
     if (_settings.getBoolean(ARG_PRINT_SMT)) {
         System.out.println("\nSMT");
@@ -1384,20 +1384,6 @@ public class Encoder {
     Map<Integer, Map<String, String>> failedEdgesCEMap = new HashMap<>();
 
     HashMap<SortedMap<String, ArithExpr>,SortedMap<String, ArithExpr>> failureSets = new HashMap<>();
-
-
-
-    if (_settings.getBoolean(ARG_PRINT_SMT)) {
-        System.out.println("\nSMT");
-        System.out.println("-------------------------------------------");
-        _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
-        for (String predName : _unsatCore.getTrackingVars().keySet()) {
-            System.out.println(_unsatCore.getTrackingLabels().get(predName));
-            System.out.println(
-                    _unsatCore.getTrackingVars().get(predName).getSExpr());
-        }
-      System.out.println("-------------------------------------------");
-    }
 
     do {
       // Solve
