@@ -36,6 +36,7 @@ import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.BgpPeerConfig;
 import org.batfish.datamodel.BgpUnnumberedPeerConfig;
 import org.batfish.datamodel.BumTransportMethod;
+import org.batfish.datamodel.ConcreteInterfaceAddress;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.IntegerSpace;
@@ -188,7 +189,7 @@ public class CumulusNcluConfiguration extends VendorConfiguration {
             .setBgpProcess(newProc)
             .setExportPolicy(peerExportPolicy.build().getName())
             .setLocalAs(localAs)
-            .setLocalIp(_c.getAllInterfaces().get(peerInterface).getAddress().getIp())
+            .setLocalIp(_c.getAllInterfaces().get(peerInterface).getConcreteAddress().getIp())
             .setPeerInterface(peerInterface)
             .setRemoteAsns(computeRemoteAsns(neighbor, localAs))
             .setSendCommunity(true);
@@ -294,8 +295,8 @@ public class CumulusNcluConfiguration extends VendorConfiguration {
     }
     newIface.setAllAddresses(iface.getIpAddresses());
     if (iface.getIpAddresses().isEmpty() && isUsedForBgpUnnumbered(iface.getName())) {
-      InterfaceAddress addr =
-          new InterfaceAddress(
+      ConcreteInterfaceAddress addr =
+          ConcreteInterfaceAddress.create(
               Ip.create(_linkLocalAddress.getAndIncrement()), LINK_LOCAL_NETWORK_BITS);
 
       newIface.setAddress(addr);
@@ -783,8 +784,7 @@ public class CumulusNcluConfiguration extends VendorConfiguration {
     List<BooleanExpr> exportConditions = new ArrayList<>();
 
     // Always export BGP and iBGP routes
-    exportConditions.add(new MatchProtocol(RoutingProtocol.BGP));
-    exportConditions.add(new MatchProtocol(RoutingProtocol.IBGP));
+    exportConditions.add(new MatchProtocol(RoutingProtocol.BGP, RoutingProtocol.IBGP));
 
     // If no IPv4 address family is not defined, there is no capability to explicitly advertise v4
     // networks or redistribute protocols, so no non-BGP routes can be exported.
@@ -798,11 +798,7 @@ public class CumulusNcluConfiguration extends VendorConfiguration {
 
       // Get a match expression for the protocol to be redistributed
       CumulusRoutingProtocol protocol = redistributeProtocolPolicy.getProtocol();
-      Disjunction matchProtocol =
-          new Disjunction(
-              VI_PROTOCOLS_MAP.get(protocol).stream()
-                  .map(MatchProtocol::new)
-                  .collect(ImmutableList.toImmutableList()));
+      MatchProtocol matchProtocol = new MatchProtocol(VI_PROTOCOLS_MAP.get(protocol));
 
       // Create a WithEnvironmentExpr with the redistribution route-map, if one is defined
       BooleanExpr weInterior = BooleanExprs.TRUE;

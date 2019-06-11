@@ -7,7 +7,9 @@ import static org.batfish.specifier.parboiled.Anchor.Type.CHAR_LITERAL;
 import static org.batfish.specifier.parboiled.Anchor.Type.FILTER_NAME_REGEX;
 import static org.batfish.specifier.parboiled.Anchor.Type.INTERFACE_NAME_REGEX;
 import static org.batfish.specifier.parboiled.Anchor.Type.NODE_AND_INTERFACE;
+import static org.batfish.specifier.parboiled.Anchor.Type.NODE_AND_INTERFACE_TAIL;
 import static org.batfish.specifier.parboiled.Anchor.Type.NODE_NAME_REGEX;
+import static org.batfish.specifier.parboiled.Anchor.Type.NODE_ROLE_AND_DIMENSION;
 import static org.batfish.specifier.parboiled.Anchor.Type.REFERENCE_BOOK_AND_ADDRESS_GROUP;
 import static org.batfish.specifier.parboiled.Anchor.Type.REFERENCE_BOOK_AND_INTERFACE_GROUP;
 import static org.batfish.specifier.parboiled.Anchor.Type.ROUTING_POLICY_NAME_REGEX;
@@ -38,6 +40,8 @@ import org.batfish.referencelibrary.AddressGroup;
 import org.batfish.referencelibrary.InterfaceGroup;
 import org.batfish.referencelibrary.ReferenceBook;
 import org.batfish.referencelibrary.ReferenceLibrary;
+import org.batfish.role.NodeRole;
+import org.batfish.role.NodeRoleDimension;
 import org.batfish.role.NodeRolesData;
 import org.parboiled.errors.InvalidInputError;
 import org.parboiled.parserunners.ReportingParseRunner;
@@ -214,7 +218,7 @@ public final class ParboiledAutoComplete {
       case NODE_ROLE_DIMENSION_NAME:
         return autoCompleteGeneric(pm);
       case NODE_ROLE_NAME:
-        return autoCompleteGeneric(pm);
+        return autoCompleteNodeRoleName(pm);
       case NODE_TYPE:
         // Relies on STRING_LITERAL completion as it appears later in the path
         throw new IllegalStateException(String.format("Unexpected auto completion for %s", pm));
@@ -356,26 +360,50 @@ public final class ParboiledAutoComplete {
    */
   @VisibleForTesting
   Set<ParboiledAutoCompleteSuggestion> autoCompleteInterfaceName(PotentialMatch pm) {
+
+    Optional<String> nodeInput = findNodeInputOfInterface(pm, _query);
+
+    return nodeInput.isPresent()
+        ? autoCompleteInterfaceName(pm, nodeInput.get())
+        : autoCompleteGeneric(pm);
+  }
+
+  /**
+   * A helper function for {@link #autoCompleteInterfaceName(PotentialMatch)} that finds the node
+   * component for context-sensitive interface completion. The optional is empty if the path does
+   * not contain the anchor {@link Anchor.Type#NODE_AND_INTERFACE}.
+   *
+   * @throws IllegalArgumentException if anchor is not found on the path, or if {@link
+   *     Anchor.Type#NODE_AND_INTERFACE} is present but {@link Anchor.Type#NODE_AND_INTERFACE_TAIL}
+   *     is absent
+   */
+  @VisibleForTesting
+  static Optional<String> findNodeInputOfInterface(PotentialMatch pm, String query) {
     int anchorIndex = pm.getPath().indexOf(pm.getAnchor());
     checkArgument(anchorIndex != -1, "Anchor is not present in the path.");
 
-    // have we descended from node_with_interface?
-    boolean nodeAncestor =
-        IntStream.range(0, anchorIndex)
-            .mapToObj(i -> pm.getPath().get(anchorIndex - i - 1))
-            .anyMatch(a -> a.getAnchorType() == NODE_AND_INTERFACE);
+    Optional<PathElement> nodeStartElement =
+        findFirstMatchingPathElement(pm, anchorIndex, NODE_AND_INTERFACE);
 
-    if (!nodeAncestor) {
-      return autoCompleteGeneric(pm);
+    if (!nodeStartElement.isPresent()) {
+      return Optional.empty();
     }
 
-    // node information is at the head if nothing about the interface name was entered;
-    // otherwise, it is second from top
-    NodeAstNode nodeAst =
-        (NodeAstNode)
-            _parser.getShadowStack().getValueStack().peek(pm.getMatchPrefix().isEmpty() ? 0 : 1);
+    Optional<PathElement> nodeEndElement =
+        findFirstMatchingPathElement(pm, anchorIndex, NODE_AND_INTERFACE_TAIL);
+    checkArgument(nodeEndElement.isPresent(), "NODE_AND_INTERFACE has no tail");
 
-    // do context sensitive auto completion input is a node name or regex
+    return Optional.of(
+        query.substring(
+            nodeStartElement.get().getStartIndex(), nodeEndElement.get().getStartIndex()));
+  }
+
+  @VisibleForTesting
+  Set<ParboiledAutoCompleteSuggestion> autoCompleteInterfaceName(
+      PotentialMatch pm, String nodeInput) {
+    NodeAstNode nodeAst = ParboiledNodeSpecifier.getAst(nodeInput);
+
+    // do context sensitive auto completion only if input is a node name or regex
     if (!(nodeAst instanceof NameNodeAstNode) && !(nodeAst instanceof NameRegexNodeAstNode)) {
       return autoCompleteGeneric(pm);
     }
@@ -394,8 +422,7 @@ public final class ParboiledAutoComplete {
         pm.getMatchStartIndex());
   }
 
-  @VisibleForTesting
-  static boolean nodeNameMatches(String nodeName, NodeAstNode nodeAst) {
+  private static boolean nodeNameMatches(String nodeName, NodeAstNode nodeAst) {
     if (nodeAst instanceof NameNodeAstNode) {
       return nodeName.equalsIgnoreCase(((NameNodeAstNode) nodeAst).getName());
     } else if (nodeAst instanceof NameRegexNodeAstNode) {
@@ -403,6 +430,51 @@ public final class ParboiledAutoComplete {
     } else {
       throw new IllegalArgumentException("Can only match node names or regexes");
     }
+  }
+
+  /**
+   * Auto completes node role names in a context sensitive manner if an ancestor {@link PathElement}
+   * indicates that dimension name appeared earlier in the path. Otherwise, context-independent
+   * completion is used
+   */
+  @VisibleForTesting
+  Set<ParboiledAutoCompleteSuggestion> autoCompleteNodeRoleName(PotentialMatch pm) {
+    int anchorIndex = pm.getPath().indexOf(pm.getAnchor());
+    checkArgument(anchorIndex != -1, "Anchor is not present in the path.");
+
+    // have we descended from a dimension name based rule
+    boolean dimNameAncestor =
+        IntStream.range(0, anchorIndex)
+            .mapToObj(i -> pm.getPath().get(anchorIndex - i - 1))
+            .anyMatch(a -> a.getAnchorType() == NODE_ROLE_AND_DIMENSION);
+    if (!dimNameAncestor) {
+      return autoCompleteGeneric(pm);
+    }
+
+    // dimension name is at the head if nothing about the role name was entered;
+    // otherwise, it is second from top
+    String dimName =
+        ((StringAstNode)
+                _parser
+                    .getShadowStack()
+                    .getValueStack()
+                    .peek(pm.getMatchPrefix().isEmpty() ? 0 : 1))
+            .getStr();
+    NodeRoleDimension nodeRoleDimension =
+        _nodeRolesData
+            .getNodeRoleDimension(dimName)
+            .orElse(NodeRoleDimension.builder("dummy").build());
+
+    String matchPrefix = unescapeIfNeeded(pm.getMatchPrefix(), pm.getAnchorType());
+    return updateSuggestions(
+        AutoCompleteUtils.stringAutoComplete(
+            matchPrefix,
+            nodeRoleDimension.getRoles().stream()
+                .map(NodeRole::getName)
+                .collect(ImmutableSet.toImmutableSet())),
+        !matchPrefix.equals(pm.getMatchPrefix()),
+        pm.getAnchorType(),
+        pm.getMatchStartIndex());
   }
 
   /**
@@ -470,6 +542,18 @@ public final class ParboiledAutoComplete {
         !matchPrefix.equals(pm.getMatchPrefix()),
         pm.getAnchorType(),
         pm.getMatchStartIndex());
+  }
+
+  /**
+   * Scans the PotentialMatch path backwards, starting from {@code anchorIndex}, and returns the
+   * first element that matches {@code anchorType}.
+   */
+  static Optional<PathElement> findFirstMatchingPathElement(
+      PotentialMatch pm, int anchorIndex, Anchor.Type anchorType) {
+    return IntStream.range(0, anchorIndex)
+        .mapToObj(i -> pm.getPath().get(anchorIndex - i - 1))
+        .filter(pe -> pe.getAnchorType() == anchorType)
+        .findFirst();
   }
 
   /**

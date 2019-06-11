@@ -2,7 +2,6 @@ package org.batfish.specifier;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.google.auto.service.AutoService;
 import com.google.common.collect.ImmutableSet;
 import java.util.Objects;
 import java.util.Set;
@@ -13,8 +12,8 @@ import net.sf.javabdd.BDDFactory;
 import org.batfish.common.bdd.BDDInteger;
 import org.batfish.common.bdd.BDDUtils;
 import org.batfish.common.bdd.IpSpaceToBDD;
+import org.batfish.datamodel.ConcreteInterfaceAddress;
 import org.batfish.datamodel.Interface;
-import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.IpSpace;
 import org.batfish.datamodel.IpWildcard;
 import org.batfish.datamodel.Prefix;
@@ -55,7 +54,7 @@ public final class InterfaceWithConnectedIpsSpecifier implements InterfaceSpecif
     return Objects.hash(InterfaceWithConnectedIpsSpecifier.class, _ipSpace);
   }
 
-  private boolean interfaceAddressMatchesIpSpace(InterfaceAddress i) {
+  private boolean interfaceAddressMatchesIpSpace(ConcreteInterfaceAddress i) {
     return !_ipSpaceBdd.and(_ipSpaceToBdd.toBDD(i.getPrefix())).isZero();
   }
 
@@ -64,21 +63,20 @@ public final class InterfaceWithConnectedIpsSpecifier implements InterfaceSpecif
     return ctxt.getConfigs().values().stream()
         .filter(c -> nodes.contains(c.getHostname()))
         .flatMap(c -> c.getAllInterfaces().values().stream().filter(Interface::getActive))
-        .filter(i -> i.getAllAddresses().stream().anyMatch(this::interfaceAddressMatchesIpSpace))
+        .filter(
+            i ->
+                i.getAllConcreteAddresses().stream().anyMatch(this::interfaceAddressMatchesIpSpace))
         .map(NodeInterfacePair::new)
         .collect(ImmutableSet.toImmutableSet());
   }
 
   /** Factory for {@link InterfaceWithConnectedIpsSpecifier}. */
-  @AutoService(InterfaceSpecifierFactory.class)
-  public static class Factory implements InterfaceSpecifierFactory {
+  public static class Factory {
 
-    @Override
     public String getName() {
       return NAME;
     }
 
-    @Override
     public InterfaceSpecifier buildInterfaceSpecifier(Object input) {
       checkArgument(
           input instanceof String,

@@ -76,6 +76,7 @@ import org.batfish.common.Warnings;
 import org.batfish.common.util.CommonUtil;
 import org.batfish.config.Settings;
 import org.batfish.datamodel.AclIpSpace;
+import org.batfish.datamodel.ConcreteInterfaceAddress;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.DiffieHellmanGroup;
@@ -84,7 +85,6 @@ import org.batfish.datamodel.EncryptionAlgorithm;
 import org.batfish.datamodel.Flow;
 import org.batfish.datamodel.IkeHashingAlgorithm;
 import org.batfish.datamodel.Interface.Dependency;
-import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.InterfaceType;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpAccessList;
@@ -113,7 +113,6 @@ import org.batfish.representation.palo_alto.ServiceBuiltIn;
 import org.batfish.representation.palo_alto.StaticRoute;
 import org.batfish.representation.palo_alto.Vsys;
 import org.batfish.representation.palo_alto.Zone;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -265,7 +264,6 @@ public class PaloAltoGrammarTest {
   }
 
   @Test
-  @Ignore
   public void testAddressObjectGroupInheritance() throws IOException {
     String hostname = "address-object-group-inheritance";
     Configuration c = parseConfig(hostname);
@@ -570,7 +568,8 @@ public class PaloAltoGrammarTest {
     assertThat(
         c,
         hasInterface(
-            interfaceName1, hasAllAddresses(contains(new InterfaceAddress("1.1.1.1/24")))));
+            interfaceName1,
+            hasAllAddresses(contains(ConcreteInterfaceAddress.parse("1.1.1.1/24")))));
 
     // Confirm comments are extracted
     assertThat(c, hasInterface(interfaceName1, hasDescription("description")));
@@ -611,14 +610,14 @@ public class PaloAltoGrammarTest {
         hasInterface(
             interfaceNameUnit1,
             allOf(
-                hasAllAddresses(contains(new InterfaceAddress("1.1.1.1/24"))),
+                hasAllAddresses(contains(ConcreteInterfaceAddress.parse("1.1.1.1/24"))),
                 hasDependencies(contains(new Dependency("ethernet1/1", BIND))))));
     assertThat(
         c,
         hasInterface(
             interfaceNameUnit2,
             allOf(
-                hasAllAddresses(contains(new InterfaceAddress("1.1.2.1/24"))),
+                hasAllAddresses(contains(ConcreteInterfaceAddress.parse("1.1.2.1/24"))),
                 hasDependencies(contains(new Dependency("ethernet1/1", BIND))))));
 
     // Confirm comment is extracted
@@ -749,7 +748,6 @@ public class PaloAltoGrammarTest {
   }
 
   @Test
-  @Ignore
   public void testRulebase() throws IOException {
     String hostname = "rulebase";
     Configuration c = parseConfig(hostname);
@@ -788,7 +786,6 @@ public class PaloAltoGrammarTest {
   }
 
   @Test
-  @Ignore
   public void testRulebaseService() throws IOException {
     String hostname = "rulebase-service";
     Configuration c = parseConfig(hostname);
@@ -811,7 +808,6 @@ public class PaloAltoGrammarTest {
   }
 
   @Test
-  @Ignore
   public void testRulebaseDefault() throws IOException {
     String hostname = "rulebase-default";
     Configuration c = parseConfig(hostname);
@@ -839,7 +835,6 @@ public class PaloAltoGrammarTest {
   }
 
   @Test
-  @Ignore
   public void testRulebaseIprange() throws IOException {
     String hostname = "rulebase-iprange";
     Configuration c = parseConfig(hostname);
@@ -904,7 +899,6 @@ public class PaloAltoGrammarTest {
   }
 
   @Test
-  @Ignore
   public void testVsysRulebase() throws IOException {
     String hostname = "vsys-rulebase";
     Configuration c = parseConfig(hostname);
@@ -1222,16 +1216,15 @@ public class PaloAltoGrammarTest {
     PaloAltoConfiguration c = parsePaloAltoConfig("shared-gateway");
 
     // Confirm shared-gateways show up in the vendor model
-    Map<String, Vsys> vsyses = c.getVirtualSystems();
-    assertThat(vsyses, hasKey("sg1"));
-    assertThat(vsyses, hasKey("sg2"));
-    assertThat(vsyses, hasKey("sg3"));
+    Map<String, Vsys> sharedGateways = c.getSharedGateways();
+    assertThat(sharedGateways, hasKey("sg1"));
+    assertThat(sharedGateways, hasKey("sg2"));
+    assertThat(sharedGateways, hasKey("sg3"));
 
     // Confirm display names show up as well
-    assertThat(c.getVirtualSystems().get("sg1").getDisplayName(), equalTo("shared-gateway1"));
-    assertThat(c.getVirtualSystems().get("sg2").getDisplayName(), equalTo("shared gateway2"));
-    assertThat(
-        c.getVirtualSystems().get("sg3").getDisplayName(), equalTo("invalid shared gateway"));
+    assertThat(sharedGateways.get("sg1").getDisplayName(), equalTo("shared-gateway1"));
+    assertThat(sharedGateways.get("sg2").getDisplayName(), equalTo("shared gateway2"));
+    assertThat(sharedGateways.get("sg3").getDisplayName(), equalTo("invalid shared gateway"));
   }
 
   @Test

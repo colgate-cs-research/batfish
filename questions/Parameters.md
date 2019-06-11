@@ -6,7 +6,7 @@ For many parameters types, there is a "resolver" question that may be used to le
 
 * [`applicationSpec`](#application-specifier)
 
-* [`flowDispositionSpec`](#flow-disposition-specifier)
+* [`dispositionSpec`](#disposition-specifier)
 
 * [`filterSpec`](#filter-specifier)
 
@@ -17,6 +17,8 @@ For many parameters types, there is a "resolver" question that may be used to le
 * [`ipProtocolSpec`](#ip-protocol-specifier)
 
 * [`locationSpec`](#location-specifier)
+
+* [`namedStructureSpec`](#named-structure-specifier)
 
 * [`nodeSpec`](#node-specifier)
 
@@ -60,7 +62,7 @@ applicationTerm :=
 
 Batfish understands the following applications names, with the corresponding IP protocol and destination port in parenthesis: DNS(UDP, 53), HTTP(TCP, 80), HTTPS(TCP, 443), SNMP(UDP, 161), SSH(TCP, 22), TELNET(TCP, 23).
 
-## Flow Disposition Specifier
+## Disposition Specifier
 
 Flow dispositions are used in questions like [reachability](https://pybatfish.readthedocs.io/en/latest/questions.html#pybatfish.question.bfq.reachability) to identify flow outcomes. The disposition specifier takes as input a comma-separated list of disposition values, which are interpreted using logical OR.
 
@@ -88,6 +90,8 @@ A specification for filters (ACLs or firewall rules) in the network.
 
 * Filter name or a regex over the names indicate filters on all nodes in the network with that name or matching regex. For example, `filter1` includes all filters with that name and `/acl/` includes all filters whose names contain 'acl'.
 
+* `nodeTerm[filterWithoutNode]` indicates filters that match the `filterWithoutNode` specification on nodes that match the `nodeTerm` specification. A simple example is `as1border1[filter1]` which refers to the filter `filter1` on `as1border1`.
+
 * `@in(interfaceSpec)` refers to filters that get applied when packets enter the specified interfaces. For example, `@in(Ethernet0/0)` includes filters for incoming packets on interfaces named `Ethernet0/0` on all nodes.
 
 * `@out(interfaceSpec)` is similar except that it indicates filters that get applied when packets exit the specified interfaces. 
@@ -99,11 +103,24 @@ filterSpec :=
     filterTerm [(<b>&</b>|<b>,</b>|<b>\</b>) filterTerm]
 
 filterTerm :=
+    filterWithNode
+    | filterWithoutNode 
+    | <b>(</b>filterSpec<b>)</b>
+
+filterWithNode := 
+    nodeTerm<b>[</b>filterWithoutNode<b>]</b>
+
+filterWithoutNode :=
+    filterWithoutNodeTerm [(<b>&</b>|<b>,</b>|<b>\</b>) filterWithoutNodeTerm]
+
+filterWithoutNodeTerm :=
     &lt;<i>filter-name</i>&gt;
     | <b>/</b>&lt;<i>filter-name-regex</i>&gt;<b>/</b>
     | <b>@in(</b>interfaceSpec<b>)</b>
     | <b>@out(</b>interfaceSpec<b>)</b>
-    | <b>(</b>filterSpec<b>)</b>
+    | <b>(</b>filterWithoutNode<b>)</b>
+
+
 </pre>
 
 #### Filter Specifier Resolver
@@ -270,6 +287,16 @@ locationInterface :=
 * `resolveIpsOfLocationSpecifier` shows the mapping from locations to IPs that will be used in `traceroute` and   `reachability` questions when IPs are not explicitly specified. 
 
 
+## Named Structure Specifier
+
+A specification for a set of structure types in Batfish's vendor independent model. This specifier accepts a regex over the structure types listed below. The regex should not be surrounded by `/`s.
+
+
+#### Named Structure Types 
+
+Batfish has the following structure types: AS_PATH_ACCESS_LIST, AUTHENTICATION_KEY_CHAIN, COMMUNITY_LIST, IKE_PHASE1_KEYS, IKE_PHASE1_POLICIES, IKE_PHASE1_PROPOSALS, IP_ACCESS_LIST, IP_6_ACCESS_LIST, IPSEC_PEER_CONFIGS, IPSEC_PHASE2_POLICIES, IPSEC_PHASE2_PROPOSALS, PBR_POLICY, ROUTE_FILTER_LIST, ROUTE_6_FILTER_LIST, ROUTING_POLICY, VRF, ZONE.
+
+
 ## Node Specifier
 
 A specification for nodes in the network.
@@ -278,7 +305,7 @@ A specification for nodes in the network.
 
 * `@deviceType(type1)` indicates all nodes of the type 'type1'. The types of devices are listed [here](#device-types).
 
-* `@role(role, dim)` indicates all nodes with role name 'role' in dimension name 'dim'.
+* `@role(dim, role)` indicates all nodes with role name 'role' in dimension name 'dim'.
 
 #### Node Specifier Grammar
 
@@ -294,7 +321,7 @@ nodeTerm :=
 
 nodeFunc :=
     <b>@deviceType(</b><i>device-type</i><b>)</b>
-    | <b>@role(</b>&lt;<i>role-name</i>&gt;<b>,</b> &lt;<i>dimension-name</i>&gt;<b>)</b>
+    | <b>@role(</b>&lt;<i>dimension-name</i>&gt;<b>,</b> &lt;<i>role-name</i>&gt;<b>)</b>
 </pre>
 
 #### Node Specifier Resolver

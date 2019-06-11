@@ -311,6 +311,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -337,6 +338,7 @@ import org.batfish.common.util.CommonUtil;
 import org.batfish.datamodel.AaaAuthenticationLoginList;
 import org.batfish.datamodel.AuthenticationMethod;
 import org.batfish.datamodel.BgpTieBreaker;
+import org.batfish.datamodel.ConcreteInterfaceAddress;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.DiffieHellmanGroup;
@@ -349,7 +351,6 @@ import org.batfish.datamodel.IkeAuthenticationMethod;
 import org.batfish.datamodel.IkeHashingAlgorithm;
 import org.batfish.datamodel.IntegerSpace;
 import org.batfish.datamodel.IntegerSpace.Builder;
-import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.Ip6;
 import org.batfish.datamodel.Ip6Wildcard;
@@ -1255,6 +1256,7 @@ import org.batfish.representation.cisco.RouteMapMatchIpAccessListLine;
 import org.batfish.representation.cisco.RouteMapMatchIpPrefixListLine;
 import org.batfish.representation.cisco.RouteMapMatchIpv6AccessListLine;
 import org.batfish.representation.cisco.RouteMapMatchIpv6PrefixListLine;
+import org.batfish.representation.cisco.RouteMapMatchSourceProtocolLine;
 import org.batfish.representation.cisco.RouteMapMatchTagLine;
 import org.batfish.representation.cisco.RouteMapSetAdditiveCommunityLine;
 import org.batfish.representation.cisco.RouteMapSetAdditiveCommunityListLine;
@@ -4017,7 +4019,7 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
     }
     // might cause problems if interfaces are declared after ospf, but
     // whatever
-    for (InterfaceAddress address : iface.getAllAddresses()) {
+    for (ConcreteInterfaceAddress address : iface.getAllAddresses()) {
       Prefix prefix = address.getPrefix();
       OspfNetwork network = new OspfNetwork(prefix, _currentOspfArea);
       _currentOspfProcess.getNetworks().add(network);
@@ -5928,8 +5930,10 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
     Ip primaryIp = toIp(ctx.pip);
     Ip primaryMask = toIp(ctx.pmask);
     Ip standbyIp = toIp(ctx.sip);
-    InterfaceAddress primaryAddress = new InterfaceAddress(primaryIp, primaryMask);
-    InterfaceAddress standbyAddress = new InterfaceAddress(standbyIp, primaryMask);
+    ConcreteInterfaceAddress primaryAddress =
+        ConcreteInterfaceAddress.create(primaryIp, primaryMask);
+    ConcreteInterfaceAddress standbyAddress =
+        ConcreteInterfaceAddress.create(standbyIp, primaryMask);
     _configuration.getFailoverPrimaryAddresses().put(name, primaryAddress);
     _configuration.getFailoverStandbyAddresses().put(name, standbyAddress);
   }
@@ -6101,20 +6105,21 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
 
   @Override
   public void exitIf_ip_address(If_ip_addressContext ctx) {
-    InterfaceAddress address;
+    ConcreteInterfaceAddress address;
     if (ctx.prefix != null) {
-      address = new InterfaceAddress(ctx.prefix.getText());
+      address = ConcreteInterfaceAddress.parse(ctx.prefix.getText());
     } else {
       Ip ip = toIp(ctx.ip);
       Ip mask = toIp(ctx.subnet);
-      address = new InterfaceAddress(ip, mask);
+      address = ConcreteInterfaceAddress.create(ip, mask);
     }
     for (Interface currentInterface : _currentInterfaces) {
       currentInterface.setAddress(address);
     }
     if (ctx.STANDBY() != null) {
       Ip standbyIp = toIp(ctx.standby_address);
-      InterfaceAddress standbyAddress = new InterfaceAddress(standbyIp, address.getNetworkBits());
+      ConcreteInterfaceAddress standbyAddress =
+          ConcreteInterfaceAddress.create(standbyIp, address.getNetworkBits());
       for (Interface currentInterface : _currentInterfaces) {
         currentInterface.setStandbyAddress(standbyAddress);
       }
@@ -6131,13 +6136,13 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
   public void exitIf_ip_address_secondary(If_ip_address_secondaryContext ctx) {
     Ip ip;
     Ip mask;
-    InterfaceAddress address;
+    ConcreteInterfaceAddress address;
     if (ctx.prefix != null) {
-      address = new InterfaceAddress(ctx.prefix.getText());
+      address = ConcreteInterfaceAddress.parse(ctx.prefix.getText());
     } else {
       ip = toIp(ctx.ip);
       mask = toIp(ctx.subnet);
-      address = new InterfaceAddress(ip, mask.numSubnetBits());
+      address = ConcreteInterfaceAddress.create(ip, mask.numSubnetBits());
     }
     for (Interface currentInterface : _currentInterfaces) {
       currentInterface.getSecondaryAddresses().add(address);
@@ -6528,11 +6533,14 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
     } else {
       for (Interface iface : _currentInterfaces) {
         iface.setSwitchport(true);
-        SwitchportMode defaultSwitchportMode = _configuration.getCf().getDefaultSwitchportMode();
-        iface.setSwitchportMode(
-            (defaultSwitchportMode == SwitchportMode.NONE || defaultSwitchportMode == null)
-                ? Interface.getUndeclaredDefaultSwitchportMode(_configuration.getVendor())
-                : defaultSwitchportMode);
+        // setting the switch port mode only if it is not already set
+        if (iface.getSwitchportMode() == null || iface.getSwitchportMode() == SwitchportMode.NONE) {
+          SwitchportMode defaultSwitchportMode = _configuration.getCf().getDefaultSwitchportMode();
+          iface.setSwitchportMode(
+              (defaultSwitchportMode == SwitchportMode.NONE || defaultSwitchportMode == null)
+                  ? Interface.getUndeclaredDefaultSwitchportMode(_configuration.getVendor())
+                  : defaultSwitchportMode);
+        }
       }
     }
   }
@@ -6609,6 +6617,7 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
   public void exitIf_switchport_trunk_encapsulation(If_switchport_trunk_encapsulationContext ctx) {
     SwitchportEncapsulationType type = toEncapsulation(ctx.e);
     for (Interface currentInterface : _currentInterfaces) {
+      currentInterface.setSwitchportMode(SwitchportMode.TRUNK);
       currentInterface.setSwitchportTrunkEncapsulation(type);
     }
   }
@@ -7517,7 +7526,34 @@ public class CiscoControlPlaneExtractor extends CiscoParserBaseListener
 
   @Override
   public void exitMatch_source_protocol_rm_stanza(Match_source_protocol_rm_stanzaContext ctx) {
-    todo(ctx);
+    List<RoutingProtocol> rps = new LinkedList<>();
+    boolean todo = false;
+    if (!ctx.BGP().isEmpty()) {
+      todo = true;
+    }
+    if (!ctx.CONNECTED().isEmpty()) {
+      rps.add(RoutingProtocol.CONNECTED);
+    }
+    if (!ctx.ISIS().isEmpty()) {
+      todo = true;
+    }
+    if (!ctx.OSPF().isEmpty()) {
+      todo = true;
+    }
+    if (!ctx.STATIC().isEmpty()) {
+      rps.add(RoutingProtocol.STATIC);
+    }
+    if (todo) {
+      todo(ctx);
+      // Do nothing, since we have some unsupported protocols.
+      return;
+    }
+    if (rps.isEmpty()) {
+      // This should not be possible.
+      _w.redFlag("Unexpected: empty routing protocol list to match against " + getFullText(ctx));
+      return;
+    }
+    _currentRouteMapClause.addMatchLine(new RouteMapMatchSourceProtocolLine(rps));
   }
 
   @Override

@@ -8,9 +8,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
 import org.batfish.datamodel.AclIpSpace;
+import org.batfish.datamodel.ConcreteInterfaceAddress;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
-import org.batfish.datamodel.InterfaceAddress;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.IpRange;
 import org.batfish.datamodel.IpWildcard;
@@ -20,7 +20,9 @@ import org.batfish.referencelibrary.AddressGroup;
 import org.batfish.referencelibrary.ReferenceBook;
 import org.batfish.specifier.MockSpecifierContext;
 import org.batfish.specifier.SpecifierContext;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class ParboiledIpSpaceSpecifierTest {
 
@@ -86,7 +88,7 @@ public class ParboiledIpSpaceSpecifierTest {
         .setOwner(n1)
         .setName(iface1)
         .setActive(true)
-        .setAddress(new InterfaceAddress("3.3.3.0/24"))
+        .setAddress(ConcreteInterfaceAddress.parse("3.3.3.0/24"))
         .build();
 
     SpecifierContext ctxt =
@@ -141,5 +143,21 @@ public class ParboiledIpSpaceSpecifierTest {
     assertThat(
         computeIpSpace(new UnionIpSpaceAstNode(new IpAstNode(ip1), new IpAstNode(ip2)), _emptyCtxt),
         equalTo(AclIpSpace.union(ip1.toIpSpace(), ip2.toIpSpace())));
+  }
+
+  @Rule public ExpectedException _thrown = ExpectedException.none();
+
+  @Test
+  public void testParseBadInput() {
+    _thrown.expect(IllegalArgumentException.class);
+    _thrown.expectMessage("Error parsing");
+    ParboiledIpSpaceSpecifier.parse("@..");
+  }
+
+  @Test
+  public void testParseGoodInput() {
+    assertThat(
+        ParboiledIpSpaceSpecifier.parse("1.1.1.1"),
+        equalTo(new ParboiledIpSpaceSpecifier(new IpAstNode("1.1.1.1"))));
   }
 }
