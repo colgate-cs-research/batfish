@@ -91,9 +91,9 @@ public class MarcoMUS {
                 indexOfMUSes.add(mus);
                 if (!firstMUSGenerated){
                     if (faultlocStats!=null){
-                        faultlocStats.setFirstMUSGenTime(System.currentTimeMillis() - faultlocStats.getTimeToUNSAT());
+                        faultlocStats.setFirstMUSGenTime(System.currentTimeMillis() - start_time);
+                        firstMUSGenerated = true;
                     }
-                    firstMUSGenerated = true;
                 }
                 List<Expr> musLits = subsetSolver.toIndicatorLiterals(mus);
                 MUSes.add(musLits);

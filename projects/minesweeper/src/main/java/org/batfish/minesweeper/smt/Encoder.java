@@ -1281,6 +1281,7 @@ public class Encoder {
     List<PredicateLabel> labels = new ArrayList<>();
     List<String> predNames = new ArrayList<>();
     Solver solver;
+    long time_end = time_start;
     for (SortedMap<String, ArithExpr> failureSet : failureSets.keySet()){
 
       System.out.println("\n********FAILURE SET***********");
@@ -1332,9 +1333,11 @@ public class Encoder {
         List<Set<Integer>> muses;
         if (isFirstFailSet) {
           muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true, _faultlocStats);
-          _faultlocStats.setFailSetMUSGenTime(System.currentTimeMillis() - _faultlocStats.getFirstMUSGenTime());
+          time_end = System.currentTimeMillis();
+          _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
           isFirstFailSet = false;
         }else{
+          time_end = System.currentTimeMillis();
           muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true, null);
         }
         int[] predicateFrequency = new int[predNames.size()];
@@ -1365,7 +1368,7 @@ public class Encoder {
         outUnfound(unfound,faultyPreds);
       }
     }
-    _faultlocStats.setTimeElapsedDuringMUSGeneration(System.currentTimeMillis() - time_start);
+    _faultlocStats.setTimeElapsedDuringMUSGeneration(time_end - time_start);
     _faultlocStats.setNumMUSesGenerated(totalNumMUSesGenerated);
   }
 
@@ -1611,7 +1614,7 @@ public class Encoder {
     int extraComputable = 0;
     int extraConfigurable = 0;
 
-    candidatePredLabels.addAll(edgeToLabel()); //Adds all possible BGP edges? TODO: WHY?
+//    candidatePredLabels.addAll(edgeToLabel()); //Adds all possible BGP edges? TODO: WHY?
 
     for (PredicateLabel label:candidatePredLabels) {
       for (String q : faultyPredicates.keySet()) {

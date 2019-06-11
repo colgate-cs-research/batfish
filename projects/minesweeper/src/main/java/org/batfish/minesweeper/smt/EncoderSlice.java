@@ -836,7 +836,6 @@ class EncoderSlice {
                 GraphEdge ge = e.getEdge();
                 BgpActivePeerConfig n = getGraph().getEbgpNeighbors().get(ge);
                 if (n != null && ge.getEnd() == null) {
-
                   if (!isMainSlice()) {
                     LogicalGraph lg = _encoder.getMainSlice().getLogicalGraph();
                     SymbolicRoute r = lg.getEnvironmentVars().get(e);

@@ -45,7 +45,7 @@ public class FaultlocStats {
 
     /**
      * Creates a FaultlocStats object with a Batfish settings object.
-     * @param settings Batfish settings required to obtain path to testrigDir and options for including computable predicates,
+     * @param batfish Batfish settings required to obtain path to testrigDir and options for including computable predicates,
      *                 negating property, enabling slicing and minimizing unsat core
      * @param questionString Policy being violated.
      */
