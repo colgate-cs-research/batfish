@@ -1,5 +1,5 @@
 mydata = read.csv("master.csv",header=TRUE,sep=",")
-mydata$percentfound<-(mydata$foundpreds/(mydata$foundpreds+mydata$unfoundpreds))*100
+mydata$percentfound<-(mydata$foundpreds/(mydata$foundpreds+mydata$missedpreds))*100
 mydata[is.na(mydata)]=0
 
 colors <- c('red', 'yellow', 'green')
@@ -19,24 +19,24 @@ barplot (plotdata, main="Percent of predicates found", xlab="Experiment", ylab="
 legend(0, ymax, fill=colors, legend=rownames(plotdata))
 dev.off()
 
-png("checktime(network).png",width = 800)
-boxplot (mydata$checktime~mydata$network, main="check time", xlab="network", ylab="miliseconds")
+png("firstMUSGenTime(network).png",width = 800)
+boxplot (mydata$firstMUS_genTime~mydata$network, main="first MUS genTime", xlab="network", ylab="miliseconds")
 dev.off()
 
-png("checktime(experiment).png",width = 800)
-boxplot (mydata$checktime~mydata$experiment, main="check time", xlab="experiment", ylab="miliseconds", outline=FALSE)
+png("firstMUSGenTime(experiment).png",width = 800)
+boxplot (mydata$firstMUS_genTime~mydata$experiment, main="first MUS genTime", xlab="experiment", ylab="miliseconds", outline=FALSE)
 dev.off()
 
-png("minimizationtime(experiment).png",width = 800)
-boxplot (mydata$minimizationtime~mydata$experiment, main="minimization time", xlab="experiment", ylab="miliseconds")
+png("firstFailSetMUSes_genTime(experiment).png",width = 800)
+boxplot (mydata$firstFailSetMUSes_genTime~mydata$experiment, main="first FailSet MUSes genTime", xlab="experiment", ylab="miliseconds")
 dev.off()
 
-png("checktime(scenario).png",width = 800)
-boxplot (mydata$checktime~mydata$scenario, main="check time", xlab="scenario", ylab="miliseconds", outline=FALSE)
+png("firstFailSetMUSes_genTime(scenario).png",width = 800)
+boxplot (mydata$firstFailSetMUSes_genTime~mydata$scenario, main="first FailSet MUSes genTime", xlab="scenario", ylab="miliseconds", outline=FALSE)
 dev.off()
 
-png("minimizationtime(scenario).png",width = 800)
-boxplot (mydata$minimizationtime~mydata$scenario, main="minimization time", xlab="scenario", ylab="miliseconds")
+png("allMUSes_genTime(scenario).png",width = 800)
+boxplot (mydata$allMUSes_genTime~mydata$scenario, main="all MUSes genTime time", xlab="scenario", ylab="miliseconds")
 dev.off()
 
 # for (exp in unique(mydata$experiment)){
@@ -68,11 +68,5 @@ for (exp in unique(mydata$experiment)){
            xlab="Network", ylab="Number of violations", col=colors, 
            ylim=c(0,ymax*1.1))
   legend(0, ymax, fill=colors, legend=rownames(plotdata))
-  dev.off()
-
-  png(paste("checktime", exp, "scenario.png", sep="-"),width = 800)
-  boxplot (expdata$checktime~expdata$network, 
-           main=paste("Check time using", exp), xlab="Scenario", 
-           ylab="Check time (milliseconds)", outline=FALSE)
   dev.off()
 }
