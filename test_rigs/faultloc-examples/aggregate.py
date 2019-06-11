@@ -18,7 +18,7 @@ def main():
     writer = csv.writer(masterfile)
     writer.writerow(["num-CEs","foundpreds","missedpreds","extraconfigpred",
             "extracomputepred","includecomputable","notnegating","minimize",
-            "slice","missedpred","firstCE-genTime","allCEs-genTime","firstMUS-genTime","firstFailSetMUSes-genTime"
+            "slice","missedpred","firstCE-genTime","allCEs-genTime","firstMUS-genTime","firstFailSetMUSes-genTime",
             "allMUSes-genTime","numMUSGenerated","experiment","network",
             "scenario"])
 
