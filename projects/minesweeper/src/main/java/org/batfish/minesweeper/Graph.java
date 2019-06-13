@@ -436,6 +436,18 @@ public class Graph {
    * should be used for the next-hop.
    */
   private void initStaticRoutes() {
+    Map<String, Map<String,Interface>> all_interfaces = new HashMap<String, Map<String, Interface>>();
+    Set<Ip> all_address = new HashSet<Ip>();
+    for (Entry<String, Configuration> entry : _configurations.entrySet()) {
+      all_interfaces.put(entry.getKey(),entry.getValue().getAllInterfaces());
+    }
+    for (Map<String,Interface> try_interface : all_interfaces.values()){
+      for(Interface tmp: try_interface.values()){
+        if (tmp.getAddress()!=null){
+          all_address.add(tmp.getConcreteAddress().getIp());
+          }
+        }
+      }
 
     for (Entry<String, Configuration> entry : _configurations.entrySet()) {
       String router = entry.getKey();
@@ -448,12 +460,13 @@ public class Graph {
 
         boolean someIface = false;
 
+        String hereName = "";
+
         for (GraphEdge ge : _edgeMap.get(router)) {
           Interface here = ge.getStart();
           Interface there = ge.getEnd();
-
           // Check if next-hop interface is specified
-          String hereName = here.getName();
+          hereName = here.getName();
           someIface = true;
           if (hereName.equals(sr.getNextHopInterface())) {
             List<StaticRoute> srs = map.computeIfAbsent(hereName, k -> new ArrayList<>());
@@ -463,7 +476,6 @@ public class Graph {
 
           // Check if next-hop ip corresponds to direct interface
           Ip nhIp = sr.getNextHopIp();
-
           boolean isNextHop =
               there != null
                   && there.getConcreteAddress() != null
@@ -474,8 +486,15 @@ public class Graph {
             List<StaticRoute> srs = map.computeIfAbsent(hereName, k -> new ArrayList<>());
             srs.add(sr);
             map.put(here.getName(), srs);
+            all_address.remove(sr.getNetwork().getStartIp());
           }
         }
+        if (all_address.contains(sr.getNetwork().getStartIp())){
+              someIface = true;
+              List<StaticRoute> srs = map.computeIfAbsent(router, k -> new ArrayList<>());
+              srs.add(sr);
+              map.put(router, srs);
+            }
 
         if (Graph.isNullRouted(sr)) {
           List<StaticRoute> nulls =
@@ -1065,6 +1084,19 @@ public class Graph {
     boolean peerHasProto = ge.getPeer()!=null && routerToProtocols.get(ge.getPeer()).contains(proto);
 
     Interface iface = ge.getStart();
+    Set<StaticRoute> all_static = new HashSet<StaticRoute>();
+
+    for (Map <String, List<StaticRoute>> map1: _staticRoutes.asMap().values()){
+      for (List<StaticRoute> sr1 : map1.values()){
+        for (StaticRoute sr2: sr1){
+          if (sr2.getNextHopIp()!=null || sr2.getNextHopInterface()!=null){
+              all_static.add(sr2);
+              }
+            }
+        }
+    }
+
+    // System.out.println(conf.getHostname() + iface.getName());
 
     // Use a null routed edge, but only for the static protocol
     if (ge.isNullEdge()) {
@@ -1093,8 +1125,9 @@ public class Graph {
 
     // Only use specified edges from static routes
     if (proto.isStatic()) { // FIXME
+      List<StaticRoute> srs1 = getStaticRoutes().get(conf.getHostname(),ge.getRouter());
       List<StaticRoute> srs = getStaticRoutes().get(conf.getHostname(), iface.getName());
-      return iface.getActive() && srs != null && !srs.isEmpty();
+      return (iface.getActive() && srs != null && !srs.isEmpty())||(srs1!=null);
     }
 
     // Only use an edge in BGP if there is an explicit peering

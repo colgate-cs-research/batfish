@@ -62,6 +62,8 @@ class EncoderSlice {
 
   private LogicalGraph _logicalGraph;
 
+  private Graph _graph;
+
   private SymbolicDecisions _symbolicDecisions;
 
   private SymbolicPacket _symbolicPacket;
@@ -89,6 +91,7 @@ class EncoderSlice {
    * @param sliceName The name of this slice
    */
   EncoderSlice(Encoder enc, HeaderSpace h, Graph graph, String sliceName) {
+    _graph = graph;
     _encoder = enc;
     _sliceName = sliceName;
     _headerSpace = h;
@@ -1443,7 +1446,7 @@ class EncoderSlice {
     for (Entry<String, Configuration> entry : getGraph().getConfigurations().entrySet()) {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
-      
+
       // These constraints will be added at the protocol-level when a single protocol
       if (!_optimizations.getSliceHasSingleProtocol().contains(router)) {
 
@@ -1547,7 +1550,7 @@ class EncoderSlice {
    * choice_bgp_Serial0 = (import_Serial0 = best_bgp)
    */
   private void addChoicePerProtocolConstraints() {
-    
+
     for (Entry<String, Configuration> entry : getGraph().getConfigurations().entrySet()) {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
@@ -1573,7 +1576,7 @@ class EncoderSlice {
    * Otherwise, it will not occur.
    */
   private void addControlForwardingConstraints() {
-    
+
     for (Entry<String, Configuration> entry : getGraph().getConfigurations().entrySet()) {
       String router = entry.getKey();
       Configuration conf = entry.getValue();
@@ -1812,7 +1815,7 @@ class EncoderSlice {
       }
 
       if (proto.isStatic()) {
-        List<StaticRoute> srs = getGraph().getStaticRoutes().get(router, iface.getName());
+        List<StaticRoute> srs = _graph.getStaticRoutes().get(router, iface.getName());
         assert (srs != null);
         BoolExpr acc = mkNot(vars.getPermitted());
         for (StaticRoute sr : srs) {
