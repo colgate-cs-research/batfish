@@ -8,16 +8,9 @@ import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Context;
 import com.microsoft.z3.Expr;
 import com.microsoft.z3.Solver;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import javax.annotation.Nullable;
 import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.Configuration;
@@ -368,7 +361,7 @@ class EncoderSlice {
     assert (les != null);
     for (ArrayList<LogicalEdge> es : les) {
       for (LogicalEdge le : es) {
-        if (_logicalGraph.isEdgeUsed(conf, proto, le) && le.getEdgeType() == EdgeType.IMPORT) {
+        if (_logicalGraph.couldEdgeUsed(proto, le, getProtocols()) && le.getEdgeType() == EdgeType.IMPORT) {
           eList.add(le);
         }
       }
@@ -623,9 +616,9 @@ class EncoderSlice {
 
         for (GraphEdge e : edges) {
 
-          Configuration conf = getGraph().getConfigurations().get(router);
+//          Configuration conf = getGraph().getConfigurations().get(router);
 
-          if (getGraph().isEdgeUsed(conf, proto, e)) {
+          if (getGraph().couldEdgeUsed(proto, e, getProtocols())) {
 
             ArrayList<LogicalEdge> importEdgeList = new ArrayList<>();
             ArrayList<LogicalEdge> exportEdgeList = new ArrayList<>();
@@ -724,6 +717,7 @@ class EncoderSlice {
             es.add(allEdges);
           }
         }
+
 
         if (proto.isOspf() && r.size() > 1 && !exportGraphEdgeMap.isEmpty()) {
           // Add the ospf redistributed record if needed
@@ -2180,6 +2174,7 @@ class EncoderSlice {
           add(acc, exportLabel);
         }
 
+
         if (Encoder.ENABLE_DEBUGGING) {
           System.out.println("EXPORT: " + router + " " + varsOther.getName() + " " + ge);
           System.out.println(acc.simplify());
@@ -2232,11 +2227,15 @@ class EncoderSlice {
 
         List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
         assert (les != null);
+
         for (ArrayList<LogicalEdge> eList : les) {
           for (LogicalEdge e : eList) {
             GraphEdge ge = e.getEdge();
-
             if (!getGraph().isEdgeUsed(conf, proto, ge)) {
+              if (getGraph().couldEdgeUsed(proto, ge, getProtocols())){
+                PredicateLabel label = new PredicateLabel((e.getEdgeType()==EdgeType.IMPORT? labels.IMPORT:labels.EXPORT),router, ge.getStart(), proto);
+                add(mkNot(e.getSymbolicRecord().getPermitted()), label);
+              }
               continue;
             }
 
@@ -2288,6 +2287,8 @@ class EncoderSlice {
             }
           }
         }
+
+
         // If no edge used, then just set the best record to be false for that protocol
         if (!hasEdge) {
           SymbolicRoute protoBest;

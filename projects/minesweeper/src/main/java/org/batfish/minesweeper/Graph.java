@@ -1058,6 +1058,56 @@ public class Graph {
     return iface.getActive();
   }
 
+
+  public boolean couldEdgeUsed(Protocol proto, GraphEdge ge ,Map<String, List<Protocol>> routerToProtocols) {
+
+    Configuration conf = getConfigurations().get(ge.getRouter());
+    boolean peerHasProto = ge.getPeer()!=null && routerToProtocols.get(ge.getPeer()).contains(proto);
+
+    Interface iface = ge.getStart();
+
+    // Use a null routed edge, but only for the static protocol
+    if (ge.isNullEdge()) {
+      return proto.isStatic();
+    }
+
+    // Don't use if interface is not active
+    if (proto.isOspf()) {
+      return peerHasProto;
+    }
+
+    // Exclude abstract iBGP edges from all protocols except BGP
+    if (iface.getName().startsWith("iBGP-")) {
+      return proto.isBgp();
+    }
+
+    // Never use Loopbacks for any protocol except connected
+    if (ge.getStart().isLoopback(conf.getConfigurationFormat())) {
+      return proto.isConnected();
+    }
+
+    // Don't use ospf over edges to hosts / external
+    if ((ge.getPeer() == null || isHost(ge.getPeer())) && proto.isOspf()) {
+      return false;
+    }
+
+    // Only use specified edges from static routes
+    if (proto.isStatic()) { // FIXME
+      List<StaticRoute> srs = getStaticRoutes().get(conf.getHostname(), iface.getName());
+      return iface.getActive() && srs != null && !srs.isEmpty();
+    }
+
+    // Only use an edge in BGP if there is an explicit peering
+    if (proto.isBgp()) {
+      return peerHasProto;
+    }
+
+    return true;
+  }
+
+
+
+
   /*
    * Check if a topology edge is used in a particular protocol.
    */
@@ -1316,7 +1366,7 @@ public class Graph {
   public Set<String> getRouters() {
     return _routers;
   }
-  public List<GraphEdge> getPossilbe(){
+  public List<GraphEdge> getPossible(){
     return _ebgppossible;
   }
 }

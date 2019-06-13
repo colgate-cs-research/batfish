@@ -57,6 +57,15 @@ class LogicalGraph {
     return _graph.isEdgeUsed(conf, proto, ge);
   }
 
+    /*
+     * Check if a logical edge could be for a particular protocol.
+     */
+    boolean couldEdgeUsed(Protocol proto, LogicalEdge e, Map<String, List<Protocol>> routerToProtocols) {
+        GraphEdge ge = e.getEdge();
+        return _graph.couldEdgeUsed(proto, ge, routerToProtocols);
+    }
+
+
   /*
    * Getters and setters
    */

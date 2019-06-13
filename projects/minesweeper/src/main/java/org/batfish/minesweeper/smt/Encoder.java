@@ -1094,7 +1094,7 @@ public class Encoder {
    * but not actually exist
    */
   public List<PredicateLabel> edgeToLabel(){
-    List<GraphEdge> possible=_graph.getPossilbe();
+    List<GraphEdge> possible=_graph.getPossible();
     List<PredicateLabel> result=new ArrayList<>();
     for (GraphEdge e: possible) {
       PredicateLabel label1=new PredicateLabel(labels.EXPORT,e.getRouter(),e.getStart(),Protocol.BGP);
@@ -1614,7 +1614,7 @@ public class Encoder {
     int extraComputable = 0;
     int extraConfigurable = 0;
 
-//    candidatePredLabels.addAll(edgeToLabel()); //Adds all possible BGP edges? TODO: WHY?
+//    candidatePredLabels.addAll(edgeToLabel()); //Adds all possible BGP edges? TODO: WHY? THIS WAS A HACK. Added predicates after instead of before
 
     for (PredicateLabel label:candidatePredLabels) {
       for (String q : faultyPredicates.keySet()) {
