@@ -2,17 +2,19 @@
     "class": "org.batfish.minesweeper.question.SmtReachabilityQuestionPlugin$ReachabilityQuestion",
     "differential": false,
     "ingressNodeRegex": "${ingressNodeRegex}",
-    "failNode1Regex": "${node1}",
-    "failNode2Regex": "${node2}",
+    "finalNodeRegex": "${finalNodeRegex}",
+    "finalIfaceRegex": "${finalIfaceRegex}",
+    "srcIps": "${srcIps}",
+    "dstIps": "${dstIps}",
     "failures": "${failures}",
+    "failNode1Regex": "${failNode1Regex}",
+    "failNode2Regex": "${failNode2Regex}",
     "diffType": null,
     "envDiff": false,
     "benchmark": true,
+    "fullModel": true,
     "baseEnvType": "none",
     "deltaEnvType": "none",
-    "finalNodeRegex": "${finalNodeRegex}",
-    "srcIps": "${srcIps}",
-    "dstIps": "${dstIps}",
     "instance": {
         "description": "Ensure that the network is tolerant to interface failures",
         "instanceName": "smtReachability",
@@ -28,27 +30,15 @@
                 "type": "nodeSpec",
                 "value": ".*"
             },
-            "node1": {
-                "description": "Regex to specify the first node that is part of the link to fail",
-                "type": "nodeSpec",
-                "optional": true,
-                "value": ".*"
-            },
-            "node2": {
-                "description": "Regex to specify the second node that is part of the link to fail",
-                "type": "nodeSpec",
-                "optional": true,
-                "value": ".*"
-            },
-            "failures": {
-                "description": "Number of failures to analyze",
-                "type": "integer",
-                "optional": true,
-                "value": 1
-            },
             "finalNodeRegex": {
                 "description": "Final nodes",
                 "type": "nodeSpec",
+                "optional": true,
+                "value": ".*"
+            },
+            "finalIfaceRegex": {
+                "description": "Final interfaces",
+                "type": "string",
                 "optional": true,
                 "value": ".*"
             },
@@ -65,6 +55,24 @@
                 "minElements": 0,
                 "optional": true,
                 "value": 1
+            },
+            "failures": {
+                "description": "Number of failures to analyze",
+                "type": "integer",
+                "optional": true,
+                "value": 1
+            },
+            "failNode1Regex": {
+                "description": "Regex to specify the first node that is part of the link to fail",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ".*"
+            },
+            "failNode2Regex": {
+                "description": "Regex to specify the second node that is part of the link to fail",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ".*"
             }
         }
     }
