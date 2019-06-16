@@ -1,0 +1,24 @@
+!
+version 12.4
+!
+hostname g
+!
+interface GigabitEthernet0/1
+    description b:Gi0/4
+    ip address 103.0.1.7 255.255.255.0
+    ip ospf cost 20
+!
+interface GigabitEthernet0/2
+    description d:Gi0/4
+    ip address 103.0.0.7 255.255.255.0
+    ip ospf cost 10
+!
+interface GigabitEthernet0/3
+    ip address 203.0.0.7 255.255.255.0
+!
+router ospf 103
+    redistribute connected
+    area 103 stub
+    network 103.0.0.0 0.0.255.255 area 103
+!
+end
