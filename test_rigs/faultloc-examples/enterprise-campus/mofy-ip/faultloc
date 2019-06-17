@@ -1,0 +1,5 @@
+p1
+EXPORT g GigabitEthernet0/1 OSPF
+EXPORT g GigabitEthernet0/2 OSPF
+IMPORT g GigabitEthernet0/2 OSPF
+IMPORT g GigabitEthernet0/1 OSPF
