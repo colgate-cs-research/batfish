@@ -10,6 +10,8 @@ import com.microsoft.z3.Model;
 import com.microsoft.z3.Solver;
 import com.microsoft.z3.Status;
 import com.microsoft.z3.Tactic;
+
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1343,12 +1345,24 @@ public class Encoder {
         int[] predicateFrequency = new int[predNames.size()];
 
 
+        Set<Set<PredicateLabel>> musesLabels = new HashSet<>();
+
+
         for (Set<Integer> mus : muses) {
+          Set<PredicateLabel> musLabels = new HashSet<>();
           for (Integer pred_num : mus) {
             if (pred_num<predicateFrequency.length){
               predicateFrequency[pred_num]++; //TODO : How to deal with failure set constraints that appear in MUSes.
+              if (labels.get(pred_num).isConfigurable()){
+                musLabels.add(labels.get(pred_num));
+              }
             }
           }
+          musesLabels.add(musLabels);
+        }
+
+        if (_settings.getBoolean(ARG_BULK_SAVE_MUS)){
+          saveMUSes(musesLabels);
         }
 
         totalNumMUSesGenerated += muses.size();
@@ -1404,10 +1418,12 @@ public class Encoder {
         System.out.println("=====================================================");
         System.out.println("\n" + numCounterexamples + " counterexamples");
 
-        if(_settings.getString(ARG_USE_MARCO)!=null){
+        if(_settings.getString(ARG_USE_MARCO)!=null) {
           localizeFaultsUsingMarco();
-        }else if (_settings.getBoolean(ARG_BULK_SAVE_MUS)){
-          saveMUSes(produceMUSes());
+//        }else if (_settings.getBoolean(ARG_BULK_SAVE_MUS)){
+////          saveMUSes(produceMUSes());
+//
+//        }
         }else {
 
 
@@ -1707,8 +1723,9 @@ print out unfound items in Faultloc
   }
 
   void saveMUSes(Set<Set<PredicateLabel>> setOfMUSes){
+    String timeStamp = new SimpleDateFormat("yyMMddHHmmssSS").format(new Date());
     Path filepath = _batfish.getTestrigPath()
-            .resolve(BfConsts.RELPATH_OUTPUT).resolve("mus_bulk");
+            .resolve(BfConsts.RELPATH_OUTPUT).resolve("mus_bulk_"+timeStamp);
     System.out.printf("Saving MUSes to %s\n", filepath);
     File file = filepath.toFile();
     try {
