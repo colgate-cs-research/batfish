@@ -2,28 +2,8 @@ package org.batfish.minesweeper.smt;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.microsoft.z3.ArithExpr;
-import com.microsoft.z3.BitVecExpr;
-import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Context;
-import com.microsoft.z3.Expr;
-import com.microsoft.z3.Solver;
-
-import java.util.*;
-import java.util.Map.Entry;
-import javax.annotation.Nullable;
-import org.batfish.datamodel.BgpActivePeerConfig;
-import org.batfish.datamodel.Configuration;
-import org.batfish.datamodel.HeaderSpace;
-import org.batfish.datamodel.Interface;
-import org.batfish.datamodel.Ip;
-import org.batfish.datamodel.IpAccessList;
-import org.batfish.datamodel.IpWildcard;
-import org.batfish.datamodel.Prefix;
-import org.batfish.datamodel.PrefixRange;
-import org.batfish.datamodel.RoutingProtocol;
-import org.batfish.datamodel.StaticRoute;
-import org.batfish.datamodel.SubRange;
+import com.microsoft.z3.*;
+import org.batfish.datamodel.*;
 import org.batfish.datamodel.acl.MatchHeaderSpace;
 import org.batfish.datamodel.questions.smt.BgpDecisionVariable;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
@@ -31,14 +11,15 @@ import org.batfish.datamodel.routing_policy.expr.MatchProtocol;
 import org.batfish.datamodel.routing_policy.statement.If;
 import org.batfish.datamodel.routing_policy.statement.Statement;
 import org.batfish.datamodel.routing_policy.statement.Statements;
-import org.batfish.minesweeper.CommunityVar;
-import org.batfish.minesweeper.Graph;
-import org.batfish.minesweeper.GraphEdge;
-import org.batfish.minesweeper.OspfType;
 import org.batfish.minesweeper.Protocol;
+import org.batfish.minesweeper.*;
 import org.batfish.minesweeper.collections.Table2;
 import org.batfish.minesweeper.smt.PredicateLabel.labels;
 import org.batfish.minesweeper.utils.IpSpaceMayIntersectWildcard;
+
+import javax.annotation.Nullable;
+import java.util.*;
+import java.util.Map.Entry;
 
 
 /**
@@ -1818,21 +1799,23 @@ class EncoderSlice {
         List<StaticRoute> srs = _graph.getStaticRoutes().get(router, iface.getName());
         assert (srs != null);
         BoolExpr acc = mkNot(vars.getPermitted());
-        for (StaticRoute sr : srs) {
-          Prefix p = sr.getNetwork();
-          BoolExpr relevant =
-              mkAnd(
-                  interfaceActive(iface, proto),
-                  isRelevantFor(p, _symbolicPacket.getDstIp()),
-                  notFailed,
-                  notFailedNode);
-          BoolExpr per = vars.getPermitted();
-          BoolExpr len = safeEq(vars.getPrefixLength(), mkInt(p.getPrefixLength()));
-          BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(sr.getAdministrativeCost()));
-          BoolExpr lp = safeEq(vars.getLocalPref(), mkInt(0));
-          BoolExpr met = safeEq(vars.getMetric(), mkInt(0));
-          BoolExpr values = mkAnd(per, len, ad, lp, met);
-          acc = mkIf(relevant, values, acc);
+        if (getGraph().isEdgeUsed(conf, proto, ge)){
+          for (StaticRoute sr : srs) {
+            Prefix p = sr.getNetwork();
+            BoolExpr relevant =
+                    mkAnd(
+                            interfaceActive(iface, proto),
+                            isRelevantFor(p, _symbolicPacket.getDstIp()),
+                            notFailed,
+                            notFailedNode);
+            BoolExpr per = vars.getPermitted();
+            BoolExpr len = safeEq(vars.getPrefixLength(), mkInt(p.getPrefixLength()));
+            BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(sr.getAdministrativeCost()));
+            BoolExpr lp = safeEq(vars.getLocalPref(), mkInt(0));
+            BoolExpr met = safeEq(vars.getMetric(), mkInt(0));
+            BoolExpr values = mkAnd(per, len, ad, lp, met);
+            acc = mkIf(relevant, values, acc);
+          }
         }
         add(acc, importLabel);
       }
@@ -1944,7 +1927,10 @@ class EncoderSlice {
           }
 
           // OSPF cost calculated based on incoming interface
-          Integer cost = proto.isOspf() ? addedCost(proto, ge) : 0;
+          Integer cost = 1; //FIXME : non-existent edges cost default
+          if (getGraph().isEdgeUsed(conf, proto, ge)) {
+            cost = proto.isOspf() ? addedCost(proto, ge) : 0;
+          }
 
           TransferSSA f =
               new TransferSSA(this, conf, varsOther, vars, proto, statements, cost, ge, false);
