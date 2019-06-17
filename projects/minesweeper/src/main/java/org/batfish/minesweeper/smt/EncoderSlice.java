@@ -1845,19 +1845,23 @@ class EncoderSlice {
           // BoolExpr isRoot = relevantOrigination(originations);
           BoolExpr active = interfaceActive(iface, proto);
 
-          // Handle iBGP by checking reachability to the next hop to send messages
-          boolean isNonClient =
-              (proto.isBgp()) && (getGraph().peerType(ge) != Graph.BgpSendType.TO_EBGP);
-          boolean isClient =
-              (proto.isBgp()) && (getGraph().peerType(ge) == Graph.BgpSendType.TO_RR);
-
           BoolExpr receiveMessage;
-          String currentRouter = ge.getRouter();
-          String peerRouter = ge.getPeer();
 
-          if (_encoder.getModelIgp() && isNonClient) {
-            // Lookup reachabilty based on peer next-hop
-            receiveMessage = _encoder.getSliceReachability().get(currentRouter).get(peerRouter);
+
+          if (!getGraph().isEdgeUsed(conf, proto, ge)) {
+            receiveMessage = notFailed;
+           }else {
+            boolean isNonClient =
+                    (proto.isBgp()) && (getGraph().peerType(ge) != Graph.BgpSendType.TO_EBGP);
+            boolean isClient =
+                    (proto.isBgp()) && (getGraph().peerType(ge) == Graph.BgpSendType.TO_RR);
+
+
+            String currentRouter = ge.getRouter();
+            String peerRouter = ge.getPeer();
+            if (_encoder.getModelIgp() && isNonClient) {
+              // Lookup reachabilty based on peer next-hop
+              receiveMessage = _encoder.getSliceReachability().get(currentRouter).get(peerRouter);
             /* EncoderSlice peerSlice = _encoder.getSlice(peerRouter);
             BoolExpr srcPort = mkEq(peerSlice.getSymbolicPacket().getSrcPort(), mkInt(179));
             BoolExpr srcIp = mkEq(peerSlice.getSymbolicPacket().getSrcIp(), mkInt(0));
@@ -1875,14 +1879,14 @@ class EncoderSlice {
                 mkAnd(srcPort, srcIp, tcpAck,
                     tcpCwr, tcpEce, tcpFin, tcpPsh, tcpRst, tcpSyn, tcpUrg, icmpCode, icmpType);
             receiveMessage = mkImplies(all, receiveMessage); */
-          } else if (_encoder.getModelIgp() && isClient) {
-            // Lookup reachability based on client id tag to find next hop
-            BoolExpr acc = mkTrue();
-            for (Map.Entry<String, Integer> entry : getGraph().getOriginatorId().entrySet()) {
-              String r = entry.getKey();
-              Integer id = entry.getValue();
-              if (!r.equals(currentRouter)) {
-                BoolExpr reach = _encoder.getSliceReachability().get(currentRouter).get(r);
+            } else if (_encoder.getModelIgp() && isClient) {
+              // Lookup reachability based on client id tag to find next hop
+              BoolExpr acc = mkTrue();
+              for (Map.Entry<String, Integer> entry : getGraph().getOriginatorId().entrySet()) {
+                String r = entry.getKey();
+                Integer id = entry.getValue();
+                if (!r.equals(currentRouter)) {
+                  BoolExpr reach = _encoder.getSliceReachability().get(currentRouter).get(r);
                 /* EncoderSlice peerSlice = _encoder.getSlice(r);
                 BoolExpr srcPort = mkEq(peerSlice.getSymbolicPacket().getSrcPort(), mkInt(179));
                 BoolExpr srcIp = mkEq(peerSlice.getSymbolicPacket().getSrcIp(), mkInt(0));
@@ -1900,14 +1904,15 @@ class EncoderSlice {
                     mkAnd(srcPort, srcIp, tcpAck,
                         tcpCwr, tcpEce, tcpFin, tcpPsh, tcpRst, tcpSyn, tcpUrg, icmpCode, icmpType);
                 reach = mkImplies(all, reach); */
-                acc = mkAnd(acc, mkImplies(varsOther.getClientId().checkIfValue(id), reach));
+                  acc = mkAnd(acc, mkImplies(varsOther.getClientId().checkIfValue(id), reach));
+                }
               }
-            }
-            receiveMessage = acc;
+              receiveMessage = acc;
 
-            // Just check if the link is failed
-          } else {
-            receiveMessage = notFailed;
+              // Just check if the link is failed
+            } else {
+              receiveMessage = notFailed;
+            }
           }
 
           // Take into account BGP loop prevention
@@ -2229,17 +2234,21 @@ class EncoderSlice {
         boolean hasEdge = false;
 
         List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
+
         assert (les != null);
+
+
 
         for (ArrayList<LogicalEdge> eList : les) {
           for (LogicalEdge e : eList) {
             GraphEdge ge = e.getEdge();
-            if (!getGraph().isEdgeUsed(conf, proto, ge)) {
-              if (getGraph().couldEdgeUsed(proto, ge, getProtocols())){
-                PredicateLabel label = new PredicateLabel((e.getEdgeType()==EdgeType.IMPORT? labels.IMPORT:labels.EXPORT),router, ge.getStart(), proto);
-                add(mkNot(e.getSymbolicRecord().getPermitted()), label);
-              }
+            if (!getGraph().couldEdgeUsed(proto, ge, getProtocols())) {
               continue;
+//              if (getGraph().couldEdgeUsed(proto, ge, getProtocols())){
+//                PredicateLabel label = new PredicateLabel((e.getEdgeType()==EdgeType.IMPORT? labels.IMPORT:labels.EXPORT),router, ge.getStart(), proto);
+//                add(mkNot(e.getSymbolicRecord().getPermitted()), label);
+//                System.out.println("Created pseudo record for export :: "  + ge.toString() +" | "+ _logicalGraph.findOtherVars(e).getName());
+//              }
             }
 
             hasEdge = true;
@@ -2252,6 +2261,11 @@ class EncoderSlice {
                 break;
 
               case EXPORT:
+                if (!getGraph().isEdgeUsed(conf,proto, ge)){
+                  PredicateLabel exportLabel = new PredicateLabel(labels.EXPORT,router, ge.getStart(), proto);
+                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
+                  break;
+                }
                 // OSPF export is tricky because it does not depend on being
                 // in the FIB. So it can come from either a redistributed route
                 // or another OSPF route. We always take the direct OSPF
