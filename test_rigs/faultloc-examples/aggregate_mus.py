@@ -8,6 +8,7 @@ def main():
     parser = argparse.ArgumentParser(description='Aggregate experiment output')
     parser.add_argument('-c','--containers', dest='path', action='store',
             required=True, help='Path to containers directory')
+    parser.add_argument('-i', '--intersect',dest='intersect', action='store_true', help='Only consider predicates appearing in all muses.')
     args = parser.parse_args()
 
     #top_level_dir = os.path.join(args.path, "result")
@@ -18,18 +19,18 @@ def main():
     writer.writerow(["found_preds_count","missed_preds_count","extra_count","missed_preds", "allMUSes_genTime","numMUSGenerated","network", "scenario"])
 
     if os.path.exists(os.path.join(args.path, "network_ids")):
-        process_experiment(None, args.path, writer)
+        process_experiment(None, args.path, writer, args.intersect)
     else:
         for experiment in os.listdir(args.path):
             if experiment.startswith('.'):
                 continue
             process_experiment(experiment, os.path.join(args.path,
-                    experiment), writer)
+                    experiment), writer, args.intersect)
 
     masterfile.close()
 
 
-def process_experiment(experiment_name, base_dir, writer):
+def process_experiment(experiment_name, base_dir, writer, should_intersect = False):
     # Process every network
     ids_dir = os.path.join(base_dir, "network_ids")
     if os.path.exists(ids_dir):
@@ -38,9 +39,9 @@ def process_experiment(experiment_name, base_dir, writer):
                 network_id = id_file.read().strip()
             network_name = id_filename[:-3]
             process_network(experiment_name, network_name,
-                    os.path.join(base_dir, network_id), writer)
+                    os.path.join(base_dir, network_id), writer, should_intersect)
 
-def process_network(experiment_name, network_name, base_dir, writer):
+def process_network(experiment_name, network_name, base_dir, writer, should_intersect):
     # Process every snapshot
     ids_dir = os.path.join(base_dir, "snapshot_ids")
     if os.path.exists(ids_dir):
@@ -53,7 +54,7 @@ def process_network(experiment_name, network_name, base_dir, writer):
                 snapshot_id = id_file.read().strip()
             snapshot_name = id_filename[:-3]
             preds, gen_time, mus_count, faulty_preds = process_snapshot(experiment_name, network_name, snapshot_name,
-                    os.path.join(base_dir, "snapshots", snapshot_id))
+                    os.path.join(base_dir, "snapshots", snapshot_id), should_intersect)
             if None == preds:
                 continue
             if snapshot_name not in scenario_to_preds: #sufficient of all dicts
@@ -84,7 +85,7 @@ def process_network(experiment_name, network_name, base_dir, writer):
                         str(scenario_to_mus_count[scenario]),
                         network_name,scenario])
 
-def process_snapshot(experiment_name, network_name, snapshot_name, base_dir):
+def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, should_intersect):
     exp_filepath = os.path.join(base_dir, "output", "experiment.csv")
 
     if os.path.exists(exp_filepath):
@@ -93,7 +94,7 @@ def process_snapshot(experiment_name, network_name, snapshot_name, base_dir):
         for filename in os.listdir(output_dir):
             if filename.startswith('mus_bulk'):
                 filepath = os.path.join(output_dir, filename)
-                preds = process_mus(filepath)
+                preds = process_mus_intersect(filepath) if should_intersect else process_mus(filepath)
                 for pred in preds:
                     all_preds.add(pred)
         gentime = 0
@@ -127,6 +128,20 @@ def process_mus(mus_file_path):
             preds_list =  mus.split(',')
             for x in preds_list:
                 preds.add(x)
+    return preds
+
+def process_mus_intersect(mus_file_path):
+    preds = set()
+    first = True
+    with open(mus_file_path, "r") as mus_file:
+        for mus in mus_file:
+            preds_set = set(mus.split(','))
+            if (first):
+                preds = preds.union(preds_set)
+                first = False
+            else:
+                preds = preds.intersection(preds_set)
+
     return preds
 if __name__ == "__main__":
     main()

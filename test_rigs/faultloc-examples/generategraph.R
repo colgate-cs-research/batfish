@@ -1,9 +1,9 @@
 mydata = read.csv("master.csv",header=TRUE,sep=",")
-mydata$percentfound<-(mydata$foundpreds/(mydata$foundpreds+mydata$missedpreds))*100
+mydata$percentfound<-ifelse(mydata$foundpreds+mydata$missedpreds>0,(mydata$foundpreds/(mydata$foundpreds+mydata$missedpreds))*100,100)
 mydata$precision<-(mydata$foundpreds/(mydata$foundpreds+mydata$extraconfigpred))*100
 mydata[is.na(mydata)]=0
 
-colors <- c('red', 'yellow', 'green')
+colors <- c('red', 'yellow', 'green','blue', 'black', 'purple')
 
 #png("percent.png",width = 800)
 #boxplot (mydata$percentfound~mydata$experiment, main="Percent of predicates found", xlab="Experiment", ylab="Percent")
@@ -20,7 +20,7 @@ dev.off()
 png("recall(network).png",width = 800)
 plotdata <- table(mydata$percentfound, mydata$network)
 barplot (plotdata, main="Recall", xlab="Network", ylab="Number of violations", col=colors, ylim=c(0,25))
-legend(0, 100, fill=colors, legend=rownames(plotdata))
+legend(0, 25, fill=colors, legend=rownames(plotdata))
 dev.off()
 
 png("precision(network).png", width = 800)
