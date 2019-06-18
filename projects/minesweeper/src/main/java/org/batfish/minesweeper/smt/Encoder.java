@@ -1261,6 +1261,8 @@ public class Encoder {
     long time_start = System.currentTimeMillis();
     boolean isFirstFailSet = true;
 
+    int maxMUScount = _settings.getInteger(ARG_MAX_MUS_COUNT, 50); //default max MUS count is 50.
+
     System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
     Map<String, BoolExpr> predicates = new HashMap<>();
 
@@ -1330,17 +1332,17 @@ public class Encoder {
                 solver.getNumAssertions(),
                 solver.getUnsatCore().length);
 
-        System.out.println("Running Marco");
+        System.out.printf("Running Marco (upto %d MUSes will be produced) \n", maxMUScount);
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
         List<Set<Integer>> muses;
         if (isFirstFailSet) {
-          muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true, _faultlocStats);
+          muses = MarcoMUS.enumerate(constraints, _ctx, maxMUScount, 2000, true, _faultlocStats);
           time_end = System.currentTimeMillis();
           _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
           isFirstFailSet = false;
         }else{
           time_end = System.currentTimeMillis();
-          muses = MarcoMUS.enumerate(constraints, _ctx, 50, 1000, true, null);
+          muses = MarcoMUS.enumerate(constraints, _ctx, maxMUScount, 2000, true, null);
         }
         int[] predicateFrequency = new int[predNames.size()];
 
@@ -1369,11 +1371,16 @@ public class Encoder {
 
         Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
         for (int i = 0; i < predicateFrequency.length; i++) {
-          if (predicateFrequency[i] > 0) {
-            //Intersect MUSes if option selected. Union by default.
-            if (!_settings.getBoolean(ARG_MUS_INTERSECT) || predicateFrequency[i]==muses.size()){
-              candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
+          if (labels.get(i).isConfigurable()){
+            if (predicateFrequency[i] > 0) {
+              //Intersect MUSes if option selected. Union by default.
+              if (!_settings.getBoolean(ARG_MUS_INTERSECT) || predicateFrequency[i]==muses.size()){
+                candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
+                System.out.printf("** %s appeared  in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+
+              }
               System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+
             }
           }
         }

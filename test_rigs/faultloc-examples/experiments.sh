@@ -17,11 +17,9 @@ RESULTDIR="$OUTPUTDIR/result"
 mkdir -p $RESULTDIR
 
 # Configure experimental setups
-declare -A OPTIONS=(["c"]="includeComputable" \
-                    ["m"]="minimizeUnsatCore" \
-                    ["s"]="enableSlicing" \
-                    ["i"]="splitITE")
-declare -a SETUPS=("" "c" "m" "cm" "cs" "csm" "ic" "icm" "ics" "icsm")
+declare -A OPTIONS=(["i"]="musIntersect")
+declare -a SETUPS=("" "i")
+declare -a MUS_COUNTS =(1,10,100,1000)
 
 # Clean-up from last experiment
 rm -rf $BASEDIR/containers
@@ -29,31 +27,33 @@ rm -rf $BASEDIR/containers
 # Run experiment for each setup
 for SETUP in "${SETUPS[@]}"; do
     echo $SETUP
+    for MUS_COUNT in "${MUS_COUNTS[@]}"; do
 
-    # Prepare options file
-    echo "add-batfish-option numIters 20" > $BASEDIR/custom-options
-    for (( i=0; i<${#SETUP}; i++ )); do
-        CHAR=${SETUP:$i:1}
-        OPTION=${OPTIONS[$CHAR]}
-        echo "add-batfish-option $OPTION" >> $BASEDIR/custom-options
+        # Prepare options file
+        echo "add-batfish-option numIters 40" > $BASEDIR/custom-options
+        echo "add-batfish-option saveMUS" >> $BASEDIR/custom-options
+        echo "add-batfish-option mus $MUS_COUNT" >> $BASEDIR/custom-options
+        for (( i=0; i<${#SETUP}; i++ )); do
+            CHAR=${SETUP:$i:1}
+            OPTION=${OPTIONS[$CHAR]}
+            echo "add-batfish-option $OPTION" >> $BASEDIR/custom-options
+        done
+
+        if [ -z $SETUP ]; then
+            SETUP="noop"
+        fi
+        echo $SETUP $MUS_COUNT
+
+        # Run experiment
+        $BASEDIR/run_all.sh 2>&1 | tee $LOGDIR/$SETUP-$MUS_COUNT.log
+
+        # Save output
+        mkdir -p $RESULTDIR/$SETUP
+        cp -r $BASEDIR/containers/* $RESULTDIR/$SETUP || exit 1
+        rm -rf $BASEDIR/containers
     done
-
-    if [ -z $SETUP ]; then
-        SETUP="noop"
-    fi
-    echo $SETUP
-
-    # Run experiment
-    $BASEDIR/run_all.sh 2>&1 | tee $LOGDIR/$SETUP.log
-
-    # Save output
-    mkdir -p $RESULTDIR/$SETUP
-    cp -r $BASEDIR/containers/* $RESULTDIR/$SETUP || exit 1
-    rm -rf $BASEDIR/containers
 done
 
-# Aggregate results
-python3 $BASEDIR/aggregate.py -path $OUTPUTDIR
 
 # Render graphs
 cd $OUTPUTDIR

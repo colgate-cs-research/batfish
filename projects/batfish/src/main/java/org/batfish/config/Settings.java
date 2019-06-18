@@ -640,7 +640,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     setDefaultProperty(ARG_MUS_INTERSECT, false);
     setDefaultProperty(ARG_MUS_UNION, false);
     setDefaultProperty(ARG_BULK_SAVE_MUS,false);
-    setDefaultProperty(ARG_MAX_MUS_COUNT, Integer.MAX_VALUE);
+    setDefaultProperty(ARG_MAX_MUS_COUNT, 50);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_PRINT_GRAPH, false);
     setDefaultProperty(ARG_PRINT_SMT, false);
