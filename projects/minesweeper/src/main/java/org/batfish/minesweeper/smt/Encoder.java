@@ -1370,10 +1370,15 @@ public class Encoder {
         Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
         for (int i = 0; i < predicateFrequency.length; i++) {
           if (predicateFrequency[i] > 0) {
-            candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
-            System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+            //Intersect MUSes if option selected. Union by default.
+            if (!_settings.getBoolean(ARG_MUS_INTERSECT) || predicateFrequency[i]==muses.size()){
+              candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
+              System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
+            }
           }
         }
+
+        System.out.printf("Considering %d candidate predicates\n", candidatePredicateLabels.size());
 
         HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc(); //Predicates that are at fault
         HashMap<String, ArrayList<PredicateLabel>> faultyPreds= loadFaultloc(); //This is the OG list of faulty preds
