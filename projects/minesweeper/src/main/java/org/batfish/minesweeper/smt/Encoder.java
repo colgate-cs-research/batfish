@@ -1650,29 +1650,40 @@ public class Encoder {
 /*
 print out unfound items in Faultloc
 */
-  void outUnfound(HashMap<String, ArrayList<PredicateLabel>> unfound,
-                  HashMap<String, ArrayList<PredicateLabel>> Faultloc){
-    int unfoundCount = 0;
+  void outUnfound(HashMap<String, ArrayList<PredicateLabel>> missedPredicatesMap,
+                  HashMap<String, ArrayList<PredicateLabel>> faultyPredicatesMap){
+    int missedCount = 0;
     int foundCount = 0;
-    for (String q:Faultloc.keySet()) {
-      unfoundCount = unfound.get(q).size();
-      foundCount = Faultloc.get(q).size()-unfoundCount;
+    for (String q:faultyPredicatesMap.keySet()) {
+      missedCount = missedPredicatesMap.get(q).size();
+      foundCount = faultyPredicatesMap.get(q).size()-missedCount;
       System.out.println("\nFaulty predicates for " + q + ": "
-              + foundCount + " found, " + unfoundCount + " unfound");
-      if (unfoundCount > 0) {
-        System.out.println("Unfound faulty predicates for " + q + ":");
+              + foundCount + " found, " + missedCount + " missed");
+      if (missedCount > 0) {
+        System.out.println("Missed faulty predicates for " + q + ":");
         System.out.println("-------------------------------------------");
-        for (PredicateLabel label : unfound.get(q)) {
+        for (PredicateLabel label : missedPredicatesMap.get(q)) {
             System.out.println(label);
+        }
+        System.out.println("-------------------------------------------");
+      }
+
+      if (foundCount>0){
+        System.out.println("Found faulty predicates for " + q + ":");
+        System.out.println("-------------------------------------------");
+        for (PredicateLabel label: faultyPredicatesMap.get(q)){
+          if (!missedPredicatesMap.get(q).contains(label)){
+            System.out.println(label);
+          }
         }
         System.out.println("-------------------------------------------");
       }
     }
     _faultlocStats.setNumFoundPreds(foundCount);
-    _faultlocStats.setNumUnfoundPreds(unfoundCount);
+    _faultlocStats.setNumUnfoundPreds(missedCount);
     String unfoundpred="";
-    for (String q:Faultloc.keySet()) {
-      for (PredicateLabel label:unfound.get(q))
+    for (String q:faultyPredicatesMap.keySet()) {
+      for (PredicateLabel label:missedPredicatesMap.get(q))
       unfoundpred+=label.toString()+";";
     }
     _faultlocStats.setUnfoundPreds(unfoundpred);
