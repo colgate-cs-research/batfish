@@ -1260,6 +1260,8 @@ public class Encoder {
     int totalNumMUSesGenerated = 0;
     long time_start = System.currentTimeMillis();
     boolean isFirstFailSet = true;
+    Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
+
 
     int maxMUScount = _settings.getInteger(ARG_MAX_MUS_COUNT, 50); //default max MUS count is 50.
 
@@ -1284,6 +1286,7 @@ public class Encoder {
     List<BoolExpr> allConstraints =new ArrayList<>();
     List<PredicateLabel> labels = new ArrayList<>();
     List<String> predNames = new ArrayList<>();
+
     Solver solver;
     long time_end = time_start;
     for (SortedMap<String, ArithExpr> failureSet : failureSets.keySet()){
@@ -1369,7 +1372,6 @@ public class Encoder {
 
         totalNumMUSesGenerated += muses.size();
 
-        Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
         for (int i = 0; i < predicateFrequency.length; i++) {
           if (labels.get(i).isConfigurable()){
             if (predicateFrequency[i] > 0) {
@@ -1377,23 +1379,22 @@ public class Encoder {
               if (!_settings.getBoolean(ARG_MUS_INTERSECT) || predicateFrequency[i]==muses.size()){
                 candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
                 System.out.printf("** %s appeared  in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
-
               }
               System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
-
             }
           }
         }
 
-        System.out.printf("Considering %d candidate predicates\n", candidatePredicateLabels.size());
 
-        HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc(); //Predicates that are at fault
-        HashMap<String, ArrayList<PredicateLabel>> faultyPreds= loadFaultloc(); //This is the OG list of faulty preds
-
-        computeExtrapredicates(predNameToLabelsMap,unfound,faultyPreds,candidatePredicateLabels);
-        outUnfound(unfound,faultyPreds);
       }
     }
+    System.out.printf("Considering %d candidate predicates\n", candidatePredicateLabels.size());
+
+    HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc(); //Predicates that are at fault
+    HashMap<String, ArrayList<PredicateLabel>> faultyPreds= loadFaultloc(); //This is the OG list of faulty preds
+
+    computeExtrapredicates(predNameToLabelsMap,unfound,faultyPreds,candidatePredicateLabels);
+    outUnfound(unfound,faultyPreds);
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_end - time_start);
     _faultlocStats.setNumMUSesGenerated(totalNumMUSesGenerated);
   }
