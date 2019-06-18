@@ -1,0 +1,2 @@
+p1
+EXPORT c GigabitEthernet0/1 OSPF

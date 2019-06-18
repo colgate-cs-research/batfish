@@ -1,0 +1,2 @@
+p1
+EXPORT b GigabitEthernet0/2 OSPF
