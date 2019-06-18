@@ -1,5 +1,7 @@
 mydata = read.csv("master_mus.csv",header=TRUE,sep=",")
-mydata$percentfound<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count))*100
+
+mydata$percentfound<-ifelse(mydata$found_preds_count+mydata$missed_preds_count>0,(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count))*100,100)
+
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count))*100
 mydata[is.na(mydata)]=0
 
@@ -15,8 +17,8 @@ dev.off()
 
 png("recall(network).png",width = 800)
 plotdata <- table(mydata$percentfound, mydata$network)
-barplot (plotdata, main="Recall", xlab="Network", ylab="Number of violations", col=colors, ylim=c(0,25))
-legend(0, 100, fill=colors, legend=rownames(plotdata))
+barplot (plotdata, main="Recall", xlab="Network", ylab="Number of violations", col=colors, ylim=c(0,10))
+legend(0, 10, fill=colors, legend=rownames(plotdata))
 dev.off()
 
 png("precision(network).png", width = 800)
@@ -29,8 +31,8 @@ dev.off()
 
 png("recall(scenario).png",width = 800)
 plotdata <- table(mydata$percentfound, mydata$scenario)
-barplot (plotdata, main="Recall", xlab="Scenario", ylab="Number of violations", col=colors, ylim=c(0,100))
-legend(0, 100, fill=colors, legend=rownames(plotdata))
+barplot (plotdata, main="Recall", xlab="Scenario", ylab="Number of violations", col=colors, ylim=c(0,10))
+legend(0, 10, fill=colors, legend=rownames(plotdata))
 dev.off()
 
 png("allMUSes_genTime(scenario).png",width = 800)
