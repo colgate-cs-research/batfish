@@ -96,7 +96,7 @@ interface Ethernet1
 !
 router bgp 11
   bgp bestpath as-path multipath-relax
-  network 70.0.11.0/25
+  network 70.0.11.0/24
   neighbor 10.0.5.0 remote-as 8
   neighbor 10.0.5.0 send-community
   neighbor 10.0.7.0 remote-as 9

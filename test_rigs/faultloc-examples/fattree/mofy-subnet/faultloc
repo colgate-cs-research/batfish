@@ -1,2 +1,3 @@
 p1
-EXPORT edge-6 Serial0 BGP
+EXPORT edge-14 Serial0 BGP
+EXPORT edge-14 Serial1 BGP

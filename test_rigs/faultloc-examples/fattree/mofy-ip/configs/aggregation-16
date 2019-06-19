@@ -63,7 +63,7 @@ interface Loopback0
   ip address 70.0.16.0/32
 !
 interface Serial0
-  ip address 10.0.19.0/31
+  ip address 10.0.19.1/31
   media-type gbic
   speed 1000
   duplex full
