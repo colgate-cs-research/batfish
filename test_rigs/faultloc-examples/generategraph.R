@@ -2,7 +2,8 @@ mydata = read.csv("master.csv",header=TRUE,sep=",")
 mydata$percentfound<-ifelse(mydata$foundpreds+mydata$missedpreds>0,(mydata$foundpreds/(mydata$foundpreds+mydata$missedpreds))*100,100)
 mydata$precision<-(mydata$foundpreds/(mydata$foundpreds+mydata$extraconfigpred))*100
 mydata[is.na(mydata)]=0
-
+print(mean(mydata$percentfound))
+print(mean(mydata$precision))
 colors <- c('red', 'yellow', 'green','blue', 'black', 'purple')
 
 #png("percent.png",width = 800)

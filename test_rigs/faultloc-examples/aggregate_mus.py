@@ -120,6 +120,8 @@ def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, sho
         except OSError:
             pass
         return all_preds, gentime, mus_count, faulty_preds
+    else:
+        print(network_name, snapshot_name)
     return None, None, None, None
 def process_mus(mus_file_path):
     preds= set()

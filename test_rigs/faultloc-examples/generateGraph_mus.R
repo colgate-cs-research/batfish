@@ -5,6 +5,8 @@ mydata$percentfound<-ifelse(mydata$found_preds_count+mydata$missed_preds_count>0
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count))*100
 mydata[is.na(mydata)]=0
 
+print (mean(mydata$percentfound))
+print (mean(mydata$precision))
 colors <- c('red', 'yellow', 'green', 'blue', 'purple', 'orange')
 
 png("extra(network)_agg.png",width = 800)
