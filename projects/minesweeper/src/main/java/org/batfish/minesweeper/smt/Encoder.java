@@ -1754,6 +1754,8 @@ print out unfound items in Faultloc
     File file = filepath.toFile();
     try {
       FileWriter musWriter = new FileWriter(file, true);
+      String policyIdentifier = _question.getSrcIps() + "  ->  " + _question.getDstIps() + "\n";
+      musWriter.append(policyIdentifier);
       for (Set<PredicateLabel> mus : setOfMUSes){
         for (PredicateLabel pred : mus){
           musWriter.append(pred.toString());
