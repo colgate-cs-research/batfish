@@ -387,10 +387,16 @@ class Optimizations {
                 } else if (proto.isOspf()) {
                   // Ensure all interfaces are active
                   boolean allIfacesActive = true;
+                  boolean allCouldUsed = true;
                   for (GraphEdge edge : g.getEdgeMap().get(router)) {
+                    if (g.couldEdgeUsed(proto, edge, getProtocols())) {
                     if (g.isEdgeUsed(conf, proto, edge)) {
                       Interface iface = edge.getStart();
                       allIfacesActive = allIfacesActive && g.isInterfaceActive(proto, iface);
+                    }
+                    else {
+                        allCouldUsed = false;
+                    }
                     }
                   }
 
@@ -403,6 +409,7 @@ class Optimizations {
                       proto,
                       noFailures
                           && allIfacesActive
+                          && allCouldUsed
                           && singleArea
                           && ENABLE_EXPORT_MERGE_OPTIMIZATION);
 
