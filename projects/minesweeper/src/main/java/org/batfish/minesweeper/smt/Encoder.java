@@ -1286,13 +1286,17 @@ public class Encoder {
       }
     }
 
-    List<BoolExpr> allConstraints =new ArrayList<>();
-    List<PredicateLabel> labels = new ArrayList<>();
-    List<String> predNames = new ArrayList<>();
+    List<BoolExpr> allConstraints;
+    List<PredicateLabel> labels;
+    List<String> predNames;
 
     Solver solver;
     long time_end = time_start;
     for (SortedMap<String, ArithExpr> failureSet : failureSets.keySet()){
+
+      allConstraints = new ArrayList<>();
+      labels = new ArrayList<>();
+      predNames = new ArrayList<>();
 
       System.out.println("\n********FAILURE SET***********");
       for(String key: failureSet.keySet()){
@@ -1317,14 +1321,14 @@ public class Encoder {
         //Don't assert and track failure constraint
         solver.add(failureExpr);
         allConstraints.add(failureExpr);
-        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
+        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES, failureExpr.toString()));
       }
       for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
         BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
         //Don't assert and track failure constraint
         solver.add(failureExpr);
         allConstraints.add(failureExpr);
-        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES));
+        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES, failureExpr.toString()));
       }
 
       Status result = solver.check();
@@ -1355,7 +1359,6 @@ public class Encoder {
 
         Set<Set<PredicateLabel>> musesLabels = new HashSet<>();
 
-
         for (Set<Integer> mus : muses) {
           Set<PredicateLabel> musLabels = new HashSet<>();
           for (Integer pred_num : mus) {
@@ -1366,6 +1369,7 @@ public class Encoder {
               }
             }
           }
+
           musesLabels.add(musLabels);
         }
 

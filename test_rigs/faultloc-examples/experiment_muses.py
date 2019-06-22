@@ -42,24 +42,26 @@ def main():
 
 
 def process_network(network, network_dir, writer, args):
+
     snapshot_ids_dir = os.path.join(network_dir, "snapshot_ids")
-    for id_filename in os.listdir(snapshot_ids_dir):
-        with open(os.path.join(snapshot_ids_dir, id_filename)) as id_file:
-            snapshot_id = id_file.read().strip()
-        snapshot_name = id_filename[:-3]
-        snapshot_dir = os.path.join(network_dir, "snapshots", snapshot_id)
-        faulty_preds, snapshot_candidates = process_snapshot(snapshot_dir, args)
-        found_count, missed_count, missed_preds, extra_count = analyze_candidates(snapshot_candidates, faulty_preds)
-        if found_count == 0 == missed_count:
-            continue # No use writing out where there aren't any faults
-        writer.writerow(
-            [str(found_count),
-            str(missed_count),
-            str(extra_count),
-            str(missed_preds),
-            network,
-            snapshot_name]
-        )
+    if os.path.exists(snapshot_ids_dir):
+        for id_filename in os.listdir(snapshot_ids_dir):
+            with open(os.path.join(snapshot_ids_dir, id_filename)) as id_file:
+                snapshot_id = id_file.read().strip()
+            snapshot_name = id_filename[:-3]
+            snapshot_dir = os.path.join(network_dir, "snapshots", snapshot_id)
+            faulty_preds, snapshot_candidates = process_snapshot(snapshot_dir, args)
+            found_count, missed_count, missed_preds, extra_count = analyze_candidates(snapshot_candidates, faulty_preds)
+            if found_count == 0 == missed_count:
+                continue # No use writing out where there aren't any faults
+            writer.writerow(
+                [str(found_count),
+                str(missed_count),
+                str(extra_count),
+                str(missed_preds),
+                network,
+                snapshot_name]
+            )
 
 def process_snapshot(snapshot_dir, args):
     output_dir = os.path.join(snapshot_dir, "output")
