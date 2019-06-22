@@ -81,6 +81,7 @@ public class Encoder {
   static final String NOT_UNSATCORE_OUT_FILE = "not_unsat.out";
   static final String NOT_UNSATCORE_OUT_FILE_NO_NEGATE = "not_unsat_no_negate.out";
 
+  public static final String ARG_NO_FAULTLOC = "noFaultloc";
   public static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
   public static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
   public static final String ARG_PRINT_GRAPH = "printGraph";
@@ -1196,10 +1197,12 @@ public class Encoder {
         result =
             new VerificationResult(false, null, packetModel, envModel, fwdModel, failuresStringSet, stats);
 
-        System.out.println("Localization called.");
-        // Localize faults
-        localizeFaults();
-        _faultlocStats.writeOut();
+        if (!_settings.getBoolean(ARG_NO_FAULTLOC)) {
+            System.out.println("Localization called.");
+            // Localize faults
+            localizeFaults();
+            _faultlocStats.writeOut();
+        }
 
         if (!_question.getMinimize()) {
           break;

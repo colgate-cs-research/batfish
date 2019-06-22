@@ -120,6 +120,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
       "(ignored, provided for backwards compatibility)";
 
   private static final String EXECUTABLE_NAME = "batfish";
+  
+  private static final String ARG_NO_FAULTLOC = "noFaultloc";
 
   private static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
 
@@ -629,6 +631,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     setDefaultProperty(BfConsts.COMMAND_PARSE_VENDOR_SPECIFIC, false);
     setDefaultProperty(ARG_Z3_TIMEOUT, 0);
     setDefaultProperty(ARG_DATAPLANE_ENGINE_NAME, "ibdp");
+    setDefaultProperty(ARG_NO_FAULTLOC, false);
     setDefaultProperty(ARG_NUM_ITERS_FAULTLOC, -1);
     setDefaultProperty(ARG_NO_NEGATE_PROPERTY, false);
     setDefaultProperty(ARG_PRINT_UNSAT_EXPR, false);
@@ -870,6 +873,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
     addBooleanOption(ARG_VERSION, "print the version number of the code and exit");
 
+    addBooleanOption(ARG_NO_FAULTLOC, "Do not localize faults");
+
     addBooleanOption(ARG_NO_NEGATE_PROPERTY, "do not negate property being checked by Minesweeper");
 
     addBooleanOption(ARG_PRINT_UNSAT_EXPR, "print expressions in the UnsatCore");
@@ -1024,6 +1029,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     getBooleanOptionValue(ARG_TRACING_ENABLE);
     getBooleanOptionValue(BfConsts.ARG_UNIMPLEMENTED_SUPPRESS);
     getBooleanOptionValue(BfConsts.ARG_VERBOSE_PARSE);
+    getBooleanOptionValue(ARG_NO_FAULTLOC);
     getBooleanOptionValue(ARG_NO_NEGATE_PROPERTY);
     getBooleanOptionValue(ARG_PRINT_UNSAT_EXPR);
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
