@@ -1367,7 +1367,7 @@ public class Encoder {
         }else{
           time_end = System.currentTimeMillis();
           muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
-                  maxMUScount, maxMSScount, maxMarcoTime, true, marcoVerbose,
+                  maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, true,
                   null);
         }
         int[] predicateFrequency = new int[predNames.size()];
