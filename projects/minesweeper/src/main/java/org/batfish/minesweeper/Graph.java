@@ -1103,7 +1103,7 @@ public class Graph {
       return proto.isStatic();
     }
 
-    // Don't use if interface is not active
+    // Allow if peeer runs OSPF
     if (proto.isOspf()) {
       return peerHasProto;
     }
@@ -1153,7 +1153,7 @@ public class Graph {
     }
 
     // Don't use if interface is not active
-    if (proto.isOspf() && !iface.getOspfEnabled()) {
+    if (proto.isOspf() && (!iface.getOspfEnabled() || iface.getOspfPassive())) {
       return false;
     }
 
