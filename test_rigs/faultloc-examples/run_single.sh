@@ -12,12 +12,16 @@ BASEDIR="`dirname $SCRIPTPATH`"
 source $BASEDIR/../../tools/batfish_functions.sh
 
 # Get arguments
-if [ $# -ne 2 ]; then
-    echo "Usage: run_single.sh NETWORK SCENARIO"
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "Usage: run_single.sh NETWORK SCENARIO [CONTAINERS]"
     exit 1
 fi
 NETWORK=$1
 SCENARIO=$2
+CONTAINERS="containers"
+if [ $# -eq 3 ]; then
+    CONTAINERS="$3"
+fi
 
 # Make sure network and scenario exists
 if [ ! -d $BASEDIR/$NETWORK/$SCENARIO ]; then
@@ -37,16 +41,17 @@ SCENARIO_CONFIGS=$TESTRIG_DIR/configs
 
 # Function for running batfish commands
 run_batfish_commands() {
-    echo -e "$1" | allinone -runmode interactive || exit 1
+    echo -e "$1" | allinone -runmode interactive \
+        -coordinatorargs "-containerslocation $CONTAINERS" || exit 1
 }
 
 echo "travis_fold:start:$NETWORK.$SCENARIO"
 
 # Create network, if necessary
-if [ ! -f containers/network_ids/$NETWORK.id ]; then
+if [ ! -f $CONTAINERS/network_ids/$NETWORK.id ]; then
     run_batfish_commands "init-network -setname $NETWORK"
 fi
-NETWORK_ID=`cat containers/network_ids/$NETWORK.id`
+NETWORK_ID=`cat $CONTAINERS/network_ids/$NETWORK.id`
 
 echo -e "\n\n##### SCENARIO: $NETWORK/$SCENARIO ###################################\n"
 
@@ -57,7 +62,7 @@ diff -ru $ORIG_CONFIGS $SCENARIO_CONFIGS
 echo -e "=====================================================\n"
 
 # Delete snapshot, if necessary
-if [ -f containers/$NETWORK_ID/snapshot_ids/$SCENARIO.id ]; then
+if [ -f $CONTAINERS/$NETWORK_ID/snapshot_ids/$SCENARIO.id ]; then
     run_batfish_commands "set-network $NETWORK\ndel-snapshot $SCENARIO"
 fi
 
