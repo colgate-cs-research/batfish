@@ -35,6 +35,9 @@ if [ -f $BASEDIR/custom-options ]; then
     OPTIONS=$BASEDIR/custom-options
 fi
 POLICIES=$BASEDIR/$NETWORK/original/policies/reach.cmd
+if [ -f $NETWORK/$SCENARIO/policies/violated.cmd ]; then
+    POLICIES=$BASEDIR/$NETWORK/$SCENARIO/policies/violated.cmd
+fi
 ORIG_CONFIGS=$BASEDIR/$NETWORK/original/configs
 TESTRIG_DIR=$BASEDIR/$NETWORK/$SCENARIO
 SCENARIO_CONFIGS=$TESTRIG_DIR/configs
