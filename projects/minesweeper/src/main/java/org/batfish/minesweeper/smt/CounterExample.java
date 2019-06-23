@@ -346,20 +346,23 @@ class CounterExample {
             if (filterResult.getMatchLine() != null) {
               line = acl.getLines().get(filterResult.getMatchLine()).getName();
             }
-            String note = String.format("DENIED_IN{%s}{%s}", acl.getName(), line);
+            String note = String.format("DENIED_IN{%s}{%s} @ %s", acl.getName(),
+                line, currentRouterName);
             FlowTrace flowTrace = new FlowTrace(FlowDisposition.DENIED_IN, hops, note);
             return new Tuple<>(flow, flowTrace);
           }
 
           boolean isLoopback = slice.getGraph().isLoopback(graphEdge);
           if (isLoopback) {
-            FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops, "ACCEPTED");
+            FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops,
+                "ACCEPTED @ "+currentRouterName);
             return new Tuple<>(flow, ft);
           }
           if (graphEdge.getPeer() == null) {
             boolean isBgpPeering = slice.getGraph().getEbgpNeighbors().get(graphEdge) != null;
             if (isBgpPeering) {
-              FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops, "ACCEPTED");
+              FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops,
+                  "ACCEPTED @ "+currentRouterName);
               return new Tuple<>(flow, ft);
             } else {
               // the peer is not a BGP peer
@@ -367,12 +370,13 @@ class CounterExample {
                   new FlowTrace(
                       FlowDisposition.NEIGHBOR_UNREACHABLE_OR_EXITS_NETWORK,
                       hops,
-                      "NEIGHBOR_UNREACHABLE_OR_EXITS_NETWORK");
+                      "NEIGHBOR_UNREACHABLE_OR_EXITS_NETWORK @ "+currentRouterName);
               return new Tuple<>(flow, flowTrace);
             }
           }
           if (slice.getGraph().isHost(graphEdge.getPeer())) {
-            FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops, "ACCEPTED");
+            FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops,
+                "ACCEPTED @ "+currentRouterName);
             return new Tuple<>(flow, ft);
           }
 
@@ -387,7 +391,12 @@ class CounterExample {
           IpAccessList acl = interf.getOutgoingFilter();
           FilterResult filterResult = acl.filter(flow, null, ImmutableMap.of(), ImmutableMap.of());
           IpAccessListLine line = acl.getLines().get(filterResult.getMatchLine());
-          String note = String.format("DENIED_OUT{%s}{%s}", acl.getName(), line.getName());
+          String lineName = "UNKNOWN";
+          if (line != null) {
+              lineName = line.getName();
+          }
+          String note = String.format("DENIED_OUT{%s}{%s} @ %s", acl.getName(),
+              lineName, currentRouterName);
           FlowTrace flowTrace = new FlowTrace(FlowDisposition.DENIED_OUT, hops, note);
           return new Tuple<>(flow, flowTrace);
         }
@@ -401,7 +410,8 @@ class CounterExample {
             Interface interf = graphEdge.getStart();
             Ip ip = interf.getConcreteAddress().getIp();
             if (ip.equals(flow.getDstIp())) {
-              FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops, "ACCEPTED");
+              FlowTrace ft = new FlowTrace(FlowDisposition.ACCEPTED, hops,
+                  "ACCEPTED @ "+currentRouterName);
               return new Tuple<>(flow, ft);
             }
           }
@@ -409,10 +419,11 @@ class CounterExample {
               new FlowTrace(
                   FlowDisposition.NEIGHBOR_UNREACHABLE_OR_EXITS_NETWORK,
                   hops,
-                  "NEIGHBOR_UNREACHABLE_OR_EXITS_NETWORK");
+                  "NEIGHBOR_UNREACHABLE_OR_EXITS_NETWORK @ "+currentRouterName);
           return new Tuple<>(flow, flowTrace);
         }
-        FlowTrace flowTrace = new FlowTrace(FlowDisposition.NO_ROUTE, hops, "NO_ROUTE");
+        FlowTrace flowTrace = new FlowTrace(FlowDisposition.NO_ROUTE, hops,
+            "NO_ROUTE @ "+currentRouterName);
         return new Tuple<>(flow, flowTrace);
       }
     }
