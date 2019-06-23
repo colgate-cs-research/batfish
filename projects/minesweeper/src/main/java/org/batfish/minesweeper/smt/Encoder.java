@@ -94,8 +94,10 @@ public class Encoder {
   public static final String ARG_MINIMIZE_UNSAT_CORE = "minimizeUnsatCore";
   public static final String ARG_SPLIT_ITE = "splitITE";
   public static final String ARG_USE_MARCO = "useMarco";
+  public static final String ARG_MARCO_VERBOSE = "marcoVerbose";
   public static final String ARG_MAX_MUS_COUNT = "mus";
   public static final String ARG_MAX_MSS_COUNT = "mss";
+  public static final String ARG_MAX_MARCO_TIME = "marcoTime";
   public static final String ARG_MUS_INTERSECT = "musIntersect";
   public static final String ARG_MUS_UNION = "musUnion";
   public static final String ARG_BULK_SAVE_MUS = "saveMUS";
@@ -1079,14 +1081,20 @@ public class Encoder {
         }
         if (s.contains(" ")) {
           arr = s.split(" ");
-          PredicateLabel label= new PredicateLabel(labels.valueOf(arr[0]), arr[1], arr[2],arr[3]);
-          label_list.add(label);
+          try {
+            PredicateLabel label = new PredicateLabel(labels.valueOf(arr[0]),
+                arr[1], arr[2], arr[3]);
+            label_list.add(label);
+          }
+          catch (Exception e) {
+            System.out.println("WARNING: Invalid faultloc line: " + s);
+          }
         }
         result.put(question, label_list);
       }
     br.close();
     }catch (IOException e) {
-      System.out.println ("Faultloc file not found");
+      System.out.println ("WARNING: Faultloc file not found");
     }
     return result;
   }
@@ -1266,7 +1274,10 @@ public class Encoder {
     Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
 
 
-    int maxMUScount = _settings.getInteger(ARG_MAX_MUS_COUNT, 50); //default max MUS count is 50.
+    int maxMUScount = _settings.getInt(ARG_MAX_MUS_COUNT);
+    int maxMSScount = _settings.getInt(ARG_MAX_MSS_COUNT);
+    int maxMarcoTime = _settings.getInt(ARG_MAX_MARCO_TIME);
+    boolean marcoVerbose = _settings.getBoolean(ARG_MARCO_VERBOSE);
 
     System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
     Map<String, BoolExpr> predicates = new HashMap<>();
@@ -1344,15 +1355,20 @@ public class Encoder {
 
         System.out.printf("Running Marco (upto %d MUSes will be produced) \n", maxMUScount);
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
+        PredicateLabel[] constraintLabels = labels.toArray(new PredicateLabel[labels.size()]);
         List<Set<Integer>> muses;
         if (isFirstFailSet) {
-          muses = MarcoMUS.enumerate(constraints, _ctx, maxMUScount, 2000, true, _faultlocStats);
+          muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
+                  maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, true,
+                  _faultlocStats);
           time_end = System.currentTimeMillis();
           _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
           isFirstFailSet = false;
         }else{
           time_end = System.currentTimeMillis();
-          muses = MarcoMUS.enumerate(constraints, _ctx, maxMUScount, 2000, true, null);
+          muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
+                  maxMUScount, maxMSScount, maxMarcoTime, true, marcoVerbose,
+                  null);
         }
         int[] predicateFrequency = new int[predNames.size()];
 
@@ -1719,11 +1735,14 @@ print out unfound items in Faultloc
     Map<String, BoolExpr> assertionsMap = _faultlocUnsatCore.getTrackingVars();
     Map<String, PredicateLabel> predicateLabelMap = _faultlocUnsatCore.getTrackingLabels();
     BoolExpr[] constraints = new BoolExpr[assertionsMap.size()];
+    PredicateLabel[] constraintLabels =
+        new PredicateLabel[assertionsMap.size()];
     String[] trackingNames = new String[assertionsMap.size()];
 
     int i=0;
     for (String key: assertionsMap.keySet()){
       constraints[i] = assertionsMap.get(key);
+      constraintLabels[i] = predicateLabelMap.get(key);
       trackingNames[i] = key;
       i++;
     }
@@ -1733,9 +1752,12 @@ print out unfound items in Faultloc
 
     long start_time = System.currentTimeMillis();
     List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
+            constraintLabels,
             _ctx,
             _settings.getInt(ARG_MAX_MUS_COUNT),
             _settings.getInt(ARG_MAX_MSS_COUNT),
+            _settings.getInt(ARG_MAX_MARCO_TIME),
+            _settings.getBoolean(ARG_MARCO_VERBOSE),
             shouldUseMUSes, _faultlocStats);
     long time_elapsed = System.currentTimeMillis() - start_time;
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);

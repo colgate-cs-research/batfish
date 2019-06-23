@@ -13,11 +13,6 @@ import java.util.*;
 
 public class MarcoMUS {
 
-
-    private static final int MAX_MUS_COUNT = 50;
-    private static final int MAX_MSS_COUNT = 500;
-	private static final int MAX_EXPLORATION_TIME = 50 * 1000;
-    
 	/**
      * Demo.
      */
@@ -36,9 +31,10 @@ public class MarcoMUS {
 
         //List of constraints in the test constraint system.
         BoolExpr[] constraints = new BoolExpr[]{c1, c2, c3, c4};
+        PredicateLabel[] constraintLabels = new PredicateLabel[]{null, null, null, null};
 
-        enumerate(constraints,ctx, MAX_MUS_COUNT, MAX_MSS_COUNT,true, null);
-
+        enumerate(constraints, constraintLabels, ctx, 50, 2000, 60, true, false,
+               null);
     }
 
     /**
@@ -49,12 +45,12 @@ public class MarcoMUS {
      * @param shouldReturnMUSes true, if MUSes are to be returned.
      * @return List of MUSes of the unsatisfiable constraint system.
      */
-    public static List<Set<Integer>> enumerate(BoolExpr[] constraints, Context ctx,
-                                               int maxMUSCount,
-                                               int maxMSSCount,
-                                               boolean shouldReturnMUSes,
-                                               FaultlocStats faultlocStats){
-        SubsetSolver subsetSolver = new SubsetSolver(constraints, ctx);
+    public static List<Set<Integer>> enumerate(BoolExpr[] constraints,
+            PredicateLabel[] constraintLabels, Context ctx, int maxMUSCount,
+            int maxMSSCount, int maxExplorationTime, boolean verbose,
+            boolean shouldReturnMUSes, FaultlocStats faultlocStats){
+        SubsetSolver subsetSolver = new SubsetSolver(constraints,
+                constraintLabels, ctx, verbose);
         MapSolver mapSolver = new MapSolver(constraints.length, ctx);
 
         List<List<Expr>> MSSes = new ArrayList<>();
@@ -74,12 +70,15 @@ public class MarcoMUS {
             if (MSSes.size()>=maxMSSCount || MUSes.size()>=maxMUSCount) {
                 break;
             }
-            if (System.currentTimeMillis()-start_time > MAX_EXPLORATION_TIME) {
+            if (System.currentTimeMillis()-start_time>maxExplorationTime*1000) {
                 break;
             }
 
             Set<Integer> seedSet= new HashSet<>();
             seedSet.addAll(seed);
+            if (verbose) {
+                System.out.println("MARCO: checking seed...");
+            }
             if (subsetSolver.checkSubset(seedSet)){
                 Set<Integer> mss = subsetSolver.grow(seed);
                 indexOfMSSes.add(mss);
@@ -112,6 +111,8 @@ public class MarcoMUS {
     public static class SubsetSolver{
         private Context ctx;
         private BoolExpr[] constraints;
+        private PredicateLabel[] constraintLabels;
+        private boolean verbose;
         private int n;
         private Solver solver;
 
@@ -123,8 +124,12 @@ public class MarcoMUS {
          * @param constraints Set of all constraints.
          * @param ctx Z3 Context object
          */
-        public SubsetSolver(BoolExpr[] constraints, Context ctx){
+        public SubsetSolver(BoolExpr[] constraints,
+                PredicateLabel[] constraintLabels, Context ctx, 
+                boolean verbose){
             this.constraints = constraints;
+            this.constraintLabels = constraintLabels;
+            this.verbose = verbose;
             this.n = constraints.length;
             varCache = new HashMap<>();
             idCache = new HashMap<>();
@@ -196,15 +201,32 @@ public class MarcoMUS {
          * @return MUS obtained by minimizing input unsatisfying subset.
          */
         private Set<Integer> shrink(List<Integer> seed){
+            if (verbose) {
+                System.out.println("MARCO: shrinking...");
+            }
             Set<Integer> current = new HashSet<>(seed);
+            int iteration = 0;
+            int updateInterval = seed.size()/100;
             for (int i:seed){
+                iteration++;
+                if (verbose && iteration % updateInterval == 0) {
+                    System.out.printf(
+                        "MARCO: %d%% done, shrunk from %d to %d predicates\n",
+                        iteration/updateInterval, seed.size(), current.size());
+                }
                 if (!current.contains(i)){
+//                    System.out.printf("MARCO: already removed %s\n",
+//                            constraintLabels[i]);
                     continue;
                 }
                 current.remove(i);
                 if (!checkSubset(current)){
+//                    System.out.printf("MARCO: removed %s\n",
+//                            constraintLabels[i]);
                     current = new HashSet<>(seedFromUnsatCore());
                 }else{
+//                    System.out.printf("MARCO: keep %s\n",
+//                            constraintLabels[i]);
                     current.add(i);
                 }
             }
@@ -217,6 +239,9 @@ public class MarcoMUS {
          * @return MSS obtained by maximizing input satisfying subset.
          */
         public Set<Integer> grow(List<Integer> seed){
+            if (verbose) {
+                System.out.println("MARCO: growing...");
+            }
             Set<Integer> current = new HashSet<>(seed);
             Set<Integer> currentComplement = complement(current);
             for (int i: currentComplement){

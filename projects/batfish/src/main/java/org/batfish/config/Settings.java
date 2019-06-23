@@ -151,6 +151,10 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
   private static final String ARG_MAX_MSS_COUNT = "mss";
 
+  private static final String ARG_MAX_MARCO_TIME = "marcoTime";
+
+  private static final String ARG_MARCO_VERBOSE = "marcoVerbose";
+
   private static final String ARG_MUS_INTERSECT = "musIntersect";
 
   private static final String ARG_MUS_UNION = "musUnion";
@@ -639,11 +643,13 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     setDefaultProperty(ARG_MINIMIZE_UNSAT_CORE, false);
     setDefaultProperty(ARG_SPLIT_ITE, false);
     setDefaultProperty(ARG_USE_MARCO, null);
-    setDefaultProperty(ARG_MAX_MSS_COUNT, Integer.MAX_VALUE);
+    setDefaultProperty(ARG_MAX_MUS_COUNT, 50);
+    setDefaultProperty(ARG_MAX_MSS_COUNT, 2000);
+    setDefaultProperty(ARG_MAX_MARCO_TIME, 60);
+    setDefaultProperty(ARG_MARCO_VERBOSE, false);
     setDefaultProperty(ARG_MUS_INTERSECT, false);
     setDefaultProperty(ARG_MUS_UNION, false);
     setDefaultProperty(ARG_BULK_SAVE_MUS,false);
-    setDefaultProperty(ARG_MAX_MUS_COUNT, 50);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_PRINT_GRAPH, false);
     setDefaultProperty(ARG_PRINT_SMT, false);
@@ -895,6 +901,10 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
     addOption(ARG_MAX_MSS_COUNT, "maximum number of MSS to be generated using MARCO","mss");
 
+    addOption(ARG_MAX_MARCO_TIME, "maximum time in seconds for MARCO to run","marcoTime");
+
+    addBooleanOption(ARG_MARCO_VERBOSE, "print verbose output for MARCO");
+
     addBooleanOption(ARG_MUS_UNION, "use Union of MUSes for fault localization");
 
     addBooleanOption(ARG_MUS_INTERSECT, "use Intersection of MUSes for fault localization");
@@ -1035,12 +1045,14 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     getBooleanOptionValue(ARG_NO_FILTER_UNSAT_CORE);
     getBooleanOptionValue(ARG_MINIMIZE_UNSAT_CORE);
     getBooleanOptionValue(ARG_SPLIT_ITE);
-    getStringOptionValue(ARG_USE_MARCO);
     getBooleanOptionValue(ARG_PRINT_GRAPH);
     getBooleanOptionValue(ARG_PRINT_SMT);
     getBooleanOptionValue(ARG_PRINT_COUNTER_EXAMPLE_CHANGES);
-    getIntegerOptionValue(ARG_MAX_MSS_COUNT);
+    getStringOptionValue(ARG_USE_MARCO);
     getIntegerOptionValue(ARG_MAX_MUS_COUNT);
+    getIntegerOptionValue(ARG_MAX_MSS_COUNT);
+    getIntegerOptionValue(ARG_MAX_MARCO_TIME);
+    getBooleanOptionValue(ARG_MARCO_VERBOSE);
     getBooleanOptionValue(ARG_MUS_INTERSECT);
     getBooleanOptionValue(ARG_MUS_UNION);
     getBooleanOptionValue(ARG_BULK_SAVE_MUS);
