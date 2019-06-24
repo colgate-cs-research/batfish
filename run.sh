@@ -7,13 +7,16 @@ fi
 
 NUM_WORKERS=1
 LOG_LEVEL="WARN"
+BATFISH_ARGS=""
 
-while getopts "hw:" opt; do
+while getopts "hw:b:" opt; do
     case "$opt" in
-    h)  echo "run.sh [-w NUM_WORKERS] [-v]"
+    h)  echo "run.sh [-w NUM_WORKERS] [-b BATFISH_ARGS] [-v]"
         exit 0
         ;;
     v)  LOG_LEVEL="DEBUG"
+        ;;
+    b)  BATFISH_ARGS="$OPTARG"
         ;;
     w)  NUM_WORKERS=$OPTARG
         ;;
@@ -31,7 +34,7 @@ for i in $(seq 1 $NUM_WORKERS); do
     BATFISH_PORT=$((i + SERVICE_PORT))
     batfish -runmode WORKSERVICE -register true -coordinatorpoolport 9998 \
         -tracingenable false -serviceport $BATFISH_PORT \
-        -loglevel $LOG_LEVEL 2>&1 > "$BATFISH_LOG" &
+        -loglevel $LOG_LEVEL $BATFISH_ARGS 2>&1 > "$BATFISH_LOG" &
     BATFISH_PID=$!
     echo "Started Batfish worker in background: PID=$BATFISH_PID port=$BATFISH_PORT log=$BATFISH_LOG"
     BATFISH_PIDS+=($BATFISH_PID)
