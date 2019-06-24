@@ -8,10 +8,11 @@ fi
 NUM_WORKERS=1
 LOG_LEVEL="WARN"
 BATFISH_ARGS=""
+START_PORT=20000
 
-while getopts "hw:b:" opt; do
+while getopts "hw:b:p:v" opt; do
     case "$opt" in
-    h)  echo "run.sh [-w NUM_WORKERS] [-b BATFISH_ARGS] [-v]"
+    h)  echo "run.sh [-w NUM_WORKERS] [-b BATFISH_ARGS] [-p START_PORT] [-v]"
         exit 0
         ;;
     v)  LOG_LEVEL="DEBUG"
@@ -20,20 +21,26 @@ while getopts "hw:b:" opt; do
         ;;
     w)  NUM_WORKERS=$OPTARG
         ;;
+    p)  START_PORT=$OPTARG
+        ;;
     esac
 done
+
+POOL_PORT=$((START_PORT+1))
+WORK_PORT=$((START_PORT+2))
+WORKV2_PORT=$((START_PORT+3))
+SERVICE_PORT=$((START_PORT+100))
 
 TMPDIR=`mktemp -d`
 echo "Storing logs in $TMPDIR"
 
 # Start batfish workers
 BATFISH_PIDS=()
-SERVICE_PORT=10000
 for i in $(seq 1 $NUM_WORKERS); do
     BATFISH_LOG="$TMPDIR/batfish$i.log"
     BATFISH_PORT=$((i + SERVICE_PORT))
-    batfish -runmode WORKSERVICE -register true -coordinatorpoolport 9998 \
-        -tracingenable false -serviceport $BATFISH_PORT \
+    batfish -runmode WORKSERVICE -register true -tracingenable false \
+        -coordinatorpoolport $POOL_PORT -serviceport $BATFISH_PORT \
         -loglevel $LOG_LEVEL $BATFISH_ARGS 2>&1 > "$BATFISH_LOG" &
     BATFISH_PID=$!
     echo "Started Batfish worker in background: PID=$BATFISH_PID port=$BATFISH_PORT log=$BATFISH_LOG"
@@ -45,4 +52,5 @@ COORDINATOR_LOG="$TMPDIR/coordinator.log"
 echo "Running coordinator in foreground: log=$COORDINATOR_LOG"
 echo "Press Ctrl+C to kill workers and coordinator"
 coordinator -templatedirs "${BATFISH_ROOT}/questions" -tracingenable false \
+    -poolport $POOL_PORT -workport $WORK_PORT -workv2port $WORKV2_PORT \
     -loglevel $LOG_LEVEL -logfile "$COORDINATOR_LOG"
