@@ -600,9 +600,12 @@ class EncoderSlice {
 
         for (GraphEdge e : edges) {
 
-//          Configuration conf = getGraph().getConfigurations().get(router);
+          Configuration conf = getGraph().getConfigurations().get(router);
 
           if (getGraph().couldEdgeUsed(proto, e, getProtocols())) {
+            if (!getGraph().isEdgeUsed(conf, proto, e)) {
+              System.out.printf("Dummy: %s %s\n", proto.name(), e);
+            }
 
             ArrayList<LogicalEdge> importEdgeList = new ArrayList<>();
             ArrayList<LogicalEdge> exportEdgeList = new ArrayList<>();
