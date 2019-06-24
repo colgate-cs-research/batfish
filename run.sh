@@ -8,7 +8,7 @@ fi
 NUM_WORKERS=1
 LOG_LEVEL="WARN"
 BATFISH_ARGS=""
-START_PORT=20000
+START_PORT=9990
 
 while getopts "hw:b:p:v" opt; do
     case "$opt" in
@@ -26,10 +26,10 @@ while getopts "hw:b:p:v" opt; do
     esac
 done
 
-POOL_PORT=$((START_PORT+1))
-WORK_PORT=$((START_PORT+2))
-WORKV2_PORT=$((START_PORT+3))
-SERVICE_PORT=$((START_PORT+100))
+POOL_PORT=$((START_PORT+8))
+WORK_PORT=$((START_PORT+7))
+WORKV2_PORT=$((START_PORT+6))
+SERVICE_PORT=$((START_PORT+10))
 
 TMPDIR=`mktemp -d`
 echo "Storing logs in $TMPDIR"
