@@ -31,6 +31,7 @@ import org.batfish.datamodel.ConcreteInterfaceAddress;
 import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.ConfigurationFormat;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.InterfaceType;
 import org.batfish.datamodel.Ip;
 import org.batfish.datamodel.LongSpace;
 import org.batfish.datamodel.Prefix;
@@ -85,6 +86,7 @@ public class Graph {
   private Set<String> _routers;
   private Map<String, Configuration> _configurations;
   private Map<String, Set<Long>> _areaIds;
+  private Table2<String, String, Set<GraphEdge>> _ospfNeighbors;
   private Table2<String, String, List<StaticRoute>> _staticRoutes;
   private Map<String, List<StaticRoute>> _nullStaticRoutes;
   private Map<String, Set<String>> _neighbors;
@@ -151,6 +153,7 @@ public class Graph {
     _allRealEdges = new HashSet<>();
     _otherEnd = new HashMap<>();
     _areaIds = new HashMap<>();
+    _ospfNeighbors = new Table2<>();
     _staticRoutes = new Table2<>();
     _nullStaticRoutes = new HashMap<>();
     _neighbors = new HashMap<>();
@@ -202,6 +205,7 @@ public class Graph {
     initEbgpNeighbors();
     initIbgpNeighbors();
     initAreaIds();
+    initOspfNeighbors();
     initDomains();
     initAllCommunities();
     initCommDependencies();
@@ -782,6 +786,30 @@ public class Graph {
   }
 
   /*
+   * Initialize each routers set of neighbors for OSPF
+   */
+  private void initOspfNeighbors() {
+    for (Entry<String, Configuration> entry : _configurations.entrySet()) {
+      String router = entry.getKey();
+      Configuration conf = entry.getValue();
+      Set<String> neighbors = new HashSet<>();
+      OspfProcess p = getFirstOspfProcess(conf.getDefaultVrf());
+      if (p != null) {
+        List<GraphEdge> edges = _edgeMap.get(router);
+        for (GraphEdge ge : edges) {
+          Interface i1 = ge.getStart();
+          String peer = ge.getPeer();
+          if (i1.getOspfEnabled() && !i1.getOspfPassive() && peer != null) {
+            Set<GraphEdge> edgesToPeer = _ospfNeighbors.computeIfAbsent(
+                    router, peer, (k1, k2) -> new HashSet<>());
+            edgesToPeer.add(ge);
+          }
+        }
+      }
+    }
+  }
+
+  /*
    * Determines the collection of routers within the same AS
    * as the router provided as a parameter
    */
@@ -1103,11 +1131,6 @@ public class Graph {
       return proto.isStatic();
     }
 
-    // Allow if peeer runs OSPF
-    if (proto.isOspf()) {
-      return peerHasProto;
-    }
-
     // Exclude abstract iBGP edges from all protocols except BGP
     if (iface.getName().startsWith("iBGP-")) {
       return proto.isBgp();
@@ -1123,6 +1146,19 @@ public class Graph {
       return false;
     }
 
+    if (proto.isOspf()) {
+      // Use OSPF over edges on which OSPF is active
+      if (iface.getOspfEnabled() && !iface.getOspfPassive()) {
+        return true;
+      }
+      // Could use OSPF on edges without active OSPF if there does not already 
+      // exist an active OSPF relationship with peer
+      else {
+        return peerHasProto 
+            && _ospfNeighbors.get(ge.getRouter(), ge.getPeer()) == null;
+      }
+    }
+
     // Only use specified edges from static routes
     if (proto.isStatic()) { // FIXME
       List<StaticRoute> srs1 = getStaticRoutes().get(conf.getHostname(),ge.getRouter());
@@ -1130,7 +1166,7 @@ public class Graph {
       return (iface.getActive() && srs != null && !srs.isEmpty())||(srs1!=null);
     }
 
-    // Only use an edge in BGP if there is an explicit peering
+    // Could use an edge in BGP if peer runs BGP
     if (proto.isBgp()) {
       return peerHasProto;
     }
@@ -1330,6 +1366,23 @@ public class Graph {
           if (!ids.isEmpty()) {
             sb.append("Router: ").append(router).append("=").append(ids).append("\n");
           }
+        });
+
+    sb.append("---------- OSPF Neighbors ----------\n");
+    _ospfNeighbors.asMap().forEach(
+        (router, peers) -> {
+            sb.append("Router: ").append(router).append("\n");
+            peers.forEach(
+                (peer, graphEdges) -> {
+                    graphEdges.forEach(
+                        edge -> {
+                            sb.append("  edge from: ")
+                                .append(edge.getStart().getName())
+                                .append(" to: ").append(peer)
+                                .append(",").append(edge.getEnd().getName())
+                                .append("\n");
+                        });
+                });
         });
 
     sb.append("=======================================================\n");
