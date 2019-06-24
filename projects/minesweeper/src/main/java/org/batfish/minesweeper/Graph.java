@@ -1154,8 +1154,17 @@ public class Graph {
       // Could use OSPF on edges without active OSPF if there does not already 
       // exist an active OSPF relationship with peer
       else {
-        return peerHasProto 
-            && _ospfNeighbors.get(ge.getRouter(), ge.getPeer()) == null;
+        if (!peerHasProto
+            || _ospfNeighbors.get(ge.getRouter(), ge.getPeer()) != null) {
+          return false;
+        }
+        // Only allow first interface to peer to be used
+        Interface lowestPossibleInterface = null;
+        for (GraphEdge ge2 : _edgeMap.get(ge.getRouter())) {
+          if (ge2.getPeer() == ge.getPeer()) {
+            return ge2.getStart() == ge.getStart();
+          }
+        }
       }
     }
 
