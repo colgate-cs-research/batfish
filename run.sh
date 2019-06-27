@@ -34,6 +34,8 @@ SERVICE_PORT=$((START_PORT+10))
 TMPDIR=`mktemp -d`
 echo "Storing logs in $TMPDIR"
 
+echo "$BATFISH_ARGS" > "$TMPDIR/batfish_args"
+
 # Start batfish workers
 BATFISH_PIDS=()
 for i in $(seq 1 $NUM_WORKERS); do
