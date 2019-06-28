@@ -5,7 +5,6 @@ import com.microsoft.z3.Context;
 import com.microsoft.z3.Solver;
 import java.util.HashMap;
 import java.util.Map;
-import org.batfish.minesweeper.smt.PredicateLabel.labels;
 
 /**
  * A wrapper class that simplifies adding variables to the network model. If debugging is enabled,

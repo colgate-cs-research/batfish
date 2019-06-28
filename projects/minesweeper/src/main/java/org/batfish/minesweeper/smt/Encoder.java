@@ -44,7 +44,7 @@ import org.batfish.minesweeper.GraphEdge;
 import org.batfish.minesweeper.OspfType;
 import org.batfish.minesweeper.Protocol;
 import org.batfish.minesweeper.question.HeaderQuestion;
-import org.batfish.minesweeper.smt.PredicateLabel.labels;
+import org.batfish.minesweeper.smt.PredicateLabel.LabelType;
 import org.batfish.minesweeper.utils.MsPair;
 import org.batfish.minesweeper.utils.Tuple;
 
@@ -479,7 +479,7 @@ public class Encoder {
 
 //    System.out.println("[Pred] " + caller + " : " + e);
 
-    if (caller.gettype() == labels.POLICY) {
+    if (caller.getLabelType() == LabelType.POLICY) {
       System.out.println("Negated POLICY : " + e);
       if  (_settings.getBoolean(ARG_NO_NEGATE_PROPERTY)) {
         System.out.println("Assert P");
@@ -504,7 +504,7 @@ public class Encoder {
    * failVar_1 + failVar_2 + ... + failVar_n <= k
    */
   private void addFailedConstraints(int k, Set<ArithExpr> vars) {
-    PredicateLabel label=new PredicateLabel(labels.VALUE_LIMIT);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.VALUE_LIMIT);
     ArithExpr sum = mkInt(0);
     for (ArithExpr var : vars) {
       sum = mkSum(sum, var);
@@ -512,7 +512,7 @@ public class Encoder {
       add(mkGe(var, mkInt(0)), label);
       add(mkLe(var, mkInt(1)), label);
     }
-    label=new PredicateLabel(labels.FAILURES);
+    label=new PredicateLabel(PredicateLabel.LabelType.FAILURES);
     if (k == 0) {
       for (ArithExpr var : vars) {
         add(mkEq(var, mkInt(0)), label);
@@ -943,7 +943,7 @@ public class Encoder {
       Map<Expr, Expr> counterExampleVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
 
-    PredicateLabel label=new PredicateLabel(labels.PACKET);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.PACKET);
     SortedSet<Expr> packetVars = getMainSlice().getSymbolicPacket().getSymbolicPacketVars();
     for (Expr var : packetVars){
       newEqs.add(_ctx.mkEq(var, counterExampleVariableAssignments.get(var)));
@@ -963,7 +963,7 @@ public class Encoder {
   private void addCounterExampleConstraints(Map<String,String> packetModel,
       Map<Expr, Expr> counterExampleVariableAssignments){
     SortedSet<BoolExpr> newEqs = new TreeSet<>();
-    PredicateLabel label=new PredicateLabel(labels.COUNTEREXAMPLE);
+    PredicateLabel label=new PredicateLabel(LabelType.COUNTEREXAMPLE);
     for (Expr var : counterExampleVariableAssignments.keySet()) {
       if (packetModel.get(var.toString()) == null) {
         newEqs.add(_ctx.mkEq(var, counterExampleVariableAssignments.get(var)));
@@ -1083,7 +1083,7 @@ public class Encoder {
         if (s.contains(" ")) {
           arr = s.split(" ");
           try {
-            PredicateLabel label = new PredicateLabel(labels.valueOf(arr[0]),
+            PredicateLabel label = new PredicateLabel(PredicateLabel.LabelType.valueOf(arr[0]),
                 arr[1], arr[2], arr[3]);
             label_list.add(label);
           }
@@ -1102,15 +1102,15 @@ public class Encoder {
   /**
    * Load the possible bgp edges and turn them into a list of predicateLabels
    *
-   * @return List<PredicateLabel> represents the possilbe labels generated from the possible bgp edges
+   * @return List<PredicateLabel> represents the possilbe LabelType generated from the possible bgp edges
    * but not actually exist
    */
   public List<PredicateLabel> edgeToLabel(){
     List<GraphEdge> possible=_graph.getPossible();
     List<PredicateLabel> result=new ArrayList<>();
     for (GraphEdge e: possible) {
-      PredicateLabel label1=new PredicateLabel(labels.EXPORT,e.getRouter(),e.getStart(),Protocol.BGP);
-      PredicateLabel label2=new PredicateLabel(labels.IMPORT,e.getPeer(),e.getEnd(),Protocol.BGP);
+      PredicateLabel label1=new PredicateLabel(LabelType.EXPORT,e.getRouter(),e.getStart(),Protocol.BGP);
+      PredicateLabel label2=new PredicateLabel(LabelType.IMPORT,e.getPeer(),e.getEnd(),Protocol.BGP);
       result.add(label1);
       result.add(label2);
     }
@@ -1218,7 +1218,7 @@ public class Encoder {
         }
 
         BoolExpr blocking = environmentBlockingClause(m);
-        add(blocking, new PredicateLabel(labels.ENVIRONMENT));
+        add(blocking, new PredicateLabel(LabelType.ENVIRONMENT));
 
         Status s = _solver.check();
         if (s == Status.UNSATISFIABLE) {
@@ -1288,8 +1288,8 @@ public class Encoder {
 
     for (String key : predNameToLabelsMap.keySet()){
       PredicateLabel predLabel = predNameToLabelsMap.get(key);
-      if (!predLabel.gettype().equals(labels.COUNTEREXAMPLE)) {
-        if (predLabel.gettype() == labels.POLICY){
+      if (!predLabel.getLabelType().equals(LabelType.COUNTEREXAMPLE)) {
+        if (predLabel.getLabelType() == PredicateLabel.LabelType.POLICY){
           //re-negate (no negate)
           predicates.put(key,_ctx.mkNot(predNameToExprMap.get(key)));
         }else{
@@ -1333,14 +1333,14 @@ public class Encoder {
         //Don't assert and track failure constraint
         solver.add(failureExpr);
         allConstraints.add(failureExpr);
-        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES, failureExpr.toString()));
+        labels.add(new PredicateLabel(PredicateLabel.LabelType.FAILURES, failureExpr.toString()));
       }
       for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
         BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
         //Don't assert and track failure constraint
         solver.add(failureExpr);
         allConstraints.add(failureExpr);
-        labels.add(new PredicateLabel(PredicateLabel.labels.FAILURES, failureExpr.toString()));
+        labels.add(new PredicateLabel(PredicateLabel.LabelType.FAILURES, failureExpr.toString()));
       }
 
       Status result = solver.check();
@@ -1659,13 +1659,13 @@ public class Encoder {
 
     }
 
-    // Determine which labels are not found
+    // Determine which LabelType are not found
 //    computeExtrapredicates(predicatesNameToLabelMap, unfound, Faultloc, faultCandidates);
 //    outUnfound(unfound, Faultloc);
 
   }
 
-  // Determine which labels are not found
+  // Determine which LabelType are not found
   void computeExtrapredicates(Map<String, PredicateLabel> predicatesNameToLabelMap,
                               HashMap<String, ArrayList<PredicateLabel>> unfound,
                               HashMap<String, ArrayList<PredicateLabel>> faultyPredicates,
@@ -1936,7 +1936,7 @@ print out unfound items in Faultloc
   /**
    * Given a set of fault candidates, produce analysis of true/false positives and true/false negatives using loadFaultloc().
    * This updates global FaultlocStats object.
-   * @param faultCandidates Set of predicate labels for predicates at fault
+   * @param faultCandidates Set of predicate LabelType for predicates at fault
    */
   void produceAnalysisForCandidates(Set<PredicateLabel> faultCandidates){
     HashMap<String, ArrayList<PredicateLabel>> questionToFaultyPredicateLabelsMap = loadFaultloc();

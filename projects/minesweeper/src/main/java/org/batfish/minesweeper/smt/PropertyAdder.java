@@ -5,7 +5,7 @@ import javafx.util.Pair;
 import org.batfish.minesweeper.Graph;
 import org.batfish.minesweeper.GraphEdge;
 import org.batfish.minesweeper.Protocol;
-import org.batfish.minesweeper.smt.PredicateLabel.labels;
+import org.batfish.minesweeper.smt.PredicateLabel.LabelType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,8 +61,8 @@ class PropertyAdder {
       reachableVars.put(r, var);
       _encoderSlice.getAllVariables().put(idVar.toString(), idVar);
       _encoderSlice.getAllVariables().put(var.toString(), var);
-      _encoderSlice.add(ctx.mkEq(var, ctx.mkGt(idVar, zero)), new PredicateLabel(labels.REACHABILITY, r));
-      _encoderSlice.add(ctx.mkGe(idVar, zero), new PredicateLabel(labels.REACHABILITY, r));
+      _encoderSlice.add(ctx.mkEq(var, ctx.mkGt(idVar, zero)), new PredicateLabel(PredicateLabel.LabelType.REACHABILITY, r));
+      _encoderSlice.add(ctx.mkGe(idVar, zero), new PredicateLabel(PredicateLabel.LabelType.REACHABILITY, r));
     }
   }
 
@@ -150,7 +150,7 @@ class PropertyAdder {
       BoolExpr recursive = recursiveReachability(ctx, slice, edges, idVars, router, id);
       BoolExpr guard = ctx.mkOr(hasDirectRoute, isAbsorbed);
       BoolExpr cond = slice.mkIf(guard, ctx.mkEq(id, ctx.mkInt(1)), recursive);
-      _encoderSlice.add(cond, new PredicateLabel(labels.REACHABILITY, router));
+      _encoderSlice.add(cond, new PredicateLabel(PredicateLabel.LabelType.REACHABILITY, router));
     }
 
     return reachableVars;
@@ -168,7 +168,7 @@ class PropertyAdder {
     initializeReachabilityVars(_encoderSlice, ctx, solver, reachableVars, idVars);
 
     ArithExpr baseId = idVars.get(router);
-    _encoderSlice.add(ctx.mkEq(baseId, ctx.mkInt(1)), new PredicateLabel(labels.REACHABILITY));
+    _encoderSlice.add(ctx.mkEq(baseId, ctx.mkInt(1)), new PredicateLabel(PredicateLabel.LabelType.REACHABILITY));
 
     Graph g = _encoderSlice.getGraph();
     for (Entry<String, List<GraphEdge>> entry : g.getEdgeMap().entrySet()) {
@@ -177,7 +177,7 @@ class PropertyAdder {
       if (!r.equals(router)) {
         ArithExpr id = idVars.get(r);
         BoolExpr cond = recursiveReachability(ctx, _encoderSlice, edges, idVars, r, id);
-        _encoderSlice.add(cond, new PredicateLabel(labels.REACHABILITY, r));
+        _encoderSlice.add(cond, new PredicateLabel(PredicateLabel.LabelType.REACHABILITY, r));
       }
     }
 
@@ -330,7 +330,7 @@ class PropertyAdder {
     ArithExpr minusOne = ctx.mkInt(-1);
 
     // Lower bound for all lengths
-    lenVars.forEach((name, var) -> _encoderSlice.add(ctx.mkGe(var, minusOne), new PredicateLabel(labels.PATH_LENGTH, name)));
+    lenVars.forEach((name, var) -> _encoderSlice.add(ctx.mkGe(var, minusOne), new PredicateLabel(LabelType.PATH_LENGTH, name)));
     for (Entry<String, List<GraphEdge>> entry : graph.getEdgeMap().entrySet()) {
       String router = entry.getKey();
       List<GraphEdge> edges = entry.getValue();
@@ -377,7 +377,7 @@ class PropertyAdder {
       BoolExpr guard = _encoderSlice.mkOr(hasDirectRoute, isAbsorbed);
       BoolExpr cond1 = _encoderSlice.mkIf(accNone, ctx.mkEq(length, minusOne), accSome);
       BoolExpr cond2 = _encoderSlice.mkIf(guard, ctx.mkEq(length, zero), cond1);
-      _encoderSlice.add(cond2, new PredicateLabel(labels.PATH_LENGTH, router));
+      _encoderSlice.add(cond2, new PredicateLabel(PredicateLabel.LabelType.PATH_LENGTH, router));
     }
 
     return lenVars;
@@ -402,7 +402,7 @@ class PropertyAdder {
       _encoderSlice.getAllVariables().put(var.toString(), var);
     }
 
-    loadVars.forEach((name, var) -> _encoderSlice.add(ctx.mkGe(var, ctx.mkInt(0)), new PredicateLabel(labels.LOAD, name))); 
+    loadVars.forEach((name, var) -> _encoderSlice.add(ctx.mkGe(var, ctx.mkInt(0)), new PredicateLabel(PredicateLabel.LabelType.LOAD, name)));
     ArithExpr zero = ctx.mkInt(0);
     ArithExpr one = ctx.mkInt(1);
 
@@ -445,11 +445,11 @@ class PropertyAdder {
           }
         }
       }
-      _encoderSlice.add(ctx.mkEq(load, acc), new PredicateLabel(labels.LOAD, router));
+      _encoderSlice.add(ctx.mkEq(load, acc), new PredicateLabel(PredicateLabel.LabelType.LOAD, router));
 
       BoolExpr guard = _encoderSlice.mkOr(hasDirectRoute, isAbsorbed);
       BoolExpr cond = _encoderSlice.mkIf(guard, ctx.mkEq(load, one), ctx.mkEq(load, acc));
-      _encoderSlice.add(cond, new PredicateLabel(labels.LOAD, router));
+      _encoderSlice.add(cond, new PredicateLabel(PredicateLabel.LabelType.LOAD, router));
     }
 
     return loadVars;
@@ -497,7 +497,7 @@ class PropertyAdder {
           }
         }
       }
-      _encoderSlice.add(ctx.mkEq(var, acc), new PredicateLabel(labels.LOOP, router));
+      _encoderSlice.add(ctx.mkEq(var, acc), new PredicateLabel(PredicateLabel.LabelType.LOOP, router));
     }
 
     return onLoop.get(router);

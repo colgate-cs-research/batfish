@@ -1340,7 +1340,7 @@ class TransferSSA {
     ArithExpr x = _enc.getCtx().mkIntConst(s);
     // _enc.getAllVariables().add(x);
     BoolExpr eq = _enc.mkEq(x, eSimple);
-    _enc.add(eq, new PredicateLabel(PredicateLabel.labels.SSA));
+    _enc.add(eq, new PredicateLabel(PredicateLabel.LabelType.SSA));
     p.debug(eq.toString());
     return x;
   }
@@ -1355,7 +1355,7 @@ class TransferSSA {
     BoolExpr x = _enc.getCtx().mkBoolConst(s);
     // _enc.getAllVariables().add(x);
     BoolExpr eq = _enc.mkEq(x, simpleE);
-    _enc.add(eq, new PredicateLabel(PredicateLabel.labels.SSA));
+    _enc.add(eq, new PredicateLabel(PredicateLabel.LabelType.SSA));
     p.debug(eq.toString());
     return x;
   }
@@ -1371,7 +1371,7 @@ class TransferSSA {
     BitVecExpr x = _enc.getCtx().mkBVConst(s, size);
     // _enc.getAllVariables().add(x);
     BoolExpr eq = _enc.mkEq(x, simpleE);
-    _enc.add(eq, new PredicateLabel(PredicateLabel.labels.SSA));
+    _enc.add(eq, new PredicateLabel(PredicateLabel.LabelType.SSA));
     p.debug(eq.toString());
     return x;
   }

@@ -56,7 +56,7 @@ import org.batfish.minesweeper.answers.SmtReachabilityAnswerElement;
 import org.batfish.minesweeper.collections.Table2;
 import org.batfish.minesweeper.question.HeaderLocationQuestion;
 import org.batfish.minesweeper.question.HeaderQuestion;
-import org.batfish.minesweeper.smt.PredicateLabel.labels;
+import org.batfish.minesweeper.smt.PredicateLabel.LabelType;
 import org.batfish.minesweeper.utils.PathRegexes;
 import org.batfish.minesweeper.utils.PatternUtils;
 import org.batfish.minesweeper.utils.TriFunction;
@@ -207,7 +207,7 @@ public class PropertyChecker {
     Graph graph = enc.getMainSlice().getGraph();
     for (List<GraphEdge> edges : graph.getEdgeMap().values()) {
       for (GraphEdge ge : edges) {
-        PredicateLabel label=new PredicateLabel(labels.FAILURES);
+        PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.FAILURES);
         ArithExpr f = enc.getSymbolicFailures().getFailedVariable(ge);
         assert f != null;
         if (!failSet.contains(ge)) {
@@ -226,7 +226,7 @@ public class PropertyChecker {
   }
 
   private void addNodeFailureConstraints(Encoder enc, Set<String> failNodesSet) {
-    PredicateLabel label=new PredicateLabel(labels.FAILURES);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.FAILURES);
     Graph graph = enc.getMainSlice().getGraph();
     for (String router : graph.getRouters()) {
       ArithExpr f = enc.getSymbolicFailures().getFailedNodes().get(router);
@@ -240,7 +240,7 @@ public class PropertyChecker {
   private void addEnvironmentConstraints(Encoder enc, EnvironmentType t) {
     LogicalGraph lg = enc.getMainSlice().getLogicalGraph();
     Context ctx = enc.getCtx();
-    PredicateLabel label=new PredicateLabel(labels.ENVIRONMENT);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.ENVIRONMENT);
     switch (t) {
       case ANY:
         break;
@@ -360,7 +360,7 @@ public class PropertyChecker {
       HeaderLocationQuestion qOrig,
       TriFunction<Encoder, Set<String>, Set<GraphEdge>, Map<String, BoolExpr>> instrument,
       Function<VerifyParam, AnswerElement> answer) {
-    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.POLICY);
 
     long totalTime = System.currentTimeMillis();
     PathRegexes p = new PathRegexes(qOrig);
@@ -626,7 +626,7 @@ public class PropertyChecker {
             lens.add(lenVars.get(router));
           }
           BoolExpr allEqual = PropertyAdder.allEqual(enc.getCtx(), lens);
-          PredicateLabel label=new PredicateLabel(labels.POLICY);
+          PredicateLabel label=new PredicateLabel(LabelType.POLICY);
           enc.add(enc.mkNot(allEqual), label);
           for (Entry<String, ArithExpr> entry : lenVars.entrySet()) {
             String name = entry.getKey();
@@ -683,7 +683,7 @@ public class PropertyChecker {
       required = enc1.mkAnd(required, enc1.mkEq(dataFwd1, dataFwd2));
     }
 
-    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.POLICY);
     enc1.add(related, label);
     enc1.add(enc1.mkNot(required), label);
 
@@ -783,7 +783,7 @@ public class PropertyChecker {
       }
       someBlackHole = ctx.mkOr(someBlackHole, ctx.mkAnd(isFwdTo, doesNotFwd));
     }
-    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    PredicateLabel label=new PredicateLabel(LabelType.POLICY);
     enc.add(someBlackHole, label);
     VerificationResult result = enc.verify().getFirst();
     return new SmtOneAnswerElement(result);
@@ -829,7 +829,7 @@ public class PropertyChecker {
       }
       acc = enc.mkOr(acc, enc.mkNot(enc.mkImplies(reach, all)));
     }
-    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.POLICY);
     enc.add(acc, label);
     VerificationResult res = enc.verify().getFirst();
     return new SmtOneAnswerElement(res);
@@ -881,7 +881,7 @@ public class PropertyChecker {
       BoolExpr hasLoop = pa.instrumentLoop(router);
       someLoop = ctx.mkOr(someLoop, hasLoop);
     }
-    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.POLICY);
     enc.add(someLoop, label);
 
     VerificationResult result = enc.verify().getFirst();
@@ -899,7 +899,7 @@ public class PropertyChecker {
    * will be equal given their equal inputs.
    */
   public AnswerElement checkLocalEquivalence(Pattern n, boolean strict, boolean fullModel) {
-    PredicateLabel label=new PredicateLabel(labels.POLICY);
+    PredicateLabel label=new PredicateLabel(LabelType.POLICY);
     
     Graph graph = new Graph(_batfish);
     List<String> routers = PatternUtils.findMatchingNodes(graph, n, Pattern.compile(""));

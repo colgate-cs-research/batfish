@@ -12,10 +12,10 @@ import org.batfish.minesweeper.Protocol;
 
 public class PredicateLabel{
   /**
-  * This enum type labels are all the types of the predicate may have.
+  * This enum type LabelType are all the types of the predicate may have.
   */
   
-  public enum labels{
+  public enum LabelType {
     // Predicates for policy and environment
     POLICY,
     HEADER_SPACE,
@@ -47,25 +47,20 @@ public class PredicateLabel{
   };
   
   /** Labels for predicates derived from configuration */
-  private final static EnumSet<labels> CONFIGURABLE_LABELS = EnumSet.of(
-      labels.IMPORT, labels.EXPORT, labels.EXPORT_REDISTRIBUTED, labels.COMMUNITY, 
-      labels.ACLS_INBOUND, labels.ACLS_OUTBOUND);
+  private final static EnumSet<LabelType> CONFIGURABLE_LABELS = EnumSet.of(
+      LabelType.IMPORT, LabelType.EXPORT, LabelType.EXPORT_REDISTRIBUTED, LabelType.COMMUNITY,
+      LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND);
   
   /** Labels for predicates that are computable based on predicates derived
    * from configuration */
-  private final static EnumSet<labels> COMPUTABLE_LABELS = EnumSet.of(
-      labels.BEST_PER_PROTOCOL, labels.BEST_OVERALL, 
-      labels.CONTROL_FORWARDING, labels.DATA_FORWARDING);
+  private final static EnumSet<LabelType> COMPUTABLE_LABELS = EnumSet.of(
+      LabelType.BEST_PER_PROTOCOL, LabelType.BEST_OVERALL,
+      LabelType.CONTROL_FORWARDING, LabelType.DATA_FORWARDING);
 
-  private final static EnumSet<labels> TRACK_LABELS = 
-      EnumSet.complementOf(EnumSet.of(labels.COUNTEREXAMPLE));
-//      EnumSet.of(
-//      labels.IMPORT, labels.EXPORT, labels.COMMUNITY, 
-//      labels.ACLS_INBOUND, labels.ACLS_OUTBOUND,
-//      labels.BEST_PER_PROTOCOL, labels.BEST_OVERALL,
-//      labels.CONTROL_FORWARDING, labels.DATA_FORWARDING);
-  
-  private labels type;
+  private final static EnumSet<LabelType> TRACK_LABELS =
+      EnumSet.complementOf(EnumSet.of(LabelType.COUNTEREXAMPLE));
+
+  private LabelType type;
   
   private String device;
   
@@ -75,15 +70,15 @@ public class PredicateLabel{
   
   private Protocol proto;
   
-  public PredicateLabel(labels type) {
+  public PredicateLabel(LabelType type) {
     this(type, null);
   }
   
-  public PredicateLabel(labels type, String device) {
+  public PredicateLabel(LabelType type, String device) {
     this(type,device,"null","null");
   }
   
-  public PredicateLabel(labels type, String device, Interface face) {
+  public PredicateLabel(LabelType type, String device, Interface face) {
     this.type=type;
     this.device=device;
     this.intface=face;
@@ -91,7 +86,7 @@ public class PredicateLabel{
     this.proto = null;
   }
   
-  public PredicateLabel(labels type, String device, Interface face, Protocol proto) {
+  public PredicateLabel(LabelType type, String device, Interface face, Protocol proto) {
     this.type=type;
     this.device=device;
     this.intface=face;
@@ -103,7 +98,7 @@ public class PredicateLabel{
     this.proto = proto;
   }
   
-  public PredicateLabel(labels type, String device, String face, String proto) {
+  public PredicateLabel(LabelType type, String device, String face, String proto) {
     this.type=type;
     this.device=device;
     if (device!=null && device.equals("null"))
@@ -134,40 +129,16 @@ public class PredicateLabel{
   }
 
   
-  /**
-  * This method updates the type
-  * @param s String the new type
-  */
-  public void Settype(labels s) {
-    this.type=s;
-  }
-  
-  /**
-  * This method updates the router
-  * @param s String the new router name
-  */
-  public void Setdevice(String s) {
-    this.device=s;
-  }
-  
-  /**
-  * This method updates the interface
-  * @param s String the new interface
-  */
-  public void Setinterface(String s) {
-    this.intface_String=s;
-  }
-  
   public void setProtocol(Protocol p) {
     this.proto = p;
   }
   
   /**
   * This method returns the type
-  * @return labels the type of this PredicateLabel
+  * @return LabelType the type of this PredicateLabel
   */
   
-  public labels gettype() {
+  public LabelType getLabelType() {
     return type;
   }
   
@@ -185,7 +156,7 @@ public class PredicateLabel{
   * @return Interface This returns the interface
   */
   
-  public Interface getintface() {
+  public Interface getInterface() {
       return this.intface;
   }
   
@@ -194,7 +165,7 @@ public class PredicateLabel{
   * @return String This returns the interface
   */
   
-  public String getStrintface() {
+  public String getInterfaceString() {
       return this.intface_String;
   }
   
@@ -210,15 +181,15 @@ public class PredicateLabel{
     boolean type_b=false, device_b=false, intface_b =false, proto_b = false;
 
     PredicateLabel p1=(PredicateLabel) o1;
-    if ((p1).gettype().equals(type))
+    if ((p1).getLabelType().equals(type))
       type_b = true;
     
     if ((((p1).getdevice()==null)&&(device==null))
         ||((p1).getdevice()!=null && (p1).getdevice().equals(device)))
         device_b=true;
     
-    if (((p1).getStrintface()==null&&this.intface_String==null)
-        ||((p1).getStrintface()!=null&&(p1).getStrintface().equals(intface_String)))
+    if (((p1).getInterfaceString()==null&&this.intface_String==null)
+        ||((p1).getInterfaceString()!=null&&(p1).getInterfaceString().equals(intface_String)))
       intface_b=true;
     
     if ((p1.proto == null && this.proto == null)
