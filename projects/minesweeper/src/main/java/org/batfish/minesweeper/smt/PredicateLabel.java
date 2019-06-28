@@ -1,6 +1,8 @@
 package org.batfish.minesweeper.smt;
 
 import java.util.EnumSet;
+import java.util.List;
+
 import org.batfish.datamodel.Interface;
 import org.batfish.minesweeper.Protocol;
 
@@ -64,11 +66,13 @@ public class PredicateLabel{
   
   private String device;
   
-  private Interface intface;
+  private Interface iface;
   
   private String intface_String;
   
   private Protocol proto;
+
+  private List<String> configReferences;
   
   public PredicateLabel(LabelType type) {
     this(type, null);
@@ -78,35 +82,35 @@ public class PredicateLabel{
     this(type,device,"null","null");
   }
   
-  public PredicateLabel(LabelType type, String device, Interface face) {
+  public PredicateLabel(LabelType type, String device, Interface iface) {
     this.type=type;
     this.device=device;
-    this.intface=face;
-    this.intface_String=face.getName();
+    this.iface =iface;
+    this.intface_String=iface.getName();
     this.proto = null;
   }
   
-  public PredicateLabel(LabelType type, String device, Interface face, Protocol proto) {
+  public PredicateLabel(LabelType type, String device, Interface iface, Protocol proto) {
     this.type=type;
     this.device=device;
-    this.intface=face;
-    if (face != null) {
-        this.intface_String=face.getName();
+    this.iface =iface;
+    if (iface != null) {
+        this.intface_String=iface.getName();
     } else  {
         this.intface_String = null;
     }
     this.proto = proto;
   }
   
-  public PredicateLabel(LabelType type, String device, String face, String proto) {
+  public PredicateLabel(LabelType type, String device, String iface, String proto) {
     this.type=type;
     this.device=device;
     if (device!=null && device.equals("null"))
       this.device=null;
-    this.intface_String=face;
-    if (face!=null && face.equals("null"))
+    this.intface_String=iface;
+    if (iface!=null && iface.equals("null"))
       this.intface_String=null;
-    this.intface=null;
+    this.iface =null;
     if (proto != null && proto.equals("null")) {
       this.proto = null;
     } else {
@@ -128,11 +132,18 @@ public class PredicateLabel{
           +(proto != null ? " " + proto.name() : "");
   }
 
-  
-  public void setProtocol(Protocol p) {
-    this.proto = p;
+
+  /**
+   * Add reference (currently just a string) to a list of references
+   * Refers to one or more configuration statements used in the construction
+   * of the predicate.
+   * TODO: Create a Reference class to contain more than just a string.
+   */
+  public void addConfigurationRef(String reference){
+    configReferences.add(reference);
   }
-  
+
+
   /**
   * This method returns the type
   * @return LabelType the type of this PredicateLabel
@@ -157,7 +168,7 @@ public class PredicateLabel{
   */
   
   public Interface getInterface() {
-      return this.intface;
+      return this.iface;
   }
   
   /**

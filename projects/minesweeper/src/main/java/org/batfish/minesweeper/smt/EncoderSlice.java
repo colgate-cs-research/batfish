@@ -2023,6 +2023,11 @@ class EncoderSlice {
 
         BoolExpr val = mkNot(vars.getPermitted());
         BoolExpr active = interfaceActive(iface, proto);
+        if (!iface.getActive()){
+          //add disabled interface as a reference ?
+          exportLabel.addConfigurationRef(String.format("In Router %s, Interface %s is disabled for proto : %s",router, iface.getName(), proto.name()));
+        }
+
 
         // Apply BGP export policy and cost based on peer type
         // (1) EBGP --> ALL
@@ -2079,6 +2084,7 @@ class EncoderSlice {
         TransferSSA f =
             new TransferSSA(this, conf, varsOther, vars, proto, statements, cost, ge, true);
         acc = f.compute();
+        //TODO : What references would I get from the TransferSSA?
 
         BoolExpr usable =
             mkAnd(active, doExport, varsOther.getPermitted(), notFailed, notFailedNode);
