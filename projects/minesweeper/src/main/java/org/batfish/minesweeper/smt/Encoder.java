@@ -101,6 +101,7 @@ public class Encoder {
   public static final String ARG_MUS_INTERSECT = "musIntersect";
   public static final String ARG_MUS_UNION = "musUnion";
   public static final String ARG_BULK_SAVE_MUS = "saveMUS";
+  public static final String ARG_MUS_THRESHOLD = "musThreshold";
 
   private static final boolean ENABLE_UNSAT_CORE = true;
 
@@ -1393,13 +1394,19 @@ public class Encoder {
           saveMUSes(musesLabels);
         }
 
+        double threshold =(double) _settings.getInt(ARG_MUS_THRESHOLD);
+        threshold /= 100.0;
+        threshold = Math.ceil(muses.size()*threshold);
+        int minMUSes = (int) threshold;
         totalNumMUSesGenerated += muses.size();
+
+        System.out.printf("Thresholding at %d percentage for %d MUSes\n", ((int)threshold),minMUSes);
 
         for (int i = 0; i < predicateFrequency.length; i++) {
           if (labels.get(i).isConfigurable()){
             if (predicateFrequency[i] > 0) {
               //Intersect MUSes if option selected. Union by default.
-              if (!_settings.getBoolean(ARG_MUS_INTERSECT) || predicateFrequency[i]==muses.size()){
+              if (predicateFrequency[i]>=minMUSes){
                 candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
                 System.out.printf("** %s appeared  in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
               }
