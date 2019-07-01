@@ -228,7 +228,7 @@ def process_mus_intersect(mus_file_path):
         for mus in mus_file:
             count = count+1
             if mus.startswith('['):
-                policy = mus
+                policy = mus.strip()
                 continue
             preds_set = set(mus.split(','))
             if (first):
@@ -246,7 +246,7 @@ def process_mus_intersect_num(mus_file_path, num):
         for mus in mus_file:
             count = count+1
             if mus.startswith('['):
-                policy = mus
+                policy = mus.strip()
                 continue
             preds_set = set(mus.split(','))
             if (first):
