@@ -390,10 +390,11 @@ class CounterExample {
           Interface interf = graphEdge.getStart();
           IpAccessList acl = interf.getOutgoingFilter();
           FilterResult filterResult = acl.filter(flow, null, ImmutableMap.of(), ImmutableMap.of());
-          IpAccessListLine line = acl.getLines().get(filterResult.getMatchLine());
-          String lineName = "UNKNOWN";
-          if (line != null) {
-              lineName = line.getName();
+          Integer matchLine = filterResult.getMatchLine();
+          String lineName = "null";
+          if (matchLine != null) {
+            IpAccessListLine line = acl.getLines().get(matchLine);
+            lineName = line.getName();
           }
           String note = String.format("DENIED_OUT{%s}{%s} @ %s", acl.getName(),
               lineName, currentRouterName);
