@@ -1423,8 +1423,18 @@ public class Encoder {
     HashMap<String, ArrayList<PredicateLabel>> unfound= loadFaultloc(); //Predicates that are at fault
     HashMap<String, ArrayList<PredicateLabel>> faultyPreds= loadFaultloc(); //This is the OG list of faulty preds
 
-    computeExtrapredicates(predNameToLabelsMap,unfound,faultyPreds,candidatePredicateLabels);
-    outUnfound(unfound,faultyPreds);
+    computeExtrapredicates(predNameToLabelsMap, unfound, faultyPreds, candidatePredicateLabels);
+    outUnfound(unfound, faultyPreds);
+    /* Printing references for faults in configuration*/
+    System.out.println("***** Diagnosis Report ******");
+    //TODO : Write report (understandable localization to a file for each error).
+    for (PredicateLabel faultyPredicate : candidatePredicateLabels) {
+        List<PredicateLabel.ConfigurationReference> refs = faultyPredicate.getConfigurationRefs();
+        for (PredicateLabel.ConfigurationReference ref : refs) {
+          System.out.println(ref.toString());
+        }
+
+    }
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_end - time_start);
     _faultlocStats.setNumMUSesGenerated(totalNumMUSesGenerated);
   }
@@ -1721,6 +1731,7 @@ print out unfound items in Faultloc
         }
         System.out.println("-------------------------------------------");
       }
+
     }
     _faultlocStats.setNumFoundPreds(foundCount);
     _faultlocStats.setNumUnfoundPreds(missedCount);

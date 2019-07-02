@@ -59,6 +59,7 @@ import org.batfish.datamodel.routing_policy.statement.DeleteCommunity;
 import org.batfish.datamodel.routing_policy.statement.RetainCommunity;
 import org.batfish.datamodel.routing_policy.statement.SetCommunity;
 import org.batfish.minesweeper.collections.Table2;
+import org.batfish.minesweeper.smt.PredicateLabel;
 
 /**
  * A graph object representing the structure of the network. The graph is built potentially by
@@ -1184,12 +1185,15 @@ public class Graph {
   }
 
 
+  public boolean isEdgeUsed(Configuration conf, Protocol proto, GraphEdge ge){
+      return isEdgeUsed(conf, proto, ge, null);
+  }
 
 
   /*
    * Check if a topology edge is used in a particular protocol.
    */
-  public boolean isEdgeUsed(Configuration conf, Protocol proto, GraphEdge ge) {
+  public boolean isEdgeUsed(Configuration conf, Protocol proto, GraphEdge ge, @Nullable PredicateLabel label) {
     Interface iface = ge.getStart();
 
     // Use a null routed edge, but only for the static protocol
@@ -1199,7 +1203,10 @@ public class Graph {
 
     // Don't use if interface is not active
     if (proto.isOspf() && (!iface.getOspfEnabled() || iface.getOspfPassive())) {
-      return false;
+        if (label!=null){
+            label.addConfigurationRef(ge.getRouter(), iface, "OSPF disabled or passive.");
+        }
+        return false;
     }
 
     // Exclude abstract iBGP edges from all protocols except BGP
@@ -1226,6 +1233,9 @@ public class Graph {
     if (proto.isBgp()) {
       BgpPeerConfig n1 = _ebgpNeighbors.get(ge);
       BgpPeerConfig n2 = _ibgpNeighbors.get(ge);
+      if (label!=null && n1==null && null==n2){
+          label.addConfigurationRef(ge.getRouter(), iface, String.format("BGP peering missing for %s",ge.toString()));
+      }
       return n1 != null || n2 != null;
     }
 

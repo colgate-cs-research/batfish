@@ -263,6 +263,10 @@ class EncoderSlice {
           BoolExpr outAcl = mkBoolConstant(outName);
           BoolExpr outAclFunc = computeACL(outbound);
           PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.ACLS_OUTBOUND,router,i);
+          for (IpAccessListLine line :outbound.getLines()){
+            String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
+            label.addConfigurationRef(router, i, String.format("Outbound ACL %s traffic | %s",action, line.getName()));
+          }
           add(mkEq(outAcl, outAclFunc), label);
           _outboundAcls.put(ge, outAcl);
         }
@@ -278,6 +282,10 @@ class EncoderSlice {
           BoolExpr inAcl = mkBoolConstant(inName);
           BoolExpr inAclFunc = computeACL(inbound);
           PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.ACLS_INBOUND,router,i);
+          for (IpAccessListLine line :inbound.getLines()){
+            String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
+            label.addConfigurationRef(router, i, String.format("Inbound ACL %s traffic | %s",action, line.getName()));
+          }
           add(mkEq(inAcl, inAclFunc), label);
           _inboundAcls.put(ge, inAcl);
         }
@@ -1766,14 +1774,20 @@ class EncoderSlice {
       GraphEdge ge,
       String router) {
 
+
     SymbolicRoute vars = e.getSymbolicRecord();
 
     Interface iface = ge.getStart();
+
 
     ArithExpr failed = getSymbolicFailures().getFailedVariable(e.getEdge());
     assert (failed != null);
     BoolExpr notFailed = mkEq(failed, mkInt(0));
     PredicateLabel importLabel=new PredicateLabel(PredicateLabel.LabelType.IMPORT,router,iface,proto);
+
+    if (!getGraph().isEdgeUsed(conf,proto, ge, importLabel)){
+      importLabel.addConfigurationRef(router,iface,String.format("Edge %s is not configured.",ge.toString()));
+    }
 
     ArithExpr failedNode = getSymbolicFailures().getFailedStartVariable(e.getEdge());
     assert (failed != null);
@@ -1783,12 +1797,17 @@ class EncoderSlice {
 
       if (proto.isConnected()) {
         Prefix p = iface.getConcreteAddress().getPrefix();
+        importLabel.addConfigurationRef(router, iface, String.format("Start Interface (with prefix %s) for import rule.", p.toString()));
+
         BoolExpr relevant =
             mkAnd(
                 interfaceActive(iface, proto),
                 isRelevantFor(p, _symbolicPacket.getDstIp()),
                 notFailed,
                 notFailedNode);
+        if (!iface.getActive()){
+          importLabel.addConfigurationRef(router, iface, String.format("Interface is inactive."));
+        }
         BoolExpr per = vars.getPermitted();
         BoolExpr len = safeEq(vars.getPrefixLength(), mkInt(p.getPrefixLength()));
         BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(1));
@@ -1804,6 +1823,7 @@ class EncoderSlice {
         BoolExpr acc = mkNot(vars.getPermitted());
         if (getGraph().isEdgeUsed(conf, proto, ge)){
           for (StaticRoute sr : srs) {
+            importLabel.addConfigurationRef(router, iface, String.format("Protocol %s relies on static route %s", proto.name(), sr.toString()));
             Prefix p = sr.getNetwork();
             BoolExpr relevant =
                     mkAnd(
@@ -1926,13 +1946,20 @@ class EncoderSlice {
             Statements.StaticStatement s = new Statements.StaticStatement(Statements.ExitAccept);
             statements = Collections.singletonList(s);
           } else {
+            importLabel.addConfigurationRef(router, iface, String.format("Import relies on routing policy : %s", pol.getName()));
             statements = pol.getStatements();
           }
 
           // OSPF cost calculated based on incoming interface
           Integer cost = 1; //FIXME : non-existent edges cost default
           if (getGraph().isEdgeUsed(conf, proto, ge)) {
-            cost = proto.isOspf() ? addedCost(proto, ge) : 0;
+            if (proto.isOspf()){
+              cost = addedCost(proto, ge);
+              importLabel.addConfigurationRef(router, iface, String.format("Import uses OSPF cost %d", cost));
+            }else{
+              cost = 0;
+            }
+
           }
 
           TransferSSA f =
@@ -1996,7 +2023,7 @@ class EncoderSlice {
     assert (failed != null);
     BoolExpr notFailed = mkEq(failed, mkInt(0));
     PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT, router, ge.getStart(), proto);
-
+    _graph.isEdgeUsed(conf, proto, ge, exportLabel); //only for configuration references that are added in this method.
     BoolExpr notFailedNode =
         getSymbolicFailures()
             .getFailedPeerVariable(e.getEdge())
@@ -2025,7 +2052,7 @@ class EncoderSlice {
         BoolExpr active = interfaceActive(iface, proto);
         if (!iface.getActive()){
           //add disabled interface as a reference ?
-          exportLabel.addConfigurationRef(String.format("In Router %s, Interface %s is disabled for proto : %s",router, iface.getName(), proto.name()));
+          exportLabel.addConfigurationRef(router, iface, String.format("Export relies on disabled interface for %s", proto.name()));
         }
 
 
@@ -2089,6 +2116,7 @@ class EncoderSlice {
         BoolExpr usable =
             mkAnd(active, doExport, varsOther.getPermitted(), notFailed, notFailedNode);
 
+
         // OSPF is complicated because it can have routes redistributed into it
         // from the FIB, but also needs to know about other routes in OSPF as well.
         // We model the export here as being the better of the redistributed route
@@ -2118,6 +2146,7 @@ class EncoderSlice {
         for (Prefix p : originations) {
           // For OSPF, we need to explicitly initiate a route
           if (proto.isOspf()) {
+            exportLabel.addConfigurationRef(router, iface, String.format("Export for destination prefix %s | Is iface Active : %b", p.toString(),iface.getActive()));
 
             BoolExpr ifaceUp = interfaceActive(iface, proto);
             BoolExpr relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
@@ -2251,8 +2280,9 @@ class EncoderSlice {
                 break;
 
               case EXPORT:
-                if (!getGraph().isEdgeUsed(conf,proto, ge)){
-                  PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT,router, ge.getStart(), proto);
+                PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT,router, ge.getStart(), proto);
+                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
+                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
                   add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
                   break;
                 }

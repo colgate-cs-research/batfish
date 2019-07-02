@@ -1,5 +1,6 @@
 package org.batfish.minesweeper.smt;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -62,6 +63,27 @@ public class PredicateLabel{
   private final static EnumSet<LabelType> TRACK_LABELS =
       EnumSet.complementOf(EnumSet.of(LabelType.COUNTEREXAMPLE));
 
+
+  public class ConfigurationReference{
+    private String router;
+    private Interface iface;
+    public String detail;
+
+
+    public ConfigurationReference(String router, Interface iface, String detail) {
+      this.router = router;
+      this.iface = iface;
+      this.detail = detail;
+    }
+
+    @Override
+    public String toString(){
+      return String.format("Router : %s | Interface : %s | Message : %s", router, iface.getName(), detail);
+    }
+  }
+
+  private List<ConfigurationReference> references;
+
   private LabelType type;
   
   private String device;
@@ -72,8 +94,6 @@ public class PredicateLabel{
   
   private Protocol proto;
 
-  private List<String> configReferences;
-  
   public PredicateLabel(LabelType type) {
     this(type, null);
   }
@@ -88,6 +108,7 @@ public class PredicateLabel{
     this.iface =iface;
     this.intface_String=iface.getName();
     this.proto = null;
+    this.references = new ArrayList<>();
   }
   
   public PredicateLabel(LabelType type, String device, Interface iface, Protocol proto) {
@@ -100,6 +121,7 @@ public class PredicateLabel{
         this.intface_String = null;
     }
     this.proto = proto;
+    this.references = new ArrayList<>();
   }
   
   public PredicateLabel(LabelType type, String device, String iface, String proto) {
@@ -116,6 +138,7 @@ public class PredicateLabel{
     } else {
       this.proto = Protocol.fromString(proto);
     }
+    this.references = new ArrayList<>();
   }
  
   @Override
@@ -132,17 +155,24 @@ public class PredicateLabel{
           +(proto != null ? " " + proto.name() : "");
   }
 
-
   /**
    * Add reference (currently just a string) to a list of references
    * Refers to one or more configuration statements used in the construction
    * of the predicate.
    * TODO: Create a Reference class to contain more than just a string.
    */
-  public void addConfigurationRef(String reference){
-    configReferences.add(reference);
+  public void addConfigurationRef(String router, Interface iface, String detail){
+    references.add(new ConfigurationReference(router,iface, detail));
   }
 
+
+  /**
+   * This method returns the list of configuration references to this predicate label.
+   * @return
+   */
+  public List<ConfigurationReference> getConfigurationRefs(){
+    return this.references;
+  }
 
   /**
   * This method returns the type
