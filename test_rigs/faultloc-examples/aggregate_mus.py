@@ -125,9 +125,18 @@ def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, sho
     return None, None, None, None
 def process_mus(mus_file_path):
     preds= set()
+    config_label = {"IMPORT","EXPORT","EXPORT_REDISTRIBUTED","COMMUNITY",
+      "ACLS_INBOUND", "ACLS_OUTBOUND"}
     with open(mus_file_path, "r") as mus_file:
         for mus in mus_file:
+            if mus.startswith('['):
+                continue
             preds_list =  mus.split(',')
+            check_config = set(mus.split(','))
+            for pred in check_config:
+                tmp = pred.split()
+                if tmp == [] or not tmp[0] in config_label:
+                    preds_set.remove(pred)
             for x in preds_list:
                 preds.add(x)
     return preds
@@ -135,9 +144,18 @@ def process_mus(mus_file_path):
 def process_mus_intersect(mus_file_path):
     preds = set()
     first = True
+    config_label = {"IMPORT","EXPORT","EXPORT_REDISTRIBUTED","COMMUNITY",
+      "ACLS_INBOUND", "ACLS_OUTBOUND"}
     with open(mus_file_path, "r") as mus_file:
         for mus in mus_file:
             preds_set = set(mus.split(','))
+            check_config = set(mus.split(','))
+            for pred in check_config:
+                tmp = pred.split()
+                if tmp == [] or not tmp[0] in config_label:
+                    preds_set.remove(pred)
+            if mus.startswith('['):
+                continue
             if (first):
                 preds = preds.union(preds_set)
                 first = False
