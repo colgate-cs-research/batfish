@@ -136,7 +136,7 @@ def process_mus(mus_file_path):
             for pred in check_config:
                 tmp = pred.split()
                 if tmp == [] or not tmp[0] in config_label:
-                    preds_set.remove(pred)
+                    preds_list.remove(pred)
             for x in preds_list:
                 preds.add(x)
     return preds
