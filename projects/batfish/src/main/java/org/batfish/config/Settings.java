@@ -163,6 +163,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
   private static final String ARG_MUS_THRESHOLD = "musThreshold";
 
+  private static final String ARG_SAVE_ALL_REFERENCES = "saveAllRefs";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -653,6 +655,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     setDefaultProperty(ARG_MUS_UNION, false);
     setDefaultProperty(ARG_BULK_SAVE_MUS,false);
     setDefaultProperty(ARG_MUS_THRESHOLD, 50);
+    setDefaultProperty(ARG_SAVE_ALL_REFERENCES, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_PRINT_GRAPH, false);
     setDefaultProperty(ARG_PRINT_SMT, false);
@@ -916,6 +919,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
     addOption(ARG_MUS_THRESHOLD, "percent of MUSes predicates should appear in to be considered candidates", "musThreshold");
 
+    addBooleanOption(ARG_SAVE_ALL_REFERENCES, "save predicate to list of references into a file");
+
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
     addBooleanOption(ARG_PRINT_GRAPH, "print graph used to construct SMT formulation");
@@ -1061,6 +1066,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     getBooleanOptionValue(ARG_MUS_INTERSECT);
     getBooleanOptionValue(ARG_MUS_UNION);
     getBooleanOptionValue(ARG_BULK_SAVE_MUS);
+    getBooleanOptionValue(ARG_SAVE_ALL_REFERENCES);
     getIntegerOptionValue(ARG_MUS_THRESHOLD);
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);

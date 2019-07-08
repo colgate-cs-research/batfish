@@ -47,6 +47,10 @@ import org.batfish.minesweeper.question.HeaderQuestion;
 import org.batfish.minesweeper.smt.PredicateLabel.LabelType;
 import org.batfish.minesweeper.utils.MsPair;
 import org.batfish.minesweeper.utils.Tuple;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -81,6 +85,8 @@ public class Encoder {
   static final String NOT_UNSATCORE_OUT_FILE = "not_unsat.out";
   static final String NOT_UNSATCORE_OUT_FILE_NO_NEGATE = "not_unsat_no_negate.out";
 
+  static final String REFERENCE_FILE_NAME = "predicate_config_refs";
+
   public static final String ARG_NO_FAULTLOC = "noFaultloc";
   public static final String ARG_NUM_ITERS_FAULTLOC = "numIters";
   public static final String ARG_NO_NEGATE_PROPERTY = "noNegateProperty";
@@ -102,6 +108,7 @@ public class Encoder {
   public static final String ARG_MUS_UNION = "musUnion";
   public static final String ARG_BULK_SAVE_MUS = "saveMUS";
   public static final String ARG_MUS_THRESHOLD = "musThreshold";
+  public static final String ARG_SAVE_ALL_REFERENCES = "saveAllRefs";
 
   private static final boolean ENABLE_UNSAT_CORE = true;
 
@@ -1212,6 +1219,11 @@ public class Encoder {
             localizeFaults();
             _faultlocStats.writeOut();
         }
+        if (_settings.getBoolean(ARG_SAVE_ALL_REFERENCES)){
+          //for each predicateLabel in the problem
+          Set<PredicateLabel> predicates =  new HashSet<>(_unsatCore.getTrackingLabels().values());
+          saveReferences(predicates);
+        }
 
         if (!_question.getMinimize()) {
           break;
@@ -1231,6 +1243,40 @@ public class Encoder {
 
       return new Tuple<>(result, m);
     }
+  }
+
+  void saveReferences (Set<PredicateLabel> predicates){
+    Path filePath = _batfish.getTestrigPath()
+            .resolve(BfConsts.RELPATH_OUTPUT)
+            .resolve(REFERENCE_FILE_NAME);
+
+    JSONObject root = new JSONObject();
+    for (PredicateLabel pred : predicates){
+      List<PredicateLabel.ConfigurationReference> refs = pred.getConfigurationRefs();
+      if (refs.size()!=0){
+        JSONArray refsArray = new JSONArray();
+        for (PredicateLabel.ConfigurationReference ref : refs){
+          refsArray.put(ref.toString());
+        }
+        try{
+          root.put(pred.toString(), refsArray);
+        }catch (JSONException jse){
+          System.err.println("JSON saving failed");
+          System.exit(1);
+        }
+      }
+    }
+    try {
+      System.out.printf("Saving configuration references to %s\n", filePath.toString());
+      FileWriter fileWriter = new FileWriter(filePath.toFile());
+      fileWriter.write(root.toString());
+      fileWriter.close();
+    }catch (IOException ioe){
+      System.err.println("FAILED to write json file");
+      System.exit(1);
+    }
+
+
   }
 
   boolean checkForRepeatedfailedEdges(Map<Integer, Map<String, String>> failedEdgesCE,
