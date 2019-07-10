@@ -57,14 +57,24 @@ public class MarcoMUS {
         List<List<Expr>> MUSes = new ArrayList<>();
 
         List<Set<Integer>> indexOfMUSes = new ArrayList<>();
-        List<Set<Integer>> indexOfMSSes = new ArrayList<>();
+        List<Set<Integer>> indexOfMCSes = new ArrayList<>();
+
+
 
         boolean firstMUSGenerated = false; //Variable to track how long the first MUS takes
 
 		long start_time = System.currentTimeMillis();
+        List<Integer> seed = new ArrayList<>();
+        for (int i=0;i<constraints.length;i++){
+            if (!constraintLabels[i].isConfigurable()){
+                seed.add(i);
+            }
+        }
+		    int max_iters = 200;//Finds upto 200 MCSes
         while (true){
-            List<Integer> seed  = mapSolver.nextSeed();
-            if (seed==null) {
+//            List<Integer> seed  = mapSolver.nextSeed();
+
+            if (seed==null||max_iters==0) {
                 break;
             }
             if (MSSes.size()>=maxMSSCount || MUSes.size()>=maxMUSCount) {
@@ -73,6 +83,7 @@ public class MarcoMUS {
             if (System.currentTimeMillis()-start_time>maxExplorationTime*1000) {
                 break;
             }
+            max_iters--;
 
             Set<Integer> seedSet= new HashSet<>();
             seedSet.addAll(seed);
@@ -81,11 +92,18 @@ public class MarcoMUS {
             }
             if (subsetSolver.checkSubset(seedSet)){
                 Set<Integer> mss = subsetSolver.grow(seed);
-                indexOfMSSes.add(mss);
+                Set<Integer> mcs = new HashSet<>();
+                for (int i =0;i<constraints.length;i++){
+                    mcs.add(i);
+                }
+                mcs.removeAll(mss);
+                indexOfMCSes.add(mcs); //ADDING MCSes currently
+                seed.addAll(mcs); //NOTE: Instead of using nextSeed().
                 List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
                 MSSes.add(mssLits);
                 mapSolver.blockDown(mss);
             }else{
+                if (true) break; //TODO : Clean up. Currently modified  to only generate MCSes.
                 Set<Integer> mus = subsetSolver.shrink(seed);
                 indexOfMUSes.add(mus);
                 if (!firstMUSGenerated){
@@ -100,8 +118,9 @@ public class MarcoMUS {
             }
         }
 
+        System.out.printf("MCS count : %d\n", MSSes.size());
 
-        return shouldReturnMUSes? indexOfMUSes: indexOfMSSes;
+        return shouldReturnMUSes? indexOfMUSes: indexOfMCSes;
     }
 
     /**
@@ -236,7 +255,7 @@ public class MarcoMUS {
         /**
          * Maximize a satisfying subset of constraints into a MSS.
          * @param seed List of indexes of the constraints in the satisfiable subset.
-         * @return MSS obtained by maximizing input satisfying subset.
+         * @return MSS obtained by maximizing input satisfying subset.//TODO: RETURNING MCSes currently
          */
         public Set<Integer> grow(List<Integer> seed){
             if (verbose) {
@@ -250,6 +269,7 @@ public class MarcoMUS {
                     current.remove(i);
                 }
             }
+
             return current;
         }
 

@@ -1317,9 +1317,7 @@ public class Encoder {
 
     int totalNumMUSesGenerated = 0;
     long time_start = System.currentTimeMillis();
-    boolean isFirstFailSet = true;
     Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
-
 
     int maxMUScount = _settings.getInt(ARG_MAX_MUS_COUNT);
     int maxMSScount = _settings.getInt(ARG_MAX_MSS_COUNT);
@@ -1404,21 +1402,14 @@ public class Encoder {
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
         PredicateLabel[] constraintLabels = labels.toArray(new PredicateLabel[labels.size()]);
         List<Set<Integer>> muses;
-        if (isFirstFailSet) {
-          muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
-                  maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, true,
-                  _faultlocStats);
-          time_end = System.currentTimeMillis();
-          _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
-          isFirstFailSet = false;
-        }else{
-          time_end = System.currentTimeMillis();
-          muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
-                  maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, true,
-                  null);
-        }
-        int[] predicateFrequency = new int[predNames.size()];
 
+        muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
+                maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, false,
+                null);
+        time_end = System.currentTimeMillis();
+        _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
+
+        int[] predicateFrequency = new int[predNames.size()];
 
         Set<Set<PredicateLabel>> musesLabels = new HashSet<>();
 
@@ -1427,9 +1418,7 @@ public class Encoder {
           for (Integer pred_num : mus) {
             if (pred_num<predicateFrequency.length){
               predicateFrequency[pred_num]++; //TODO : How to deal with failure set constraints that appear in MUSes.
-              if (labels.get(pred_num).isConfigurable()){
-                musLabels.add(labels.get(pred_num));
-              }
+              musLabels.add(labels.get(pred_num));
             }
           }
 
@@ -1440,28 +1429,18 @@ public class Encoder {
           saveMUSes(musesLabels);
         }
 
-        double threshold =(double) _settings.getInt(ARG_MUS_THRESHOLD);
-        threshold /= 100.0;
-        threshold = Math.ceil(muses.size()*threshold);
-        int minMUSes = (int) threshold;
         totalNumMUSesGenerated += muses.size();
 
-        System.out.printf("Thresholding at %d percentage for %d MUSes\n", ((int)threshold),minMUSes);
 
         for (int i = 0; i < predicateFrequency.length; i++) {
           if (labels.get(i).isConfigurable()){
             if (predicateFrequency[i] > 0) {
-              //Intersect MUSes if option selected. Union by default.
-              if (predicateFrequency[i]>=minMUSes){
-                candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
-                System.out.printf("** %s appeared  in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
-              }
+              candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
+              //TODO : Add thresholding back (currently removed)
               System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
             }
           }
         }
-
-
       }
     }
     System.out.printf("Considering %d candidate predicates\n", candidatePredicateLabels.size());
