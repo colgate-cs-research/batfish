@@ -2146,6 +2146,11 @@ class EncoderSlice {
         for (Prefix p : originations) {
           // For OSPF, we need to explicitly initiate a route
           if (proto.isOspf()) {
+            // Don't bother with originations that are irrelevant for policy
+            if (!relevantPrefix(p)) {
+                continue;
+            }
+
             exportLabel.addConfigurationRef(router, iface, String.format("Export for destination prefix %s | Is iface Active : %b", p.toString(),iface.getActive()));
 
             BoolExpr ifaceUp = interfaceActive(iface, proto);
