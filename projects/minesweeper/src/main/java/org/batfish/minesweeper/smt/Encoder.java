@@ -1424,6 +1424,24 @@ public class Encoder {
           }
           System.out.println("****************");
 
+          if (marcoVerbose){
+            System.out.println("Satsifying solution for MCS");
+            Solver satisfier = _ctx.mkSolver();
+            for(int i =0;i<allConstraints.size();i++){
+              if (!mus.contains(i)){
+              satisfier.add(allConstraints.get(i));
+              }else{
+                System.out.println("MCS CONSTRAINT: "+ allConstraints.get(i));
+              }
+            }
+            satisfier.check();
+            Model m = satisfier.getModel();
+            List<Expr> allVars = new ArrayList<>(_allVariables.values());
+            Collections.sort(allVars);
+            for (Expr var: allVars){
+              System.out.printf("%s | %s\n", var, m.eval(var, false));
+            }
+          }
 
           musesLabels.add(musLabels);
         }

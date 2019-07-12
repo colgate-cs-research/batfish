@@ -20,6 +20,7 @@ import org.batfish.minesweeper.utils.IpSpaceMayIntersectWildcard;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.Predicate;
 
 
 /**
@@ -2595,9 +2596,12 @@ class EncoderSlice {
           add(mkEq(originatedVar, relevantPrefix), originatedLabel);
         }
 
+
         List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
         for(List<LogicalEdge> edges : les) {
           for (LogicalEdge edge : edges) {
+            if (edge.getEdgeType().equals(EdgeType.EXPORT)) continue;
+            System.out.println("#####Edge : " +edge.getEdge().getStart() + " : " + router + " " + proto.name());
             Interface iface = edge.getEdge().getStart();
             if (proto.isOspf()) {
               PredicateLabel ospfEnabledLabel = new PredicateLabel(
@@ -2612,6 +2616,8 @@ class EncoderSlice {
 
               IntExpr ospfCostVar = (IntExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_COST);
               ArithExpr ospfCost = mkInt(iface.getOspfCost());
+
+              add(mkGe(ospfCostVar, mkInt(1)), new PredicateLabel(LabelType.VALUE_LIMIT));
               add(mkEq(ospfCostVar, ospfCost), ospfCostLabel);
             }
 
