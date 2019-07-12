@@ -40,6 +40,7 @@ public class PredicateLabel{
     COMMUNITY,
     ACLS_OUTBOUND,
     ACLS_INBOUND,
+    PROTOCOL,
     // Predicates derived from counterexamples
     PACKET,
     COUNTEREXAMPLE,
@@ -51,7 +52,8 @@ public class PredicateLabel{
   
   /** Labels for predicates derived from configuration */
   private final static EnumSet<LabelType> CONFIGURABLE_LABELS = EnumSet.of(
-      LabelType.IMPORT, LabelType.EXPORT, LabelType.EXPORT_REDISTRIBUTED, LabelType.COMMUNITY,
+      LabelType.IMPORT, LabelType.EXPORT, LabelType.EXPORT_REDISTRIBUTED,
+      LabelType.PROTOCOL, LabelType.COMMUNITY,
       LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND);
   
   /** Labels for predicates that are computable based on predicates derived

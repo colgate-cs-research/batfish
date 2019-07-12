@@ -45,6 +45,8 @@ class EncoderSlice {
 
   private Graph _graph;
 
+  private SymbolicConfiguration _symbolicConfiguration;
+
   private SymbolicDecisions _symbolicDecisions;
 
   private SymbolicPacket _symbolicPacket;
@@ -79,6 +81,7 @@ class EncoderSlice {
     _allSymbolicRoutes = new ArrayList<>();
     _optimizations = new Optimizations(this);
     _logicalGraph = new LogicalGraph(graph);
+    _symbolicConfiguration = new SymbolicConfiguration();
     _symbolicDecisions = new SymbolicDecisions();
     _symbolicPacket = new SymbolicPacket(enc.getCtx(), enc.getId(), _sliceName);
 
@@ -465,6 +468,26 @@ class EncoderSlice {
       String router = entry.getKey();
       for (Protocol p : entry.getValue()) {
         _logicalGraph.getLogicalEdges().put(router, p, new ArrayList<>());
+      }
+    }
+  }
+
+  /*
+   * Initalizes variables representing configuration
+   */
+  private void addConfigurationVariables() {
+    for (String router : getGraph().getRouters()) {
+      Configuration conf = getGraph().getConfigurations().get(router);
+      for (Protocol proto : getProtocols().get(router)) {
+        if (proto.isOspf()) {
+          String originatedName = String.format("%d_%s%s_%s_%s_%s",
+              _encoder.getId(), _sliceName, router, "CONFIGURATION", 
+              proto.name(), "ORIGINATED");
+          BoolExpr originatedVar = mkBoolConstant(originatedName);
+          getAllVariables().put(originatedVar.toString(), originatedVar);
+          _symbolicConfiguration.getProtocolConfiguration().put(
+                    router, proto, "ORIGINATED", originatedVar);
+        }
       }
     }
   }
@@ -871,6 +894,7 @@ class EncoderSlice {
     addSymbolicRecords();
     addChoiceVariables();
     addEnvironmentVariables();
+    addConfigurationVariables();
   }
 
   /*
@@ -2143,9 +2167,35 @@ class EncoderSlice {
           acc = mkIf(usable, acc, val);
         }
 
-        for (Prefix p : originations) {
-          // For OSPF, we need to explicitly initiate a route
-          if (proto.isOspf()) {
+        // For OSPF, we need to explicitly initiate a route
+        if (proto.isOspf()) {
+
+          // Create dummy origination
+          {
+            int adminDistance = defaultAdminDistance(conf, proto);
+            BoolExpr per = vars.getPermitted();
+            BoolExpr lp = safeEq(vars.getLocalPref(), mkInt(0));
+            BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(adminDistance));
+            BoolExpr met = safeEq(vars.getMetric(), mkInt(cost));
+            BoolExpr med = safeEq(vars.getMed(), mkInt(100));
+            BoolExpr len = safeEq(vars.getPrefixLength(), mkInt(8));
+            BoolExpr type = safeEqEnum(vars.getOspfType(), OspfType.O);
+            BoolExpr area = safeEqEnum(vars.getOspfArea(), iface.getOspfAreaName());
+            BoolExpr internal = safeEq(vars.getBgpInternal(), mkFalse());
+            BoolExpr igpMet = safeEq(vars.getIgpMetric(), mkInt(0));
+            BoolExpr comms = mkTrue();
+            for (Map.Entry<CommunityVar, BoolExpr> entry : vars.getCommunities().entrySet()) {
+              comms = mkAnd(comms, mkNot(entry.getValue()));
+            }
+            BoolExpr values =
+                mkAnd(per, lp, ad, met, med, len, type, area, internal, igpMet, comms);
+            BoolExpr originated =
+                (BoolExpr)_symbolicConfiguration.getProtocolConfiguration().get(
+                    router, proto, "ORIGINATED");
+            acc = mkIf(originated, values, acc);
+          }
+
+          for (Prefix p : originations) {
             // Don't bother with originations that are irrelevant for policy
             if (!relevantPrefix(p)) {
                 continue;
@@ -2455,6 +2505,26 @@ class EncoderSlice {
   }
 
   /*
+   * Add constraints representing configuration
+   */
+  private void addConfigurationConstraints() {
+    for (String router : getGraph().getRouters()) {
+      Configuration conf = getGraph().getConfigurations().get(router);
+      for (Protocol proto : getProtocols().get(router)) {
+        if (proto.isOspf()) {
+          PredicateLabel originatedLabel = new PredicateLabel(
+              PredicateLabel.LabelType.PROTOCOL, router, null, proto);
+          BoolExpr originatedVar =
+              (BoolExpr)_symbolicConfiguration.getProtocolConfiguration().get(
+                   router, proto, "ORIGINATED");
+          BoolExpr originatedValue = mkFalse();
+          add(mkEq(originatedVar, originatedValue), originatedLabel);
+        }
+      }
+    }
+  }
+
+  /*
    * Add various constraints for well-formed environments
    */
   private void addEnvironmentConstraints() {
@@ -2487,6 +2557,7 @@ class EncoderSlice {
     addDataForwardingConstraints();
     addUnusedDefaultValueConstraints();
     addHeaderSpaceConstraint();
+    addConfigurationConstraints();
     if (isMainSlice()) {
       addEnvironmentConstraints();
     }
