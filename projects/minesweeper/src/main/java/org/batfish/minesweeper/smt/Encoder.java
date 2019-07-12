@@ -1412,15 +1412,18 @@ public class Encoder {
         int[] predicateFrequency = new int[predNames.size()];
 
         Set<Set<PredicateLabel>> musesLabels = new HashSet<>();
-
+        System.out.println("****************");
         for (Set<Integer> mus : muses) {
           Set<PredicateLabel> musLabels = new HashSet<>();
           for (Integer pred_num : mus) {
             if (pred_num<predicateFrequency.length){
               predicateFrequency[pred_num]++; //TODO : How to deal with failure set constraints that appear in MUSes.
               musLabels.add(labels.get(pred_num));
+              System.out.println(labels.get(pred_num));
             }
           }
+          System.out.println("****************");
+
 
           musesLabels.add(musLabels);
         }

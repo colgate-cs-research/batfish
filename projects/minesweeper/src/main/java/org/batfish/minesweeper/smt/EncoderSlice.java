@@ -63,7 +63,7 @@ class EncoderSlice {
 
   private Table2<String, Protocol, Set<Prefix>> _originatedNetworks;
 
-  public Map<String, BoolExpr> slicesMap = new HashMap<String, BoolExpr>();
+  public Map<String, BoolExpr> slicesMap = new HashMap<>();
 
   /**
    * Create a new encoding slice
@@ -379,20 +379,22 @@ class EncoderSlice {
   /*
    * Get the added cost out an interface for a given routing protocol.
    */
-  private Integer addedCost(Protocol proto, GraphEdge ge) {
+  private Expr addedCost(Protocol proto, GraphEdge ge) {
     if (proto.isOspf()) {
-      return ge.getStart().getOspfCost();
+      return _symbolicConfiguration.getInterfaceConfiguration().get(ge.getRouter(),
+              ge.getStart(), SymbolicConfiguration.Keyword.OSPF_COST);
     }
-    return 1;
+    return mkInt(1);
   }
 
   /*
    * Determine if an interface is active for a particular protocol.
    */
   private BoolExpr interfaceActive(Interface iface, Protocol proto) {
-    BoolExpr active = mkBool(iface.getActive());
+    BoolExpr active = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(iface.getOwner().getHostname(),iface, SymbolicConfiguration.Keyword.ACTIVE);
     if (proto.isOspf()) {
-      active = mkAnd(active, mkBool(iface.getOspfEnabled()));
+      BoolExpr ospfEnabledVar = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(iface.getOwner().getHostname(),iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
+      active = mkAnd(active, ospfEnabledVar);
     }
     return active;
   }
@@ -497,6 +499,37 @@ class EncoderSlice {
             _symbolicConfiguration.getOriginatedConfiguration().put(
                         router, proto, p, originatedVar);
         }
+
+        //Adding OSPF ENABLED, COST, INTERFACE ACTIVE
+
+          List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
+          for(List<LogicalEdge> edges : les){
+            for (LogicalEdge edge : edges){
+              Interface iface = edge.getEdge().getStart();
+              if (proto.isOspf()) {
+                String enabledName = String.format("%d_%s%s_%s_%s_%s",
+                        _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "OSPF_ENABLED");
+                String costName = String.format("%d_%s%s_%s_%s_%s",
+                        _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "OSPF_COST");
+                BoolExpr enabledVar = mkBoolConstant(enabledName);
+                IntExpr costVar = mkIntConstant(costName);
+                getAllVariables().put(enabledVar.toString(), enabledVar);
+                getAllVariables().put(costVar.toString(), costVar);
+                _symbolicConfiguration.getInterfaceConfiguration().put(
+                        router, iface, SymbolicConfiguration.Keyword.OSPF_ENABLED, enabledVar);
+                _symbolicConfiguration.getInterfaceConfiguration().put(
+                        router, iface, SymbolicConfiguration.Keyword.OSPF_COST, costVar);
+              }
+              String ifaceActiveName = String.format("%d_%s%s_%s_%s_%s",
+                      _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "ACTIVE");
+              BoolExpr ifaceActiveVar = mkBoolConstant(ifaceActiveName);
+              getAllVariables().put(ifaceActiveVar.toString(), ifaceActiveVar);
+              _symbolicConfiguration.getInterfaceConfiguration().put(router, iface, SymbolicConfiguration.Keyword.ACTIVE, ifaceActiveVar);
+
+            }
+          }
+
+
       }
     }
   }
@@ -507,21 +540,7 @@ class EncoderSlice {
   private void addInterfaceVariables() {
     for (String router : getGraph().getRouters()){
       for (Protocol proto : getProtocols().get(router)){
-        if (proto.isOspf()){
-          List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
-          for(List<LogicalEdge> edges : les){
-            for (LogicalEdge edge : edges){
 
-              String enabledName = String.format("%d_%s%s_%s_%s_%s",
-                      _encoder.getId(),_sliceName, router, "INTERFACE", proto.name(), "OSPF_ENABLED");
-              BoolExpr enabledVar = mkBoolConstant(enabledName);
-              getAllVariables().put(enabledVar.toString(), enabledVar);
-              _symbolicConfiguration.getInterfaceConfiguration().put(
-                      router, edge.getEdge().getStart(), "OSPF_ENABLED", enabledVar);
-
-            }
-          }
-        }
       }
     }
   }
@@ -2010,13 +2029,13 @@ class EncoderSlice {
           }
 
           // OSPF cost calculated based on incoming interface
-          Integer cost = 1; //FIXME : non-existent edges cost default
+          Expr cost = mkInt(1); //FIXME : non-existent edges cost default
           if (getGraph().isEdgeUsed(conf, proto, ge)) {
             if (proto.isOspf()){
-              cost = addedCost(proto, ge);
-              importLabel.addConfigurationRef(router, iface, String.format("Import uses OSPF cost %d", cost));
+              cost = addedCost(proto, ge); //FIXME : Use cost var from symbolic configuration.
+              importLabel.addConfigurationRef(router, iface, String.format("Import uses OSPF cost %s", cost.toString()));
             }else{
-              cost = 0;
+              cost = mkInt(0);
             }
 
           }
@@ -2105,7 +2124,7 @@ class EncoderSlice {
       if (proto.isOspf() || proto.isBgp()) {
 
         // BGP cost based on export
-        Integer cost = proto.isBgp() ? addedCost(proto, ge) : 0;
+        Expr cost = proto.isBgp() ? addedCost(proto, ge) : mkInt(0);
 
         BoolExpr val = mkNot(vars.getPermitted());
         BoolExpr active = interfaceActive(iface, proto);
@@ -2129,7 +2148,7 @@ class EncoderSlice {
         BoolExpr doExport = mkTrue();
         if (isInternalExport && proto.isBgp() && isNonClientEdge) {
           if (isClientEdge) {
-            cost = 0;
+            cost = mkInt(0);
           } else {
             // Lookup if we learned from iBGP, and if so, don't export the route
             SymbolicRoute other = getBestNeighborPerProtocol(router, proto);
@@ -2137,7 +2156,7 @@ class EncoderSlice {
             assert other.getBgpInternal() != null;
             if (other.getBgpInternal() != null) {
               doExport = mkNot(other.getBgpInternal());
-              cost = 0;
+              cost = mkInt(0);
             }
           }
         }
@@ -2211,7 +2230,7 @@ class EncoderSlice {
             BoolExpr per = vars.getPermitted();
             BoolExpr lp = safeEq(vars.getLocalPref(), mkInt(0));
             BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(adminDistance));
-            BoolExpr met = safeEq(vars.getMetric(), mkInt(cost));
+            BoolExpr met = safeEq(vars.getMetric(), cost);
             BoolExpr med = safeEq(vars.getMed(), mkInt(100));
             // BoolExpr len: don't constraint prefix length
             BoolExpr type = safeEqEnum(vars.getOspfType(), OspfType.O);
@@ -2253,7 +2272,7 @@ class EncoderSlice {
             BoolExpr per = vars.getPermitted();
             BoolExpr lp = safeEq(vars.getLocalPref(), mkInt(0));
             BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(adminDistance));
-            BoolExpr met = safeEq(vars.getMetric(), mkInt(cost));
+            BoolExpr met = safeEq(vars.getMetric(), cost);
             BoolExpr med = safeEq(vars.getMed(), mkInt(100));
             BoolExpr len = safeEq(vars.getPrefixLength(), mkInt(prefixLength));
             BoolExpr type = safeEqEnum(vars.getOspfType(), OspfType.O);
@@ -2549,7 +2568,6 @@ class EncoderSlice {
    */
   private void addConfigurationConstraints() {
     for (String router : getGraph().getRouters()) {
-      Configuration conf = getGraph().getConfigurations().get(router);
       for (Protocol proto : getProtocols().get(router)) {
 
         // Originated routes
@@ -2575,6 +2593,36 @@ class EncoderSlice {
             relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
           }
           add(mkEq(originatedVar, relevantPrefix), originatedLabel);
+        }
+
+        List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
+        for(List<LogicalEdge> edges : les) {
+          for (LogicalEdge edge : edges) {
+            Interface iface = edge.getEdge().getStart();
+            if (proto.isOspf()) {
+              PredicateLabel ospfEnabledLabel = new PredicateLabel(
+                      LabelType.INTERFACE, router, iface, proto);
+              PredicateLabel ospfCostLabel = new PredicateLabel(
+                      LabelType.INTERFACE, router, iface, proto);
+
+              BoolExpr ospfEnabledVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
+              BoolExpr enabled = mkBool(iface.getOspfEnabled());
+
+              add(mkEq(ospfEnabledVar, enabled), ospfEnabledLabel);
+
+              IntExpr ospfCostVar = (IntExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_COST);
+              ArithExpr ospfCost = mkInt(iface.getOspfCost());
+              add(mkEq(ospfCostVar, ospfCost), ospfCostLabel);
+            }
+
+            PredicateLabel ifaceActiveLabel = new PredicateLabel(
+                    LabelType.INTERFACE, router, iface, proto);
+            BoolExpr ifaceActiveVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.ACTIVE);
+            BoolExpr active = mkBool(iface.getActive());
+
+            add(mkEq(ifaceActiveVar, active), ifaceActiveLabel);
+
+          }
         }
       }
     }
@@ -2706,6 +2754,11 @@ class EncoderSlice {
   public BoolExpr mkBoolConstant(String input) {
     BoolExpr output = getCtx().mkBoolConst(input);
     slicesMap.put(input, output);
+    return output;
+  }
+
+  public IntExpr mkIntConstant(String input){
+    IntExpr output = getCtx().mkIntConst(input);
     return output;
   }
 }

@@ -151,7 +151,7 @@ class TransferSSA {
 
   private List<Statement> _statements;
 
-  private Integer _addedCost;
+  private Expr _addedCost;
 
   private Interface _iface;
 
@@ -168,7 +168,7 @@ class TransferSSA {
       SymbolicRoute current,
       Protocol proto,
       List<Statement> statements,
-      Integer addedCost,
+      Expr addedCost,
       GraphEdge ge,
       boolean isExport) {
     _enc = encoderSlice;
@@ -1407,7 +1407,7 @@ class TransferSSA {
     if (updateMetric) {
       // If it is a BGP route learned from IGP, then we use metric 0
       ArithExpr newValue;
-      ArithExpr cost = _enc.mkInt(_addedCost);
+      ArithExpr cost = (ArithExpr)_addedCost;
       ArithExpr sum = _enc.mkSum(p.getData().getMetric(), cost);
       if (_proto.isBgp()) {
         BoolExpr isBGP;

@@ -14,11 +14,14 @@ import org.batfish.minesweeper.collections.Table3;
  */
 class SymbolicConfiguration {
 
+  enum Keyword{
+      OSPF_ENABLED, OSPF_COST, ACTIVE
+  }
   // Configuration values for each protocol
   private Table3<String, Protocol, Prefix, BoolExpr> _originatedConfiguration;
 
   //Configuration values for each interface (Router, iface, keyword, expr)
-  private Table3<String, Interface, String, Expr> _interfaceConfiguration;
+  private Table3<String, Interface, Keyword, Expr> _interfaceConfiguration;
 
   SymbolicConfiguration() {
     _originatedConfiguration = new Table3<>();
@@ -29,5 +32,5 @@ class SymbolicConfiguration {
     return _originatedConfiguration;
   }
 
-  Table3<String, Interface, String, Expr> getInterfaceConfiguration() { return _interfaceConfiguration; }
+  Table3<String, Interface, Keyword, Expr> getInterfaceConfiguration() { return _interfaceConfiguration; }
 }
