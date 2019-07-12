@@ -477,7 +477,6 @@ class EncoderSlice {
    */
   private void addConfigurationVariables() {
     for (String router : getGraph().getRouters()) {
-      Configuration conf = getGraph().getConfigurations().get(router);
       for (Protocol proto : getProtocols().get(router)) {
 
         // Originated routes
@@ -497,6 +496,31 @@ class EncoderSlice {
             getAllVariables().put(originatedVar.toString(), originatedVar);
             _symbolicConfiguration.getOriginatedConfiguration().put(
                         router, proto, p, originatedVar);
+        }
+      }
+    }
+  }
+
+  /*
+   * Initialize variables representing interfaces
+   */
+  private void addInterfaceVariables() {
+    for (String router : getGraph().getRouters()){
+      for (Protocol proto : getProtocols().get(router)){
+        if (proto.isOspf()){
+          List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
+          for(List<LogicalEdge> edges : les){
+            for (LogicalEdge edge : edges){
+
+              String enabledName = String.format("%d_%s%s_%s_%s_%s",
+                      _encoder.getId(),_sliceName, router, "INTERFACE", proto.name(), "OSPF_ENABLED");
+              BoolExpr enabledVar = mkBoolConstant(enabledName);
+              getAllVariables().put(enabledVar.toString(), enabledVar);
+              _symbolicConfiguration.getInterfaceConfiguration().put(
+                      router, edge.getEdge().getStart(), "OSPF_ENABLED", enabledVar);
+
+            }
+          }
         }
       }
     }
@@ -905,6 +929,7 @@ class EncoderSlice {
     addChoiceVariables();
     addEnvironmentVariables();
     addConfigurationVariables();
+    addInterfaceVariables();
   }
 
   /*
