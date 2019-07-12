@@ -2178,7 +2178,7 @@ class EncoderSlice {
             BoolExpr ad = safeEq(vars.getAdminDist(), mkInt(adminDistance));
             BoolExpr met = safeEq(vars.getMetric(), mkInt(cost));
             BoolExpr med = safeEq(vars.getMed(), mkInt(100));
-            BoolExpr len = safeEq(vars.getPrefixLength(), mkInt(8));
+            // BoolExpr len: don't constraint prefix length
             BoolExpr type = safeEqEnum(vars.getOspfType(), OspfType.O);
             BoolExpr area = safeEqEnum(vars.getOspfArea(), iface.getOspfAreaName());
             BoolExpr internal = safeEq(vars.getBgpInternal(), mkFalse());
@@ -2188,7 +2188,7 @@ class EncoderSlice {
               comms = mkAnd(comms, mkNot(entry.getValue()));
             }
             BoolExpr values =
-                mkAnd(per, lp, ad, met, med, len, type, area, internal, igpMet, comms);
+                mkAnd(per, lp, ad, met, med, type, area, internal, igpMet, comms);
             BoolExpr originated =
                 (BoolExpr)_symbolicConfiguration.getProtocolConfiguration().get(
                     router, proto, "ORIGINATED");
