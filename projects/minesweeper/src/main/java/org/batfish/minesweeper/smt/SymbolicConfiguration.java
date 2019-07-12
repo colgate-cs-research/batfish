@@ -1,6 +1,8 @@
 package org.batfish.minesweeper.smt;
 
+import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Expr;
+import org.batfish.datamodel.Prefix;
 import org.batfish.minesweeper.Protocol;
 import org.batfish.minesweeper.collections.Table3;
 
@@ -12,13 +14,13 @@ import org.batfish.minesweeper.collections.Table3;
 class SymbolicConfiguration {
 
   // Configuration values for each protocol
-  private Table3<String, Protocol, String, Expr> _protocolConfiguration;
+  private Table3<String, Protocol, Prefix, BoolExpr> _originatedConfiguration;
 
   SymbolicConfiguration() {
-    _protocolConfiguration = new Table3<>();
+    _originatedConfiguration = new Table3<>();
   }
 
-  Table3<String, Protocol, String, Expr> getProtocolConfiguration() {
-    return _protocolConfiguration;
+  Table3<String, Protocol, Prefix, BoolExpr> getOriginatedConfiguration() {
+    return _originatedConfiguration;
   }
 }

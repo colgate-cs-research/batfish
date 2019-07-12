@@ -40,7 +40,7 @@ public class PredicateLabel{
     COMMUNITY,
     ACLS_OUTBOUND,
     ACLS_INBOUND,
-    PROTOCOL,
+    ORIGINATED,
     // Predicates derived from counterexamples
     PACKET,
     COUNTEREXAMPLE,
@@ -53,7 +53,7 @@ public class PredicateLabel{
   /** Labels for predicates derived from configuration */
   private final static EnumSet<LabelType> CONFIGURABLE_LABELS = EnumSet.of(
       LabelType.IMPORT, LabelType.EXPORT, LabelType.EXPORT_REDISTRIBUTED,
-      LabelType.PROTOCOL, LabelType.COMMUNITY,
+      LabelType.ORIGINATED, LabelType.COMMUNITY,
       LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND);
   
   /** Labels for predicates that are computable based on predicates derived
@@ -69,6 +69,7 @@ public class PredicateLabel{
   public class ConfigurationReference{
     private String router;
     private Interface iface;
+    private Protocol proto;
     public String detail;
 
 
@@ -78,9 +79,25 @@ public class PredicateLabel{
       this.detail = detail;
     }
 
+    public ConfigurationReference(String router, Protocol proto, String detail) {
+      this.router = router;
+      this.proto = proto;
+      this.detail = detail;
+    }
+
+
     @Override
     public String toString(){
-      return String.format("Router : %s | Interface : %s | Message : %s", router, iface.getName(), detail);
+      List<String> details = new ArrayList<>();
+      details.add("Router: " + router);
+      if (iface != null) {
+          details.add("Interface: " + iface.getName());
+      }
+      if (proto != null) {
+          details.add("Protocol: " + proto.name());
+      }
+      details.add("Message: " + detail);
+      return String.join(" | ", details);
     }
   }
 
@@ -164,8 +181,19 @@ public class PredicateLabel{
    * TODO: Create a Reference class to contain more than just a string.
    */
   public void addConfigurationRef(String router, Interface iface, String detail){
-    references.add(new ConfigurationReference(router,iface, detail));
+    references.add(new ConfigurationReference(router, iface, detail));
   }
+
+  /**
+   * Add reference (currently just a string) to a list of references
+   * Refers to one or more configuration statements used in the construction
+   * of the predicate.
+   * TODO: Create a Reference class to contain more than just a string.
+   */
+  public void addConfigurationRef(String router, Protocol proto, String detail){
+    references.add(new ConfigurationReference(router, proto, detail));
+  }
+
 
 
   /**

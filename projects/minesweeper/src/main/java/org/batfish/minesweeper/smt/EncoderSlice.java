@@ -479,14 +479,24 @@ class EncoderSlice {
     for (String router : getGraph().getRouters()) {
       Configuration conf = getGraph().getConfigurations().get(router);
       for (Protocol proto : getProtocols().get(router)) {
-        if (proto.isOspf()) {
-          String originatedName = String.format("%d_%s%s_%s_%s_%s",
-              _encoder.getId(), _sliceName, router, "CONFIGURATION", 
-              proto.name(), "ORIGINATED");
-          BoolExpr originatedVar = mkBoolConstant(originatedName);
-          getAllVariables().put(originatedVar.toString(), originatedVar);
-          _symbolicConfiguration.getProtocolConfiguration().put(
-                    router, proto, "ORIGINATED", originatedVar);
+
+        // Originated routes
+        Set<Prefix> originations =
+            new HashSet<>(_originatedNetworks.get(router, proto));
+        originations.add(null);
+        for (Prefix p : originations) {
+            // Don't bother with originations that are irrelevant for policy
+            if (p != null && !relevantPrefix(p)) {
+                continue;
+            }
+
+            String originatedName = String.format("%d_%s%s_%s_%s_%s_%s",
+                _encoder.getId(), _sliceName, router, "CONFIGURATION", 
+                proto.name(), "ORIGINATED", p);
+            BoolExpr originatedVar = mkBoolConstant(originatedName);
+            getAllVariables().put(originatedVar.toString(), originatedVar);
+            _symbolicConfiguration.getOriginatedConfiguration().put(
+                        router, proto, p, originatedVar);
         }
       }
     }
@@ -2190,8 +2200,8 @@ class EncoderSlice {
             BoolExpr values =
                 mkAnd(per, lp, ad, met, med, type, area, internal, igpMet, comms);
             BoolExpr originated =
-                (BoolExpr)_symbolicConfiguration.getProtocolConfiguration().get(
-                    router, proto, "ORIGINATED");
+                _symbolicConfiguration.getOriginatedConfiguration().get(
+                    router, proto, null);
             acc = mkIf(originated, values, acc);
           }
 
@@ -2204,7 +2214,10 @@ class EncoderSlice {
             exportLabel.addConfigurationRef(router, iface, String.format("Export for destination prefix %s | Is iface Active : %b", p.toString(),iface.getActive()));
 
             BoolExpr ifaceUp = interfaceActive(iface, proto);
-            BoolExpr relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
+            BoolExpr relevantPrefix =
+                _symbolicConfiguration.getOriginatedConfiguration().get(
+                    router, proto, p);
+
             BoolExpr relevant = mkAnd(ifaceUp, relevantPrefix);
 
             int adminDistance = defaultAdminDistance(conf, proto);
@@ -2511,14 +2524,30 @@ class EncoderSlice {
     for (String router : getGraph().getRouters()) {
       Configuration conf = getGraph().getConfigurations().get(router);
       for (Protocol proto : getProtocols().get(router)) {
-        if (proto.isOspf()) {
+
+        // Originated routes
+        Set<Prefix> originations =
+            new HashSet<>(_originatedNetworks.get(router, proto));
+        originations.add(null);
+        for (Prefix p : originations) {
+          // Don't bother with originations that are irrelevant for policy
+          if (p != null && !relevantPrefix(p)) {
+              continue;
+          }
+
           PredicateLabel originatedLabel = new PredicateLabel(
-              PredicateLabel.LabelType.PROTOCOL, router, null, proto);
+              PredicateLabel.LabelType.ORIGINATED, router, null, proto);
+          originatedLabel.addConfigurationRef(router, proto,
+              String.format("Originate destination prefix %s", p));
+
           BoolExpr originatedVar =
-              (BoolExpr)_symbolicConfiguration.getProtocolConfiguration().get(
-                   router, proto, "ORIGINATED");
-          BoolExpr originatedValue = mkFalse();
-          add(mkEq(originatedVar, originatedValue), originatedLabel);
+              _symbolicConfiguration.getOriginatedConfiguration().get(
+                  router, proto, p);
+          BoolExpr relevantPrefix = mkFalse();
+          if (p != null) {
+            relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
+          }
+          add(mkEq(originatedVar, relevantPrefix), originatedLabel);
         }
       }
     }
