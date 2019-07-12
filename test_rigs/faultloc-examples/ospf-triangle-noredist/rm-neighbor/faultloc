@@ -1,0 +1,3 @@
+p1
+INTERFACE c GigabitEthernet0/2 OSPF
+INTERFACE d GigabitEthernet0/2 OSPF
