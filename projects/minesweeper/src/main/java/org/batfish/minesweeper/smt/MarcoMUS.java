@@ -225,7 +225,7 @@ public class MarcoMUS {
             }
             Set<Integer> current = new HashSet<>(seed);
             int iteration = 0;
-            int updateInterval = seed.size()/100;
+            int updateInterval = (seed.size() < 100 ? 1 : seed.size()/100);
             for (int i:seed){
                 iteration++;
                 if (verbose && iteration % updateInterval == 0) {
@@ -263,10 +263,20 @@ public class MarcoMUS {
             }
             Set<Integer> current = new HashSet<>(seed);
             Set<Integer> currentComplement = complement(current);
+            int iteration = 0;
+            int updateInterval = (currentComplement.size() < 100 ? 1 : 
+                    currentComplement.size()/100);
             for (int i: currentComplement){
                 current.add(i);
                 if (!checkSubset(current)){
                     current.remove(i);
+                }
+
+                iteration++;
+                if (verbose && iteration % updateInterval == 0) {
+                    System.out.printf(
+                        "MARCO: %d%% done, grew from %d to %d predicates\n",
+                        iteration/updateInterval, seed.size(), current.size());
                 }
             }
 
