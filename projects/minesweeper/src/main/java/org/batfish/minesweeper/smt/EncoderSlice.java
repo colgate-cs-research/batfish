@@ -2199,10 +2199,12 @@ class EncoderSlice {
             }
             BoolExpr values =
                 mkAnd(per, lp, ad, met, med, type, area, internal, igpMet, comms);
+            BoolExpr ifaceUp = interfaceActive(iface, proto);
             BoolExpr originated =
                 _symbolicConfiguration.getOriginatedConfiguration().get(
                     router, proto, null);
-            acc = mkIf(originated, values, acc);
+            BoolExpr relevant = mkAnd(ifaceUp, originated);
+            acc = mkIf(relevant, values, acc);
           }
 
           for (Prefix p : originations) {
