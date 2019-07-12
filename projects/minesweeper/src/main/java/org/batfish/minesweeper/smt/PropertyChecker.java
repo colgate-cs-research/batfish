@@ -836,6 +836,119 @@ public class PropertyChecker {
   }
 
   /*
+ * Check if certain paths are preferred over others
+ */
+public AnswerElement checkPathPreferences(
+    HeaderLocationQuestion q, List<List<String>> pathPrefs) {
+  if (pathPrefs.size() < 2) {
+    throw new BatfishException("Must provide at least 2 paths");
+  }
+
+  if (!q.getIngressNodeRegex().equals(".*")) {
+    throw new BatfishException("Invalid parameter ingressNodeRegex to query");
+  }
+
+  if (!q.getFinalNodeRegex().equals(".*")) {
+    throw new BatfishException("Invalid parameter finalNodeRegex to query");
+  }
+
+  if (!q.getFinalIfaceRegex().equals(".*")) {
+    throw new BatfishException("Invalid parameter finalIfaceRegex to query");
+  }
+
+  List<List<String>> pathPrefsRev = new ArrayList<>(pathPrefs);
+  Collections.reverse(pathPrefsRev);
+
+  return checkProperty(
+      q,
+      (enc, srcRouters, destPorts) -> {
+        // Add the path preference constraints
+        BoolExpr allImplications = enc.mkTrue();
+
+        for (int i = 0; i < pathPrefsRev.size(); i++) {
+          List<String> path = pathPrefsRev.get(i);
+          if (path.isEmpty()) {
+            throw new BatfishException("Empty path: " + path);
+          }
+          // create symbolic expression for forwarding along the path
+          BoolExpr fwdOnPath = forwardOnPath(enc, path);
+
+          BoolExpr notAvailable = enc.mkTrue();
+          for (int j = i + 1; j < pathPrefsRev.size(); j++) {
+            List<String> path2 = pathPrefsRev.get(j);
+            notAvailable = enc.mkAnd(notAvailable, pathNotAvailable(enc, path2));
+          }
+          BoolExpr implication = enc.mkImplies(fwdOnPath, notAvailable);
+          allImplications = enc.mkAnd(allImplications, implication);
+        }
+        //System.out.println("Assert: " + allImplications.simplify());
+
+        enc.getSolver().add(enc.mkNot(allImplications));
+
+        // Return some dummy instrumentation
+        Map<String, BoolExpr> vars = new HashMap<>();
+        for (String router : srcRouters) {
+          vars.put(router, enc.mkFalse());
+        }
+        return vars;
+      },
+      (vp) -> new SmtOneAnswerElement(vp.getResult()));
+}
+
+/*
+ * Helper function to encode if we forward along a path
+ */
+private BoolExpr forwardOnPath(Encoder enc, List<String> path) {
+  EncoderSlice slice = enc.getMainSlice();
+  BoolExpr fwdsOnPath = enc.mkTrue();
+  for (int i = 0; i < path.size() - 1; i++) {
+    String hop1 = path.get(i);
+    String hop2 = path.get(i + 1);
+    List<GraphEdge> edges = slice.getGraph().getEdgeMap().get(hop1);
+    GraphEdge edge = null;
+    for (GraphEdge ge : edges) {
+      if (ge.getPeer() != null && ge.getPeer().equals(hop2)) {
+        edge = ge;
+        break;
+      }
+    }
+    if (edge == null) {
+      throw new BatfishException("Invalid link from: " + hop1 + " to " + hop2);
+    }
+    BoolExpr fwd = slice.getSymbolicDecisions().getControlForwarding().get(hop1, edge);
+    fwdsOnPath = enc.mkAnd(fwdsOnPath, fwd);
+  }
+  return fwdsOnPath;
+}
+
+/*
+ * Helper function to encode if we do not have another path available
+ */
+private BoolExpr pathNotAvailable(Encoder enc, List<String> path) {
+  EncoderSlice slice = enc.getMainSlice();
+  BoolExpr notAvailable = enc.mkFalse();
+
+  for (int i = 0; i < path.size() - 1; i++) {
+    String hop1 = path.get(i);
+    String hop2 = path.get(i + 1);
+    List<GraphEdge> edges = slice.getGraph().getEdgeMap().get(hop1);
+    GraphEdge edge = null;
+    for (GraphEdge ge : edges) {
+      if (ge.getPeer() != null && ge.getPeer().equals(hop2)) {
+        edge = ge;
+        break;
+      }
+    }
+    if (edge == null) {
+      throw new BatfishException("Invalid link from: " + hop1 + " to " + hop2);
+    }
+    ArithExpr failed = enc.getSymbolicFailures().getFailedVariable(edge);
+    notAvailable = enc.mkOr(notAvailable, enc.mkEq(failed, enc.mkInt(1)));
+  }
+  return notAvailable;
+}
+
+  /*
    * Checks for routing loops in the network. For efficiency reasons,
    * we only check for loops with routers that use static routes since
    * these can override the usual loop-prevention mechanisms.
@@ -900,7 +1013,7 @@ public class PropertyChecker {
    */
   public AnswerElement checkLocalEquivalence(Pattern n, boolean strict, boolean fullModel) {
     PredicateLabel label=new PredicateLabel(LabelType.POLICY);
-    
+
     Graph graph = new Graph(_batfish);
     List<String> routers = PatternUtils.findMatchingNodes(graph, n, Pattern.compile(""));
 

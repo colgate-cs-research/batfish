@@ -3140,6 +3140,12 @@ public class Batfish extends PluginConsumer implements IBatfish {
         actions);
   }
 
+  // @Override
+  // public AnswerElement smtPathPreferences(HeaderLocationQuestion q, List<List<String>> pathPrefs) {
+  //   PropertyChecker p = new PropertyChecker(this);
+  //   return p.checkPathPreferences(q, pathPrefs);
+  //   }
+
   /**
    * Return a set of flows (at most 1 per source {@link Location}) for which reachability has been
    * reduced by the change from base to delta snapshot.
