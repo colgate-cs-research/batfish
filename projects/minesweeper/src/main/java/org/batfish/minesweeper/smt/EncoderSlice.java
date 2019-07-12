@@ -2134,7 +2134,10 @@ class EncoderSlice {
           exportLabel.addConfigurationRef(router, iface, String.format("Export relies on disabled interface for %s", proto.name()));
         }
 
+        BoolExpr doExport = mkTrue();
 
+        // If a dummy edge, ignore all iBGP stuff --- this is unsafe
+        if (getGraph().isEdgeUsed(conf, proto, ge, exportLabel)) {
         // Apply BGP export policy and cost based on peer type
         // (1) EBGP --> ALL
         // (2) CLIENT --> ALL
@@ -2146,7 +2149,6 @@ class EncoderSlice {
 
         boolean isInternalExport =
             varsOther.isBest() && _optimizations.getNeedBgpInternal().contains(router);
-        BoolExpr doExport = mkTrue();
         if (isInternalExport && proto.isBgp() && isNonClientEdge) {
           if (isClientEdge) {
             cost = mkInt(0);
@@ -2160,6 +2162,10 @@ class EncoderSlice {
               cost = mkInt(0);
             }
           }
+        }
+        } else {
+            // FIXME: Properly use config var
+            doExport = mkFalse();
         }
 
         BoolExpr acc;
@@ -2396,11 +2402,11 @@ class EncoderSlice {
 
               case EXPORT:
                 PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT,router, ge.getStart(), proto);
-                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
-                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
-                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
-                  break;
-                }
+//                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
+//                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
+//                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
+//                  break;
+//                }
                 // OSPF export is tricky because it does not depend on being
                 // in the FIB. So it can come from either a redistributed route
                 // or another OSPF route. We always take the direct OSPF
@@ -2601,7 +2607,6 @@ class EncoderSlice {
         for(List<LogicalEdge> edges : les) {
           for (LogicalEdge edge : edges) {
             if (edge.getEdgeType().equals(EdgeType.EXPORT)) continue;
-            System.out.println("#####Edge : " +edge.getEdge().getStart() + " : " + router + " " + proto.name());
             Interface iface = edge.getEdge().getStart();
             if (proto.isOspf()) {
               PredicateLabel ospfEnabledLabel = new PredicateLabel(
