@@ -507,6 +507,12 @@ class EncoderSlice {
           for(List<LogicalEdge> edges : les){
             for (LogicalEdge edge : edges){
               Interface iface = edge.getEdge().getStart();
+              String ifaceActiveName = String.format("%d_%s%s_%s_%s_%s",
+                      _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "ACTIVE");
+              BoolExpr ifaceActiveVar = mkBoolConstant(ifaceActiveName);
+              getAllVariables().put(ifaceActiveVar.toString(), ifaceActiveVar);
+              _symbolicConfiguration.getInterfaceConfiguration().put(router, iface, SymbolicConfiguration.Keyword.ACTIVE, ifaceActiveVar);
+
               if (proto.isOspf()) {
                 String enabledName = String.format("%d_%s%s_%s_%s_%s",
                         _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "OSPF_ENABLED");
@@ -521,11 +527,29 @@ class EncoderSlice {
                 _symbolicConfiguration.getInterfaceConfiguration().put(
                         router, iface, SymbolicConfiguration.Keyword.OSPF_COST, costVar);
               }
-              String ifaceActiveName = String.format("%d_%s%s_%s_%s_%s",
-                      _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "ACTIVE");
-              BoolExpr ifaceActiveVar = mkBoolConstant(ifaceActiveName);
-              getAllVariables().put(ifaceActiveVar.toString(), ifaceActiveVar);
-              _symbolicConfiguration.getInterfaceConfiguration().put(router, iface, SymbolicConfiguration.Keyword.ACTIVE, ifaceActiveVar);
+
+              if (proto.isBgp()) {
+                BgpActivePeerConfig eBgpPeerConfig = _graph.getEbgpNeighbors().get(edge.getEdge());
+                BgpActivePeerConfig iBgpPeerConfig = _graph.getIbgpNeighbors().get(edge.getEdge());
+                BgpActivePeerConfig peerConfig = null;
+
+                if (eBgpPeerConfig!=null){
+                  peerConfig = eBgpPeerConfig;
+                }else if (iBgpPeerConfig!=null){
+                  peerConfig = iBgpPeerConfig;
+                }
+
+                String peerConfigName = String.format("%d_%s%s_%s_%s_%s",
+                        _encoder.getId(), _sliceName, router,
+                        "NEIGHBOR",
+                        iface.getName(),
+                        (peerConfig!=null?peerConfig.getPeerAddress():null));
+                BoolExpr peerConfigVar = mkBoolConstant(peerConfigName);
+
+                getAllVariables().put(peerConfigVar.toString(), peerConfigVar);
+                _symbolicConfiguration.getNeighborConfiguration().put(router, iface, peerConfig, peerConfigVar);
+
+              }
 
             }
           }
@@ -2136,36 +2160,47 @@ class EncoderSlice {
 
         BoolExpr doExport = mkTrue();
 
-        // If a dummy edge, ignore all iBGP stuff --- this is unsafe
-        if (getGraph().isEdgeUsed(conf, proto, ge, exportLabel)) {
-        // Apply BGP export policy and cost based on peer type
-        // (1) EBGP --> ALL
-        // (2) CLIENT --> ALL
-        // (3) NONCLIENT --> EBGP, CLIENT
-        boolean isNonClientEdge =
-            proto.isBgp() && getGraph().peerType(ge) != Graph.BgpSendType.TO_EBGP;
-        boolean isClientEdge =
-            proto.isBgp() && getGraph().peerType(ge) == Graph.BgpSendType.TO_CLIENT;
+        if (proto.isBgp()){
 
-        boolean isInternalExport =
-            varsOther.isBest() && _optimizations.getNeedBgpInternal().contains(router);
-        if (isInternalExport && proto.isBgp() && isNonClientEdge) {
-          if (isClientEdge) {
-            cost = mkInt(0);
-          } else {
-            // Lookup if we learned from iBGP, and if so, don't export the route
-            SymbolicRoute other = getBestNeighborPerProtocol(router, proto);
-            assert other != null;
-            assert other.getBgpInternal() != null;
-            if (other.getBgpInternal() != null) {
-              doExport = mkNot(other.getBgpInternal());
-              cost = mkInt(0);
+          BgpActivePeerConfig eBgpPeerConfig = _graph.getEbgpNeighbors().get(ge);
+          BgpActivePeerConfig iBgpPeerConfig = _graph.getIbgpNeighbors().get(ge);
+          BgpActivePeerConfig peerConfig = null;
+
+          if (eBgpPeerConfig!=null){
+            peerConfig = eBgpPeerConfig;
+          }else if (iBgpPeerConfig!=null){
+            peerConfig = iBgpPeerConfig;
+          }
+
+          doExport = (BoolExpr) _symbolicConfiguration.getNeighborConfiguration().get(router, iface, peerConfig);
+          // If a dummy edge, ignore all iBGP stuff --- this is unsafe
+          if (getGraph().isEdgeUsed(conf, proto, ge, exportLabel)) {
+            // Apply BGP export policy and cost based on peer type
+            // (1) EBGP --> ALL
+            // (2) CLIENT --> ALL
+            // (3) NONCLIENT --> EBGP, CLIENT
+            boolean isNonClientEdge =
+                    proto.isBgp() && getGraph().peerType(ge) != Graph.BgpSendType.TO_EBGP;
+            boolean isClientEdge =
+                    proto.isBgp() && getGraph().peerType(ge) == Graph.BgpSendType.TO_CLIENT;
+
+            boolean isInternalExport =
+                    varsOther.isBest() && _optimizations.getNeedBgpInternal().contains(router);
+            if (isInternalExport && proto.isBgp() && isNonClientEdge) {
+              if (isClientEdge) {
+                cost = mkInt(0);
+              } else {
+                // Lookup if we learned from iBGP, and if so, don't export the route
+                SymbolicRoute other = getBestNeighborPerProtocol(router, proto);
+                assert other != null;
+                assert other.getBgpInternal() != null;
+                if (other.getBgpInternal() != null) {
+                  doExport = mkNot(other.getBgpInternal());
+                  cost = mkInt(0);
+                }
+              }
             }
           }
-        }
-        } else {
-            // FIXME: Properly use config var
-            doExport = mkFalse();
         }
 
         BoolExpr acc;
@@ -2402,11 +2437,11 @@ class EncoderSlice {
 
               case EXPORT:
                 PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT,router, ge.getStart(), proto);
-//                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
-//                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
-//                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
-//                  break;
-//                }
+                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
+                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
+                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
+                  break;
+                }
                 // OSPF export is tricky because it does not depend on being
                 // in the FIB. So it can come from either a redistributed route
                 // or another OSPF route. We always take the direct OSPF
@@ -2607,7 +2642,16 @@ class EncoderSlice {
         for(List<LogicalEdge> edges : les) {
           for (LogicalEdge edge : edges) {
             if (edge.getEdgeType().equals(EdgeType.EXPORT)) continue;
+            System.out.println("#####Edge : " +edge.getEdge().getStart() + " : " + router + " " + proto.name());
             Interface iface = edge.getEdge().getStart();
+
+            PredicateLabel ifaceActiveLabel = new PredicateLabel(
+                    LabelType.INTERFACE, router, iface, proto);
+            BoolExpr ifaceActiveVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.ACTIVE);
+            BoolExpr active = mkBool(iface.getActive());
+
+            add(mkEq(ifaceActiveVar, active), ifaceActiveLabel);
+
             if (proto.isOspf()) {
               PredicateLabel ospfEnabledLabel = new PredicateLabel(
                       LabelType.INTERFACE, router, iface, proto);
@@ -2626,12 +2670,25 @@ class EncoderSlice {
               add(mkEq(ospfCostVar, ospfCost), ospfCostLabel);
             }
 
-            PredicateLabel ifaceActiveLabel = new PredicateLabel(
-                    LabelType.INTERFACE, router, iface, proto);
-            BoolExpr ifaceActiveVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.ACTIVE);
-            BoolExpr active = mkBool(iface.getActive());
+            if (proto.isBgp()){
+              BgpActivePeerConfig eBgpPeerConfig = _graph.getEbgpNeighbors().get(edge.getEdge());
+              BgpActivePeerConfig iBgpPeerConfig = _graph.getIbgpNeighbors().get(edge.getEdge());
+              BgpActivePeerConfig peerConfig = null;
 
-            add(mkEq(ifaceActiveVar, active), ifaceActiveLabel);
+              if (eBgpPeerConfig!=null){
+                peerConfig = eBgpPeerConfig;
+              }else if (iBgpPeerConfig!=null){
+                peerConfig = iBgpPeerConfig;
+              }
+
+
+              PredicateLabel neighborLabel = new PredicateLabel(LabelType.NEIGHBOR, router, iface, proto);
+              BoolExpr peerConfigVar = (BoolExpr) _symbolicConfiguration.getNeighborConfiguration()
+                      .get(router,iface,peerConfig);
+
+              BoolExpr peerConfigVal = mkBool(peerConfig!=null);
+              add(mkEq(peerConfigVar, peerConfigVal), neighborLabel);
+            }
 
           }
         }
