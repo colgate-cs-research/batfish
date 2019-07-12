@@ -2,6 +2,7 @@ package org.batfish.minesweeper.smt;
 
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Expr;
+import org.batfish.datamodel.BgpPeerConfig;
 import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Interface;
 import org.batfish.minesweeper.Protocol;
@@ -23,9 +24,12 @@ class SymbolicConfiguration {
   //Configuration values for each interface (Router, iface, keyword, expr)
   private Table3<String, Interface, Keyword, Expr> _interfaceConfiguration;
 
+  private Table3<String, Interface, BgpPeerConfig, Expr> _neighborConfiguration;
+
   SymbolicConfiguration() {
     _originatedConfiguration = new Table3<>();
     _interfaceConfiguration = new Table3<>();
+    _neighborConfiguration = new Table3<>();
   }
 
   Table3<String, Protocol, Prefix, BoolExpr> getOriginatedConfiguration() {
@@ -33,4 +37,10 @@ class SymbolicConfiguration {
   }
 
   Table3<String, Interface, Keyword, Expr> getInterfaceConfiguration() { return _interfaceConfiguration; }
+
+  public Table3<String, Interface, BgpPeerConfig, Expr> getNeighborConfiguration() {
+    return _neighborConfiguration;
+  }
+
+
 }
