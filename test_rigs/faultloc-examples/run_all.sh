@@ -18,3 +18,7 @@ BASEDIR="`dirname $SCRIPTPATH`"
         done
     fi
 done
+
+$BASEDIR/aggregate.py -c containers
+
+cat containers/master.csv
