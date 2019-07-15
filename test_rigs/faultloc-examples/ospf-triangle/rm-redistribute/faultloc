@@ -1,3 +1,2 @@
 p1
-EXPORT c GigabitEthernet0/1 OSPF
-EXPORT c GigabitEthernet0/2 OSPF
+ORIGINATED c OSPF
