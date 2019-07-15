@@ -41,7 +41,9 @@ public class PredicateLabel{
     ACLS_OUTBOUND,
     ACLS_INBOUND,
     ORIGINATED,
-    INTERFACE,
+    INTERFACE_ACTIVE,
+    INTERFACE_PROTOCOL_ENABLED,
+    INTERFACE_OSPF_COST,
     NEIGHBOR,
     // Predicates derived from counterexamples
     PACKET,
@@ -54,7 +56,8 @@ public class PredicateLabel{
   
   /** Labels for predicates derived from configuration */
   private final static EnumSet<LabelType> CONFIGURABLE_LABELS = EnumSet.of(
-      LabelType.ORIGINATED, LabelType.NEIGHBOR, LabelType.INTERFACE,
+      LabelType.ORIGINATED, LabelType.NEIGHBOR, LabelType.INTERFACE_ACTIVE,
+      LabelType.INTERFACE_PROTOCOL_ENABLED, LabelType.INTERFACE_OSPF_COST,
       LabelType.COMMUNITY,
       LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND);
   

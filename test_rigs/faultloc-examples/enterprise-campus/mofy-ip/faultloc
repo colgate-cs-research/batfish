@@ -1,5 +1,3 @@
 p1
-EXPORT g GigabitEthernet0/1 OSPF
-EXPORT g GigabitEthernet0/2 OSPF
-IMPORT g GigabitEthernet0/2 OSPF
-IMPORT g GigabitEthernet0/1 OSPF
+INTERFACE_PROTOCOL_ENABLED g GigabitEthernet0/1 OSPF
+INTERFACE_PROTOCOL_ENABLED g GigabitEthernet0/2 OSPF

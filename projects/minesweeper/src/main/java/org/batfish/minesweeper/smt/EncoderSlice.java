@@ -2644,7 +2644,9 @@ class EncoderSlice {
             Interface iface = edge.getEdge().getStart();
 
             PredicateLabel ifaceActiveLabel = new PredicateLabel(
-                    LabelType.INTERFACE, router, iface, proto);
+                    LabelType.INTERFACE_ACTIVE, router, iface, proto);
+            ifaceActiveLabel.addConfigurationRef(router, iface,
+                String.format("Active %s", iface.getActive()));
             BoolExpr ifaceActiveVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.ACTIVE);
             BoolExpr active = mkBool(iface.getActive());
 
@@ -2652,9 +2654,13 @@ class EncoderSlice {
 
             if (proto.isOspf()) {
               PredicateLabel ospfEnabledLabel = new PredicateLabel(
-                      LabelType.INTERFACE, router, iface, proto);
+                  LabelType.INTERFACE_PROTOCOL_ENABLED, router, iface, proto);
+              ospfEnabledLabel.addConfigurationRef(router, iface,
+                  String.format("OSPF enabled %s", iface.getOspfEnabled()));
               PredicateLabel ospfCostLabel = new PredicateLabel(
-                      LabelType.INTERFACE, router, iface, proto);
+                  LabelType.INTERFACE_OSPF_COST, router, iface, proto);
+              ospfCostLabel.addConfigurationRef(router, iface,
+                  String.format("OSPF cost %d", iface.getOspfCost()));
 
               BoolExpr ospfEnabledVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
               BoolExpr enabled = mkBool(iface.getOspfEnabled());
@@ -2682,6 +2688,9 @@ class EncoderSlice {
 
 
               PredicateLabel neighborLabel = new PredicateLabel(LabelType.NEIGHBOR, router, iface, proto);
+              neighborLabel.addConfigurationRef(router, proto,
+                  String.format("Neighbor %s", 
+                      (peerConfig!=null ? peerConfig.getPeerAddress() : null)));
               BoolExpr peerConfigVar = (BoolExpr) _symbolicConfiguration.getNeighborConfiguration()
                       .get(router,iface,peerConfig);
 
