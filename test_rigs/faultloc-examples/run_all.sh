@@ -14,12 +14,10 @@ BASEDIR="`dirname $SCRIPTPATH`"
         # Iterate over all scenarios for network
         \ls $BASEDIR/$NETWORK | grep -v "original" | while read SCENARIO; do
             # Run network and scenario
-            #$BASEDIR/run_single.sh $NETWORK $SCENARIO
-            echo $NETWORK $SCENARIO
+            $BASEDIR/run_single.sh $NETWORK $SCENARIO
         done
     fi
 done
-exit 1
 
 $BASEDIR/aggregate.py -c containers
 
