@@ -483,15 +483,22 @@ public class PropertyChecker {
 
                 } else {
                   // Not a differential query; just a query on a single version of the network.
+
                   BoolExpr allProp = enc.mkTrue();
+                  boolean allNull = true;
                   for (String router : srcRouters) {
                     BoolExpr r = prop.get(router);
+                    if (r != null) {
+                      allNull = false;
+                    }
                     if (q.getNegate()) {
                       r = enc.mkNot(r);
                     }
                     allProp = enc.mkAnd(allProp, r);
                   }
-                  enc.add(enc.mkNot(allProp), label);
+                  if (!allNull) {
+                    enc.add(enc.mkNot(allProp), label);
+                  }
                 }
 
                 addLinkFailureConstraints(enc, destPorts, failOptions);
@@ -882,15 +889,11 @@ public AnswerElement checkPathPreferences(
           allImplications = enc.mkAnd(allImplications, implication);
         }
         //System.out.println("Assert: " + allImplications.simplify());
+        PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.POLICY);
+        enc.add(enc.mkNot(allImplications), label);
 
-        enc.getSolver().add(enc.mkNot(allImplications));
-
-        // Return some dummy instrumentation
-        Map<String, BoolExpr> vars = new HashMap<>();
-        for (String router : srcRouters) {
-          vars.put(router, enc.mkFalse());
-        }
-        return vars;
+        // Return empty instrumention, because it is done above
+        return new HashMap<String, BoolExpr>();
       },
       (vp) -> new SmtOneAnswerElement(vp.getResult()));
 }
