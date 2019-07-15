@@ -2642,7 +2642,6 @@ class EncoderSlice {
         for(List<LogicalEdge> edges : les) {
           for (LogicalEdge edge : edges) {
             if (edge.getEdgeType().equals(EdgeType.EXPORT)) continue;
-            System.out.println("#####Edge : " +edge.getEdge().getStart() + " : " + router + " " + proto.name());
             Interface iface = edge.getEdge().getStart();
 
             PredicateLabel ifaceActiveLabel = new PredicateLabel(

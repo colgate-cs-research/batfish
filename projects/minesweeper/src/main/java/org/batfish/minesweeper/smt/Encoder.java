@@ -487,12 +487,11 @@ public class Encoder {
 //    System.out.println("[Pred] " + caller + " : " + e);
 
     if (caller.getLabelType() == LabelType.POLICY) {
-      System.out.println("Negated POLICY : " + e);
       if  (_settings.getBoolean(ARG_NO_NEGATE_PROPERTY)) {
-        System.out.println("Assert P");
-        e = _ctx.mkNot(e);
+        e = e.getArg();
+        System.out.println("Assert P: " + e);
       } else {
-        System.out.println("Assert !P");
+        System.out.println("Assert !P: " + e);
       }
     }
     _faultlocUnsatCore.track(_faultlocSolver, _ctx, e, caller);

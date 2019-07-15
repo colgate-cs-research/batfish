@@ -59,7 +59,6 @@ NETWORK_ID=`cat $CONTAINERS/network_ids/$NETWORK.id`
 echo -e "\n\n##### SCENARIO: $NETWORK/$SCENARIO ###################################\n"
 
 # Diff configs
-echo -e "CONFIG DIFFERENCES"
 echo -e "====================================================="
 diff -ru $ORIG_CONFIGS $SCENARIO_CONFIGS
 echo -e "=====================================================\n"
@@ -70,7 +69,6 @@ if [ -f $CONTAINERS/$NETWORK_ID/snapshot_ids/$SCENARIO.id ]; then
 fi
 
 # Check policies
-echo -e "CHECK POLICIES"
 echo -e "====================================================="
 run_batfish_commands "set-network $NETWORK\ninit-snapshot $TESTRIG_DIR $SCENARIO\n`cat $OPTIONS $POLICIES`"
 echo -e "\n====================================================="
