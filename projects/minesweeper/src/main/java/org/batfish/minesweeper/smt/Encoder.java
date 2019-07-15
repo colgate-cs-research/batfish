@@ -488,7 +488,7 @@ public class Encoder {
 
     if (caller.getLabelType() == LabelType.POLICY) {
       if  (_settings.getBoolean(ARG_NO_NEGATE_PROPERTY)) {
-        e = e.getArg();
+        e = _ctx.mkNot(e);
         System.out.println("Assert P: " + e);
       } else {
         System.out.println("Assert !P: " + e);
@@ -1213,7 +1213,6 @@ public class Encoder {
             new VerificationResult(false, null, packetModel, envModel, fwdModel, failuresStringSet, stats);
 
         if (!_settings.getBoolean(ARG_NO_FAULTLOC)) {
-            System.out.println("Localization called.");
             // Localize faults
             localizeFaults();
             _faultlocStats.writeOut();
@@ -1323,7 +1322,6 @@ public class Encoder {
     int maxMarcoTime = _settings.getInt(ARG_MAX_MARCO_TIME);
     boolean marcoVerbose = _settings.getBoolean(ARG_MARCO_VERBOSE);
 
-    System.out.println("LOCALIZING FOR ALL " +  failureSets.size());
     Map<String, BoolExpr> predicates = new HashMap<>();
 
     Map<String, PredicateLabel> predNameToLabelsMap = _faultlocUnsatCore.getTrackingLabels();
@@ -1514,8 +1512,6 @@ public class Encoder {
 
         System.out.println("\nLOCALIZE FAULTS");
         System.out.println("=====================================================");
-        System.out.println("\n" + numCounterexamples + " counterexamples");
-
         if(_settings.getString(ARG_USE_MARCO)!=null) {
           localizeFaultsUsingMarco();
 //        }else if (_settings.getBoolean(ARG_BULK_SAVE_MUS)){
@@ -1556,12 +1552,6 @@ public class Encoder {
           //Map<String, ArrayList<PredicateLabel>> faultsMap = loadFaultloc();
           //Make sure atleast one of the predicates in fault is present in the model.
           // TODO : Count of num predicates at fault and num predicates found in the model to FaultLocStats.
-          Set<PredicateLabel> predicatesInModel = new HashSet<>(_faultlocUnsatCore.getTrackingLabels().values());
-
-          System.out.println("Number of tracked predicates:  " + predicatesInModel.size());
-
-
-
         }
         updateFailedEdgeMap(numCounterexamples, failedEdgesCEMap, variableHistoryMap, ce);
         addCounterExampleConstraints(packetModel, counterExampleVariableAssignments);
