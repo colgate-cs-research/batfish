@@ -391,10 +391,10 @@ class EncoderSlice {
   /*
    * Determine if an interface is active for a particular protocol.
    */
-  private BoolExpr interfaceActive(Interface iface, Protocol proto) {
-    BoolExpr active = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(iface.getOwner().getHostname(),iface, SymbolicConfiguration.Keyword.ACTIVE);
+  private BoolExpr interfaceActive(Interface iface, Protocol proto, String router) {
+    BoolExpr active = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(router,iface, SymbolicConfiguration.Keyword.ACTIVE);
     if (proto.isOspf()) {
-      BoolExpr ospfEnabledVar = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(iface.getOwner().getHostname(),iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
+      BoolExpr ospfEnabledVar = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(router ,iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
       active = mkAnd(active, ospfEnabledVar);
     }
     return active;
@@ -512,7 +512,6 @@ class EncoderSlice {
               BoolExpr ifaceActiveVar = mkBoolConstant(ifaceActiveName);
               getAllVariables().put(ifaceActiveVar.toString(), ifaceActiveVar);
               _symbolicConfiguration.getInterfaceConfiguration().put(router, iface, SymbolicConfiguration.Keyword.ACTIVE, ifaceActiveVar);
-
               if (proto.isOspf()) {
                 String enabledName = String.format("%d_%s%s_%s_%s_%s",
                         _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "OSPF_ENABLED");
@@ -1904,7 +1903,7 @@ class EncoderSlice {
 
         BoolExpr relevant =
             mkAnd(
-                interfaceActive(iface, proto),
+                interfaceActive(iface, proto, router),
                 isRelevantFor(p, _symbolicPacket.getDstIp()),
                 notFailed,
                 notFailedNode);
@@ -1930,7 +1929,7 @@ class EncoderSlice {
             Prefix p = sr.getNetwork();
             BoolExpr relevant =
                     mkAnd(
-                            interfaceActive(iface, proto),
+                            interfaceActive(iface, proto, router),
                             isRelevantFor(p, _symbolicPacket.getDstIp()),
                             notFailed,
                             notFailedNode);
@@ -1952,7 +1951,7 @@ class EncoderSlice {
         if (varsOther != null) {
 
           // BoolExpr isRoot = relevantOrigination(originations);
-          BoolExpr active = interfaceActive(iface, proto);
+          BoolExpr active = interfaceActive(iface, proto, router);
 
           BoolExpr receiveMessage;
 
@@ -2152,7 +2151,7 @@ class EncoderSlice {
         Expr cost = proto.isBgp() ? addedCost(proto, ge) : mkInt(0);
 
         BoolExpr val = mkNot(vars.getPermitted());
-        BoolExpr active = interfaceActive(iface, proto);
+        BoolExpr active = interfaceActive(iface, proto, router);
         if (!iface.getActive()){
           //add disabled interface as a reference ?
           exportLabel.addConfigurationRef(router, iface, String.format("Export relies on disabled interface for %s", proto.name()));
@@ -2285,7 +2284,7 @@ class EncoderSlice {
             }
             BoolExpr values =
                 mkAnd(per, lp, ad, met, med, type, area, internal, igpMet, comms);
-            BoolExpr ifaceUp = interfaceActive(iface, proto);
+            BoolExpr ifaceUp = interfaceActive(iface, proto,router);
             BoolExpr originated =
                 _symbolicConfiguration.getOriginatedConfiguration().get(
                     router, proto, null);
@@ -2301,7 +2300,7 @@ class EncoderSlice {
 
             exportLabel.addConfigurationRef(router, iface, String.format("Export for destination prefix %s | Is iface Active : %b", p.toString(),iface.getActive()));
 
-            BoolExpr ifaceUp = interfaceActive(iface, proto);
+            BoolExpr ifaceUp = interfaceActive(iface, proto,router);
             BoolExpr relevantPrefix =
                 _symbolicConfiguration.getOriginatedConfiguration().get(
                     router, proto, p);
