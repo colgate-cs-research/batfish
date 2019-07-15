@@ -1,3 +1,2 @@
 p1
-EXPORT b GigabitEthernet0/3 OSPF
-IMPORT b GigabitEthernet0/3 OSPF
+INTERFACE b GigabitEthernet0/3 OSPF
