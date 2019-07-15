@@ -2662,7 +2662,8 @@ class EncoderSlice {
               add(mkEq(ospfEnabledVar, enabled), ospfEnabledLabel);
 
               IntExpr ospfCostVar = (IntExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_COST);
-              ArithExpr ospfCost = mkInt(iface.getOspfCost());
+              int cost = iface.getOspfCost()==null?1:iface.getOspfCost();
+              ArithExpr ospfCost = mkInt(cost);
 
               add(mkGe(ospfCostVar, mkInt(1)), new PredicateLabel(LabelType.VALUE_LIMIT));
               add(mkEq(ospfCostVar, ospfCost), ospfCostLabel);
