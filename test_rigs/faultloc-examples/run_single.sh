@@ -52,7 +52,7 @@ echo "travis_fold:start:$NETWORK.$SCENARIO"
 
 # Create network, if necessary
 if [ ! -f $CONTAINERS/network_ids/$NETWORK.id ]; then
-    run_batfish_commands "init-network -setname $NETWORK"
+    run_batfish_commands "init-network -setname $NETWORK" > /dev/null 2>&1
 fi
 NETWORK_ID=`cat $CONTAINERS/network_ids/$NETWORK.id`
 
@@ -65,7 +65,7 @@ echo -e "=====================================================\n"
 
 # Delete snapshot, if necessary
 if [ -f $CONTAINERS/$NETWORK_ID/snapshot_ids/$SCENARIO.id ]; then
-    run_batfish_commands "set-network $NETWORK\ndel-snapshot $SCENARIO"
+    run_batfish_commands "set-network $NETWORK\ndel-snapshot $SCENARIO" > /dev/null 2>&1
 fi
 
 # Check policies
