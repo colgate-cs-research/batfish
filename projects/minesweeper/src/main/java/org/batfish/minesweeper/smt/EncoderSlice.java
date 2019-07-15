@@ -2435,12 +2435,12 @@ class EncoderSlice {
                 break;
 
               case EXPORT:
-                PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT,router, ge.getStart(), proto);
-                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
-                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
-                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
-                  break;
-                }
+//                PredicateLabel exportLabel = new PredicateLabel(PredicateLabel.LabelType.EXPORT,router, ge.getStart(), proto);
+//                if (!getGraph().isEdgeUsed(conf,proto, ge, exportLabel)){
+//                  exportLabel.addConfigurationRef(router, ge.getStart(), String.format("Export relies on unused edge %s", ge.toString()));
+//                  add(mkNot(e.getSymbolicRecord().getPermitted()), exportLabel);
+//                  break;
+//                }
                 // OSPF export is tricky because it does not depend on being
                 // in the FIB. So it can come from either a redistributed route
                 // or another OSPF route. We always take the direct OSPF

@@ -54,7 +54,8 @@ public class PredicateLabel{
   
   /** Labels for predicates derived from configuration */
   private final static EnumSet<LabelType> CONFIGURABLE_LABELS = EnumSet.of(
-      LabelType.ORIGINATED, LabelType.NEIGHBOR ,LabelType.INTERFACE,LabelType.COMMUNITY,
+      LabelType.ORIGINATED, LabelType.NEIGHBOR, LabelType.INTERFACE,
+      LabelType.COMMUNITY,
       LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND);
   
   /** Labels for predicates that are computable based on predicates derived

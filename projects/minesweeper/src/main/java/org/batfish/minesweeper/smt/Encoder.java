@@ -1395,7 +1395,7 @@ public class Encoder {
                 solver.getNumAssertions(),
                 solver.getUnsatCore().length);
 
-        System.out.printf("Running Marco (upto %d MUSes will be produced) \n", maxMUScount);
+        System.out.printf( "Running Marco (upto %d MUSes, %d MSSes/MCSes will be produced)\n", maxMUScount, maxMSScount);
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
         PredicateLabel[] constraintLabels = labels.toArray(new PredicateLabel[labels.size()]);
         List<Set<Integer>> muses;

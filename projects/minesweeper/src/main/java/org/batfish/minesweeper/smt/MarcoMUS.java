@@ -103,7 +103,14 @@ public class MarcoMUS {
                 MSSes.add(mssLits);
                 mapSolver.blockDown(mss);
             }else{
-                if (true) break; //TODO : Clean up. Currently modified  to only generate MCSes.
+                //TODO : Clean up. Currently modified  to only generate MCSes.
+                if (true) {
+                    if (MSSes.size() == 0) {
+                        System.out.println(
+                                "WARNING: initial seed was unsatisfiable!");
+                    }
+                    break; 
+                }
                 Set<Integer> mus = subsetSolver.shrink(seed);
                 indexOfMUSes.add(mus);
                 if (!firstMUSGenerated){
