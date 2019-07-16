@@ -1,2 +1,2 @@
 p1
-INTERFACE c GigabitEthernet0/2 OSPF
+INTERFACE_PROTOCOL_ENABLED c GigabitEthernet0/2 OSPF
