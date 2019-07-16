@@ -174,9 +174,9 @@ public class PredicateLabel{
   * @return String The type, router and the interface of this predicate
   */
   public String toString() {
-      return type+(device != null ? " " + device : "")
-          +(intface_String != null ? " " + intface_String : "")
-          +(proto != null ? " " + proto.name() : "");
+      return type+(device != null ? " " + device : " null")
+          +(intface_String != null ? " " + intface_String : " null")
+          +(proto != null ? " " + proto.name() : " null");
   }
 
   /**
