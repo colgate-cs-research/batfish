@@ -190,7 +190,7 @@ def process_mus(mus_file_path):
             if mus.startswith('['): #first line is policy being checked
                 policy = mus
                 continue
-            preds_list =  mus.split(',')
+            preds_list =  mus.strip('\n,').split(',')
             for x in preds_list:
                 preds.add(x)
     return policy,preds,count-1
@@ -204,7 +204,7 @@ def process_mus_num(mus_file_path, num):
             if mus.startswith('['): #first line is policy being checked
                 policy = mus
                 continue
-            preds_list =  mus.split(',')
+            preds_list =  mus.strip('\n,').split(',')
             for x in preds_list:
                 preds.add(x)
             if count == (num+1):
@@ -230,7 +230,7 @@ def process_mus_intersect(mus_file_path):
             if mus.startswith('['):
                 policy = mus.strip()
                 continue
-            preds_set = set(mus.split(','))
+            preds_set = set(mus.strip('\n,').split(','))
             if (first):
                 preds = preds.union(preds_set)
                 first = False
@@ -248,7 +248,7 @@ def process_mus_intersect_num(mus_file_path, num):
             if mus.startswith('['):
                 policy = mus.strip()
                 continue
-            preds_set = set(mus.split(','))
+            preds_set = set(mus.strip('\n,').split(','))
             if (first):
                 preds = preds.union(preds_set)
                 first = False
