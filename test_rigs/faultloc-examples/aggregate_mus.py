@@ -123,10 +123,13 @@ def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, sho
     else:
         print(network_name, snapshot_name)
     return None, None, None, None
+
+config_label = ["ORIGINATED", "NEIGHBOR", "INTERFACE_ACTIVE",
+        "INTERFACE_PROTOCOL_ENABLED", "INTERFACE_OSPF_COST", "COMMUNITY",
+        "ACLS_INBOUND", "ACLS_OUTBOUND"]
+
 def process_mus(mus_file_path):
     preds= set()
-    config_label = {"IMPORT","EXPORT","EXPORT_REDISTRIBUTED","COMMUNITY",
-      "ACLS_INBOUND", "ACLS_OUTBOUND"}
     with open(mus_file_path, "r") as mus_file:
         for mus in mus_file:
             if mus.startswith('['):
@@ -144,8 +147,6 @@ def process_mus(mus_file_path):
 def process_mus_intersect(mus_file_path):
     preds = set()
     first = True
-    config_label = {"IMPORT","EXPORT","EXPORT_REDISTRIBUTED","COMMUNITY",
-      "ACLS_INBOUND", "ACLS_OUTBOUND"}
     with open(mus_file_path, "r") as mus_file:
         for mus in mus_file:
             preds_set = set(mus.split(','))
