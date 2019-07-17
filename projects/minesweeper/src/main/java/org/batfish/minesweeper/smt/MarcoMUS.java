@@ -70,11 +70,10 @@ public class MarcoMUS {
                 seed.add(i);
             }
         }
-		    int max_iters = 200;//Finds upto 200 MCSes
         while (true){
 //            List<Integer> seed  = mapSolver.nextSeed();
 
-            if (seed==null||max_iters==0) {
+            if (seed==null) {
                 break;
             }
             if (MSSes.size()>=maxMSSCount || MUSes.size()>=maxMUSCount) {
@@ -83,7 +82,6 @@ public class MarcoMUS {
             if (System.currentTimeMillis()-start_time>maxExplorationTime*1000) {
                 break;
             }
-            max_iters--;
 
             Set<Integer> seedSet= new HashSet<>();
             seedSet.addAll(seed);
