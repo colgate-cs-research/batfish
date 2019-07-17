@@ -488,13 +488,13 @@ class EncoderSlice {
             new HashSet<>(_originatedNetworks.get(router, proto));
         originations.add(null);
         for (Prefix p : originations) {
-            // Don't bother with OSPF originations that are irrelevant 
+            // Don't bother with OSPF originations that are irrelevant
             if (p != null && proto.isOspf() && !relevantPrefix(p)) {
               continue;
             }
 
             String originatedName = String.format("%d_%s%s_%s_%s_%s_%s",
-                _encoder.getId(), _sliceName, router, "CONFIGURATION", 
+                _encoder.getId(), _sliceName, router, "CONFIGURATION",
                 proto.name(), "ORIGINATED", p);
             BoolExpr originatedVar = mkBoolConstant(originatedName);
             getAllVariables().put(originatedVar.toString(), originatedVar);
@@ -2270,22 +2270,24 @@ class EncoderSlice {
           boolean relevantConnectedUnoriginatedPrefix = false;
           for (Interface i : conf.getAllInterfaces().values()) {
             ConcreteInterfaceAddress address = i.getConcreteAddress();
-            Prefix prefix = address.getPrefix();
-            // Interface must have an address and a relevant prefix
-            if (null == address || !relevantPrefix(prefix)) {
-              continue;
-            }
-            // Interface address must not fall within an OSPF originated network
-            boolean alreadyOriginated = false;
-            for (Prefix op : originations) {
-              if (op.containsIp(address.getIp())) {
-                alreadyOriginated = true;
+            if (address != null){
+              Prefix prefix = address.getPrefix();
+              // Interface must have an address and a relevant prefix
+              if (null == address || !relevantPrefix(prefix)) {
+                continue;
+              }
+              // Interface address must not fall within an OSPF originated network
+              boolean alreadyOriginated = false;
+              for (Prefix op : originations) {
+                if (op.containsIp(address.getIp())) {
+                  alreadyOriginated = true;
+                  break;
+                }
+              }
+              if (!alreadyOriginated) {
+                relevantConnectedUnoriginatedPrefix = true;
                 break;
               }
-            }
-            if (!alreadyOriginated) {
-              relevantConnectedUnoriginatedPrefix = true;
-              break;
             }
           }
 
@@ -2689,7 +2691,7 @@ class EncoderSlice {
                   String.format("OSPF cost %d", iface.getOspfCost()));
 
               BoolExpr ospfEnabledVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
-              BoolExpr enabled = mkBool(iface.getOspfEnabled() 
+              BoolExpr enabled = mkBool(iface.getOspfEnabled()
                       && !iface.getOspfPassive());
 
               add(mkEq(ospfEnabledVar, enabled), ospfEnabledLabel);
@@ -2716,7 +2718,7 @@ class EncoderSlice {
 
               PredicateLabel neighborLabel = new PredicateLabel(LabelType.NEIGHBOR, router, iface, proto);
               neighborLabel.addConfigurationRef(router, proto,
-                  String.format("Neighbor %s", 
+                  String.format("Neighbor %s",
                       (peerConfig!=null ? peerConfig.getPeerAddress() : null)));
               BoolExpr peerConfigVar = (BoolExpr) _symbolicConfiguration.getNeighborConfiguration()
                       .get(router,iface,peerConfig);
