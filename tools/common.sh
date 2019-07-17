@@ -99,7 +99,7 @@ export -f batfish_build_all
 _batfish_build_all() {
    _pre_build || return 1
    cd "${PROJECTS_PATH}"
-   mvn --no-transfer-progress install || return 1
+   mvn -B install || return 1
 }
 export -f _batfish_build_all
 
