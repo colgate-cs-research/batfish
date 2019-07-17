@@ -3,6 +3,7 @@ package org.batfish.minesweeper.smt;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.microsoft.z3.*;
+import com.microsoft.z3.enumerations.Z3_ast_print_mode;
 import org.batfish.datamodel.*;
 import org.batfish.datamodel.acl.MatchHeaderSpace;
 import org.batfish.datamodel.questions.smt.BgpDecisionVariable;
@@ -487,9 +488,9 @@ class EncoderSlice {
             new HashSet<>(_originatedNetworks.get(router, proto));
         originations.add(null);
         for (Prefix p : originations) {
-            // Don't bother with originations that are irrelevant for policy
-            if (p != null && !relevantPrefix(p)) {
-                continue;
+            // Don't bother with OSPF originations that are irrelevant 
+            if (p != null && proto.isOspf() && !relevantPrefix(p)) {
+              continue;
             }
 
             String originatedName = String.format("%d_%s%s_%s_%s_%s_%s",
@@ -2265,7 +2266,31 @@ class EncoderSlice {
         // For OSPF, we need to explicitly initiate a route
         if (proto.isOspf()) {
 
-          // Create dummy origination
+          // Check if there is a relevant connected unoriginated prefix
+          boolean relevantConnectedUnoriginatedPrefix = false;
+          for (Interface i : conf.getAllInterfaces().values()) {
+            ConcreteInterfaceAddress address = i.getConcreteAddress();
+            Prefix prefix = address.getPrefix();
+            // Interface must have an address and a relevant prefix
+            if (null == address || !relevantPrefix(prefix)) {
+              continue;
+            }
+            // Interface address must not fall within an OSPF originated network
+            boolean alreadyOriginated = false;
+            for (Prefix op : originations) {
+              if (op.containsIp(address.getIp())) {
+                alreadyOriginated = true;
+                break;
+              }
+            }
+            if (!alreadyOriginated) {
+              relevantConnectedUnoriginatedPrefix = true;
+              break;
+            }
+          }
+
+          // Create dummy origination if connected route is relevant
+          if (relevantConnectedUnoriginatedPrefix)
           {
             int adminDistance = defaultAdminDistance(conf, proto);
             BoolExpr per = vars.getPermitted();
@@ -2363,6 +2388,7 @@ class EncoderSlice {
 
 
         if (Encoder.ENABLE_DEBUGGING) {
+          _encoder.getCtx().setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
           System.out.println("EXPORT: " + router + " " + varsOther.getName() + " " + ge);
           System.out.println(acc.simplify());
           System.out.println("\n\n");
@@ -2616,8 +2642,8 @@ class EncoderSlice {
             new HashSet<>(_originatedNetworks.get(router, proto));
         originations.add(null);
         for (Prefix p : originations) {
-          // Don't bother with originations that are irrelevant for policy
-          if (p != null && !relevantPrefix(p)) {
+          // Don't bother with OSPF originations that are irrelevant for policy
+          if (p != null && proto.isOspf() && !relevantPrefix(p)) {
               continue;
           }
 
@@ -2663,7 +2689,8 @@ class EncoderSlice {
                   String.format("OSPF cost %d", iface.getOspfCost()));
 
               BoolExpr ospfEnabledVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
-              BoolExpr enabled = mkBool(iface.getOspfEnabled());
+              BoolExpr enabled = mkBool(iface.getOspfEnabled() 
+                      && !iface.getOspfPassive());
 
               add(mkEq(ospfEnabledVar, enabled), ospfEnabledLabel);
 
@@ -2825,6 +2852,10 @@ class EncoderSlice {
 
   Table2<String, Protocol, Set<Prefix>> getOriginatedNetworks() {
     return _originatedNetworks;
+  }
+
+  SymbolicConfiguration getSymbolicConfiguration() {
+    return _symbolicConfiguration;
   }
 
   public BoolExpr mkBoolConstant(String input) {
