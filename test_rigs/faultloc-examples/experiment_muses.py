@@ -35,7 +35,7 @@ def main():
     masterpath = os.path.join(args.path, masterfile_name)
     masterfile = open(masterpath, 'w')
     writer = csv.writer(masterfile)
-    writer.writerow(["found_preds_count","missed_preds_count","extra_count","missed_preds", "network", "scenario", "num_mus", "num_failures", "num_policies"])
+    writer.writerow(["found_preds_count","missed_preds_count","extra_count","recall","precision","missed_preds", "extra_preds", "network", "scenario", "num_mus", "num_failures", "num_policies"])
         
     ids_dir = os.path.join(args.path, "network_ids")
     for id_filename in os.listdir(ids_dir):
@@ -59,13 +59,16 @@ def process_network(network, network_dir, writer, args):
             snapshot_dir = os.path.join(network_dir, "snapshots", snapshot_id)
             if args.mus == args.failure == args.policies == False:
                 faulty_preds, snapshot_candidates, num_mus ,num_failures, num_policies= process_snapshot_num(snapshot_dir, writer, args)
-                found_count, missed_count, missed_preds, extra_count = analyze_candidates(snapshot_candidates, faulty_preds)
+                found_count, missed_count, missed_preds, extra_count, extra_preds = analyze_candidates(snapshot_candidates, faulty_preds)
                 if (not args.print_per_policy):
                     writer.writerow(
                         [str(found_count),
                         str(missed_count),
                         str(extra_count),
+                        str(found_count/(found_count+missed_count)),
+                        str(found_count/(found_count+extra_count)),
                         str(missed_preds),
+                        str(extra_preds),
                         network,
                         snapshot_name,
                         num_mus,
@@ -78,14 +81,17 @@ def process_network(network, network_dir, writer, args):
                     if i == 0:
                         continue
                     faulty_preds, snapshot_candidates,num_mus, num_failures, num_policies = process_snapshot_num(snapshot_dir, writer, args, num)
-                    found_count, missed_count, missed_preds, extra_count = analyze_candidates(snapshot_candidates, faulty_preds)
+                    found_count, missed_count, missed_preds, extra_count, extra_preds = analyze_candidates(snapshot_candidates, faulty_preds)
                     if ((args.mus and num_mus>=nums[i-1])or(args.failure and num_failures>=nums[i-1])or(args.policies and num_policies>=nums[i-1])):
                         if (not args.print_per_policy):
                             writer.writerow(
                                 [str(found_count),
                                 str(missed_count),
                                 str(extra_count),
+                                str(found_count/(found_count+missed_count)),
+                                str(found_count/(found_count+extra_count)),
                                 str(missed_preds),
+                                str(extra_preds),
                                 network,
                                 snapshot_name,
                                 num_mus,
@@ -130,7 +136,7 @@ def process_snapshot_num(snapshot_dir, writer, args, num = 1000000):
     if (args.print_per_policy):
         for policy in policy_to_candidates.keys():
             policy_candidates = policy_to_candidates[policy]
-            found_count, missed_count, missed_preds, extra_count = analyze_candidates(policy_candidates, faulty_preds)
+            found_count, missed_count, missed_preds, extra_count, extra_preds = analyze_candidates(policy_candidates, faulty_preds)
             num_mus = min(policy_to_muscount[policy])
             num_failures = policy_to_failcount[policy]
             if ((args.mus)or(args.failure and num_failures>=num)or (not args.mus and not args.failure)):
@@ -138,7 +144,10 @@ def process_snapshot_num(snapshot_dir, writer, args, num = 1000000):
                             [str(found_count),
                             str(missed_count),
                             str(extra_count),
+                            str(found_count/(found_count+missed_count)),
+                            str(found_count/(found_count+extra_count)),
                             str(missed_preds),
+                            str(extra_preds),
                             "",
                             "",
                             num_mus,
@@ -216,8 +225,9 @@ def analyze_candidates(candidates, faults):
     missed_count = len(faults) - found_count
     missed_preds = faults.difference(candidates)
     extra_count = len(candidates) - found_count
+    extra_preds = candidates.difference(faults)
 
-    return found_count, missed_count, missed_preds, extra_count
+    return found_count, missed_count, missed_preds, extra_count, extra_preds
 
 
 def process_mus_intersect(mus_file_path):
