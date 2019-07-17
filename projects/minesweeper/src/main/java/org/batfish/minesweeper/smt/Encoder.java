@@ -487,6 +487,7 @@ public class Encoder {
 //    System.out.println("[Pred] " + caller + " : " + e);
 
     if (caller.getLabelType() == LabelType.POLICY) {
+      _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
       if  (_settings.getBoolean(ARG_NO_NEGATE_PROPERTY)) {
         e = _ctx.mkNot(e);
         System.out.println("Assert P: " + e);
