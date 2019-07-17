@@ -1,2 +1,2 @@
 p1
-INTERFACE b GigabitEthernet0/3 OSPF
+INTERFACE_PROTOCOL_ENABLED b GigabitEthernet0/3 OSPF

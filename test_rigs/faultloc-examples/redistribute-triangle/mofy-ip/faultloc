@@ -1,2 +1,2 @@
 p1
-EXPORT b GigabitEthernet0/2 OSPF
+INTERFACE_PROTOCOL_ENABLED b GigabitEthernet0/2 OSPF

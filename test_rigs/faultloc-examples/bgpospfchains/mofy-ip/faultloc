@@ -1,4 +1,2 @@
 p1
-EXPORT d GigabitEthernet0/1 OSPF
-IMPORT d GigabitEthernet0/1 OSPF
-EXPORT_REDISTRIBUTED d GigabitEthernet0/1 OSPF
+INTERFACE_PROTOCOL_ENABLED d GigabitEthernet0/1 OSPF
