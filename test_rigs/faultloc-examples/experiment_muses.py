@@ -36,16 +36,28 @@ def main():
     masterfile = open(masterpath, 'w')
     writer = csv.writer(masterfile)
     writer.writerow(["found_preds_count","missed_preds_count","extra_count","recall","precision","missed_preds", "extra_preds", "network", "scenario", "num_mus", "num_failures", "num_policies"])
-        
-    ids_dir = os.path.join(args.path, "network_ids")
+
+    if os.path.exists(os.path.join(args.path, "network_ids")):
+        process_experiment(args.path, writer, args)
+    else:
+        for experiment in os.listdir(args.path):
+            experiment_dir = os.path.join(args.path, experiment)
+            if (experiment.startswith('.') 
+                    or not os.path.isdir(experiment_dir)):
+                continue
+            process_experiment(experiment_dir, writer, args)
+    
+    masterfile.close()
+
+def process_experiment(experiment_dir, writer, args):
+    ids_dir = os.path.join(experiment_dir, "network_ids")
     for id_filename in os.listdir(ids_dir):
         with open(os.path.join(ids_dir, id_filename)) as id_file:
             network_id = id_file.read().strip()
         network_name = id_filename[:-3] #stripping .id from ospf-triangle.id
-        network_dir = os.path.join(args.path, network_id)
+        network_dir = os.path.join(experiment_dir, network_id)
         process_network(network_name, network_dir, writer, args)
 
-    masterfile.close()
 
 
 def process_network(network, network_dir, writer, args):
@@ -58,7 +70,7 @@ def process_network(network, network_dir, writer, args):
             snapshot_name = id_filename[:-3]
             snapshot_dir = os.path.join(network_dir, "snapshots", snapshot_id)
             if args.mus == args.failure == args.policies == False:
-                faulty_preds, snapshot_candidates, num_mus ,num_failures, num_policies= process_snapshot_num(snapshot_dir, writer, args)
+                faulty_preds, snapshot_candidates, num_mus ,num_failures, num_policies= process_snapshot_num(network, snapshot_name, snapshot_dir, writer, args)
                 found_count, missed_count, missed_preds, extra_count, extra_preds = analyze_candidates(snapshot_candidates, faulty_preds)
                 if (not args.print_per_policy):
                     writer.writerow(
@@ -80,7 +92,7 @@ def process_network(network, network_dir, writer, args):
                 for i, num in enumerate(nums):
                     if i == 0:
                         continue
-                    faulty_preds, snapshot_candidates,num_mus, num_failures, num_policies = process_snapshot_num(snapshot_dir, writer, args, num)
+                    faulty_preds, snapshot_candidates,num_mus, num_failures, num_policies = process_snapshot_num(network, snapshot_name, snapshot_dir, writer, args, num)
                     found_count, missed_count, missed_preds, extra_count, extra_preds = analyze_candidates(snapshot_candidates, faulty_preds)
                     if ((args.mus and num_mus>=nums[i-1])or(args.failure and num_failures>=nums[i-1])or(args.policies and num_policies>=nums[i-1])):
                         if (not args.print_per_policy):
@@ -99,7 +111,7 @@ def process_network(network, network_dir, writer, args):
                                 num_policies])
 
 
-def process_snapshot_num(snapshot_dir, writer, args, num = 1000000):
+def process_snapshot_num(network, snapshot, snapshot_dir, writer, args, num = 1000000):
     output_dir = os.path.join(snapshot_dir, "output")
     policy_to_candidates = dict()
     policy_to_failcount = dict()
@@ -148,8 +160,8 @@ def process_snapshot_num(snapshot_dir, writer, args, num = 1000000):
                             str(found_count/(found_count+extra_count)),
                             str(missed_preds),
                             str(extra_preds),
-                            "",
-                            "",
+                            network,
+                            snapshot,
                             num_mus,
                             num_failures,
                             policy]
