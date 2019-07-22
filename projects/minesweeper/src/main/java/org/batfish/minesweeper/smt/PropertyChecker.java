@@ -888,6 +888,13 @@ public AnswerElement checkPathPreferences(
           BoolExpr implication = enc.mkImplies(fwdOnPath, notAvailable);
           allImplications = enc.mkAnd(allImplications, implication);
         }
+
+        // Also enforce reachability
+//        PropertyAdder pa = new PropertyAdder(enc.getMainSlice());
+//        Map<String, BoolExpr> reach = pa.instrumentReachability(destPorts);
+//        allImplications = enc.mkAnd(reach.get(pathPrefsRev.get(0).get(0)),
+//                allImplications);
+
         //System.out.println("Assert: " + allImplications.simplify());
         PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.POLICY);
         enc.add(enc.mkNot(allImplications), label);
