@@ -1,9 +1,9 @@
 library(plyr)
 
 mydata <- read.csv("master.csv",header = TRUE, sep=",")
-mydata$totaltime<-(mydata$allCEs_genTime+mydata$allMUSes_genTime)/1000
+mydata$totaltime<-(mydata$allCEs_genTime+mydata$allM_Ses_genTime)/1000
 mydata$failuretime<-(mydata$allCEs_genTime)/1000
-mydata$avgmustime<-(mydata$allMUSes_genTime/mydata$numMUSGenerated)/1000
+mydata$avgmustime<-(mydata$allM_Ses_genTime/mydata$numMCSGenerated)/1000
 
 mydata$experiment <- revalue(mydata$experiment, c("rm-network"="MissOspfNet", "rm-nopassive"="MissOspfIface"))
 
@@ -20,7 +20,7 @@ dev.off()
 
 png("time_avgmcs_scenario.png",width = 400, height = 300)
 par(mar = c(4,4,0.1,0.1))
-boxplot (mydata$avgmustime~mydata$experiment, xlab="Error Type", ylab="Seconds", ylim=c(0, 70))
+boxplot (mydata$avgmustime~mydata$experiment, xlab="Error Type", ylab="Seconds", ylim=c(0, 120))
 dev.off()
 
 png("time_total_network.png",width = 400, height = 300)

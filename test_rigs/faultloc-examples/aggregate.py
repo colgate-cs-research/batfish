@@ -21,7 +21,7 @@ def main():
             "slice","missedpred","firstCE_genTime","allCEs_genTime",
             "firstMUS_genTime","firstMCS_genTime",
             "firstFailSetMUSes_genTime","firstFailSetMCSes_genTime",
-            "allMUSes_genTime","numMUSGenerated","numMCSGenerated",
+            "allM_Ses_genTime","numMUSGenerated","numMCSGenerated",
             "experiment","network","scenario"])
 
     if os.path.exists(os.path.join(args.path, "network_ids")):
