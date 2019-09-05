@@ -40,6 +40,7 @@ def process_experiment(experiment_name, base_dir, writer):
             with open(os.path.join(ids_dir, id_filename)) as id_file:
                 network_id = id_file.read().strip()
             network_name = id_filename[:-3]
+            experiment_name = experiment_name.replace(network_name+'-', '')
             process_network(experiment_name, network_name,
                     os.path.join(base_dir, network_id), writer)
 

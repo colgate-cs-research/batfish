@@ -1,16 +1,29 @@
-na.strings = c("NA","")
-mydata = read.csv("all_master_mus.csv",header = TRUE, sep=",")
+library(plyr)
+
+na.strings <- c("NA","")
+mydata <- read.csv("master_mus.csv",header = TRUE, sep=",")
+
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count)*100)
 mydata$recall<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count)*100)
-na.omit(mydata$found_preds_count)
-png("Precision(scenario).png",width = 400, height = 300)
+
+mydata$experiment <- revalue(mydata$experiment, c("rm-network"="MissOspfNet", "rm-nopassive"="MissOspfIface"))
+
+png("precision_scenario.png",width = 400, height = 300)
 par(mar = c(4,4,0.1,0.1))
-boxplot (mydata$precision~mydata$experiment,  xlab="Error Type", ylab="Percent", ylim=c(0, 100), xaxt="n")
-axis(1, at=c(1,2,3), labels = c('BadBgpNet','MissOspfNet','MissOspfIface'))
+boxplot (mydata$precision~mydata$experiment,  xlab="Error Type", ylab="Percent", ylim=c(0, 100))
 dev.off()
-png("Recall(scenario).png",width = 400, height = 300)
+
+png("recall_scenario.png",width = 400, height = 300)
 par(mar = c(4,4,0.1,0.1))
-boxplot (mydata$recall~mydata$experiment, xlab="Error Type", ylab="Percent", ylim=c(0, 100), xaxt = "n")
-axis(1, at=c(1,2,3), labels = c('BadBgpNet','MissOspfNet','MissOspfIface'))
+boxplot (mydata$recall~mydata$experiment, xlab="Error Type", ylab="Percent", ylim=c(0, 100))
 dev.off()
-print (mydata)
+
+png("precision_network.png",width = 400, height = 300)
+par(mar = c(4,4,0.1,0.1))
+boxplot (mydata$precision~mydata$network,  xlab="Error Type", ylab="Percent", ylim=c(0, 100))
+dev.off()
+
+png("recall_network.png",width = 400, height = 300)
+par(mar = c(4,4,0.1,0.1))
+boxplot (mydata$recall~mydata$network, xlab="Error Type", ylab="Percent", ylim=c(0, 100))
+dev.off()

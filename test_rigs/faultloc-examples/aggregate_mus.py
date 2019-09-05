@@ -16,7 +16,7 @@ def main():
 
     masterfile = open(masterpath, 'w')
     writer = csv.writer(masterfile)
-    writer.writerow(["found_preds_count","missed_preds_count","extra_count","missed_preds", "allMUSes_genTime","numMUSGenerated","network", "scenario"])
+    writer.writerow(["found_preds_count","missed_preds_count","extra_count","missed_preds", "allMUSes_genTime","numMUSGenerated","experiment","network","scenario"])
 
     if os.path.exists(os.path.join(args.path, "network_ids")):
         process_experiment(None, args.path, writer, args.intersect)
@@ -38,6 +38,7 @@ def process_experiment(experiment_name, base_dir, writer, should_intersect = Fal
             with open(os.path.join(ids_dir, id_filename)) as id_file:
                 network_id = id_file.read().strip()
             network_name = id_filename[:-3]
+            experiment_name = experiment_name.replace(network_name+'-', '')
             process_network(experiment_name, network_name,
                     os.path.join(base_dir, network_id), writer, should_intersect)
 
@@ -83,7 +84,7 @@ def process_network(experiment_name, network_name, base_dir, writer, should_inte
                         str(missed_preds),
                         str(scenario_to_mus_time[scenario]),
                         str(scenario_to_mus_count[scenario]),
-                        network_name,scenario])
+                        experiment_name,network_name,scenario])
 
 def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, should_intersect):
     exp_filepath = os.path.join(base_dir, "output", "experiment.csv")
