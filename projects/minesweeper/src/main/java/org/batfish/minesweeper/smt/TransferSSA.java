@@ -319,6 +319,9 @@ class TransferSSA {
       boolean action = (line.getAction() == LineAction.PERMIT);
       CommunityVar cvar = toCommunityVar(line.getMatchCondition());
       BoolExpr c = other.getCommunities().get(cvar);
+      if (c == null) {
+          continue;
+      }
       acc = _enc.mkIf(c, _enc.mkBool(action), acc);
     }
     return acc;
@@ -671,6 +674,9 @@ class TransferSSA {
         return true;
       }
       BgpPeerConfig n = getBgpNeighbor();
+      if (null == n) {
+        return false;
+      }
       return n.getSendCommunity();
     } else {
       return false;
