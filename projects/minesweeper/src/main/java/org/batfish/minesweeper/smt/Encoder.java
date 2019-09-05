@@ -109,6 +109,7 @@ public class Encoder {
   public static final String ARG_BULK_SAVE_MUS = "saveMUS";
   public static final String ARG_MUS_THRESHOLD = "musThreshold";
   public static final String ARG_SAVE_ALL_REFERENCES = "saveAllRefs";
+  public static final String ARG_SKIP_DUPLICATE_FAILURES = "skipDupFailures";
 
   private static final boolean ENABLE_UNSAT_CORE = true;
 
@@ -1562,7 +1563,33 @@ public class Encoder {
         SortedMap<Expr, Expr> counterExampleVariableAssignments = new TreeMap<>();
         buildCounterExample(this, _faultlocSolver.getModel(), ce, packetModel, new TreeSet<>(),
             new TreeMap<>(), failures, nonfailures,counterExampleVariableAssignments);
-        failureSets.put(failures,nonfailures);
+
+        boolean foundEquivalent = false;
+        if (_settings.getBoolean(ARG_SKIP_DUPLICATE_FAILURES)) {
+            for (SortedMap<String, ArithExpr> nonfailuresOther :
+                    failureSets.values()) {
+                boolean exactMatch = true;
+                for (String varName : nonfailures.keySet()) {
+                if (!(varName.contains("DATA-FORWARDING_")
+                    || varName.contains("CONTROL-FORWARDING_"))) {
+                    continue;
+                }
+                if (nonfailures.get(varName) != nonfailuresOther.get(varName)) {
+                    exactMatch = false;
+                    break;
+                }
+                }
+                if (exactMatch) {
+                foundEquivalent = true;
+                break;
+                }
+            }
+        }
+
+        if (!foundEquivalent) {
+          failureSets.put(failures,nonfailures);
+        }
+
         /* Store variable assignments over multiple counter-examples (satisfying assignments.)*/
         if (numCounterexamples == 1) {
           _faultlocStats.setFirstCEGenTime(System.currentTimeMillis()- check_start);
@@ -1592,7 +1619,7 @@ public class Encoder {
     }
 
     if (numCounterexamples == _settings.getInt(ARG_NUM_ITERS_FAULTLOC)){
-      _faultlocStats.setTimeToUNSAT(time_check-_faultlocStats.getFirstCEGenTime()); //Never reaches UNSAT
+      _faultlocStats.setTimeToUNSAT(time_check); //Never reaches UNSAT
     }
     //FORALL LOCALIZATION
     localizeForAllFailures(failureSets); // Pass in list of failedLinkSets

@@ -165,6 +165,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
   private static final String ARG_SAVE_ALL_REFERENCES = "saveAllRefs";
 
+  private static final String ARG_SKIP_DUPLICATE_FAILURES = "skipDupFailures";
+
   private static final String CAN_EXECUTE = "canexecute";
 
   private static final String DIFFERENTIAL_QUESTION = "diffquestion";
@@ -656,6 +658,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     setDefaultProperty(ARG_BULK_SAVE_MUS,false);
     setDefaultProperty(ARG_MUS_THRESHOLD, 50);
     setDefaultProperty(ARG_SAVE_ALL_REFERENCES, false);
+    setDefaultProperty(ARG_SKIP_DUPLICATE_FAILURES, false);
     setDefaultProperty(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, false);
     setDefaultProperty(ARG_PRINT_GRAPH, false);
     setDefaultProperty(ARG_PRINT_SMT, false);
@@ -921,6 +924,8 @@ public final class Settings extends BaseSettings implements GrammarSettings {
 
     addBooleanOption(ARG_SAVE_ALL_REFERENCES, "save predicate to list of references into a file");
 
+    addBooleanOption(ARG_SKIP_DUPLICATE_FAILURES, "skip invoking MARCO for failure scenarios with the same forwarding behavior");
+
     addBooleanOption(ARG_PRINT_COUNTER_EXAMPLE_CHANGES, "print what changed between different counter examples");
 
     addBooleanOption(ARG_PRINT_GRAPH, "print graph used to construct SMT formulation");
@@ -1067,6 +1072,7 @@ public final class Settings extends BaseSettings implements GrammarSettings {
     getBooleanOptionValue(ARG_MUS_UNION);
     getBooleanOptionValue(ARG_BULK_SAVE_MUS);
     getBooleanOptionValue(ARG_SAVE_ALL_REFERENCES);
+    getBooleanOptionValue(ARG_SKIP_DUPLICATE_FAILURES);
     getIntegerOptionValue(ARG_MUS_THRESHOLD);
     getIntegerOptionValue(ARG_Z3_TIMEOUT);
     getStringOptionValue(ARG_DATAPLANE_ENGINE_NAME);
