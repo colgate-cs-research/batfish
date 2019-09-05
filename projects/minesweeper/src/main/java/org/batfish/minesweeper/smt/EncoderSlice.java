@@ -2328,11 +2328,14 @@ class EncoderSlice {
             exportLabel.addConfigurationRef(router, iface, String.format("Export for destination prefix %s | Is iface Active : %b", p.toString(),iface.getActive()));
 
             BoolExpr ifaceUp = interfaceActive(iface, proto,router);
-            BoolExpr relevantPrefix =
+            // Do we need relevantPrefix in encoding, given we check at
+            // encoding formulation time (see if statement above)?
+            BoolExpr relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
+            BoolExpr originated =
                 _symbolicConfiguration.getOriginatedConfiguration().get(
                     router, proto, p);
 
-            BoolExpr relevant = mkAnd(ifaceUp, relevantPrefix);
+            BoolExpr relevant = mkAnd(ifaceUp, originated, relevantPrefix);
 
             int adminDistance = defaultAdminDistance(conf, proto);
             int prefixLength = p.getPrefixLength();
@@ -2657,11 +2660,8 @@ class EncoderSlice {
           BoolExpr originatedVar =
               _symbolicConfiguration.getOriginatedConfiguration().get(
                   router, proto, p);
-          BoolExpr relevantPrefix = mkFalse();
-          if (p != null) {
-            relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
-          }
-          add(mkEq(originatedVar, relevantPrefix), originatedLabel);
+          BoolExpr originated = (p != null ? mkTrue() : mkFalse());
+          add(mkEq(originatedVar, originated), originatedLabel);
         }
 
 
