@@ -18,9 +18,11 @@ def main():
     writer = csv.writer(masterfile)
     writer.writerow(["num-CEs","foundpreds","missedpreds","extraconfigpred",
             "extracomputepred","includecomputable","notnegating","minimize",
-            "slice","missedpred","firstCE_genTime","allCEs_genTime","firstMUS_genTime","firstFailSetMUSes_genTime",
-            "allMUSes_genTime","numMUSGenerated","experiment","network",
-            "scenario"])
+            "slice","missedpred","firstCE_genTime","allCEs_genTime",
+            "firstMUS_genTime","firstMCS_genTime",
+            "firstFailSetMUSes_genTime","firstFailSetMCSes_genTime",
+            "allMUSes_genTime","numMUSGenerated","numMCSGenerated",
+            "experiment","network","scenario"])
 
     if os.path.exists(os.path.join(args.path, "network_ids")):
         process_experiment(None, args.path, writer)

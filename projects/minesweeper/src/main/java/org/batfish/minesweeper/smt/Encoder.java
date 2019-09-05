@@ -1315,6 +1315,7 @@ public class Encoder {
   void localizeForAllFailures(HashMap<SortedMap<String, ArithExpr>,SortedMap<String, ArithExpr>> failureSets){
 
     int totalNumMUSesGenerated = 0;
+    int totalNumMCSesGenerated = 0;
     long time_start = System.currentTimeMillis();
     Set<PredicateLabel> candidatePredicateLabels = new HashSet<>();
 
@@ -1346,13 +1347,17 @@ public class Encoder {
 
     Solver solver;
     long time_end = time_start;
+    int failureSetNum = 0;
+    boolean shouldReturnMUSes = false;
     for (SortedMap<String, ArithExpr> failureSet : failureSets.keySet()){
+      failureSetNum++;
 
       allConstraints = new ArrayList<>();
       labels = new ArrayList<>();
       predNames = new ArrayList<>();
 
-      System.out.println("\n********FAILURE SET***********");
+      System.out.printf("\n********FAILURE SET (%d of %d)***********\n",
+              failureSetNum, failureSets.keySet().size());
       for(String key: failureSet.keySet()){
         System.out.println(key + " : " + failureSet.get(key));
       }
@@ -1401,11 +1406,18 @@ public class Encoder {
         PredicateLabel[] constraintLabels = labels.toArray(new PredicateLabel[labels.size()]);
         List<Set<Integer>> muses;
 
+
         muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
-                maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, false,
-                null);
+                maxMUScount, maxMSScount, maxMarcoTime, marcoVerbose, 
+                shouldReturnMUSes, _faultlocStats);
         time_end = System.currentTimeMillis();
-        _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
+        if (1 == failureSetNum) {
+            if (shouldReturnMUSes) {
+                _faultlocStats.setFailSetMUSGenTime(time_end - time_start);
+            } else {
+                _faultlocStats.setFailSetMCSGenTime(time_end - time_start);
+            }
+        }
 
         int[] predicateFrequency = new int[predNames.size()];
 
@@ -1448,7 +1460,11 @@ public class Encoder {
           saveMUSes(musesLabels);
         }
 
-        totalNumMUSesGenerated += muses.size();
+        if (shouldReturnMUSes) {
+            totalNumMUSesGenerated += muses.size();
+        } else {
+            totalNumMCSesGenerated += muses.size();
+        }
 
 
         for (int i = 0; i < predicateFrequency.length; i++) {
@@ -1480,7 +1496,11 @@ public class Encoder {
 
     }
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_end - time_start);
-    _faultlocStats.setNumMUSesGenerated(totalNumMUSesGenerated);
+    if (shouldReturnMUSes) {
+        _faultlocStats.setNumMUSesGenerated(totalNumMUSesGenerated);
+    } else {
+        _faultlocStats.setNumMCSesGenerated(totalNumMCSesGenerated);
+    }
   }
 
 
@@ -1509,7 +1529,7 @@ public class Encoder {
         throw new BatfishException("ERROR: satisfiability unknown");
       }
       else if (s == Status.UNSATISFIABLE) {
-        _faultlocStats.setTimeToUNSAT(time_check-_faultlocStats.getFirstCEGenTime());
+        _faultlocStats.setTimeToUNSAT(time_check);
 
         System.out.println("\nLOCALIZE FAULTS");
         System.out.println("=====================================================");

@@ -59,9 +59,8 @@ public class MarcoMUS {
         List<Set<Integer>> indexOfMUSes = new ArrayList<>();
         List<Set<Integer>> indexOfMCSes = new ArrayList<>();
 
-
-
         boolean firstMUSGenerated = false; //Variable to track how long the first MUS takes
+        boolean firstMCSGenerated = false; //Variable to track how long the first MCS takes
 
 		long start_time = System.currentTimeMillis();
         List<Integer> seed = new ArrayList<>();
@@ -97,6 +96,12 @@ public class MarcoMUS {
                 mcs.removeAll(mss);
                 indexOfMCSes.add(mcs); //ADDING MCSes currently
                 seed.addAll(mcs); //NOTE: Instead of using nextSeed().
+                if (!firstMCSGenerated){
+                    if (faultlocStats!=null){
+                        faultlocStats.setFirstMCSGenTime(System.currentTimeMillis() - start_time);
+                        firstMCSGenerated = true;
+                    }
+                }
                 List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
                 MSSes.add(mssLits);
                 mapSolver.blockDown(mss);
