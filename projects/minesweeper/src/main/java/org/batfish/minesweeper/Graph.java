@@ -5,6 +5,7 @@ import static org.batfish.minesweeper.CommunityVarCollector.collectCommunityVars
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.graph.ImmutableNetwork;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
@@ -23,6 +25,9 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.SerializationUtils;
 import org.batfish.common.BatfishException;
 import org.batfish.common.plugin.IBatfish;
+import org.batfish.common.topology.Layer1Edge;
+import org.batfish.common.topology.Layer1Node;
+import org.batfish.common.topology.Layer1Topology;
 import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.BgpPeerConfig;
 import org.batfish.datamodel.BgpProcess;
@@ -92,6 +97,7 @@ public class Graph {
   private Map<String, List<StaticRoute>> _nullStaticRoutes;
   private Map<String, Set<String>> _neighbors;
   private Map<String, List<GraphEdge>> _edgeMap;
+  private Map<String, List<GraphEdge>> _possibleEdgeMap;
   private Set<GraphEdge> _allRealEdges;
   private Set<GraphEdge> _allEdges;
   private Map<GraphEdge, GraphEdge> _otherEnd;
@@ -150,6 +156,7 @@ public class Graph {
       @Nullable Set<String> routers) {
     _batfish = batfish;
     _edgeMap = new HashMap<>();
+    _possibleEdgeMap = new HashMap<>();
     _allEdges = new HashSet<>();
     _allRealEdges = new HashSet<>();
     _otherEnd = new HashMap<>();
@@ -367,6 +374,62 @@ public class Graph {
     return vrf.getOspfProcesses().values().iterator().next();
   }
 
+  private Set<NodeInterfacePair> getPossibleNeighbors(NodeInterfacePair nip,
+      Map<String, Set<NodeInterfacePair>> routerIfaceMap,
+      Map<NodeInterfacePair, Interface> ifaceMap) {
+    String router = nip.getHostname();
+    Interface i1 = ifaceMap.get(nip);
+    Set<NodeInterfacePair> possibilities = new HashSet<NodeInterfacePair>();
+
+    // VLAN interfaces could have other end by enabling VLAN on physical iface
+    if (i1.getVlan() != null) {
+      int vlan = i1.getVlan();
+      //System.out.printf("Check for other end for %s:%s\n", router, i1);
+
+      Optional<Layer1Topology> layer1Topology = 
+          _batfish.getTopologyProvider().getLayer1LogicalTopology(
+              _batfish.getNetworkSnapshot());
+      if (!layer1Topology.isPresent()) {
+        //System.out.println("\tNo Layer 1 topology");
+        return possibilities;
+      }
+      ImmutableNetwork<Layer1Node, Layer1Edge> layer1Graph = 
+          layer1Topology.get().getGraph();
+
+      // Find all physically connected routers
+      Set<Layer1Edge> layer1Edges = new HashSet<Layer1Edge>();
+      for (Layer1Node node: layer1Graph.nodes()) {
+        if (node.getHostname().equals(router)) {
+          layer1Edges.addAll(layer1Graph.outEdges(node));
+        }
+      }
+
+
+      // Find all physically connected routers with same VLAN
+      for (Layer1Edge edge : layer1Edges) {
+        String neighbor = edge.getNode2().getHostname();
+        //System.out.printf("\t%s and %s are physically connected\n", router, 
+        //   neighbor);
+        for (NodeInterfacePair nip2 : routerIfaceMap.get(neighbor)) {
+          Interface i2 = ifaceMap.get(nip2);
+          if (i2.getVlan() != null && i2.getVlan() == vlan) {
+            //System.out.printf("\t%s and %s both have %s\n", router, neighbor, 
+            //    i1);
+            if (i1.getConcreteAddress().getPrefix().equals(
+                        i2.getConcreteAddress().getPrefix())) {
+              //System.out.printf("\t%s have same prefix: %s\n", 
+              //    i1, i1.getConcreteAddress().getPrefix());
+              possibilities.add(new NodeInterfacePair(neighbor, 
+                  nip2.getInterface()));
+            }
+          }
+        }
+      }
+    }
+
+    return possibilities;
+  }
+
   /*
    * Initialize the topology by inferring interface pairs and
    * create the opposite edge mapping.
@@ -395,6 +458,7 @@ public class Graph {
       String router = entry.getKey();
       Set<NodeInterfacePair> nips = entry.getValue();
       Set<GraphEdge> graphEdges = new HashSet<>();
+      Set<GraphEdge> possibleEdges = new HashSet<>();
       Set<String> neighs = new HashSet<>();
 
       for (NodeInterfacePair nip : nips) {
@@ -404,6 +468,14 @@ public class Graph {
         if (hasNoOtherEnd) {
           GraphEdge ge = new GraphEdge(i1, null, router, null, false, false);
           graphEdges.add(ge);
+          Set<NodeInterfacePair> possibleNeighbors = 
+              getPossibleNeighbors(nip, routerIfaceMap, ifaceMap);
+          for (NodeInterfacePair neighborIface : possibleNeighbors) {
+            Interface i2 = ifaceMap.get(neighborIface);
+            String neighbor = neighborIface.getHostname();
+            ge = new GraphEdge(i1, i2, router, neighbor, false, false);
+            possibleEdges.add(ge);
+          }
         }
         if (!neighborIfaces.isEmpty()) {
           boolean hasMultipleEnds = (neighborIfaces.size() > 2);
@@ -432,6 +504,7 @@ public class Graph {
       _allRealEdges.addAll(graphEdges);
       _allEdges.addAll(graphEdges);
       _edgeMap.put(router, new ArrayList<>(graphEdges));
+      _possibleEdgeMap.put(router, new ArrayList<>(possibleEdges));
       _neighbors.put(router, neighs);
     }
   }
@@ -1125,8 +1198,6 @@ public class Graph {
         }
     }
 
-    // System.out.println(conf.getHostname() + iface.getName());
-
     // Use a null routed edge, but only for the static protocol
     if (ge.isNullEdge()) {
       return proto.isStatic();
@@ -1346,7 +1417,27 @@ public class Graph {
                       .append(",")
                       .append(edge.getEnd().getName());
                 }
-                sb.append(edge.getStart().getConcreteAddress());
+                sb.append(" ").append(edge.getStart().getConcreteAddress());
+                sb.append("\n");
+              });
+        });
+
+    sb.append("---------- Router to possible edges map ----------\n");
+    _possibleEdgeMap.forEach(
+        (router, graphEdges) -> {
+          sb.append("Router: ").append(router).append("\n");
+          graphEdges.forEach(
+              edge -> {
+                sb.append("  edge from: ").append(edge.getStart().getName());
+                if (edge.getEnd() == null) {
+                  sb.append(" to: null ");
+                } else {
+                  sb.append(" to: ")
+                      .append(edge.getPeer())
+                      .append(",")
+                      .append(edge.getEnd().getName());
+                }
+                sb.append(" ").append(edge.getStart().getConcreteAddress());
                 sb.append("\n");
               });
         });
