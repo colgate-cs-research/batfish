@@ -278,7 +278,8 @@ public class Encoder {
 
     for (Entry<String, Set<String>> entry : _graph.getNeighbors().entrySet()) {
       String router = entry.getKey();
-      Set<String> peers = entry.getValue();
+      Set<String> peers = new HashSet<String>(entry.getValue());
+      peers.addAll(_graph.getPossibleNeighbors().get(router));
       for (String peer : peers) {
         // sort names for unique
         String pair = (router.compareTo(peer) < 0 ? router + "_" + peer : peer + "_" + router);
@@ -520,7 +521,7 @@ public class Encoder {
       add(mkGe(var, mkInt(0)), label);
       add(mkLe(var, mkInt(1)), label);
     }
-    label=new PredicateLabel(PredicateLabel.LabelType.FAILURES);
+    label=new PredicateLabel(PredicateLabel.LabelType.FAILURE_LIMIT);
     if (k == 0) {
       for (ArithExpr var : vars) {
         add(mkEq(var, mkInt(0)), label);
@@ -959,6 +960,12 @@ public class Encoder {
 
     BoolExpr andPacketConstraints = _ctx.mkAnd(newEqs.toArray(new BoolExpr[newEqs.size()]));
     _faultlocUnsatCore.track(_faultlocSolver, _ctx, andPacketConstraints, label);
+
+    if (_settings.getBoolean(ARG_PRINT_SMT)) {
+      _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
+      System.out.println("PACKET");
+      System.out.println(andPacketConstraints.getSExpr());
+    }
   }
 
 
@@ -1152,7 +1159,8 @@ public class Encoder {
     }
 
     if (_settings.getBoolean(ARG_PRINT_SMT)) {
-        System.out.println("\nSMT");
+        System.out.printf("\nSMT (%d constraints, %d tracked)\n",
+                numConstraints, _unsatCore.getTrackingVars().size());
         System.out.println("-------------------------------------------");
         _ctx.setPrintMode(Z3_ast_print_mode.Z3_PRINT_SMTLIB_FULL);
         for (String predName : _unsatCore.getTrackingVars().keySet()) {
@@ -1381,14 +1389,18 @@ public class Encoder {
         //Don't assert and track failure constraint
         solver.add(failureExpr);
         allConstraints.add(failureExpr);
-        labels.add(new PredicateLabel(PredicateLabel.LabelType.FAILURES, failureExpr.toString()));
+        PredicateLabel label = new PredicateLabel(
+            PredicateLabel.LabelType.FAILURES, failureExpr.toString());
+        labels.add(label);
       }
       for (String key : failureSets.get(failureSet).keySet()){ //Links that do not fail
         BoolExpr failureExpr = mkEq(failureSets.get(failureSet).get(key), mkInt(0));
         //Don't assert and track failure constraint
         solver.add(failureExpr);
         allConstraints.add(failureExpr);
-        labels.add(new PredicateLabel(PredicateLabel.LabelType.FAILURES, failureExpr.toString()));
+        PredicateLabel label = new PredicateLabel(
+            PredicateLabel.LabelType.FAILURES, failureExpr.toString());
+        labels.add(label);
       }
 
       Status result = solver.check();

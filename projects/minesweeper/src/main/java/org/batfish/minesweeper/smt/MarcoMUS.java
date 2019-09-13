@@ -111,6 +111,14 @@ public class MarcoMUS {
                     if (MSSes.size() == 0) {
                         System.out.println(
                                 "WARNING: initial seed was unsatisfiable!");
+                        if (verbose) {
+                            System.out.println("Unsat core:");
+                            List<Integer> unsatCoreIds =
+                                    subsetSolver.seedFromUnsatCore();
+                            for (Integer id : unsatCoreIds) {
+                               System.out.println("\t" + constraintLabels[id]);
+                            }
+                        }
                     }
                     break; 
                 }

@@ -6,6 +6,7 @@ import org.batfish.minesweeper.Graph;
 import org.batfish.minesweeper.GraphEdge;
 import org.batfish.minesweeper.Protocol;
 import org.batfish.minesweeper.smt.PredicateLabel.LabelType;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +118,8 @@ class PropertyAdder {
 
     for (Entry<String, List<GraphEdge>> entry : g.getEdgeMap().entrySet()) {
       String router = entry.getKey();
-      List<GraphEdge> edges = entry.getValue();
+      List<GraphEdge> edges = new ArrayList<>(entry.getValue());
+      edges.addAll(g.getPossibleEdgeMap().get(router));
       ArithExpr id = idVars.get(router);
       // Add the base case, reachable if we forward to a directly connected interface
       BoolExpr hasDirectRoute = ctx.mkFalse();

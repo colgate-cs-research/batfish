@@ -96,6 +96,7 @@ public class Graph {
   private Table2<String, String, List<StaticRoute>> _staticRoutes;
   private Map<String, List<StaticRoute>> _nullStaticRoutes;
   private Map<String, Set<String>> _neighbors;
+  private Map<String, Set<String>> _possibleNeighbors;
   private Map<String, List<GraphEdge>> _edgeMap;
   private Map<String, List<GraphEdge>> _possibleEdgeMap;
   private Set<GraphEdge> _allRealEdges;
@@ -165,6 +166,7 @@ public class Graph {
     _staticRoutes = new Table2<>();
     _nullStaticRoutes = new HashMap<>();
     _neighbors = new HashMap<>();
+    _possibleNeighbors = new HashMap<>();
     _ebgpNeighbors = new HashMap<>();
     _ibgpNeighbors = new HashMap<>();
     _routeReflectorParent = new HashMap<>();
@@ -374,7 +376,7 @@ public class Graph {
     return vrf.getOspfProcesses().values().iterator().next();
   }
 
-  private Set<NodeInterfacePair> getPossibleNeighbors(NodeInterfacePair nip,
+  private Set<NodeInterfacePair> computePossibleNeighbors(NodeInterfacePair nip,
       Map<String, Set<NodeInterfacePair>> routerIfaceMap,
       Map<NodeInterfacePair, Interface> ifaceMap) {
     String router = nip.getHostname();
@@ -460,6 +462,7 @@ public class Graph {
       Set<GraphEdge> graphEdges = new HashSet<>();
       Set<GraphEdge> possibleEdges = new HashSet<>();
       Set<String> neighs = new HashSet<>();
+      Set<String> possibleNeighs = new HashSet<>();
 
       for (NodeInterfacePair nip : nips) {
         SortedSet<NodeInterfacePair> neighborIfaces = topology.getNeighbors(nip);
@@ -469,12 +472,19 @@ public class Graph {
           GraphEdge ge = new GraphEdge(i1, null, router, null, false, false);
           graphEdges.add(ge);
           Set<NodeInterfacePair> possibleNeighbors = 
-              getPossibleNeighbors(nip, routerIfaceMap, ifaceMap);
+              computePossibleNeighbors(nip, routerIfaceMap, ifaceMap);
           for (NodeInterfacePair neighborIface : possibleNeighbors) {
             Interface i2 = ifaceMap.get(neighborIface);
             String neighbor = neighborIface.getHostname();
-            ge = new GraphEdge(i1, i2, router, neighbor, false, false);
-            possibleEdges.add(ge);
+            GraphEdge ge1 = new GraphEdge(i1, i2, router, neighbor, false, 
+                false);
+            ge1.setNotExists();
+            GraphEdge ge2 = new GraphEdge(i2, i1, neighbor, router, false, 
+                false);
+            ge2.setNotExists();
+            _otherEnd.put(ge1, ge2);
+            possibleEdges.add(ge1);
+            possibleNeighs.add(neighbor);
           }
         }
         if (!neighborIfaces.isEmpty()) {
@@ -506,6 +516,7 @@ public class Graph {
       _edgeMap.put(router, new ArrayList<>(graphEdges));
       _possibleEdgeMap.put(router, new ArrayList<>(possibleEdges));
       _neighbors.put(router, neighs);
+      _possibleNeighbors.put(router, possibleNeighs);
     }
   }
 
@@ -1265,6 +1276,10 @@ public class Graph {
    * Check if a topology edge is used in a particular protocol.
    */
   public boolean isEdgeUsed(Configuration conf, Protocol proto, GraphEdge ge, @Nullable PredicateLabel label) {
+    if (!ge.exists()) {
+      return false;
+    }
+
     Interface iface = ge.getStart();
 
     // Use a null routed edge, but only for the static protocol
@@ -1539,8 +1554,16 @@ public class Graph {
     return _neighbors;
   }
 
+  public Map<String, Set<String>> getPossibleNeighbors() {
+    return _possibleNeighbors;
+  }
+
   public Map<String, List<GraphEdge>> getEdgeMap() {
     return _edgeMap;
+  }
+
+  public Map<String, List<GraphEdge>> getPossibleEdgeMap() {
+    return _possibleEdgeMap;
   }
 
   public Map<GraphEdge, GraphEdge> getOtherEnd() {

@@ -392,13 +392,19 @@ class EncoderSlice {
   /*
    * Determine if an interface is active for a particular protocol.
    */
-  private BoolExpr interfaceActive(Interface iface, Protocol proto, String router) {
+  private BoolExpr interfaceActive(GraphEdge ge, Protocol proto, String router) {
+    Interface iface = ge.getStart();
     BoolExpr active = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(router,iface, SymbolicConfiguration.Keyword.ACTIVE);
+    BoolExpr conjunction = active;
     if (proto.isOspf()) {
       BoolExpr ospfEnabledVar = (BoolExpr) _symbolicConfiguration.getInterfaceConfiguration().get(router ,iface, SymbolicConfiguration.Keyword.OSPF_ENABLED);
-      active = mkAnd(active, ospfEnabledVar);
+      BoolExpr adj = 
+          (BoolExpr)_symbolicConfiguration.getEdgeConfiguration().get(router, 
+              ge);
+      //adj = mkTrue();
+      conjunction = mkAnd(conjunction, ospfEnabledVar, adj);
     }
-    return active;
+    return conjunction;
   }
 
   /*
@@ -507,12 +513,36 @@ class EncoderSlice {
           List<ArrayList<LogicalEdge>> les = _logicalGraph.getLogicalEdges().get(router, proto);
           for(List<LogicalEdge> edges : les){
             for (LogicalEdge edge : edges){
-              Interface iface = edge.getEdge().getStart();
+              GraphEdge ge = edge.getEdge();
+
+              // Interface active
+              Interface iface = ge.getStart();
               String ifaceActiveName = String.format("%d_%s%s_%s_%s_%s",
                       _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "ACTIVE");
               BoolExpr ifaceActiveVar = mkBoolConstant(ifaceActiveName);
               getAllVariables().put(ifaceActiveVar.toString(), ifaceActiveVar);
               _symbolicConfiguration.getInterfaceConfiguration().put(router, iface, SymbolicConfiguration.Keyword.ACTIVE, ifaceActiveVar);
+
+              // Layer-3 adjacency
+              if (ge.getPeer() != null) {
+                // Sort names for unique
+                String source = router + ":" + iface.getName();
+                String dest = ge.getPeer() + ":" + ge.getEnd().getName();
+                String pair = (source.compareTo(dest) < 0 ? 
+                        source + "_" + dest : dest + "_" + source);
+                String layer3AdjName = String.format("%d_%s_%s_%s",
+                    _encoder.getId(), _sliceName, "LAYER3ADJ", pair); 
+                if (!getAllVariables().containsKey(layer3AdjName)) {
+                  BoolExpr layer3AdjVar = mkBoolConstant(layer3AdjName);
+                  getAllVariables().put(layer3AdjVar.toString(), layer3AdjVar);
+                }
+                BoolExpr layer3AdjVar = (BoolExpr)getAllVariables().get(
+                    "|"+layer3AdjName+"|");
+                _symbolicConfiguration.getEdgeConfiguration().put(router, ge,
+                    layer3AdjVar);
+              }
+
+              // OSPF enabled & cost
               if (proto.isOspf()) {
                 String enabledName = String.format("%d_%s%s_%s_%s_%s",
                         _encoder.getId(), _sliceName, router, "INTERFACE", iface.getName(), "OSPF_ENABLED");
@@ -528,6 +558,7 @@ class EncoderSlice {
                         router, iface, SymbolicConfiguration.Keyword.OSPF_COST, costVar);
               }
 
+              // BGP neighbor
               if (proto.isBgp()) {
                 BgpActivePeerConfig eBgpPeerConfig = _graph.getEbgpNeighbors().get(edge.getEdge());
                 BgpActivePeerConfig iBgpPeerConfig = _graph.getIbgpNeighbors().get(edge.getEdge());
@@ -600,7 +631,8 @@ class EncoderSlice {
   private void addForwardingVariables() {
     for (Entry<String, List<GraphEdge>> entry : getGraph().getEdgeMap().entrySet()) {
       String router = entry.getKey();
-      List<GraphEdge> edges = entry.getValue();
+      List<GraphEdge> edges = new ArrayList<GraphEdge>(entry.getValue());
+      edges.addAll(getGraph().getPossibleEdgeMap().get(router));
       for (GraphEdge edge : edges) {
         String iface = edge.getStart().getName();
         String cName =
@@ -680,7 +712,8 @@ class EncoderSlice {
     // add edge EXPORT and IMPORT state variables
     for (Entry<String, List<GraphEdge>> entry : getGraph().getEdgeMap().entrySet()) {
       String router = entry.getKey();
-      List<GraphEdge> edges = entry.getValue();
+      List<GraphEdge> edges = new ArrayList<GraphEdge>(entry.getValue());
+      edges.addAll(getGraph().getPossibleEdgeMap().get(router));
       Map<Protocol, SymbolicRoute> singleProtoMap;
       singleProtoMap = new HashMap<>();
       Map<Protocol, Map<GraphEdge, ArrayList<LogicalEdge>>> importEnumMap;
@@ -713,6 +746,9 @@ class EncoderSlice {
 
           if (getGraph().couldEdgeUsed(proto, e, getProtocols())) {
             if (!getGraph().isEdgeUsed(conf, proto, e)) {
+              if (proto.isConnected()) {
+                continue;
+              }
               System.out.printf("Dummy: %s %s\n", proto.name(), e);
             }
 
@@ -1726,7 +1762,7 @@ class EncoderSlice {
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
           PredicateLabel label = new PredicateLabel(PredicateLabel.LabelType.CONTROL_FORWARDING, router, ge.getStart());
-          add(mkNot(cForward), label);
+          //add(mkNot(cForward), label);
         }
       }
 
@@ -1904,7 +1940,7 @@ class EncoderSlice {
 
         BoolExpr relevant =
             mkAnd(
-                interfaceActive(iface, proto, router),
+                interfaceActive(ge, proto, router),
                 isRelevantFor(p, _symbolicPacket.getDstIp()),
                 notFailed,
                 notFailedNode);
@@ -1930,7 +1966,7 @@ class EncoderSlice {
             Prefix p = sr.getNetwork();
             BoolExpr relevant =
                     mkAnd(
-                            interfaceActive(iface, proto, router),
+                            interfaceActive(ge, proto, router),
                             isRelevantFor(p, _symbolicPacket.getDstIp()),
                             notFailed,
                             notFailedNode);
@@ -1952,7 +1988,7 @@ class EncoderSlice {
         if (varsOther != null) {
 
           // BoolExpr isRoot = relevantOrigination(originations);
-          BoolExpr active = interfaceActive(iface, proto, router);
+          BoolExpr active = interfaceActive(ge, proto, router);
 
           BoolExpr receiveMessage;
 
@@ -2152,7 +2188,7 @@ class EncoderSlice {
         Expr cost = proto.isBgp() ? addedCost(proto, ge) : mkInt(0);
 
         BoolExpr val = mkNot(vars.getPermitted());
-        BoolExpr active = interfaceActive(iface, proto, router);
+        BoolExpr active = interfaceActive(ge, proto, router);
         if (!iface.getActive()){
           //add disabled interface as a reference ?
           exportLabel.addConfigurationRef(router, iface, String.format("Export relies on disabled interface for %s", proto.name()));
@@ -2311,7 +2347,7 @@ class EncoderSlice {
             }
             BoolExpr values =
                 mkAnd(per, lp, ad, met, med, type, area, internal, igpMet, comms);
-            BoolExpr ifaceUp = interfaceActive(iface, proto,router);
+            BoolExpr ifaceUp = interfaceActive(ge, proto,router);
             BoolExpr originated =
                 _symbolicConfiguration.getOriginatedConfiguration().get(
                     router, proto, null);
@@ -2327,7 +2363,7 @@ class EncoderSlice {
 
             exportLabel.addConfigurationRef(router, iface, String.format("Export for destination prefix %s | Is iface Active : %b", p.toString(),iface.getActive()));
 
-            BoolExpr ifaceUp = interfaceActive(iface, proto,router);
+            BoolExpr ifaceUp = interfaceActive(ge, proto,router);
             // Do we need relevantPrefix in encoding, given we check at
             // encoding formulation time (see if statement above)?
             BoolExpr relevantPrefix = isRelevantFor(p, _symbolicPacket.getDstIp());
@@ -2669,7 +2705,8 @@ class EncoderSlice {
         for(List<LogicalEdge> edges : les) {
           for (LogicalEdge edge : edges) {
             if (edge.getEdgeType().equals(EdgeType.EXPORT)) continue;
-            Interface iface = edge.getEdge().getStart();
+            GraphEdge ge = edge.getEdge();
+            Interface iface = ge.getStart();
 
             PredicateLabel ifaceActiveLabel = new PredicateLabel(
                     LabelType.INTERFACE_ACTIVE, router, iface, proto);
@@ -2728,6 +2765,25 @@ class EncoderSlice {
             }
 
           }
+        }
+      }
+
+      Set<String> alreadyConstrained = new HashSet<>();
+      for (Entry<GraphEdge, Expr> entry : 
+          _symbolicConfiguration.getEdgeConfiguration().get(router).entrySet()){
+        GraphEdge ge = entry.getKey();
+        Interface iface = ge.getStart();
+
+        BoolExpr layer3AdjVar = (BoolExpr)entry.getValue();
+        if (!alreadyConstrained.contains(layer3AdjVar.toString())) {
+          PredicateLabel layer3AdjLabel = new PredicateLabel(
+              LabelType.LAYER3_ADJACENCY, router, iface);
+          layer3AdjLabel.addConfigurationRef(router, iface,
+              String.format("Adjacency %s", ge.exists()));
+          BoolExpr exists = mkBool(ge.exists());
+
+          add(mkEq(layer3AdjVar, exists), layer3AdjLabel);
+          alreadyConstrained.add(layer3AdjVar.toString());
         }
       }
     }

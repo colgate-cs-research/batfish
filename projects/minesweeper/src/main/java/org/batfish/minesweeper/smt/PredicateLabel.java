@@ -23,6 +23,8 @@ public class PredicateLabel{
     POLICY,
     HEADER_SPACE,
     FAILURES,
+    FAILURE_LIMIT,
+    CANNOT_FAIL,
     ENVIRONMENT,
     // Predicates computed based on predicates derived from configuration
     BEST_PER_PROTOCOL,
@@ -45,6 +47,7 @@ public class PredicateLabel{
     INTERFACE_PROTOCOL_ENABLED,
     INTERFACE_OSPF_COST,
     NEIGHBOR,
+    LAYER3_ADJACENCY,
     // Predicates derived from counterexamples
     PACKET,
     COUNTEREXAMPLE,
@@ -58,7 +61,7 @@ public class PredicateLabel{
   private final static EnumSet<LabelType> CONFIGURABLE_LABELS = EnumSet.of(
       LabelType.ORIGINATED, LabelType.NEIGHBOR, LabelType.INTERFACE_ACTIVE,
       LabelType.INTERFACE_PROTOCOL_ENABLED, LabelType.INTERFACE_OSPF_COST,
-      LabelType.COMMUNITY,
+      LabelType.LAYER3_ADJACENCY, LabelType.COMMUNITY,
       LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND);
   
   /** Labels for predicates that are computable based on predicates derived

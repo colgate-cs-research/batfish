@@ -207,7 +207,7 @@ public class PropertyChecker {
     Graph graph = enc.getMainSlice().getGraph();
     for (List<GraphEdge> edges : graph.getEdgeMap().values()) {
       for (GraphEdge ge : edges) {
-        PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.FAILURES);
+        PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.CANNOT_FAIL);
         ArithExpr f = enc.getSymbolicFailures().getFailedVariable(ge);
         assert f != null;
         if (!failSet.contains(ge)) {
@@ -226,7 +226,7 @@ public class PropertyChecker {
   }
 
   private void addNodeFailureConstraints(Encoder enc, Set<String> failNodesSet) {
-    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.FAILURES);
+    PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.CANNOT_FAIL);
     Graph graph = enc.getMainSlice().getGraph();
     for (String router : graph.getRouters()) {
       ArithExpr f = enc.getSymbolicFailures().getFailedNodes().get(router);

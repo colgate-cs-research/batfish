@@ -40,6 +40,8 @@ public class GraphEdge {
 
   private boolean _isNullEdge;
 
+  private boolean _exists;
+
   @JsonCreator
   public GraphEdge(
       @JsonProperty(START_VAR) Interface start,
@@ -54,6 +56,7 @@ public class GraphEdge {
     _peer = (end == null ? null : peer);
     _isAbstract = isAbstract;
     _isNullEdge = isNullEdge;
+    _exists = true;
   }
 
   @JsonProperty(START_VAR)
@@ -84,6 +87,14 @@ public class GraphEdge {
   @JsonProperty(NULL_VAR)
   public boolean isNullEdge() {
     return _isNullEdge;
+  }
+
+  public boolean exists() {
+    return _exists;
+  }
+
+  public void setNotExists() {
+    _exists = false;
   }
 
   @Override
