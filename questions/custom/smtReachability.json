@@ -9,6 +9,8 @@
     "failures": "${failures}",
     "failNode1Regex": "${failNode1Regex}",
     "failNode2Regex": "${failNode2Regex}",
+    "notFailNode1Regex": "${notFailNode1Regex}",
+    "notFailNode2Regex": "${notFailNode2Regex}",
     "diffType": null,
     "envDiff": false,
     "benchmark": true,
@@ -73,6 +75,18 @@
                 "type": "nodeSpec",
                 "optional": true,
                 "value": ".*"
+            },
+            "notFailNode1Regex": {
+                "description": "Regex to specify the first node that cannot be part of the link to fail",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ""
+            },
+            "notFailNode2Regex": {
+                "description": "Regex to specify the second node that cannot be part of the link to fail",
+                "type": "nodeSpec",
+                "optional": true,
+                "value": ""
             }
         }
     }
