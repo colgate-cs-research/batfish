@@ -10,9 +10,9 @@ LOG_LEVEL="WARN"
 BATFISH_ARGS=""
 START_PORT=9990
 
-while getopts "hw:b:p:v" opt; do
+while getopts "hw:b:p:l:v" opt; do
     case "$opt" in
-    h)  echo "run.sh [-w NUM_WORKERS] [-b BATFISH_ARGS] [-p START_PORT] [-v]"
+    h)  echo "run.sh [-w NUM_WORKERS] [-b BATFISH_ARGS] [-p START_PORT] [-l LOG_DIR] [-v]"
         exit 0
         ;;
     v)  LOG_LEVEL="DEBUG"
@@ -23,6 +23,8 @@ while getopts "hw:b:p:v" opt; do
         ;;
     p)  START_PORT=$OPTARG
         ;;
+    l) LOG_DIR=$OPTARG
+        ;;
     esac
 done
 
@@ -31,7 +33,11 @@ WORK_PORT=$((START_PORT+7))
 WORKV2_PORT=$((START_PORT+6))
 SERVICE_PORT=$((START_PORT+10))
 
-TMPDIR=`mktemp -d`
+if [ -z $LOG_DIR ]; then
+    TMPDIR=`mktemp -d`
+else
+    TMPDIR=$LOG_DIR
+fi
 echo "Storing logs in $TMPDIR"
 
 echo "$BATFISH_ARGS" > "$TMPDIR/batfish_args"
