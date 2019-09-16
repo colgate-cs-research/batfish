@@ -31,6 +31,7 @@ import org.batfish.common.BfConsts;
 import org.batfish.common.plugin.IBatfish;
 import org.batfish.datamodel.BgpActivePeerConfig;
 import org.batfish.datamodel.BgpPeerConfig;
+import org.batfish.datamodel.Configuration;
 import org.batfish.datamodel.HeaderSpace;
 import org.batfish.datamodel.Interface;
 import org.batfish.datamodel.Ip;
@@ -1098,8 +1099,27 @@ public class Encoder {
         if (s.contains(" ")) {
           arr = s.split(" ");
           try {
-            PredicateLabel label = new PredicateLabel(PredicateLabel.LabelType.valueOf(arr[0]),
-                arr[1], arr[2], arr[3]);
+            PredicateLabel.LabelType type = 
+                PredicateLabel.LabelType.valueOf(arr[0]);
+            String router = arr[1];
+            Configuration conf = _graph.getConfigurations().get(router);
+            // Determine whether an interface of filter is specified
+            Interface iface = null;
+            String filter = null;
+            if (!arr[2].equals("null")) {
+                if (conf.getAllInterfaces().containsKey(arr[2])) {
+                    iface = conf.getAllInterfaces().get(arr[2]);
+                } else {
+                    filter = arr[2];
+                }
+            }
+            Protocol proto = Protocol.fromString(arr[3]);
+            PredicateLabel label = null;
+            if (iface != null || proto != null) {
+                label = new PredicateLabel(type, router, iface, proto);
+            } else {
+                label = new PredicateLabel(type, router, filter);
+            }
             label_list.add(label);
           }
           catch (Exception e) {
