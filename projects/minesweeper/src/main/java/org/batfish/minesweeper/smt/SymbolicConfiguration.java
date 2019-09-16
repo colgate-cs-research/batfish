@@ -2,9 +2,12 @@ package org.batfish.minesweeper.smt;
 
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.Expr;
+import java.util.Map;
 import org.batfish.datamodel.BgpPeerConfig;
-import org.batfish.datamodel.Prefix;
 import org.batfish.datamodel.Interface;
+import org.batfish.datamodel.Prefix;
+import org.batfish.datamodel.RouteFilterLine;
+import org.batfish.datamodel.RouteFilterList;
 import org.batfish.minesweeper.GraphEdge;
 import org.batfish.minesweeper.Protocol;
 import org.batfish.minesweeper.collections.Table2;
@@ -18,7 +21,7 @@ import org.batfish.minesweeper.collections.Table3;
 class SymbolicConfiguration {
 
   enum Keyword{
-      OSPF_ENABLED, OSPF_COST, ACTIVE
+      OSPF_ENABLED, OSPF_COST, ACTIVE, PREFIX, ACTION
   }
   // Configuration values for each protocol
   private Table3<String, Protocol, Prefix, BoolExpr> _originatedConfiguration;
@@ -32,11 +35,17 @@ class SymbolicConfiguration {
   // Configuration values for each BGP peer (router, iface, peer, expr)
   private Table3<String, Interface, BgpPeerConfig, Expr> _neighborConfiguration;
 
+  // Configuration values for route filter list (router, filterlist, line,
+  // (ACTION | RANGE) -> expr)
+  private Table3<String, RouteFilterList, RouteFilterLine, Map<Keyword, Expr>>
+        _routeFilterListConfiguration;
+
   SymbolicConfiguration() {
     _originatedConfiguration = new Table3<>();
     _interfaceConfiguration = new Table3<>();
     _edgeConfiguration = new Table2<>();
     _neighborConfiguration = new Table3<>();
+    _routeFilterListConfiguration = new Table3<>();
   }
 
   Table3<String, Protocol, Prefix, BoolExpr> getOriginatedConfiguration() {
@@ -55,5 +64,8 @@ class SymbolicConfiguration {
     return _neighborConfiguration;
   }
 
-
+  public Table3<String, RouteFilterList, RouteFilterLine, Map<Keyword, Expr>>
+      getRouteFilterListConfiguration() {
+    return _routeFilterListConfiguration;
+  }
 }

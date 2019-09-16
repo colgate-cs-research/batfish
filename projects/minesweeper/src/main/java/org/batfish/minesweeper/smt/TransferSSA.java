@@ -225,8 +225,14 @@ class TransferSSA {
       Prefix p = line.getIpWildcard().toPrefix();
       SubRange r = line.getLengthRange();
       PrefixRange range = new PrefixRange(p, r);
-      BoolExpr matches = _enc.isRelevantFor(other.getPrefixLength(), range);
-      BoolExpr action = _enc.mkBool(line.getAction() == LineAction.PERMIT);
+      Map<SymbolicConfiguration.Keyword, Expr> exprs =
+          _enc.getSymbolicConfiguration().getRouteFilterListConfiguration().get(
+              _conf.getHostname(), x, line);
+      BoolExpr matches = _enc.isRelevantFor(other.getPrefixLength(), range,
+          (BoolExpr)exprs.get(SymbolicConfiguration.Keyword.PREFIX));
+      //BoolExpr action = _enc.mkBool(line.getAction() == LineAction.PERMIT);
+      BoolExpr action = (BoolExpr)exprs.get(
+          SymbolicConfiguration.Keyword.ACTION);
       acc = _enc.mkIf(matches, action, acc);
     }
     return acc;

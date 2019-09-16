@@ -423,6 +423,11 @@ class EncoderSlice {
    * Ip address, given the prefix length variable.
    */
   BoolExpr isRelevantFor(ArithExpr prefixLen, PrefixRange range) {
+      return isRelevantFor(prefixLen, range, null);
+  }
+
+  BoolExpr isRelevantFor(ArithExpr prefixLen, PrefixRange range,
+          BoolExpr lowerBitsMatch) {
     Prefix p = range.getPrefix();
     SubRange r = range.getLengthRange();
     long pfx = p.getStartIp().asLong();
@@ -431,7 +436,10 @@ class EncoderSlice {
     int upper = r.getEnd();
     // well formed prefix
     assert (p.getPrefixLength() <= lower && lower <= upper);
-    BoolExpr lowerBitsMatch = firstBitsEqual(_symbolicPacket.getDstIp(), pfx, len);
+    if (null == lowerBitsMatch) {
+      lowerBitsMatch = firstBitsEqual(_symbolicPacket.getDstIp(), pfx, len);
+    }
+
     if (lower == upper) {
       BoolExpr equalLen = mkEq(prefixLen, mkInt(lower));
       return mkAnd(equalLen, lowerBitsMatch);
@@ -584,8 +592,31 @@ class EncoderSlice {
 
             }
           }
+      }
 
-
+      // Route filter lists
+      Configuration conf = _graph.getConfigurations().get(router);
+      for (RouteFilterList filterList : conf.getRouteFilterLists().values()) {
+        int lineNum = 0;
+        for (RouteFilterLine line : filterList.getLines()) {
+          lineNum++;
+          String baseName = String.format("%d_%s%s_%s_%s_%d",
+              _encoder.getId(), _sliceName, router, "ROUTE-FILTER-LIST",
+              filterList.getName(), lineNum);
+          String prefixName = String.format("%s_%s", baseName,
+              SymbolicConfiguration.Keyword.PREFIX);
+          String actionName = String.format("%s_%s", baseName,
+              SymbolicConfiguration.Keyword.ACTION);
+          BoolExpr prefixVar = mkBoolConstant(prefixName);
+          BoolExpr actionVar = mkBoolConstant(actionName);
+          getAllVariables().put(prefixVar.toString(), prefixVar);
+          getAllVariables().put(actionVar.toString(), actionVar);
+          Map<SymbolicConfiguration.Keyword, Expr> exprs = new HashMap<>();
+          exprs.put(SymbolicConfiguration.Keyword.PREFIX, prefixVar);
+          exprs.put(SymbolicConfiguration.Keyword.ACTION, actionVar);
+          _symbolicConfiguration.getRouteFilterListConfiguration().put(
+              router, filterList, line, exprs);
+        }
       }
     }
   }
@@ -2784,6 +2815,43 @@ class EncoderSlice {
 
           add(mkEq(layer3AdjVar, exists), layer3AdjLabel);
           alreadyConstrained.add(layer3AdjVar.toString());
+        }
+      }
+
+      // Route filter lists
+      Configuration conf = _graph.getConfigurations().get(router);
+      for (RouteFilterList filterList : conf.getRouteFilterLists().values()) {
+        int lineNum = 0;
+        for (RouteFilterLine line : filterList.getLines()) {
+          lineNum++;
+          Map<SymbolicConfiguration.Keyword, Expr> exprs =
+              _symbolicConfiguration.getRouteFilterListConfiguration().get(
+                  router, filterList, line);
+
+          // Prefix match
+          BoolExpr prefixVar = (BoolExpr)exprs.get(
+              SymbolicConfiguration.Keyword.PREFIX);
+          Prefix p = line.getIpWildcard().toPrefix();
+          long pfx = p.getStartIp().asLong();
+          int len = p.getPrefixLength();
+          BoolExpr prefixMatch = firstBitsEqual(_symbolicPacket.getDstIp(),
+              pfx, len);
+          PredicateLabel prefixLabel = new PredicateLabel(
+            LabelType.ROUTE_FILTER_LIST, router);
+          prefixLabel.addConfigurationRef(router, String.format(
+              "%s:%s prefix %s", filterList.getName(), lineNum, p));
+          add(mkEq(prefixVar, prefixMatch), prefixLabel);
+
+          // Action
+          BoolExpr actionVar = (BoolExpr)exprs.get(
+              SymbolicConfiguration.Keyword.ACTION);
+          BoolExpr action = mkBool(line.getAction() == LineAction.PERMIT);
+          PredicateLabel actionLabel = new PredicateLabel(
+            LabelType.ROUTE_FILTER_LIST, router);
+          actionLabel.addConfigurationRef(router, String.format(
+              "%s:%s action %s", filterList.getName(), lineNum,
+              line.getAction()));
+          add(mkEq(actionVar, action), actionLabel);
         }
       }
     }
