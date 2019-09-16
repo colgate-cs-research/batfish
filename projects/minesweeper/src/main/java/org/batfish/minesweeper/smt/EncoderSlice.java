@@ -2837,7 +2837,7 @@ class EncoderSlice {
           BoolExpr prefixMatch = firstBitsEqual(_symbolicPacket.getDstIp(),
               pfx, len);
           PredicateLabel prefixLabel = new PredicateLabel(
-            LabelType.ROUTE_FILTER_LIST, router);
+            LabelType.ROUTE_FILTER_LIST, router, filterList.getName());
           prefixLabel.addConfigurationRef(router, String.format(
               "%s:%s prefix %s", filterList.getName(), lineNum, p));
           add(mkEq(prefixVar, prefixMatch), prefixLabel);
@@ -2847,7 +2847,7 @@ class EncoderSlice {
               SymbolicConfiguration.Keyword.ACTION);
           BoolExpr action = mkBool(line.getAction() == LineAction.PERMIT);
           PredicateLabel actionLabel = new PredicateLabel(
-            LabelType.ROUTE_FILTER_LIST, router);
+            LabelType.ROUTE_FILTER_LIST, router, filterList.getName());
           actionLabel.addConfigurationRef(router, String.format(
               "%s:%s action %s", filterList.getName(), lineNum,
               line.getAction()));

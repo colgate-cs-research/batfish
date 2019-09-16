@@ -122,57 +122,43 @@ public class PredicateLabel{
   
   private Interface iface;
   
-  private String intface_String;
-  
   private Protocol proto;
+
+  private String filter;
 
   public PredicateLabel(LabelType type) {
     this(type, null);
   }
   
   public PredicateLabel(LabelType type, String device) {
-    this(type,device,"null","null");
+    this(type, device, null, null);
   }
   
   public PredicateLabel(LabelType type, String device, Interface iface) {
-    this.type=type;
-    this.device=device;
-    this.iface =iface;
-    this.intface_String=iface.getName();
-    this.proto = null;
-    this.references = new ArrayList<>();
+    this(type, device, iface, null);
   }
   
-  public PredicateLabel(LabelType type, String device, Interface iface, Protocol proto) {
-    this.type=type;
-    this.device=device;
-    this.iface =iface;
-    if (iface != null) {
-        this.intface_String=iface.getName();
-    } else  {
-        this.intface_String = null;
-    }
+  public PredicateLabel(LabelType type, String device, Interface iface, 
+      Protocol proto) {
+    this.type = type;
+    this.device = device;
+    this.iface = iface;
     this.proto = proto;
+    this.filter = null;
     this.references = new ArrayList<>();
   }
-  
-  public PredicateLabel(LabelType type, String device, String iface, String proto) {
-    this.type=type;
-    this.device=device;
-    if (device!=null && device.equals("null"))
-      this.device=null;
-    this.intface_String=iface;
-    if (iface!=null && iface.equals("null"))
-      this.intface_String=null;
-    this.iface =null;
-    if (proto != null && proto.equals("null")) {
-      this.proto = null;
-    } else {
-      this.proto = Protocol.fromString(proto);
-    }
+
+  public PredicateLabel(LabelType type, String device, String filter) {
+    this.type = type;
+    this.device = device;
+    this.iface = null;
+    this.proto = null;
+    this.filter = filter;
     this.references = new ArrayList<>();
   }
- 
+
+
+
   @Override
   /**
   * This method override the toString method since the interface
@@ -182,9 +168,14 @@ public class PredicateLabel{
   * @return String The type, router and the interface of this predicate
   */
   public String toString() {
-      return type+(device != null ? " " + device : " null")
-          +(intface_String != null ? " " + intface_String : " null")
-          +(proto != null ? " " + proto.name() : " null");
+      if (filter != null) {
+        return type + (device != null ? " " + device : " null")
+            + " " + filter + " null";
+      } else {
+        return type + (device != null ? " " + device : " null")
+            + (iface != null ? " " + iface.getName() : " null")
+            + (proto != null ? " " + proto.name() : " null");
+      }
   }
 
   /**
@@ -236,30 +227,12 @@ public class PredicateLabel{
   }
   
   /**
-  * This method return the name of the router
-  * @return String return the name of the router
-  */
-  
-  public String getdevice() {
-    return device;
-  }
-  
-  /**
   * This method returns the interface
   * @return Interface This returns the interface
   */
   
   public Interface getInterface() {
       return this.iface;
-  }
-  
-  /**
-  * This method returns interface in a String
-  * @return String This returns the interface
-  */
-  
-  public String getInterfaceString() {
-      return this.intface_String;
   }
   
   /**
@@ -271,26 +244,33 @@ public class PredicateLabel{
   @Override
   public boolean equals (Object o1) {
     if (o1 instanceof PredicateLabel) {
-    boolean type_b=false, device_b=false, intface_b =false, proto_b = false;
+      boolean type_b=false, device_b=false, iface_b =false, proto_b = false,
+          filter_b=false;
 
-    PredicateLabel p1=(PredicateLabel) o1;
-    if ((p1).getLabelType().equals(type))
-      type_b = true;
+      PredicateLabel p1=(PredicateLabel) o1;
+      if ((p1).getLabelType().equals(type))
+        type_b = true;
     
-    if ((((p1).getdevice()==null)&&(device==null))
-        ||((p1).getdevice()!=null && (p1).getdevice().equals(device)))
-        device_b=true;
+      if ((p1.device == null && this.device == null)
+          || (p1.device !=null && p1.device.equals(this.device)))
+        device_b = true;
     
-    if (((p1).getInterfaceString()==null&&this.intface_String==null)
-        ||((p1).getInterfaceString()!=null&&(p1).getInterfaceString().equals(intface_String)))
-      intface_b=true;
+      if ((p1.iface==null && this.iface==null)
+          || (p1.iface != null && p1.iface.equals(this.iface)))
+        iface_b = true;
     
-    if ((p1.proto == null && this.proto == null)
-      || (p1.proto != null && p1.proto.equals(this.proto))) {
-      proto_b = true;
-    }
+      if ((p1.proto == null && this.proto == null)
+          || (p1.proto != null && p1.proto.equals(this.proto))) {
+        proto_b = true;
+      }
+
+      if ((p1.filter == null && this.filter == null)
+          || (p1.filter != null && p1.filter.equals(this.filter))) {
+        filter_b = true;
+      }
+
         
-    return (type_b && device_b && intface_b && proto_b);
+      return (type_b && device_b && iface_b && proto_b && filter_b);
     }
     return false;
   }
