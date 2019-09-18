@@ -6,7 +6,7 @@ mydata <- read.csv("master_mus.csv",header = TRUE, sep=",")
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count)*100)
 mydata$recall<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count)*100)
 
-mydata$experiment <- revalue(mydata$experiment, c("rm-network"="MissOspfNet", "rm-nopassive"="MissOspfIface"))
+mydata$experiment <- revalue(mydata$experiment, c("rm-network"="MissNw", "rm-nopassive"="MissNb", "rm-neighbor"="MissNb"))
 
 png("precision_scenario.png",width = 400, height = 300)
 par(mar = c(4,4,0.1,0.1))

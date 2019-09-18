@@ -39,6 +39,7 @@ def process_experiment(experiment_name, base_dir, writer, should_intersect = Fal
                 network_id = id_file.read().strip()
             network_name = id_filename[:-3]
             experiment_name = experiment_name.replace(network_name+'-', '')
+            experiment_name = experiment_name.replace('netcomplete-', '')
             process_network(experiment_name, network_name,
                     os.path.join(base_dir, network_id), writer, should_intersect)
 
@@ -126,8 +127,10 @@ def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, sho
     return None, None, None, None
 
 config_label = ["ORIGINATED", "NEIGHBOR", "INTERFACE_ACTIVE",
-        "INTERFACE_PROTOCOL_ENABLED", "INTERFACE_OSPF_COST", "COMMUNITY",
-        "ACLS_INBOUND", "ACLS_OUTBOUND"]
+        "INTERFACE_PROTOCOL_ENABLED", "INTERFACE_OSPF_COST", 
+        "LAYER3_ADJACENCY", "COMMUNITY", 
+        "ACLS_INBOUND", "ACLS_OUTBOUND",
+        "ROUTE_FILTER_LIST"]
 
 def process_mus(mus_file_path):
     preds= set()
