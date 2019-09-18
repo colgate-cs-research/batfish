@@ -414,7 +414,8 @@ public class Graph {
         //   neighbor);
         for (NodeInterfacePair nip2 : routerIfaceMap.get(neighbor)) {
           Interface i2 = ifaceMap.get(nip2);
-          if (i2.getVlan() != null && i2.getVlan() == vlan) {
+          if (i2.getVlan() != null && i2.getVlan() == vlan 
+                && i2.getConcreteAddress() != null) {
             //System.out.printf("\t%s and %s both have %s\n", router, neighbor, 
             //    i1);
             if (i1.getConcreteAddress().getPrefix().equals(
