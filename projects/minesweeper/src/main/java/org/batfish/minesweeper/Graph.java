@@ -383,20 +383,21 @@ public class Graph {
     Interface i1 = ifaceMap.get(nip);
     Set<NodeInterfacePair> possibilities = new HashSet<NodeInterfacePair>();
 
+    // Get layer1 topology
+    Optional<Layer1Topology> layer1Topology = 
+        _batfish.getTopologyProvider().getRawLayer1PhysicalTopology(
+            _batfish.getNetworkSnapshot());
+    if (!layer1Topology.isPresent()) {
+      System.out.println("\tNo Layer 1 topology");
+      return possibilities;
+    }
+    ImmutableNetwork<Layer1Node, Layer1Edge> layer1Graph = 
+        layer1Topology.get().getGraph();
+
     // VLAN interfaces could have other end by enabling VLAN on physical iface
     if (i1.getVlan() != null) {
       int vlan = i1.getVlan();
       //System.out.printf("Check for other end for %s:%s\n", router, i1);
-
-      Optional<Layer1Topology> layer1Topology = 
-          _batfish.getTopologyProvider().getLayer1LogicalTopology(
-              _batfish.getNetworkSnapshot());
-      if (!layer1Topology.isPresent()) {
-        //System.out.println("\tNo Layer 1 topology");
-        return possibilities;
-      }
-      ImmutableNetwork<Layer1Node, Layer1Edge> layer1Graph = 
-          layer1Topology.get().getGraph();
 
       // Find all physically connected routers
       Set<Layer1Edge> layer1Edges = new HashSet<Layer1Edge>();
@@ -406,7 +407,6 @@ public class Graph {
         }
       }
 
-
       // Find all physically connected routers with same VLAN
       for (Layer1Edge edge : layer1Edges) {
         String neighbor = edge.getNode2().getHostname();
@@ -414,7 +414,7 @@ public class Graph {
         //   neighbor);
         for (NodeInterfacePair nip2 : routerIfaceMap.get(neighbor)) {
           Interface i2 = ifaceMap.get(nip2);
-          if (i2.getVlan() != null && i2.getVlan() == vlan 
+          if (i2.getVlan() != null && i2.getVlan() == vlan
                 && i2.getConcreteAddress() != null) {
             //System.out.printf("\t%s and %s both have %s\n", router, neighbor, 
             //    i1);
@@ -424,6 +424,30 @@ public class Graph {
               //    i1, i1.getConcreteAddress().getPrefix());
               possibilities.add(new NodeInterfacePair(neighbor, 
                   nip2.getInterface()));
+            }
+          }
+        }
+      }
+    }
+    else {
+      // Find all physically connected routers with an interface in the same 
+      // subnet
+      for (Layer1Edge edge : layer1Graph.edges()) {
+        if (edge.getNode1().getHostname().equals(router)
+            && edge.getNode1().getInterfaceName().equals(nip.getInterface())) {
+          NodeInterfacePair nip2 = new NodeInterfacePair(
+              edge.getNode2().getHostname(), 
+              edge.getNode2().getInterfaceName());
+          //System.out.printf("\t%s and %s are physically connected\n", nip, 
+          //    nip2);
+          Interface i2 = ifaceMap.get(nip2);
+          if ((!i1.getActive() || !i2.getActive()) &&
+              i2.getConcreteAddress() != null) {
+            if (i1.getConcreteAddress().getPrefix().equals(
+                  i2.getConcreteAddress().getPrefix())) {
+              //System.out.printf("\t%s have same prefix: %s\n", 
+              //    i1, i1.getConcreteAddress().getPrefix());
+              possibilities.add(nip2);
             }
           }
         }
@@ -660,7 +684,8 @@ public class Graph {
       List<Ip> ipList = ips.get(router);
       List<BgpActivePeerConfig> ns = neighbors.get(router);
       if (conf.getDefaultVrf().getBgpProcess() != null) {
-        List<GraphEdge> edges = _edgeMap.get(router);
+        List<GraphEdge> edges = new ArrayList<>(_edgeMap.get(router));
+        edges.addAll(_possibleEdgeMap.get(router));
         //System.out.println(router);
         //System.out.println(ns);
         //System.out.println(ipList);
