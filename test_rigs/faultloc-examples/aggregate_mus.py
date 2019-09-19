@@ -21,7 +21,7 @@ def main():
     if os.path.exists(os.path.join(args.path, "network_ids")):
         process_experiment(None, args.path, writer, args.intersect)
     else:
-        for experiment in os.listdir(args.path):
+        for experiment in sorted(os.listdir(args.path)):
             if experiment.startswith('.'):
                 continue
             process_experiment(experiment, os.path.join(args.path,
@@ -34,7 +34,7 @@ def process_experiment(experiment_name, base_dir, writer, should_intersect = Fal
     # Process every network
     ids_dir = os.path.join(base_dir, "network_ids")
     if os.path.exists(ids_dir):
-        for id_filename in os.listdir(ids_dir):
+        for id_filename in sorted(os.listdir(ids_dir)):
             with open(os.path.join(ids_dir, id_filename)) as id_file:
                 network_id = id_file.read().strip()
             network_name = id_filename[:-3]
@@ -51,7 +51,7 @@ def process_network(experiment_name, network_name, base_dir, writer, should_inte
         scenario_to_mus_time = dict()
         scenario_to_mus_count = dict()
         scenario_to_faulty_preds = dict()
-        for id_filename in os.listdir(ids_dir):
+        for id_filename in sorted(os.listdir(ids_dir)):
             with open(os.path.join(ids_dir, id_filename)) as id_file:
                 snapshot_id = id_file.read().strip()
             snapshot_name = id_filename[:-3]
@@ -93,7 +93,7 @@ def process_snapshot(experiment_name, network_name, snapshot_name, base_dir, sho
     if os.path.exists(exp_filepath):
         all_preds = set()
         output_dir = os.path.join(base_dir, "output")
-        for filename in os.listdir(output_dir):
+        for filename in sorted(os.listdir(output_dir)):
             if filename.startswith('mus_bulk'):
                 filepath = os.path.join(output_dir, filename)
                 preds = process_mus_intersect(filepath) if should_intersect else process_mus(filepath)
