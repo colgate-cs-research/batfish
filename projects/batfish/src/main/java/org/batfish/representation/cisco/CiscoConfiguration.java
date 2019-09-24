@@ -1831,6 +1831,40 @@ public final class CiscoConfiguration extends VendorConfiguration {
               exportNetworkConditions.getConjuncts().add(we);
               exportConditions.add(exportNetworkConditions);
             });
+
+    // create origination prefilter from connected interfaces
+    c.getAllInterfaces().values()
+        .forEach(
+            (iface) -> {
+              if (iface.getConcreteAddress() != null
+                  && !proc.getIpNetworks().containsKey(
+                      iface.getConcreteAddress().getPrefix())) {
+              Prefix prefix = iface.getConcreteAddress().getPrefix();
+              BooleanExpr weExpr = BooleanExprs.TRUE;
+              BooleanExpr we = bgpRedistributeWithEnvironmentExpr(weExpr, OriginType.IGP);
+              Conjunction exportNetworkConditions = new Conjunction();
+              PrefixSpace space = new PrefixSpace();
+              space.addPrefix(prefix);
+              ExplicitPrefixSet eps = new ExplicitPrefixSet(space);
+              eps.markPhony();
+              exportNetworkConditions
+                  .getConjuncts()
+                  .add(
+                      new MatchPrefixSet(
+                          DestinationNetwork.instance(), eps));
+              exportNetworkConditions
+                  .getConjuncts()
+                  .add(
+                      new Not(
+                          new MatchProtocol(
+                              RoutingProtocol.BGP,
+                              RoutingProtocol.IBGP,
+                              RoutingProtocol.AGGREGATE)));
+              exportNetworkConditions.getConjuncts().add(we);
+              exportConditions.add(exportNetworkConditions);
+              }
+            });
+
     if (!proc.getIpv6Networks().isEmpty()) {
       String localFilter6Name = "~BGP_NETWORK6_NETWORKS_FILTER:" + vrfName + "~";
       Route6FilterList localFilter6 = new Route6FilterList(localFilter6Name);

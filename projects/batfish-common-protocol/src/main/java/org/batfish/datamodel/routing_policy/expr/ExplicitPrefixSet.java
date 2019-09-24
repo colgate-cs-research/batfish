@@ -13,11 +13,14 @@ public class ExplicitPrefixSet extends PrefixSetExpr {
 
   private PrefixSpace _prefixSpace;
 
+  private boolean _phony;
+
   @JsonCreator
   private ExplicitPrefixSet() {}
 
   public ExplicitPrefixSet(PrefixSpace prefixSpace) {
     _prefixSpace = prefixSpace;
+    _phony = false;
   }
 
   @Override
@@ -45,6 +48,14 @@ public class ExplicitPrefixSet extends PrefixSetExpr {
   @JsonProperty(PROP_PREFIX_SPACE)
   public PrefixSpace getPrefixSpace() {
     return _prefixSpace;
+  }
+
+  public void markPhony() {
+    _phony = true;
+  }
+
+  public boolean isPhony() {
+    return _phony;
   }
 
   @Override

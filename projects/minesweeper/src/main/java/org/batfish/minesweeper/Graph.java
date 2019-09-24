@@ -51,6 +51,7 @@ import org.batfish.datamodel.ospf.OspfArea;
 import org.batfish.datamodel.ospf.OspfProcess;
 import org.batfish.datamodel.routing_policy.RoutingPolicy;
 import org.batfish.datamodel.routing_policy.expr.BooleanExpr;
+import org.batfish.datamodel.routing_policy.expr.BooleanExprs;
 import org.batfish.datamodel.routing_policy.expr.CommunitySetExpr;
 import org.batfish.datamodel.routing_policy.expr.Conjunction;
 import org.batfish.datamodel.routing_policy.expr.ExplicitPrefixSet;
@@ -328,9 +329,11 @@ public class Graph {
                         PrefixSetExpr e = mps.getPrefixSet();
                         if (e instanceof ExplicitPrefixSet) {
                           ExplicitPrefixSet eps = (ExplicitPrefixSet) e;
-                          Set<PrefixRange> ranges = eps.getPrefixSpace().getPrefixRanges();
-                          for (PrefixRange r : ranges) {
-                            acc.add(r.getPrefix());
+                          if (!eps.isPhony()) {
+                            Set<PrefixRange> ranges = eps.getPrefixSpace().getPrefixRanges();
+                            for (PrefixRange r : ranges) {
+                              acc.add(r.getPrefix());
+                            }
                           }
                         }
                       }

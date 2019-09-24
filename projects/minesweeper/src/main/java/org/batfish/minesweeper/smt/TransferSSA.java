@@ -265,10 +265,14 @@ class TransferSSA {
           int start = r.getLengthRange().getStart();
           int end = r.getLengthRange().getEnd();
           Prefix pfx = r.getPrefix();
+          if (!_enc.relevantPrefix(pfx)) {
+              continue;
+          }
           if (start == end && start == pfx.getPrefixLength()) {
             String router = _conf.getHostname();
             Set<Prefix> origin = _enc.getOriginatedNetworks().get(router, Protocol.BGP);
-            if (origin != null && origin.contains(pfx)) {
+            boolean origined = (origin != null && origin.contains(pfx));
+            if (true || origined) {
               // Compute static and connected routes
               Set<Prefix> ostatic = _enc.getOriginatedNetworks().get(router, Protocol.STATIC);
               Set<Prefix> oconn = _enc.getOriginatedNetworks().get(router, Protocol.CONNECTED);
@@ -277,9 +281,16 @@ class TransferSSA {
               ArithExpr originLength = _enc.mkInt(pfx.getPrefixLength());
               if (hasStatic || hasConnected) {
                 BoolExpr directRoute = _enc.isRelevantFor(originLength, r);
-                ArithExpr newLength = _enc.mkIf(directRoute, originLength, otherLen);
+                BoolExpr originated = _enc.getSymbolicConfiguration()
+                    .getOriginatedConfiguration().get(router,Protocol.BGP,null);
+                if (origined) {
+                  originated = _enc.getSymbolicConfiguration()
+                    .getOriginatedConfiguration().get(router, Protocol.BGP,pfx);
+                }
+                BoolExpr usable = _enc.mkAnd(directRoute, originated);
+                ArithExpr newLength = _enc.mkIf(usable, originLength, otherLen);
                 result = result.addChangedVariable("PREFIX-LEN", newLength);
-                return result.setReturnValue(directRoute);
+                return result.setReturnValue(usable);
               } else {
                 // Also use network statement if OSPF has a route with the correct length
                 SymbolicRoute rec = _enc.getBestNeighborPerProtocol(router, Protocol.OSPF);
@@ -298,6 +309,9 @@ class TransferSSA {
       // Compute if the other best route is relevant for this match statement
       BoolExpr acc = _enc.mkFalse();
       for (PrefixRange range : ranges) {
+        if (!_enc.relevantPrefix(range.getPrefix())) {
+            continue;
+        }
         acc = _enc.mkOr(acc, _enc.isRelevantFor(otherLen, range));
       }
 
