@@ -17,6 +17,7 @@
     "fullModel": true,
     "baseEnvType": "none",
     "deltaEnvType": "none",
+    "negate": "${negate}",
     "instance": {
         "description": "Ensure that the network is tolerant to interface failures",
         "instanceName": "smtReachability",
@@ -87,6 +88,12 @@
                 "type": "nodeSpec",
                 "optional": true,
                 "value": ""
+            },
+            "negate": {
+                "description": "Check for absence of reachability",
+                "type": "boolean",
+                "optional": true,
+                "value": false
             }
         }
     }
