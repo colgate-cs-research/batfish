@@ -253,7 +253,7 @@ class EncoderSlice {
         Interface i = ge.getStart();
 
         IpAccessList outbound = i.getOutgoingFilter();
-        if (outbound != null) {
+        //if (outbound != null) {
           String outName =
               String.format(
                   "%d_%s_%s_%s_%s_%s",
@@ -262,38 +262,49 @@ class EncoderSlice {
                   router,
                   i.getName(),
                   "OUTBOUND",
-                  outbound.getName());
+                  (outbound != null ? outbound.getName() : "none"));
 
           //BoolExpr outAcl = getCtx().mkBoolConst(outName);
           BoolExpr outAcl = mkBoolConstant(outName);
-          BoolExpr outAclFunc = computeACL(outbound);
-          PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.ACLS_OUTBOUND,router,i);
+          BoolExpr outAclFunc = mkTrue();
+          PredicateLabel outLabel = new PredicateLabel(
+                  PredicateLabel.LabelType.ACLS_OUTBOUND, router, i);
+
+          if (outbound != null) {
+          outAclFunc = computeACL(outbound);
           for (IpAccessListLine line :outbound.getLines()){
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
-            label.addConfigurationRef(router, i, String.format("Outbound ACL %s traffic | %s",action, line.getName()));
+            outLabel.addConfigurationRef(router, i, String.format("Outbound ACL %s traffic | %s",action, line.getName()));
           }
-          add(mkEq(outAcl, outAclFunc), label);
+          }
+          add(mkEq(outAcl, outAclFunc), outLabel);
           _outboundAcls.put(ge, outAcl);
-        }
+        //}
 
         IpAccessList inbound = i.getIncomingFilter();
-        if (inbound != null) {
+        //if (inbound != null) {
           String inName =
               String.format(
                   "%d_%s_%s_%s_%s_%s",
-                  _encoder.getId(), _sliceName, router, i.getName(), "INBOUND", inbound.getName());
+                  _encoder.getId(), _sliceName, router, i.getName(), "INBOUND", 
+                  (inbound != null ? inbound.getName() : "none"));
 
           //BoolExpr inAcl = getCtx().mkBoolConst(inName);
           BoolExpr inAcl = mkBoolConstant(inName);
-          BoolExpr inAclFunc = computeACL(inbound);
-          PredicateLabel label=new PredicateLabel(PredicateLabel.LabelType.ACLS_INBOUND,router,i);
+          BoolExpr inAclFunc = mkTrue();
+          PredicateLabel inLabel = new PredicateLabel(
+                  PredicateLabel.LabelType.ACLS_INBOUND, router, i);
+
+          if (inbound != null) {
+          inAclFunc = computeACL(inbound);
           for (IpAccessListLine line :inbound.getLines()){
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
-            label.addConfigurationRef(router, i, String.format("Inbound ACL %s traffic | %s",action, line.getName()));
+            inLabel.addConfigurationRef(router, i, String.format("Inbound ACL %s traffic | %s",action, line.getName()));
           }
-          add(mkEq(inAcl, inAclFunc), label);
+          }
+          add(mkEq(inAcl, inAclFunc), inLabel);
           _inboundAcls.put(ge, inAcl);
-        }
+        //}
       }
     }
   }
