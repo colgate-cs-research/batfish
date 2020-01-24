@@ -1437,7 +1437,7 @@ public class Encoder {
         System.out.printf( "Running Marco (upto %d MUSes, %d MSSes/MCSes will be produced)\n", maxMUScount, maxMSScount);
         BoolExpr[] constraints = allConstraints.toArray(new BoolExpr[allConstraints.size()]);
         PredicateLabel[] constraintLabels = labels.toArray(new PredicateLabel[labels.size()]);
-        List<Set<Integer>> muses;
+        List<List<PredicateLabel>> muses;
 
 
         muses = MarcoMUS.enumerate(constraints, constraintLabels, _ctx,
@@ -1452,22 +1452,21 @@ public class Encoder {
             }
         }
 
-        int[] predicateFrequency = new int[predNames.size()];
+        Map<PredicateLabel, Integer> predicateFrequency = new HashMap<>();
 
         Set<Set<PredicateLabel>> musesLabels = new HashSet<>();
         System.out.println("****************");
-        for (Set<Integer> mus : muses) {
-          Set<PredicateLabel> musLabels = new HashSet<>();
-          for (Integer pred_num : mus) {
-            if (pred_num<predicateFrequency.length){
-              predicateFrequency[pred_num]++; //TODO : How to deal with failure set constraints that appear in MUSes.
-              musLabels.add(labels.get(pred_num));
-              System.out.println(labels.get(pred_num));
-            }
+        for (List<PredicateLabel> mus : muses) {
+          for (PredicateLabel label : mus) {
+            predicateFrequency.putIfAbsent(label, 0);
+            predicateFrequency.replace(label, 
+                predicateFrequency.get(label) + 1);
+            System.out.println(label);
           }
+          Set<PredicateLabel> musLabels = new HashSet<>(mus);
           System.out.println("****************");
 
-          if (marcoVerbose){
+        /*  if (marcoVerbose){
             System.out.println("Satsifying solution for MCS");
             Solver satisfier = _ctx.mkSolver();
             for(int i =0;i<allConstraints.size();i++){
@@ -1484,7 +1483,7 @@ public class Encoder {
             for (Expr var: allVars){
               System.out.printf("%s | %s\n", var, m.eval(var, false));
             }
-          }
+          }*/
 
           musesLabels.add(musLabels);
         }
@@ -1500,14 +1499,11 @@ public class Encoder {
         }
 
 
-        for (int i = 0; i < predicateFrequency.length; i++) {
-          if (labels.get(i).isConfigurable()){
-            if (predicateFrequency[i] > 0) {
-              candidatePredicateLabels.add(labels.get(i)); //Union of MUSes...TODO : Need to factor rank in.
-              //TODO : Add thresholding back (currently removed)
-              System.out.printf("%s appeared in %d MUSes\n", labels.get(i).toString(), predicateFrequency[i]);
-            }
-          }
+        for (PredicateLabel label : predicateFrequency.keySet()) {
+            candidatePredicateLabels.add(label); //Union of MUSes...TODO : Need to factor rank in.
+            //TODO : Add thresholding back (currently removed)
+            System.out.printf("%s appeared in %d MUSes\n", label.toString(), 
+                    predicateFrequency.get(label));
         }
       }
     }
@@ -1884,7 +1880,7 @@ print out unfound items in Faultloc
     boolean shouldUseMUSes = !_settings.getString(ARG_USE_MARCO).equals("mss");
 
     long start_time = System.currentTimeMillis();
-    List<Set<Integer>> listMUSes = MarcoMUS.enumerate(constraints,
+    List<List<PredicateLabel>> listMUSes = MarcoMUS.enumerate(constraints,
             constraintLabels,
             _ctx,
             _settings.getInt(ARG_MAX_MUS_COUNT),
@@ -1896,12 +1892,8 @@ print out unfound items in Faultloc
     _faultlocStats.setTimeElapsedDuringMUSGeneration(time_elapsed);
 
     Set<Set<PredicateLabel>> setMUSes = new HashSet<>();
-    for (Set<Integer> mus : listMUSes){
-      Set<PredicateLabel> mus_preds = new HashSet<>();
-      for (int pred_id : mus){
-        mus_preds.add(predicateLabelMap.get(trackingNames[pred_id]));
-      }
-      setMUSes.add(mus_preds);
+    for (List<PredicateLabel> mus : listMUSes){
+      setMUSes.add(new HashSet<>(mus));
     }
 
     return setMUSes;

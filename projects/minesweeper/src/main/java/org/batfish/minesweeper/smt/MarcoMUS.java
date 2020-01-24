@@ -13,6 +13,12 @@ import java.util.*;
 
 public class MarcoMUS {
 
+    public enum ResultType {
+        MUSES,
+        MSSES,
+        MCSES
+    };
+
 	/**
      * Demo.
      */
@@ -45,32 +51,50 @@ public class MarcoMUS {
      * @param shouldReturnMUSes true, if MUSes are to be returned.
      * @return List of MUSes of the unsatisfiable constraint system.
      */
-    public static List<Set<Integer>> enumerate(BoolExpr[] constraints,
+    public static List<List<PredicateLabel>> enumerate(BoolExpr[] constraints,
             PredicateLabel[] constraintLabels, Context ctx, int maxMUSCount,
             int maxMSSCount, int maxExplorationTime, boolean verbose,
             boolean shouldReturnMUSes, FaultlocStats faultlocStats){
-        SubsetSolver subsetSolver = new SubsetSolver(constraints,
-                constraintLabels, ctx, verbose);
-        MapSolver mapSolver = new MapSolver(constraints.length, ctx);
 
-        List<List<Expr>> MSSes = new ArrayList<>();
-        List<List<Expr>> MUSes = new ArrayList<>();
+        // Separate into config and non-config constraints
+        List<BoolExpr> configConstraints = new ArrayList<>();
+        List<BoolExpr> nonConfigConstraints = new ArrayList<>();
+        List<PredicateLabel> configConstraintLabels = new ArrayList<>();
+        List<PredicateLabel> nonConfigConstraintLabels = new ArrayList<>();
+        for (int i=0;i<constraints.length;i++){
+            if (constraintLabels[i].isConfigurable()){
+                configConstraints.add(constraints[i]);
+                configConstraintLabels.add(constraintLabels[i]);
+            } else {
+                nonConfigConstraints.add(constraints[i]);
+                nonConfigConstraintLabels.add(constraintLabels[i]);
+            }
+        }
 
-        List<Set<Integer>> indexOfMUSes = new ArrayList<>();
-        List<Set<Integer>> indexOfMCSes = new ArrayList<>();
+        // Only feed configConstraints to subset solver
+        SubsetSolver subsetSolver = new SubsetSolver(
+                configConstraints.toArray(new BoolExpr[0]),
+                configConstraintLabels.toArray(new PredicateLabel[0]), 
+                nonConfigConstraints.toArray(new BoolExpr[0]),
+                ctx, verbose);
+        MapSolver mapSolver = new MapSolver(configConstraints.size(), ctx);
+
+        List<List<PredicateLabel>> MUSes = new ArrayList<>();
+        List<List<PredicateLabel>> MSSes = new ArrayList<>();
+        List<List<PredicateLabel>> MCSes = new ArrayList<>();
 
         boolean firstMUSGenerated = false; //Variable to track how long the first MUS takes
         boolean firstMCSGenerated = false; //Variable to track how long the first MCS takes
 
 		long start_time = System.currentTimeMillis();
-        List<Integer> seed = new ArrayList<>();
-        for (int i=0;i<constraints.length;i++){
-            if (!constraintLabels[i].isConfigurable()){
-                seed.add(i);
-            }
-        }
+//        List<Integer> seed = new ArrayList<>();
+//        for (int i=0;i<constraints.length;i++){
+//            if (!constraintLabels[i].isConfigurable()){
+//                seed.add(i);
+//            }
+//        }
         while (true){
-//            List<Integer> seed  = mapSolver.nextSeed();
+            List<Integer> seed  = mapSolver.nextSeed(/*false &&*/ !shouldReturnMUSes);
 
             if (seed==null) {
                 break;
@@ -85,29 +109,36 @@ public class MarcoMUS {
             Set<Integer> seedSet= new HashSet<>();
             seedSet.addAll(seed);
             if (verbose) {
+                System.out.printf(
+                    "MUSes: %d\t MSSes: %d\t MCSes: %d\tElapsed: %d\n", 
+                    MUSes.size(), MSSes.size(), MCSes.size(),
+                    (System.currentTimeMillis()-start_time)/1000);
                 System.out.println("MARCO: checking seed...");
             }
             if (subsetSolver.checkSubset(seedSet)){
                 Set<Integer> mss = subsetSolver.grow(seed);
-                Set<Integer> mcs = new HashSet<>();
-                for (int i =0;i<constraints.length;i++){
-                    mcs.add(i);
-                }
-                mcs.removeAll(mss);
-                indexOfMCSes.add(mcs); //ADDING MCSes currently
-                seed.addAll(mcs); //NOTE: Instead of using nextSeed().
+
+                //seed.addAll(mcs); //NOTE: Instead of using nextSeed().
+
+                // Record timing statistics
                 if (!firstMCSGenerated){
                     if (faultlocStats!=null){
                         faultlocStats.setFirstMCSGenTime(System.currentTimeMillis() - start_time);
                         firstMCSGenerated = true;
                     }
                 }
-                List<Expr> mssLits = subsetSolver.toIndicatorLiterals(mss);
-                MSSes.add(mssLits);
+
+                // Compute MCS
+                Set<Integer> mcs = subsetSolver.complement(mss);
+
+                // Store results
+                MSSes.add(subsetSolver.toIndicatorLabels(mss));
+                MCSes.add(subsetSolver.toIndicatorLabels(mcs));
+
                 mapSolver.blockDown(mss);
             }else{
                 //TODO : Clean up. Currently modified  to only generate MCSes.
-                if (true) {
+                /*if (true) {
                     if (MSSes.size() == 0) {
                         System.out.println(
                                 "WARNING: initial seed was unsatisfiable!");
@@ -121,24 +152,39 @@ public class MarcoMUS {
                         }
                     }
                     break; 
-                }
+                }*/
                 Set<Integer> mus = subsetSolver.shrink(seed);
-                indexOfMUSes.add(mus);
+
+                // Record timing statistics
                 if (!firstMUSGenerated){
                     if (faultlocStats!=null){
                         faultlocStats.setFirstMUSGenTime(System.currentTimeMillis() - start_time);
                         firstMUSGenerated = true;
                     }
                 }
-                List<Expr> musLits = subsetSolver.toIndicatorLiterals(mus);
-                MUSes.add(musLits);
+
+                // Store result
+                MUSes.add(subsetSolver.toIndicatorLabels(mus));
+
                 mapSolver.blockUp(mus);
             }
         }
 
-        System.out.printf("MCS count : %d\n", MSSes.size());
+        System.out.printf("MUSes: %d\t MSSes: %d\t MCSes: %d\n", 
+                MUSes.size(), MSSes.size(), MCSes.size());
 
-        return shouldReturnMUSes? indexOfMUSes: indexOfMCSes;
+//        switch(returnType) {
+//            case MUSES:
+//                return MUSes;
+//            case MSSES:
+//                return MSSes;
+//            case MCSES:
+//                return MCSes;
+//            default:
+//                throw new RuntimeException("Unexpected result type: " 
+//                        + returnType);
+//        }
+        return (shouldReturnMUSes ? MUSes : MCSes);
     }
 
     /**
@@ -161,17 +207,21 @@ public class MarcoMUS {
          * @param constraints Set of all constraints.
          * @param ctx Z3 Context object
          */
-        public SubsetSolver(BoolExpr[] constraints,
-                PredicateLabel[] constraintLabels, Context ctx, 
+        public SubsetSolver(BoolExpr[] configConstraints,
+                PredicateLabel[] configConstraintLabels, 
+                BoolExpr[] nonconfigConstraints, Context ctx, 
                 boolean verbose){
-            this.constraints = constraints;
-            this.constraintLabels = constraintLabels;
+            this.constraints = configConstraints;
+            this.constraintLabels = configConstraintLabels;
             this.verbose = verbose;
             this.n = constraints.length;
             varCache = new HashMap<>();
             idCache = new HashMap<>();
             solver = ctx.mkSolver();
             this.ctx = ctx;
+            for (int i = 0; i < nonconfigConstraints.length; i++) {
+                solver.add(nonconfigConstraints[i]);
+            }
             for (int i=0;i<n;i++){
                 //Add unique indicator variable for each constraint.
                 solver.add(ctx.mkImplies(getIndicatorVariable(i),constraints[i]));
@@ -211,7 +261,16 @@ public class MarcoMUS {
             return retList;
         }
 
-        private Set<Integer> complement(Set<Integer> set){
+        public List<PredicateLabel> toIndicatorLabels(Set<Integer> seed){
+            List<PredicateLabel> retList = new ArrayList<>();
+            for (int i: seed){
+                retList.add(constraintLabels[i]);
+            }
+            return retList;
+        }
+
+
+        public Set<Integer> complement(Set<Integer> set){
             Set<Integer> retSet = new HashSet<>();
             for (int i = 0;i<n;i++){
                 if (!set.contains(i)){
@@ -273,7 +332,7 @@ public class MarcoMUS {
         /**
          * Maximize a satisfying subset of constraints into a MSS.
          * @param seed List of indexes of the constraints in the satisfiable subset.
-         * @return MSS obtained by maximizing input satisfying subset.//TODO: RETURNING MCSes currently
+         * @return MSS obtained by maximizing input satisfying subset.
          */
         public Set<Integer> grow(List<Integer> seed){
             if (verbose) {
@@ -318,6 +377,7 @@ public class MarcoMUS {
         private int n;
         private Set<Integer> fullSet;
         private Context context;
+        private boolean firstSeed;
 
         /**
          * Constructor for MapSolver
@@ -327,23 +387,32 @@ public class MarcoMUS {
         public MapSolver(int n, Context ctx){
             this.context = ctx;
             this.solver = context.mkSolver();
+//            Params params = ctx.mkParams();
+//            params.add("phase", "always_false");
+//            solver.setParameters(params);
+//            System.out.println(params);
             this.n = n;
             fullSet = new HashSet<>();
             for (int i = 0; i<n;i++){
                 fullSet.add(i);
             }
+            this.firstSeed = true;
         }
 
         /**
          * Generate a new subset of the constraints for MSS/MUS generation.
          * @return List of indexes corresponding to constraints in the new seed.
          */
-        public List<Integer> nextSeed(){
+        public List<Integer> nextSeed(boolean biasToMSSes){
             if (solver.check()==Status.UNSATISFIABLE){
                 return null; //TODO: Ensure this works or return an empty list.
             }
             Set<Integer> seed = new HashSet<>();
-            seed.addAll(fullSet);
+
+            // Bias toward MUSes
+            if (!biasToMSSes) {
+              seed.addAll(fullSet);
+            }
 
             Model model = solver.getModel();
             //the first `x` are consts, followed by FuncDecls
@@ -358,16 +427,40 @@ public class MarcoMUS {
                         return FuncDeclRef(Z3_model_get_func_decl(self.ctx.ref(), self.model, idx - num_consts), self.ctx)
              */
             for (FuncDecl c :  model.getConstDecls()){
-                if (model.getConstInterp(c).isFalse()){
-                    seed.remove(Integer.parseInt(c.getName().toString()));
-//                    seed.remove(c.getId()); //TODO : Prevent hazard here
+              if (biasToMSSes) {
+                if (model.getConstInterp(c).isTrue()){
+                  seed.add(Integer.parseInt(c.getName().toString()));
+//                  seed.add(c.getId()); //TODO : Prevent hazard here
                 }
+              } else {
+                if (model.getConstInterp(c).isFalse()){
+                  seed.remove(Integer.parseInt(c.getName().toString()));
+//                  seed.remove(c.getId()); //TODO : Prevent hazard here
+                }
+              }
             }
             for (FuncDecl f : model.getFuncDecls()){
+              if (biasToMSSes) {
+                if (model.getConstInterp(f).isTrue()) {
+                    seed.add(Integer.parseInt(f.getName().toString()));
+                    seed.add(f.getId());
+                }
+              } else {
                 if (model.getConstInterp(f).isFalse()) {
                     seed.remove(Integer.parseInt(f.getName().toString()));
                     seed.remove(f.getId());
                 }
+              }
+            }
+
+            // Add additional constraints at random, so only some percent of 
+            // constraints is excluded from the seed
+            if (biasToMSSes) {
+                List<Integer> possibleAdditions = new ArrayList<>(fullSet);
+                possibleAdditions.removeAll(seed);
+                Collections.shuffle(possibleAdditions);
+                int numToAdd = (int)(fullSet.size() * 0.9) - seed.size();
+                seed.addAll(possibleAdditions.subList(0, numToAdd));
             }
 
             return new ArrayList<>(seed);
