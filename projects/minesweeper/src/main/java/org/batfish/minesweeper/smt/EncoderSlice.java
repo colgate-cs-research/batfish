@@ -276,6 +276,8 @@ class EncoderSlice {
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
             outLabel.addConfigurationRef(router, i, String.format("Outbound ACL %s traffic | %s",action, line.getName()));
           }
+          } else {
+            outLabel.setOmission(true);
           }
           add(mkEq(outAcl, outAclFunc), outLabel);
           _outboundAcls.put(ge, outAcl);
@@ -301,6 +303,8 @@ class EncoderSlice {
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
             inLabel.addConfigurationRef(router, i, String.format("Inbound ACL %s traffic | %s",action, line.getName()));
           }
+          } else {
+            inLabel.setOmission(true);
           }
           add(mkEq(inAcl, inAclFunc), inLabel);
           _inboundAcls.put(ge, inAcl);
@@ -2731,7 +2735,8 @@ class EncoderSlice {
           }
 
           PredicateLabel originatedLabel = new PredicateLabel(
-              PredicateLabel.LabelType.ORIGINATED, router, null, proto);
+              PredicateLabel.LabelType.ORIGINATED, router, null, proto,
+              p == null);
           originatedLabel.addConfigurationRef(router, proto,
               String.format("Originate destination prefix %s", p));
 
@@ -2761,11 +2766,13 @@ class EncoderSlice {
 
             if (proto.isOspf()) {
               PredicateLabel ospfEnabledLabel = new PredicateLabel(
-                  LabelType.INTERFACE_PROTOCOL_ENABLED, router, iface, proto);
+                  LabelType.INTERFACE_PROTOCOL_ENABLED, router, iface, proto,
+                  !iface.getOspfEnabled() || iface.getOspfPassive());
               ospfEnabledLabel.addConfigurationRef(router, iface,
                   String.format("OSPF enabled %s", iface.getOspfEnabled()));
               PredicateLabel ospfCostLabel = new PredicateLabel(
-                  LabelType.INTERFACE_OSPF_COST, router, iface, proto);
+                  LabelType.INTERFACE_OSPF_COST, router, iface, proto,
+                  iface.getOspfCost() == null);
               ospfCostLabel.addConfigurationRef(router, iface,
                   String.format("OSPF cost %d", iface.getOspfCost()));
 
@@ -2795,7 +2802,7 @@ class EncoderSlice {
               }
 
 
-              PredicateLabel neighborLabel = new PredicateLabel(LabelType.NEIGHBOR, router, iface, proto);
+              PredicateLabel neighborLabel = new PredicateLabel(LabelType.NEIGHBOR, router, iface, proto, peerConfig == null);
               neighborLabel.addConfigurationRef(router, proto,
                   String.format("Neighbor %s",
                       (peerConfig!=null ? peerConfig.getPeerAddress() : null)));
@@ -2819,7 +2826,7 @@ class EncoderSlice {
         BoolExpr layer3AdjVar = (BoolExpr)entry.getValue();
         if (!alreadyConstrained.contains(layer3AdjVar.toString())) {
           PredicateLabel layer3AdjLabel = new PredicateLabel(
-              LabelType.LAYER3_ADJACENCY, router, iface);
+              LabelType.LAYER3_ADJACENCY, router, iface, !ge.exists());
           layer3AdjLabel.addConfigurationRef(router, iface,
               String.format("Adjacency %s", ge.exists()));
           BoolExpr exists = mkBool(ge.exists());
