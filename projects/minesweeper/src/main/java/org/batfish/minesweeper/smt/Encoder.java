@@ -1114,11 +1114,15 @@ public class Encoder {
                 }
             }
             Protocol proto = Protocol.fromString(arr[3]);
+            boolean omission = false;
+            if (arr.length == 5 && arr[4].equals("omission")) {
+                omission = true;
+            }
             PredicateLabel label = null;
             if (iface != null || proto != null) {
-                label = new PredicateLabel(type, router, iface, proto);
+                label = new PredicateLabel(type, router, iface, proto, omission);
             } else {
-                label = new PredicateLabel(type, router, filter);
+                label = new PredicateLabel(type, router, filter, omission);
             }
             label_list.add(label);
           }
