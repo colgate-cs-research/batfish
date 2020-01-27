@@ -306,8 +306,10 @@ class EncoderSlice {
           } else {
             inLabel.setOmission(true);
           }
+          if (!inLabel.isOmission() || false) { //FIXME
           add(mkEq(inAcl, inAclFunc), inLabel);
           _inboundAcls.put(ge, inAcl);
+          }
         //}
       }
     }
