@@ -340,9 +340,10 @@ public class MarcoMUS {
             }
             Set<Integer> current = new HashSet<>(seed);
             Set<Integer> currentComplement = complement(current);
-            int iteration = 0;
+            /*int iteration = 0;
             int updateInterval = (currentComplement.size() < 100 ? 1 : 
                     currentComplement.size()/100);
+
             for (int i: currentComplement){
                 current.add(i);
                 if (!checkSubset(current)){
@@ -355,9 +356,53 @@ public class MarcoMUS {
                         "MARCO: %d%% done, grew from %d to %d predicates\n",
                         iteration/updateInterval, seed.size(), current.size());
                 }
-            }
+            }*/
+            grow(current, new ArrayList<>(currentComplement));
 
             return current;
+        }
+
+        public void grow(Set<Integer> current, List<Integer> currentComplement){
+            if (verbose) {
+                System.out.printf(
+                    "MARCO: current %d, complement %d predicates\n",
+                    current.size(), currentComplement.size());
+            }
+
+            int half = currentComplement.size() / 2;
+            if (half > 0) {
+                // Lower half
+                List<Integer> lower = currentComplement.subList(0, half);
+                current.addAll(lower);
+                if (!checkSubset(current)) {
+                    current.removeAll(lower);
+                    if (lower.size() > 1) {
+                        /*if (verbose) {
+                            System.out.println("MARCO: recurse lower");
+                        }*/
+                        grow(current, lower);
+                    }
+                }
+                if (verbose) {
+                    System.out.printf(
+                        "MARCO: current %d, complement %d predicates\n",
+                        current.size(), currentComplement.size());
+                }
+            }
+
+            // Upper half
+            List<Integer> upper = currentComplement.subList(half, 
+                    currentComplement.size());
+            current.addAll(upper);
+            if (!checkSubset(current)) {
+                current.removeAll(upper);
+                if (upper.size() > 1) {
+                    /*if (verbose) {
+                        System.out.println("MARCO: recurse upper");
+                    }*/
+                    grow(current, upper);
+                }
+            }
         }
 
     }
@@ -377,7 +422,6 @@ public class MarcoMUS {
         private int n;
         private Set<Integer> fullSet;
         private Context context;
-        private boolean firstSeed;
 
         /**
          * Constructor for MapSolver
@@ -396,7 +440,6 @@ public class MarcoMUS {
             for (int i = 0; i<n;i++){
                 fullSet.add(i);
             }
-            this.firstSeed = true;
         }
 
         /**
@@ -451,16 +494,6 @@ public class MarcoMUS {
                     seed.remove(f.getId());
                 }
               }
-            }
-
-            // Add additional constraints at random, so only some percent of 
-            // constraints is excluded from the seed
-            if (biasToMSSes) {
-                List<Integer> possibleAdditions = new ArrayList<>(fullSet);
-                possibleAdditions.removeAll(seed);
-                Collections.shuffle(possibleAdditions);
-                int numToAdd = (int)(fullSet.size() * 0.9) - seed.size();
-                seed.addAll(possibleAdditions.subList(0, numToAdd));
             }
 
             return new ArrayList<>(seed);
