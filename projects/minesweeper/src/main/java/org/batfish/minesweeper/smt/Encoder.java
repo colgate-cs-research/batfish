@@ -1502,13 +1502,33 @@ public class Encoder {
             totalNumMCSesGenerated += muses.size();
         }
 
-
-        for (PredicateLabel label : predicateFrequency.keySet()) {
-            candidatePredicateLabels.add(label); //Union of MUSes...TODO : Need to factor rank in.
-            //TODO : Add thresholding back (currently removed)
-            System.out.printf("%s appeared in %d MUSes\n", label.toString(), 
-                    predicateFrequency.get(label));
+        Map<Integer,List<PredicateLabel>> sortedPredicateFrequencies = 
+            new TreeMap<>();
+        for (Entry<PredicateLabel,Integer> entry : 
+                predicateFrequency.entrySet()) {
+            candidatePredicateLabels.add(entry.getKey()); //Union of MUSes...TODO : Need to factor rank in.
+            if (!sortedPredicateFrequencies.containsKey(entry.getValue())) {
+                sortedPredicateFrequencies.put(entry.getValue(), 
+                        new ArrayList<PredicateLabel>());
+            }
+            sortedPredicateFrequencies.get(entry.getValue()).add(
+                    entry.getKey());
         }
+
+        for (Entry<Integer,List<PredicateLabel>> entry : 
+                sortedPredicateFrequencies.entrySet()) {
+            System.out.printf("%d MSSes\n", entry.getKey());
+            for (PredicateLabel label : entry.getValue()) {
+                System.out.printf("\t%s\n", label.toString());
+            }
+        }
+
+//        for (PredicateLabel label : predicateFrequency.keySet()) {
+//            candidatePredicateLabels.add(label); //Union of MUSes...TODO : Need to factor rank in.
+//            //TODO : Add thresholding back (currently removed)
+//            System.out.printf("%s appeared in %d MUSes\n", label.toString(), 
+//                    predicateFrequency.get(label));
+//        }
       }
     }
     System.out.printf("Considering %d candidate predicates\n", candidatePredicateLabels.size());
