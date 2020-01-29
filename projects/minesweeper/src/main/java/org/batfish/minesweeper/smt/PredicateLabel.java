@@ -126,41 +126,27 @@ public class PredicateLabel{
 
   private String filter;
 
-  private boolean omission;
+  private Boolean omission;
 
   public PredicateLabel(LabelType type) {
     this(type, null);
   }
 
-  public PredicateLabel(LabelType type, boolean omission) {
-    this(type, null, omission);
-  }
-  
   public PredicateLabel(LabelType type, String device) {
-    this(type, device, null, null);
+    this(type, device, null, null, null);
   }
 
-  public PredicateLabel(LabelType type, String device, boolean omission) {
-    this(type, device, null, null, omission);
-  }
-  
   public PredicateLabel(LabelType type, String device, Interface iface) {
-    this(type, device, iface, null);
+    this(type, device, iface, null, null);
   }
   
-  public PredicateLabel(LabelType type, String device, Interface iface,
-      boolean omission) {
-    this(type, device, iface, null, omission);
-  }
-
   public PredicateLabel(LabelType type, String device, Interface iface, 
       Protocol proto) {
-    this(type, device, iface, proto, false);
+    this(type, device, iface, proto, null);
   }
 
-
   public PredicateLabel(LabelType type, String device, Interface iface, 
-      Protocol proto, boolean omission) {
+      Protocol proto, Boolean omission) {
     this.type = type;
     this.device = device;
     this.iface = iface;
@@ -171,11 +157,11 @@ public class PredicateLabel{
   }
 
   public PredicateLabel(LabelType type, String device, String filter) {
-    this(type, device, filter, false);
+    this(type, device, filter, null);
   }
 
   public PredicateLabel(LabelType type, String device, String filter,
-      boolean omission) {
+      Boolean omission) {
     this.type = type;
     this.device = device;
     this.iface = null;
@@ -196,12 +182,14 @@ public class PredicateLabel{
   public String toString() {
       if (filter != null) {
         return type + (device != null ? " " + device : " null")
-            + " " + filter + " null " + (omission ? " omission" : " comission");
+            + " " + filter + " null " + (omission == null ? " null" :
+            (omission ? " omission" : " comission"));
       } else {
         return type + (device != null ? " " + device : " null")
             + (iface != null ? " " + iface.getName() : " null")
             + (proto != null ? " " + proto.name() : " null") 
-            + (omission ? " omission" : " comission");
+            + (omission == null ? " null" : 
+              (omission ? " omission" : " comission"));
       }
   }
 
@@ -266,7 +254,7 @@ public class PredicateLabel{
    * This method sets whether it is an omission
    * @param omission
    */
-  public void setOmission(boolean omission) {
+  public void setOmission(Boolean omission) {
     this.omission = omission;
   }
 
@@ -275,7 +263,7 @@ public class PredicateLabel{
    * @return true if it is an omission, otherwise false
    */
   public boolean isOmission() {
-    return this.omission;
+    return (this.omission == true);
   }
 
   
@@ -313,7 +301,7 @@ public class PredicateLabel{
         filter_b = true;
       }
 
-      if (p1.isOmission() == this.omission) {
+      if (p1.omission == null== this.omission) {
         omission_b = true;
       }
         

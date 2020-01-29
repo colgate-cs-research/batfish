@@ -1791,8 +1791,14 @@ class EncoderSlice {
             connectedWillSend = mkEq(_symbolicPacket.getDstIp(), val);
           }
           BoolExpr canSend = (proto.isConnected() ? connectedWillSend : mkTrue());
+          BoolExpr layer3AdjVar = 
+              (BoolExpr)_symbolicConfiguration.getEdgeConfiguration().get(
+                  router).get(ge);
+          if (null == layer3AdjVar) {
+            layer3AdjVar = mkTrue();
+          }
 
-          BoolExpr sends = mkAnd(canSend, isBest);
+          BoolExpr sends = mkAnd(canSend, layer3AdjVar, isBest);
 
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
@@ -2828,7 +2834,7 @@ class EncoderSlice {
         BoolExpr layer3AdjVar = (BoolExpr)entry.getValue();
         if (!alreadyConstrained.contains(layer3AdjVar.toString())) {
           PredicateLabel layer3AdjLabel = new PredicateLabel(
-              LabelType.LAYER3_ADJACENCY, router, iface, !ge.exists());
+              LabelType.LAYER3_ADJACENCY, router, iface, null, !ge.exists());
           layer3AdjLabel.addConfigurationRef(router, iface,
               String.format("Adjacency %s", ge.exists()));
           BoolExpr exists = mkBool(ge.exists());

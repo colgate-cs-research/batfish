@@ -1114,9 +1114,14 @@ public class Encoder {
                 }
             }
             Protocol proto = Protocol.fromString(arr[3]);
-            boolean omission = false;
-            if (arr.length == 5 && arr[4].equals("omission")) {
-                omission = true;
+            Boolean omission = null;
+            if (arr.length == 5) {
+                if (arr[4].equals("omission")) {
+                    omission = true;
+                }
+                else if (arr[4].equals("comission")) {
+                    omission = false;
+                }
             }
             PredicateLabel label = null;
             if (iface != null || proto != null) {
