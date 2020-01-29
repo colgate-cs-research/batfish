@@ -499,7 +499,7 @@ public class Graph {
         if (hasNoOtherEnd) {
           GraphEdge ge = new GraphEdge(i1, null, router, null, false, false);
           graphEdges.add(ge);
-          Set<NodeInterfacePair> possibleNeighbors = 
+          /*Set<NodeInterfacePair> possibleNeighbors = 
               computePossibleNeighbors(nip, routerIfaceMap, ifaceMap);
           for (NodeInterfacePair neighborIface : possibleNeighbors) {
             Interface i2 = ifaceMap.get(neighborIface);
@@ -513,7 +513,7 @@ public class Graph {
             _otherEnd.put(ge1, ge2);
             possibleEdges.add(ge1);
             possibleNeighs.add(neighbor);
-          }
+          }*/
         }
         if (!neighborIfaces.isEmpty()) {
           boolean hasMultipleEnds = (neighborIfaces.size() > 2);

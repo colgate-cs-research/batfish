@@ -1816,7 +1816,7 @@ class EncoderSlice {
           BoolExpr cForward = _symbolicDecisions.getControlForwarding().get(router, ge);
           assert (cForward != null);
           PredicateLabel label = new PredicateLabel(PredicateLabel.LabelType.CONTROL_FORWARDING, router, ge.getStart());
-          //add(mkNot(cForward), label);
+          add(mkNot(cForward), label);
         }
       }
 
