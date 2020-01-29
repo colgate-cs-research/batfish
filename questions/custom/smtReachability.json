@@ -18,6 +18,7 @@
     "baseEnvType": "none",
     "deltaEnvType": "none",
     "negate": "${negate}",
+    "ipProtocols": "${protocols}",
     "instance": {
         "description": "Ensure that the network is tolerant to interface failures",
         "instanceName": "smtReachability",
@@ -54,6 +55,13 @@
             },
             "dstIps": {
                 "description": "dstIPs",
+                "type": "string",
+                "minElements": 0,
+                "optional": true,
+                "value": 1
+            },
+            "protocols": {
+                "description": "protocols",
                 "type": "string",
                 "minElements": 0,
                 "optional": true,
