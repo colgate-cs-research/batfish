@@ -301,7 +301,7 @@ public class PredicateLabel{
         filter_b = true;
       }
 
-      if (p1.omission == null== this.omission) {
+      if (p1.omission == this.omission) {
         omission_b = true;
       }
         
