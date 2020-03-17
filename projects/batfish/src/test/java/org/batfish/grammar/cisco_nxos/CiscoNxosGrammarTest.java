@@ -58,6 +58,7 @@ import static org.batfish.datamodel.matchers.InterfaceMatchers.hasVlan;
 import static org.batfish.datamodel.matchers.InterfaceMatchers.isActive;
 import static org.batfish.datamodel.matchers.InterfaceMatchers.isAutoState;
 import static org.batfish.datamodel.matchers.MapMatchers.hasKeys;
+import static org.batfish.datamodel.matchers.NssaSettingsMatchers.hasDefaultOriginateType;
 import static org.batfish.datamodel.matchers.NssaSettingsMatchers.hasSuppressType7;
 import static org.batfish.datamodel.matchers.OspfAreaMatchers.hasNssa;
 import static org.batfish.datamodel.matchers.OspfAreaMatchers.hasStub;
@@ -4704,7 +4705,11 @@ public final class CiscoNxosGrammarTest {
       org.batfish.datamodel.ospf.OspfProcess proc = defaultVrf.getOspfProcesses().get("a_nssa");
       assertThat(proc, hasArea(1L, hasNssa(notNullValue())));
     }
-    // TODO: convert and test "a_nssa_dio" - OSPF NSSA with default-information-originate
+    {
+      org.batfish.datamodel.ospf.OspfProcess proc =
+          defaultVrf.getOspfProcesses().get("a_nssa_dio");
+      assertThat(proc, hasArea(1L, hasNssa(hasDefaultOriginateType(notNullValue()))));
+    }
     {
       org.batfish.datamodel.ospf.OspfProcess proc =
           defaultVrf.getOspfProcesses().get("a_nssa_no_r");
@@ -5081,6 +5086,16 @@ public final class CiscoNxosGrammarTest {
       assertFalse(nssa.getNoRedistribution());
       assertFalse(nssa.getNoSummary());
       assertThat(nssa.getDefaultInformationOriginateMap(), nullValue());
+    }
+    {
+      OspfProcess proc = vc.getOspfProcesses().get("a_nssa_dio");
+      assertThat(proc.getAreas(), hasKeys(1L));
+      OspfAreaNssa nssa = (OspfAreaNssa) proc.getAreas().get(1L).getTypeSettings();
+      assertThat(nssa, notNullValue());
+      assertThat(nssa.getDefaultOriginate(), notNullValue());
+      assertFalse(nssa.getNoRedistribution());
+      assertFalse(nssa.getNoSummary());
+      assertThat(nssa.getRouteMap(), nullValue());
     }
     {
       OspfProcess proc = vc.getOspfProcesses().get("a_nssa_no_r");
