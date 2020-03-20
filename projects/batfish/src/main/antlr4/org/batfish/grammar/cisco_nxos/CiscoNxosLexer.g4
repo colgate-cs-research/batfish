@@ -1386,6 +1386,11 @@ EXPORT
   'export'
 ;
 
+EXPORTER
+:
+  'exporter'
+;
+
 EXTENDED
 :
   'extended'

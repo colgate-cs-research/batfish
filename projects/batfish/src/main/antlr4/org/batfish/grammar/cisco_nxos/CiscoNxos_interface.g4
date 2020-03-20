@@ -1183,6 +1183,7 @@ i_switchport
     | i_switchport_switchport
     | i_switchport_trunk_allowed
     | i_switchport_trunk
+    | i_switchport_vlan
   )
 ;
 
@@ -1263,6 +1264,11 @@ i_switchport_trunk_allowed
 i_switchport_trunk_native
 :
   NATIVE VLAN vlan = unreserved_vlan_id NEWLINE
+;
+
+i_switchport_vlan
+:
+  VLAN MAPPING vlan = unreserved_vlan_id translated = unreserved_vlan_id NEWLINE
 ;
 
 i_vrf_member
