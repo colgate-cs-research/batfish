@@ -93,5 +93,3 @@ fr_null
     | MATCH
   ) null_rest_of_line
 ;
-
-

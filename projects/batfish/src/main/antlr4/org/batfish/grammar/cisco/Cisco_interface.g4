@@ -1356,7 +1356,7 @@ standby_group_authentication
 
 standby_group_ip
 :
-  IP ip = IP_ADDRESS secondary = SECONDARY?
+  IP ip = IP_ADDRESS
 ;
 
 standby_group_preempt
