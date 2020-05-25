@@ -1,7 +1,6 @@
 package org.batfish.minesweeper.smt;
 
 import com.microsoft.z3.*;
-import javafx.util.Pair;
 import org.batfish.minesweeper.Graph;
 import org.batfish.minesweeper.GraphEdge;
 import org.batfish.minesweeper.Protocol;
@@ -162,7 +161,7 @@ class PropertyAdder {
    * Also instruments reachability, but to a destination router
    * rather than a destination port.
    */
-  Pair<Map<String, ArithExpr>,Map<String, BoolExpr>> instrumentReachability(String router) {
+  Map<String, BoolExpr> instrumentReachability(String router) {
     Context ctx = _encoderSlice.getCtx();
     Solver solver = _encoderSlice.getSolver();
     Map<String, BoolExpr> reachableVars = new HashMap<>();
@@ -183,7 +182,7 @@ class PropertyAdder {
       }
     }
 
-    return new Pair<Map<String, ArithExpr>,Map<String, BoolExpr>>(idVars, reachableVars);
+    return reachableVars;
   }
 
   // Potentially useful in the future to optimize reachability when we know

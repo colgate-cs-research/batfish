@@ -356,8 +356,8 @@ public class Encoder {
           _slices.put(sliceName, slice);
 
           PropertyAdder pa = new PropertyAdder(slice);
-          javafx.util.Pair<Map<String, ArithExpr>, Map<String, BoolExpr>> reachVars = pa.instrumentReachability(router);
-          _sliceReachability.put(router, reachVars.getValue());
+          Map<String, BoolExpr> reachVars = pa.instrumentReachability(router);
+          _sliceReachability.put(router, reachVars);
         }
       }
     }
