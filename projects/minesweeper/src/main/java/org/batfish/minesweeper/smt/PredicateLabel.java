@@ -183,13 +183,13 @@ public class PredicateLabel{
       if (filter != null) {
         return type + (device != null ? " " + device : " null")
             + " " + filter + " null " + (omission == null ? " null" :
-            (omission ? " omission" : " comission"));
+            (omission ? " OMISSION" : " COMISSION"));
       } else {
         return type + (device != null ? " " + device : " null")
             + (iface != null ? " " + iface.getName() : " null")
             + (proto != null ? " " + proto.name() : " null") 
             + (omission == null ? " null" : 
-              (omission ? " omission" : " comission"));
+              (omission ? " OMISSION" : " COMISSION"));
       }
   }
 

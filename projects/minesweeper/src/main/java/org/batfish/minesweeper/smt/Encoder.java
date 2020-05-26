@@ -1116,10 +1116,10 @@ public class Encoder {
             Protocol proto = Protocol.fromString(arr[3]);
             Boolean omission = null;
             if (arr.length == 5) {
-                if (arr[4].equals("omission")) {
+                if (arr[4].equals("OMISSION")) {
                     omission = true;
                 }
-                else if (arr[4].equals("comission")) {
+                else if (arr[4].equals("COMISSION")) {
                     omission = false;
                 }
             }
