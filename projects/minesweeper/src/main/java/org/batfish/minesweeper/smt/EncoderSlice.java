@@ -276,6 +276,7 @@ class EncoderSlice {
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
             outLabel.addConfigurationRef(router, i, String.format("Outbound ACL %s traffic | %s",action, line.getName()));
           }
+          outLabel.setOmission(false);
           } else {
             outLabel.setOmission(true);
           }
@@ -303,6 +304,7 @@ class EncoderSlice {
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
             inLabel.addConfigurationRef(router, i, String.format("Inbound ACL %s traffic | %s",action, line.getName()));
           }
+          inLabel.setOmission(false);
           } else {
             inLabel.setOmission(true);
           }
@@ -2775,7 +2777,8 @@ class EncoderSlice {
             if (proto.isOspf()) {
               PredicateLabel ospfEnabledLabel = new PredicateLabel(
                   LabelType.INTERFACE_PROTOCOL_ENABLED, router, iface, proto,
-                  !iface.getOspfEnabled() || iface.getOspfPassive());
+                  true);
+//                  !iface.getOspfEnabled() || iface.getOspfPassive());
               ospfEnabledLabel.addConfigurationRef(router, iface,
                   String.format("OSPF enabled %s", iface.getOspfEnabled()));
               PredicateLabel ospfCostLabel = new PredicateLabel(
