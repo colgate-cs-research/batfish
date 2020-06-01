@@ -109,7 +109,10 @@ def process_network(experiment_name, network, network_dir, writer, args):
                     recall = 'NA'
                 else:
                     recall = found_count / (found_count + len(missed_preds))
-                precision = found_count / (found_count + len(extra_preds))
+                if (found_count == 0 and len(extra_preds) == 0):
+                    precision = 'NA'
+                else:
+                    precision = found_count / (found_count + len(extra_preds))
                 print('      precision:', precision, 'recall:', recall)
                 writer.writerow(
                     [str(found_count),
@@ -178,7 +181,10 @@ def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir,
                     recall = 'NA'
                 else:
                     recall = found_count / (found_count + len(missed_preds))
-                precision = found_count / (found_count + len(extra_preds))
+                if (found_count == 0 and len(extra_preds) == 0):
+                    precision = 'NA'
+                else:
+                    precision = found_count / (found_count + len(extra_preds))
                 print('      precision:', precision, 'recall:', recall)
                 writer.writerow(
                             [str(found_count),
