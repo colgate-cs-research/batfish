@@ -35,7 +35,7 @@ def main():
     masterpath = os.path.join(args.path, masterfile_name)
     masterfile = open(masterpath, 'w')
     writer = csv.writer(masterfile)
-    writer.writerow(["found_preds_count","missed_preds_count","extra_count","recall","precision","missed_preds", "extra_preds", "experiment","network", "scenario", "num_mus", "num_failures", "num_policies"])
+    writer.writerow(["found_preds_count","missed_preds_count","extra_count","recall","precision","missed_preds", "extra_preds", "experiment","network", "scenario", "scenario_type", "num_mus", "num_failures", "num_policies"])
 
     # Process a single container directory or multiple container directories
     if os.path.exists(os.path.join(args.path, "network_ids")):
@@ -122,6 +122,7 @@ def process_network(experiment_name, network, network_dir, writer, args):
                     experiment_name,
                     network,
                     snapshot_name,
+                    '-'.join(snapshot_name.split('-')[:2]),
                     num_mus,
                     num_failures,
                     num_policies])
@@ -190,6 +191,7 @@ def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir,
                             experiment_name,
                             network,
                             snapshot,
+                            '-'.join(snapshot_name.split('-')[:2]),
                             num_mus,
                             num_failures,
                             policy]

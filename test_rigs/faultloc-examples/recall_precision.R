@@ -7,7 +7,7 @@ mydata <- read.csv("master_mus_uuu.csv",header = TRUE, sep=",")
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count)*100)
 mydata$recall<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count)*100)
 
-mydata$experiment <- revalue(mydata$experiment, c("rm-network"="MissNw", "rm-nopassive"="MissNb", "rm-neighbor"="MissNb"))
+mydata$scenario_type <- revalue(mydata$scenario_type, c("rm-network"="MissNw", "rm-nopassive"="MissNb", "rm-neighbor"="MissNb", "rm-acl"="MissPF"))
 
 
 mydata$network <- revalue(mydata$network, 
@@ -24,11 +24,11 @@ gradient <- c('#E00000','#EA5500', '#F4AA00','#FFFF00','#AAEA00','#55D500',
 
 png("precision_scenario.png",width = 250, height = 300)
 par(mar = c(4,4,0.1,0.1))
-boxplot (mydata$precision~mydata$experiment,  xlab="", ylab="Percent", ylim=c(0, 100))
+boxplot (mydata$precision~mydata$scenario_type,  xlab="", ylab="Percent", ylim=c(0, 100))
 dev.off()
 
 mydata$precisionDisc <- cut(mydata$precision,c(-1,0,20,40,60,80,99,100))
-plotdata <- table(mydata$precisionDisc, mydata$experiment)
+plotdata <- table(mydata$precisionDisc, mydata$scenario_type)
 plotdata <- scale(plotdata, FALSE, colSums(plotdata))*100
 print(plotdata)
 png("precision_scenario_bar.png",width = 250, height = 200)
@@ -42,12 +42,12 @@ dev.off()
 
 
 png("precision_scenario_cdf.png",width = 400, height = 300)
-plot(ecdf(mydata$precision[which(mydata$experiment=="MissNb")]), 
+plot(ecdf(mydata$precision[which(mydata$scenario_type=="MissNb")]), 
      col=safecolorsfive[1],
      do.points=FALSE, verticals=TRUE, col.01line = NULL,
      xlim=c(0,100), xlab='Precision (%)',
      ylim=c(0,1), ylab='Fraction of scenarios')
-plot(ecdf(mydata$precision[which(mydata$experiment=="MissNw")]), 
+plot(ecdf(mydata$precision[which(mydata$scenario_type=="MissNw")]), 
      col=safecolorsfive[2],
      do.points=FALSE, verticals=TRUE, col.01line = NULL,
      add=TRUE) 
@@ -57,23 +57,23 @@ dev.off()
 
 png("recall_scenario.png",width = 400, height = 300)
 par(mar = c(4,4,0.1,0.1))
-boxplot (mydata$recall~mydata$experiment, xlab="Error Type", ylab="Percent", ylim=c(0, 100))
+boxplot (mydata$recall~mydata$scenario_type, xlab="Error Type", ylab="Percent", ylim=c(0, 100))
 dev.off()
 
 png("recall_scenario_cdf.png",width = 400, height = 300)
-plot(ecdf(mydata$recall[which(mydata$experiment=="MissNb")]), 
+plot(ecdf(mydata$recall[which(mydata$scenario_type=="MissNb")]), 
      col=safecolorsfive[1],
      do.points=FALSE, verticals=TRUE, col.01line = NULL,
      xlim=c(0,100), xlab='Recall (%)',
      ylim=c(0,1), ylab='Fraction of scenarios')
-plot(ecdf(mydata$recall[which(mydata$experiment=="MissNw")]), 
+plot(ecdf(mydata$recall[which(mydata$scenario_type=="MissNw")]), 
      col=safecolorsfive[2],
      do.points=FALSE, verticals=TRUE, col.01line = NULL,
      add=TRUE) 
 dev.off()
 
 mydata$recallDisc <- cut(mydata$recall,c(-1,0,20,40,60,80,99,100))
-plotdata <- table(mydata$recallDisc, mydata$experiment)
+plotdata <- table(mydata$recallDisc, mydata$scenario_type)
 plotdata <- scale(plotdata, FALSE, colSums(plotdata))*100
 print(plotdata)
 png("recall_scenario_bar.png",width = 375, height = 200)
