@@ -28,7 +28,7 @@ def main():
     identifier += "various_mus" if args.mus else ""
     identifier += "various_failure" if args.failure else ""
     identifier += "various_policies" if args.policies else ""
-    
+
     masterfile_name = "master_mus" + identifier + ".csv"
     print(masterfile_name)
     #top_level_dir = os.path.join(args.path, "result")
@@ -43,11 +43,11 @@ def main():
     else:
         for experiment in sorted(os.listdir(args.path)):
             experiment_dir = os.path.join(args.path, experiment)
-            if (experiment.startswith('.') 
+            if (experiment.startswith('.')
                     or not os.path.isdir(experiment_dir)):
                 continue
             process_experiment(experiment, experiment_dir, writer, args)
-   
+
     masterfile.close()
 
 def process_experiment(experiment_name, experiment_dir, writer, args):
@@ -90,13 +90,13 @@ def process_network(experiment_name, network, network_dir, writer, args):
         for i, num in enumerate(nums):
             if i == 0:
                 continue
-            (faulty_preds, snapshot_candidates, num_mus, num_failures, 
-                    num_policies) = process_snapshot_num(experiment_name, 
-                        network, snapshot_name, snapshot_dir, writer, args, 
+            (faulty_preds, snapshot_candidates, num_mus, num_failures,
+                    num_policies) = process_snapshot_num(experiment_name,
+                        network, snapshot_name, snapshot_dir, writer, args,
                         num)
             found_count, missed_preds, extra_preds = analyze_candidates(
                     snapshot_candidates, faulty_preds)
-            print('      found:', found_count, 'missed:', len(missed_preds), 
+            print('      found:', found_count, 'missed:', len(missed_preds),
                     'extra:', len(extra_preds))
             if len(faulty_preds) == 0:
                 print('     extra:', '\n\t'.join(sorted(extra_preds)))
@@ -104,7 +104,7 @@ def process_network(experiment_name, network, network_dir, writer, args):
                     (args.mus == args.failure == args.policies == False
                         or (args.mus and num_mus >= nums[i-1])
                         or (args.failure and num_failures >= nums[i-1])
-                        or (args.policies and num_policie >= nums[i-1]))):
+                        or (args.policies and num_policies >= nums[i-1]))):
                 if (found_count == 0 and len(missed_preds) == 0):
                     recall = 'NA'
                 else:
@@ -131,7 +131,7 @@ def process_network(experiment_name, network, network_dir, writer, args):
                     num_policies])
 
 
-def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir, 
+def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir,
         writer, args, num=10**6):
     print('   ', snapshot)
     output_dir = os.path.join(snapshot_dir, "output")
@@ -141,11 +141,11 @@ def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir,
     for filename in sorted(os.listdir(output_dir)):
         if filename.startswith('mus_bulk'):
             mus_path = os.path.join(output_dir, filename)
-            policy, candidates, num_mus = (process_mus_intersect(mus_path, num) 
+            policy, candidates, num_mus = (process_mus_intersect(mus_path, num)
                     if args.i_fail else process_mus(mus_path, num))
-            print("      policy:", policy, "cands:", len(candidates), 
+            print("      policy:", policy, "cands:", len(candidates),
                     "mus:", num_mus)
-               
+
             # Limit number of failures considered, if requested
             if (not args.failure or policy_to_failcount.get(policy, 0) < num):
                 policy_to_failcount[policy] = policy_to_failcount.get(policy, 0) + 1
@@ -219,8 +219,8 @@ def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir,
 
         #min([min(mus_count) for mus_count in policy_to_muscount.values()])
 
-    return (faulty_preds, snapshot_candidates, 
-            min([min(mus_count) for mus_count in policy_to_muscount.values()]), 
+    return (faulty_preds, snapshot_candidates,
+            min([min(mus_count) for mus_count in policy_to_muscount.values()]),
             max(policy_to_failcount.values()), len(policy_to_candidates))
 
 def process_faultloc_file(filepath):
