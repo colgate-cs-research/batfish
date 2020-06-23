@@ -7,7 +7,7 @@ mydata <- read.csv("master_mus_uuu.csv",header = TRUE, sep=",")
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count)*100)
 mydata$recall<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count)*100)
 
-mydata$scenario_type <- revalue(mydata$scenario_type, c("rm-network"="OmitNw", "rm-nopassive"="OmitNb", "rm-neighbor"="OmitNb", "rm-acl"="OmitPF", "rm-aclline"="OmitPFR", "add-acl"="ExtraPF"))
+mydata$scenario_type <- revalue(mydata$scenario_type, c("rm-network"="OmitNw", "rm-nopassive"="OmitNb", "rm-neighbor"="OmitNb", "rm-acl"="OmitPF", "rm-aclline"="OmitPFR", "add-acl"="ExtraPF", "add-aclline"="ExtraPFR", "change-ospfcost"="ModCost"))
 
 
 mydata$network <- revalue(mydata$network, 
