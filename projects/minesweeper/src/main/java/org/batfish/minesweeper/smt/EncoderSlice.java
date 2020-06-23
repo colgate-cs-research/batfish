@@ -57,6 +57,8 @@ class EncoderSlice {
 
   private Map<GraphEdge, BoolExpr> _outboundAcls;
 
+  private Table2<String, String, BoolExpr> _acls;
+
   private Table2<String, GraphEdge, BoolExpr> _forwardsAcross;
 
   public List<SymbolicRoute> _allSymbolicRoutes;
@@ -110,6 +112,7 @@ class EncoderSlice {
 
     _inboundAcls = new HashMap<>();
     _outboundAcls = new HashMap<>();
+    _acls = new Table2<>();
     _forwardsAcross = new Table2<>();
     _ospfRedistributed = new HashMap<>();
     _originatedNetworks = new Table2<>();
@@ -271,11 +274,25 @@ class EncoderSlice {
                   PredicateLabel.LabelType.ACLS_OUTBOUND, router, i);
 
           if (outbound != null) {
-          outAclFunc = computeACL(outbound);
-          for (IpAccessListLine line :outbound.getLines()){
+          outAclFunc = _acls.get(router, outbound.getName());
+              if (outAclFunc == null) {
+                String outAclName =
+                    String.format("%d_%s_%s_ACL_%s", _encoder.getId(),
+                        _sliceName, router, outbound.getName());
+                outAclFunc = mkBoolConstant(outAclName);
+                BoolExpr outAclFuncDef = computeACL(outbound);
+
+                PredicateLabel outAclLabel = new PredicateLabel(
+                        PredicateLabel.LabelType.ACL, router, 
+                        outbound.getName(), false);
+                add(mkEq(outAclFunc, outAclFuncDef), outAclLabel);
+                _acls.put(router, outbound.getName(), outAclFunc);
+              }
+
+/*          for (IpAccessListLine line :outbound.getLines()){
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
             outLabel.addConfigurationRef(router, i, String.format("Outbound ACL %s traffic | %s",action, line.getName()));
-          }
+          }*/
           outLabel.setOmission(false);
           } else {
             outLabel.setOmission(true);
@@ -300,10 +317,24 @@ class EncoderSlice {
 
           if (inbound != null) {
           inAclFunc = computeACL(inbound);
-          for (IpAccessListLine line :inbound.getLines()){
+            if (inAclFunc == null) {
+                String inAclName =
+                    String.format("%d_%s_%s_ACL_%s", _encoder.getId(),
+                        _sliceName, router, inbound.getName());
+                inAclFunc = mkBoolConstant(inAclName);
+                BoolExpr inAclFuncDef = computeACL(inbound);
+
+                PredicateLabel inAclLabel = new PredicateLabel(
+                        PredicateLabel.LabelType.ACL, router, 
+                        inbound.getName(), false);
+                add(mkEq(inAclFunc, inAclFuncDef), inAclLabel);
+                _acls.put(router, inbound.getName(), inAclFunc);
+              }
+
+/*          for (IpAccessListLine line :inbound.getLines()){
             String action = line.getAction().equals(LineAction.PERMIT)?"*PERMITS*":"*DENIES*";
             inLabel.addConfigurationRef(router, i, String.format("Inbound ACL %s traffic | %s",action, line.getName()));
-          }
+          }*/
           inLabel.setOmission(false);
           } else {
             inLabel.setOmission(true);
@@ -2766,7 +2797,8 @@ class EncoderSlice {
             Interface iface = ge.getStart();
 
             PredicateLabel ifaceActiveLabel = new PredicateLabel(
-                    LabelType.INTERFACE_ACTIVE, router, iface, proto);
+                    LabelType.INTERFACE_ACTIVE, router, iface, proto, 
+                    !iface.getActive());
             ifaceActiveLabel.addConfigurationRef(router, iface,
                 String.format("Active %s", iface.getActive()));
             BoolExpr ifaceActiveVar = (BoolExpr)_symbolicConfiguration.getInterfaceConfiguration().get(router, iface, SymbolicConfiguration.Keyword.ACTIVE);

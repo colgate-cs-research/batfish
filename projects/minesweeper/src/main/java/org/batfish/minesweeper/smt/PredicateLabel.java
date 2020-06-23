@@ -43,6 +43,7 @@ public class PredicateLabel{
     COMMUNITY,
     ACLS_OUTBOUND,
     ACLS_INBOUND,
+    ACL,
     ORIGINATED,
     INTERFACE_ACTIVE,
     INTERFACE_PROTOCOL_ENABLED,
@@ -64,7 +65,7 @@ public class PredicateLabel{
       LabelType.ORIGINATED, LabelType.NEIGHBOR, LabelType.INTERFACE_ACTIVE,
       LabelType.INTERFACE_PROTOCOL_ENABLED, LabelType.INTERFACE_OSPF_COST,
       LabelType.LAYER3_ADJACENCY, LabelType.COMMUNITY,
-      LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND,
+      LabelType.ACLS_INBOUND, LabelType.ACLS_OUTBOUND, LabelType.ACL,
       LabelType.ROUTE_FILTER_LIST);
   
   /** Labels for predicates that are computable based on predicates derived
@@ -182,7 +183,7 @@ public class PredicateLabel{
   public String toString() {
       if (filter != null) {
         return type + (device != null ? " " + device : " null")
-            + " " + filter + " null " + (omission == null ? " null" :
+            + " " + filter + " null" + (omission == null ? " null" :
             (omission ? " OMISSION" : " COMISSION"));
       } else {
         return type + (device != null ? " " + device : " null")
