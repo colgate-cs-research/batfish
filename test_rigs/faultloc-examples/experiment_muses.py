@@ -19,6 +19,7 @@ def main():
     parser.add_argument('-nf', '--number of failure', dest='failure', action='store_true', help='number of failures to consider')
     parser.add_argument('-np', '--number of policies', dest='policies', action='store_true', help='number of policies to consider')
     parser.add_argument('-pp', '--printPerPolicy', dest='print_per_policy', action='store_true', help='Print results per policy instead of per-scenario')
+    parser.add_argument('-r', '--rank', dest='rank_limit', type=int, help='Only consider MCSes whose rank (by size) is better than or equal to this limit', default=10**6)
     args = parser.parse_args()
 
     identifier = "_"
@@ -142,7 +143,7 @@ def process_snapshot_num(experiment_name, network, snapshot, snapshot_dir,
         if filename.startswith('mus_bulk'):
             mus_path = os.path.join(output_dir, filename)
             policy, candidates, num_mus = (process_mus_intersect(mus_path, num)
-                    if args.i_fail else process_mus(mus_path, num))
+                    if args.i_fail else process_mus(mus_path, args.rank_limit, num))
             print("      policy:", policy, "cands:", len(candidates),
                     "mus:", num_mus)
 
@@ -239,9 +240,10 @@ def process_faultloc_file(filepath):
         pass
     return faulty_preds
 
-def process_mus(mus_file_path, num=10**6):
+def process_mus(mus_file_path, rank=10**6, num=10**6):
     preds= set()
     count = 0
+    mus_by_size = {}
     with open(mus_file_path, "r") as mus_file:
         for mus in mus_file:
             count = count+1
@@ -249,10 +251,20 @@ def process_mus(mus_file_path, num=10**6):
                 policy = mus.strip()
                 continue
             preds_list =  mus.strip('\n,').split(',')
-            for x in preds_list:
-                preds.add(x)
+            mus_size = len(preds_list)
+            if mus_size not in mus_by_size:
+                mus_by_size[mus_size] = []
+            mus_by_size[mus_size].append(preds_list)
             if count == (num+1):
                 break
+    sizes = sorted(mus_by_size.keys())
+    i = 0
+    while i < rank and i < len(sizes):
+        size = sizes[i]
+        for preds_list in mus_by_size[size]:
+            for x in preds_list:
+                preds.add(x)
+        i += 1
     return policy,preds,count-1
 
 def analyze_candidates(candidates, faults):

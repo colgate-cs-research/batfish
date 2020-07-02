@@ -7,7 +7,7 @@ mydata <- read.csv("master_mus_uuu.csv",header = TRUE, sep=",")
 mydata$precision<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$extra_count)*100)
 mydata$recall<-(mydata$found_preds_count/(mydata$found_preds_count+mydata$missed_preds_count)*100)
 
-mydata$scenario_type <- revalue(mydata$scenario_type, c("rm-network"="OmitNw", "rm-nopassive"="OmitNb", "rm-neighbor"="OmitNb", "rm-acl"="OmitPF", "rm-aclline"="OmitPFR", "add-acl"="ExtraPF", "add-aclline"="ExtraPFR", "change-ospfcost"="ModCost"))
+mydata$scenario_type <- revalue(mydata$scenario_type, c("rm-network"="OmitNw", "rm-nopassive"="OmitNb", "rm-neighbor"="OmitNb", "rm-acl"="OmitAcl", "rm-aclline"="OmitAclRule", "add-acl"="ExtraAcl", "add-aclline"="ExtraAclRule", "change-ospfcost"="ModCost"))
 
 
 mydata$network <- revalue(mydata$network, 
@@ -32,9 +32,9 @@ mydata$precisionDisc <- cut(mydata$precision,c(-1,0,20,40,60,80,99,100))
 plotdata <- table(mydata$precisionDisc, mydata$scenario_type)
 plotdata <- scale(plotdata, FALSE, colSums(plotdata))*100
 print(plotdata)
-png("precision_scenario_bar.png",width = 250, height = 200)
-par(mar = c(3.5,2.5,1,0),xpd=TRUE,mgp=c(1.5,0.3,0),cex=1.3)
-barplot(plotdata,  xlab="Error Type", ylab="Scenarios (%)", 
+png("precision_scenario_bar.png",width = 250, height = 250)
+par(mar = c(5,2.5,1,0),xpd=TRUE,mgp=c(1.5,0.3,0),cex=1.3)
+barplot(plotdata,  xlab="", ylab="Scenarios (%)", 
         ylim=c(0, 100), col=gradient, las=2)
 #legend("topright", inset=c(-0.3,0), fill=rev(gradient), 
 #       legend=rev(c("0%","1-19%","20-39%","40-59%","60-79%","80-99%","100%")), 
@@ -77,8 +77,8 @@ mydata$recallDisc <- cut(mydata$recall,c(-1,0,20,40,60,80,99,100))
 plotdata <- table(mydata$recallDisc, mydata$scenario_type)
 plotdata <- scale(plotdata, FALSE, colSums(plotdata))*100
 print(plotdata)
-png("recall_scenario_bar.png",width = 375, height = 200)
-par(mar = c(3.5,9,1,0),xpd=TRUE,mgp=c(1.5,0.3,0),cex=1.3)
+png("recall_scenario_bar.png",width = 375, height = 250)
+par(mar = c(5,9,1,0),xpd=TRUE,mgp=c(1.5,0.3,0),cex=1.3)
 barplot(plotdata,  xlab="", ylab="Scenarios (%)", 
         ylim=c(0, 100), col=gradient, las=2)
 legend("topleft", inset=c(-0.75,0), fill=rev(gradient), 
@@ -95,6 +95,7 @@ dev.off()
 
 plotdata <- table(mydata$precisionDisc, mydata$network)
 plotdata <- scale(plotdata, FALSE, colSums(plotdata))*100
+print(plotdata)
 png("precision_network_bar.png",width = 250, height = 200)
 par(mar = c(3.5,2.5,1,0),xpd=TRUE,mgp=c(1.5,0.3,0),cex=1.3)
 barplot(plotdata,  xlab="", ylab="Scenarios (%)", 
@@ -112,6 +113,7 @@ dev.off()
 
 plotdata <- table(mydata$recallDisc, mydata$network)
 plotdata <- scale(plotdata, FALSE, colSums(plotdata))*100
+print(plotdata)
 png("recall_network_bar.png",width = 375, height = 200)
 par(mar = c(3.5,9,1,0),xpd=TRUE,mgp=c(1.5,0.3,0),cex=1.3)
 barplot(plotdata,  xlab="", ylab="Scenarios (%)", 
